@@ -2,44 +2,74 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
   `${window.location.protocol}//${window.location.hostname}:8080/api`
 
+// 全局 loading 狀態管理
+let loadingCount = 0
+let loadingMessage = '載入中...'
+let loadingCallbacks = {
+  show: null,
+  hide: null
+}
+
+// 設置 loading 回調函數（由 useLoading composable 調用）
+export function setLoadingCallbacks(show, hide) {
+  loadingCallbacks.show = show
+  loadingCallbacks.hide = hide
+}
+
 class ApiService {
   async request(url, options = {}) {
-    const response = await fetch(`${API_BASE_URL}${url}`, {
-      credentials: 'include',
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
+    const showLoader = options.showLoading !== false // 默認顯示 loading
+    
+    try {
+      if (showLoader && loadingCallbacks.show) {
+        loadingCallbacks.show(options.loadingMessage || '載入中...')
       }
-    })
-    
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(errorText || `請求失敗: ${response.status}`)
+      
+      const response = await fetch(`${API_BASE_URL}${url}`, {
+        credentials: 'include',
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers
+        }
+      })
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(errorText || `請求失敗: ${response.status}`)
+      }
+      
+      if (response.status === 204) return null
+      return await response.json()
+    } finally {
+      if (showLoader && loadingCallbacks.hide) {
+        loadingCallbacks.hide()
+      }
     }
-    
-    if (response.status === 204) return null
-    return await response.json()
   }
 
   // Auth API
   async login(username, password) {
     return this.request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ username, password })
+      body: JSON.stringify({ username, password }),
+      loadingMessage: '登入中...'
     })
   }
 
   async logout() {
-    return this.request('/auth/logout', { method: 'POST' })
+    return this.request('/auth/logout', { 
+      method: 'POST',
+      loadingMessage: '登出中...'
+    })
   }
 
   async getCurrentUser() {
-    return this.request('/auth/current-user')
+    return this.request('/auth/current-user', { showLoading: false })
   }
 
   async getMenus() {
-    return this.request('/menus')
+    return this.request('/menus', { showLoading: false })
   }
 
   // Records API
@@ -73,6 +103,10 @@ class ApiService {
 
   async deleteRecord(id) {
     return this.request(`/records/${id}`, { method: 'DELETE' })
+  }
+
+  async getInProgressCount() {
+    return this.request('/records/stats/in-progress', { showLoading: false })
   }
 
   // Expenses API

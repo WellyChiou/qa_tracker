@@ -91,14 +91,17 @@ docker compose down -v
 - **密碼**: apppassword
 - **Root 密碼**: rootpassword
 
-## 文檔索引
+## 📚 文檔索引
 
-- **README.md** - 專案說明（本文件）
-- **QUICK_START.md** - 快速部署指南
-- **DEPLOY.md** - 詳細部署指南（虛擬主機部署）
-- **TROUBLESHOOTING.md** - 🔧 **故障排除指南**（遇到問題時先看這個！）
-- **INSTALL_DOCKER_COMPOSE.md** - Docker Compose 安裝指南
-- **UBUNTU_FIREWALL.md** - Ubuntu 防火牆配置
+**👉 所有文檔已整合到 [docs/](./docs/) 目錄，請查看 [docs/README.md](./docs/README.md) 獲取完整文檔索引**
+
+### 快速鏈接
+
+- **[📚 完整文檔目錄](./docs/README.md)** - 所有文檔的索引
+- **[🚀 快速部署指南](./docs/deployment/QUICK_START.md)** - 快速開始部署
+- **[🔧 故障排除指南](./docs/TROUBLESHOOTING.md)** - 遇到問題時先看這個！
+- **[👥 系統管理指南](./docs/admin/ADMIN_SYSTEM_GUIDE.md)** - 系統管理功能說明
+- **[💻 開發指南](./docs/development/)** - 開發相關文檔
 
 ## 常見問題
 

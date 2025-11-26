@@ -25,7 +25,8 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long> {
            "(:month IS NULL OR MONTH(e.date) = :month) AND " +
            "(:member IS NULL OR e.member = :member) AND " +
            "(:type IS NULL OR e.type = :type) AND " +
-           "(:mainCategory IS NULL OR e.mainCategory = :mainCategory)")
+           "(:mainCategory IS NULL OR e.mainCategory = :mainCategory) " +
+           "ORDER BY e.date DESC, e.createdAt DESC")
     Page<Expense> findByFilters(
         @Param("year") Integer year,
         @Param("month") Integer month,
@@ -40,7 +41,8 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long> {
            "(:month IS NULL OR MONTH(e.date) = :month) AND " +
            "(:member IS NULL OR e.member = :member) AND " +
            "(:type IS NULL OR e.type = :type) AND " +
-           "(:mainCategory IS NULL OR e.mainCategory = :mainCategory)")
+           "(:mainCategory IS NULL OR e.mainCategory = :mainCategory) " +
+           "ORDER BY e.date DESC, e.createdAt DESC")
     List<Expense> findByFiltersList(
         @Param("year") Integer year,
         @Param("month") Integer month,

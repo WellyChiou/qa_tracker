@@ -20,6 +20,7 @@ public class ExpenseService {
 
     public Page<Expense> getExpenses(Integer year, Integer month, String member, String type, 
                                      String mainCategory, int page, int size) {
+        // 排序已在 Repository 查詢中指定（按日期降序，再按建立時間降序）
         Pageable pageable = PageRequest.of(page, size);
         return expenseRepository.findByFilters(year, month, member, type, mainCategory, pageable);
     }

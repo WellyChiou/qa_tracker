@@ -10,6 +10,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -76,6 +77,10 @@ public class RecordService {
         Integer bugFound,
         Integer issueNumber,
         String keyword,
+        LocalDate testStartDateFrom,
+        LocalDate testStartDateTo,
+        LocalDate etaDateFrom,
+        LocalDate etaDateTo,
         int page,
         int size
     ) {
@@ -85,7 +90,8 @@ public class RecordService {
                 .and(Sort.by("createdAt").descending()));
         
         return recordRepository.searchRecords(
-            status, category, testPlan, bugFound, issueNumber, keyword, pageable
+            status, category, testPlan, bugFound, issueNumber, keyword,
+            testStartDateFrom, testStartDateTo, etaDateFrom, etaDateTo, pageable
         );
     }
     
@@ -96,12 +102,17 @@ public class RecordService {
         String testPlan,
         Integer bugFound,
         Integer issueNumber,
-        String keyword
+        String keyword,
+        LocalDate testStartDateFrom,
+        LocalDate testStartDateTo,
+        LocalDate etaDateFrom,
+        LocalDate etaDateTo
     ) {
         // 使用大分頁來取得所有符合條件的記錄
         Pageable pageable = PageRequest.of(0, 10000);
         Page<Record> page = recordRepository.searchRecords(
-            status, category, testPlan, bugFound, issueNumber, keyword, pageable
+            status, category, testPlan, bugFound, issueNumber, keyword,
+            testStartDateFrom, testStartDateTo, etaDateFrom, etaDateTo, pageable
         );
         return page.getContent();
     }
@@ -109,6 +120,26 @@ public class RecordService {
     // 統計執行中筆數
     public long countInProgress() {
         return recordRepository.countByStatus(1);
+    }
+    
+    // 統計符合查詢條件的記錄中各種狀態的數量
+    public long countBySearchConditionsAndStatus(
+        Integer status,
+        Integer category,
+        String testPlan,
+        Integer bugFound,
+        Integer issueNumber,
+        String keyword,
+        LocalDate testStartDateFrom,
+        LocalDate testStartDateTo,
+        LocalDate etaDateFrom,
+        LocalDate etaDateTo,
+        Integer targetStatus
+    ) {
+        return recordRepository.countBySearchConditionsAndStatus(
+            status, category, testPlan, bugFound, issueNumber, keyword,
+            testStartDateFrom, testStartDateTo, etaDateFrom, etaDateTo, targetStatus
+        );
     }
 }
 

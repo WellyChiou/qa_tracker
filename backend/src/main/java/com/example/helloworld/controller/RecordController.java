@@ -4,9 +4,11 @@ import com.example.helloworld.entity.Record;
 import com.example.helloworld.service.RecordService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,11 +31,30 @@ public class RecordController {
         @RequestParam(required = false) Integer bugFound,
         @RequestParam(required = false) Integer issueNumber,
         @RequestParam(required = false) String keyword,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate testStartDateFrom,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate testStartDateTo,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate etaDateFrom,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate etaDateTo,
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "20") int size
     ) {
         Page<Record> records = recordService.searchRecords(
-            status, category, testPlan, bugFound, issueNumber, keyword, page, size
+            status, category, testPlan, bugFound, issueNumber, keyword,
+            testStartDateFrom, testStartDateTo, etaDateFrom, etaDateTo, page, size
+        );
+        
+        // 統計查詢結果中各種狀態的數量
+        long completedCount = recordService.countBySearchConditionsAndStatus(
+            status, category, testPlan, bugFound, issueNumber, keyword,
+            testStartDateFrom, testStartDateTo, etaDateFrom, etaDateTo, 2
+        );
+        long inProgressCount = recordService.countBySearchConditionsAndStatus(
+            status, category, testPlan, bugFound, issueNumber, keyword,
+            testStartDateFrom, testStartDateTo, etaDateFrom, etaDateTo, 1
+        );
+        long cancelledCount = recordService.countBySearchConditionsAndStatus(
+            status, category, testPlan, bugFound, issueNumber, keyword,
+            testStartDateFrom, testStartDateTo, etaDateFrom, etaDateTo, 0
         );
         
         Map<String, Object> response = new HashMap<>();
@@ -42,6 +63,13 @@ public class RecordController {
         response.put("totalPages", records.getTotalPages());
         response.put("currentPage", page);
         response.put("size", size);
+        
+        // 添加統計信息
+        Map<String, Long> stats = new HashMap<>();
+        stats.put("completed", completedCount);
+        stats.put("inProgress", inProgressCount);
+        stats.put("cancelled", cancelledCount);
+        response.put("stats", stats);
         
         return ResponseEntity.ok(response);
     }
@@ -54,10 +82,15 @@ public class RecordController {
         @RequestParam(required = false) String testPlan,
         @RequestParam(required = false) Integer bugFound,
         @RequestParam(required = false) Integer issueNumber,
-        @RequestParam(required = false) String keyword
+        @RequestParam(required = false) String keyword,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate testStartDateFrom,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate testStartDateTo,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate etaDateFrom,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate etaDateTo
     ) {
         List<Record> records = recordService.getAllRecordsForExport(
-            status, category, testPlan, bugFound, issueNumber, keyword
+            status, category, testPlan, bugFound, issueNumber, keyword,
+            testStartDateFrom, testStartDateTo, etaDateFrom, etaDateTo
         );
         return ResponseEntity.ok(records);
     }

@@ -22,8 +22,8 @@ FROM nginx:alpine
 # 複製構建結果到 nginx
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# 複製 nginx 配置（如果需要）
-# COPY nginx.conf /etc/nginx/nginx.conf
+# 複製 nginx 配置文件（支持 Vue Router history 模式）
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # 暴露端口
 EXPOSE 80
