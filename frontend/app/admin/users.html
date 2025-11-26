@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用戶管理</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+            color: white;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            font-size: 2rem;
+            margin: 0;
+        }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(74, 222, 128, 0.4);
+        }
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        th {
+            background: rgba(255, 255, 255, 0.1);
+            font-weight: 600;
+        }
+        tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        .badge-success {
+            background: rgba(74, 222, 128, 0.3);
+            color: #dcfce7;
+        }
+        .badge-danger {
+            background: rgba(248, 113, 113, 0.3);
+            color: #fee2e2;
+        }
+        .badge-info {
+            background: rgba(59, 130, 246, 0.3);
+            color: #dbeafe;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.show {
+            display: flex;
+        }
+        .modal-content {
+            background: rgba(255, 255, 255, 0.95);
+            color: #333;
+            border-radius: 20px;
+            padding: 2rem;
+            max-width: 700px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #333;
+        }
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            color: #333;
+        }
+        .form-group textarea {
+            resize: vertical;
+        }
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-top: 2rem;
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+            color: white;
+        }
+        .btn-edit {
+            background: rgba(59, 130, 246, 0.3);
+            color: white;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .btn-delete {
+            background: rgba(248, 113, 113, 0.3);
+            color: white;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .btn-roles {
+            background: rgba(147, 51, 234, 0.3);
+            color: white;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .roles-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .role-badge {
+            padding: 0.25rem 0.5rem;
+            background: rgba(147, 51, 234, 0.2);
+            border-radius: 6px;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>👥 用戶管理</h1>
+            <div>
+                <a href="/" class="btn btn-secondary">返回首頁</a>
+                <button onclick="showAddModal()" class="btn btn-primary">新增用戶</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div id="loadingMessage" style="text-align: center; padding: 2rem;">載入中...</div>
+            <table id="usersTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>UID</th>
+                        <th>用戶名</th>
+                        <th>電子郵件</th>
+                        <th>顯示名稱</th>
+                        <th>角色</th>
+                        <th>啟用</th>
+                        <th>鎖定</th>
+                        <th>建立時間</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="usersBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 新增/編輯 Modal -->
+    <div id="userModal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle">新增用戶</h2>
+            <form id="userForm">
+                <input type="hidden" id="userId">
+                
+                <div class="form-group">
+                    <label for="username">用戶名 *</label>
+                    <input type="text" id="username" required placeholder="請輸入用戶名">
+                </div>
+
+                <div class="form-group">
+                    <label for="email">電子郵件 *</label>
+                    <input type="email" id="email" required placeholder="請輸入電子郵件">
+                </div>
+
+                <div class="form-group">
+                    <label for="displayName">顯示名稱</label>
+                    <input type="text" id="displayName" placeholder="請輸入顯示名稱">
+                </div>
+
+                <div class="form-group">
+                    <label for="password">密碼 <span id="passwordRequired" style="display: none;">*</span></label>
+                    <input type="password" id="password" placeholder="留空則不修改（編輯時）">
+                    <small style="color: #666;">新增用戶時必須填寫密碼</small>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="isEnabled" checked> 啟用帳號
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="isAccountNonLocked" checked> 帳號未鎖定
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label>分配角色</label>
+                    <div id="rolesCheckboxGroup" class="checkbox-group">
+                        <!-- 動態載入角色選項 -->
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" onclick="closeModal()" class="btn btn-secondary">取消</button>
+                    <button type="submit" class="btn btn-primary">儲存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 角色分配 Modal -->
+    <div id="rolesModal" class="modal">
+        <div class="modal-content">
+            <h2>分配角色 - <span id="rolesModalUserName"></span></h2>
+            <form id="rolesForm">
+                <input type="hidden" id="rolesUserId">
+                
+                <div class="form-group">
+                    <label>選擇角色</label>
+                    <div id="rolesCheckboxGroupModal" class="checkbox-group">
+                        <!-- 動態載入角色選項 -->
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" onclick="closeRolesModal()" class="btn btn-secondary">取消</button>
+                    <button type="button" onclick="saveUserRoles()" class="btn btn-primary">儲存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // 檢查認證狀態，如果未登入則重定向到登入頁
+        async function checkAuthAndRedirect() {
+            const backendUrl = window.location.protocol + '//' + window.location.hostname + ':8080';
+            try {
+                const response = await fetch(`${backendUrl}/api/auth/current-user`, {
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const user = await response.json();
+                    if (user.authenticated) {
+                        console.log('✅ 用戶已認證:', user.username || user.email);
+                        return true;
+                    }
+                }
+            } catch (error) {
+                console.error('檢查認證狀態失敗:', error);
+            }
+            
+            // 未登入，重定向到登入頁
+            console.log('❌ 用戶未認證，重定向到登入頁');
+            window.location.href = '/login.html';
+            return false;
+        }
+        
+        // 頁面載入時檢查認證
+        window.addEventListener('load', async function() {
+            const isAuthenticated = await checkAuthAndRedirect();
+            if (!isAuthenticated) {
+                return; // 已重定向，停止執行
+            }
+        });
+
+        const backendUrl = window.location.protocol + '//' + window.location.hostname + ':8080';
+        let users = [];
+        let roles = [];
+
+        // 載入角色列表
+        async function loadRoles() {
+            try {
+                const response = await fetch(`${backendUrl}/api/roles`, {
+                    credentials: 'include'
+                });
+                if (response.ok) {
+                    roles = await response.json();
+                    renderRolesCheckboxes('rolesCheckboxGroup');
+                    renderRolesCheckboxes('rolesCheckboxGroupModal');
+                }
+            } catch (error) {
+                console.error('載入角色失敗:', error);
+            }
+        }
+
+        // 渲染角色複選框
+        function renderRolesCheckboxes(containerId) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            roles.forEach(role => {
+                const checkboxItem = document.createElement('div');
+                checkboxItem.className = 'checkbox-item';
+                checkboxItem.innerHTML = `
+                    <input type="checkbox" id="${containerId}_${role.id}" value="${role.id}">
+                    <label for="${containerId}_${role.id}" style="margin: 0; font-weight: normal;">${role.roleName}</label>
+                `;
+                container.appendChild(checkboxItem);
+            });
+        }
+
+        // 載入用戶列表
+        async function loadUsers() {
+            try {
+                const response = await fetch(`${backendUrl}/api/users`, {
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    throw new Error('載入失敗');
+                }
+                
+                users = await response.json();
+                renderTable();
+            } catch (error) {
+                console.error('載入用戶失敗:', error);
+                document.getElementById('loadingMessage').textContent = '載入失敗: ' + error.message;
+            }
+        }
+
+        // 渲染表格
+        function renderTable() {
+            const tbody = document.getElementById('usersBody');
+            tbody.innerHTML = '';
+
+            if (users.length === 0) {
+                document.getElementById('loadingMessage').textContent = '暫無用戶';
+                return;
+            }
+
+            document.getElementById('loadingMessage').style.display = 'none';
+            document.getElementById('usersTable').style.display = 'table';
+
+            users.forEach(user => {
+                const row = document.createElement('tr');
+                const rolesList = user.roles && user.roles.length > 0 
+                    ? user.roles.map(r => `<span class="role-badge">${r.roleName}</span>`).join('')
+                    : '<span style="opacity: 0.6;">無</span>';
+                
+                row.innerHTML = `
+                    <td>${user.uid || '-'}</td>
+                    <td>${user.username || '-'}</td>
+                    <td>${user.email || '-'}</td>
+                    <td>${user.displayName || '-'}</td>
+                    <td class="roles-list">${rolesList}</td>
+                    <td><span class="badge ${user.isEnabled ? 'badge-success' : 'badge-danger'}">${user.isEnabled ? '是' : '否'}</span></td>
+                    <td><span class="badge ${user.isAccountNonLocked ? 'badge-success' : 'badge-danger'}">${user.isAccountNonLocked ? '否' : '是'}</span></td>
+                    <td>${user.createdAt ? new Date(user.createdAt).toLocaleString('zh-TW') : '-'}</td>
+                    <td class="actions">
+                        <button onclick="editUser('${user.uid}')" class="btn-edit">編輯</button>
+                        <button onclick="manageUserRoles('${user.uid}')" class="btn-roles">角色</button>
+                        <button onclick="deleteUser('${user.uid}')" class="btn-delete">刪除</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // 顯示新增 Modal
+        function showAddModal() {
+            document.getElementById('modalTitle').textContent = '新增用戶';
+            document.getElementById('userForm').reset();
+            document.getElementById('userId').value = '';
+            document.getElementById('isEnabled').checked = true;
+            document.getElementById('isAccountNonLocked').checked = true;
+            document.getElementById('passwordRequired').style.display = 'inline';
+            document.getElementById('password').required = true;
+            clearRolesCheckboxes('rolesCheckboxGroup');
+            document.getElementById('userModal').classList.add('show');
+        }
+
+        // 編輯用戶
+        async function editUser(uid) {
+            const user = users.find(u => u.uid === uid);
+            if (!user) return;
+
+            document.getElementById('modalTitle').textContent = '編輯用戶';
+            document.getElementById('userId').value = user.uid;
+            document.getElementById('username').value = user.username || '';
+            document.getElementById('email').value = user.email || '';
+            document.getElementById('displayName').value = user.displayName || '';
+            document.getElementById('password').value = '';
+            document.getElementById('passwordRequired').style.display = 'none';
+            document.getElementById('password').required = false;
+            document.getElementById('isEnabled').checked = user.isEnabled !== false;
+            document.getElementById('isAccountNonLocked').checked = user.isAccountNonLocked !== false;
+
+            // 選中用戶的角色
+            clearRolesCheckboxes('rolesCheckboxGroup');
+            if (user.roles) {
+                user.roles.forEach(role => {
+                    const checkbox = document.getElementById(`rolesCheckboxGroup_${role.id}`);
+                    if (checkbox) checkbox.checked = true;
+                });
+            }
+
+            document.getElementById('userModal').classList.add('show');
+        }
+
+        // 清除角色複選框
+        function clearRolesCheckboxes(containerId) {
+            roles.forEach(role => {
+                const checkbox = document.getElementById(`${containerId}_${role.id}`);
+                if (checkbox) checkbox.checked = false;
+            });
+        }
+
+        // 管理用戶角色
+        async function manageUserRoles(uid) {
+            const user = users.find(u => u.uid === uid);
+            if (!user) return;
+
+            document.getElementById('rolesUserId').value = user.uid;
+            document.getElementById('rolesModalUserName').textContent = user.username || user.email || user.uid;
+
+            // 選中用戶的角色
+            clearRolesCheckboxes('rolesCheckboxGroupModal');
+            if (user.roles) {
+                user.roles.forEach(role => {
+                    const checkbox = document.getElementById(`rolesCheckboxGroupModal_${role.id}`);
+                    if (checkbox) checkbox.checked = true;
+                });
+            }
+
+            document.getElementById('rolesModal').classList.add('show');
+        }
+
+        // 保存用戶角色
+        async function saveUserRoles() {
+            const uid = document.getElementById('rolesUserId').value;
+            const selectedRoles = [];
+            roles.forEach(role => {
+                const checkbox = document.getElementById(`rolesCheckboxGroupModal_${role.id}`);
+                if (checkbox && checkbox.checked) {
+                    // 確保 ID 為數字類型
+                    selectedRoles.push(typeof role.id === 'number' ? role.id : parseInt(role.id));
+                }
+            });
+
+            try {
+                const response = await fetch(`${backendUrl}/api/users/${uid}/roles`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ roleIds: selectedRoles })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert('角色分配成功');
+                    closeRolesModal();
+                    loadUsers();
+                } else {
+                    alert('操作失敗: ' + data.message);
+                }
+            } catch (error) {
+                console.error('操作失敗:', error);
+                alert('操作失敗: ' + error.message);
+            }
+        }
+
+        // 刪除用戶
+        async function deleteUser(uid) {
+            const user = users.find(u => u.uid === uid);
+            if (!confirm(`確定要刪除用戶 "${user.username || user.email || uid}" 嗎？`)) return;
+
+            try {
+                const response = await fetch(`${backendUrl}/api/users/${uid}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert('刪除成功');
+                    loadUsers();
+                } else {
+                    alert('刪除失敗: ' + data.message);
+                }
+            } catch (error) {
+                console.error('刪除失敗:', error);
+                alert('刪除失敗: ' + error.message);
+            }
+        }
+
+        // 關閉 Modal
+        function closeModal() {
+            document.getElementById('userModal').classList.remove('show');
+        }
+
+        function closeRolesModal() {
+            document.getElementById('rolesModal').classList.remove('show');
+        }
+
+        // 提交表單
+        document.getElementById('userForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const userId = document.getElementById('userId').value;
+            const formData = {
+                username: document.getElementById('username').value,
+                email: document.getElementById('email').value,
+                displayName: document.getElementById('displayName').value || null,
+                password: document.getElementById('password').value || null,
+                isEnabled: document.getElementById('isEnabled').checked,
+                isAccountNonLocked: document.getElementById('isAccountNonLocked').checked,
+                roles: []
+            };
+
+            // 收集選中的角色
+            roles.forEach(role => {
+                const checkbox = document.getElementById(`rolesCheckboxGroup_${role.id}`);
+                if (checkbox && checkbox.checked) {
+                    // 確保 ID 為數字類型
+                    const roleId = typeof role.id === 'number' ? role.id : parseInt(role.id);
+                    formData.roles.push({ id: roleId });
+                }
+            });
+
+            // 如果是新增且沒有密碼，提示錯誤
+            if (!userId && !formData.password) {
+                alert('新增用戶時必須填寫密碼');
+                return;
+            }
+
+            const url = userId ? `${backendUrl}/api/users/${userId}` : `${backendUrl}/api/users`;
+            const method = userId ? 'PUT' : 'POST';
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert(userId ? '更新成功' : '創建成功');
+                    closeModal();
+                    loadUsers();
+                } else {
+                    alert('操作失敗: ' + data.message);
+                }
+            } catch (error) {
+                console.error('操作失敗:', error);
+                alert('操作失敗: ' + error.message);
+            }
+        });
+
+        // 點擊 Modal 外部關閉
+        document.getElementById('userModal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+
+        document.getElementById('rolesModal').addEventListener('click', function(e) {
+            if (e.target === this) closeRolesModal();
+        });
+
+        // 頁面載入時載入數據
+        window.addEventListener('load', async function() {
+            await loadRoles();
+            await loadUsers();
+        });
+    </script>
+</body>
+</html>

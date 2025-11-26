@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>角色管理</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+            color: white;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            font-size: 2rem;
+            margin: 0;
+        }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(74, 222, 128, 0.4);
+        }
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        th {
+            background: rgba(255, 255, 255, 0.1);
+            font-weight: 600;
+        }
+        tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        .badge-success {
+            background: rgba(74, 222, 128, 0.3);
+            color: #dcfce7;
+        }
+        .badge-danger {
+            background: rgba(248, 113, 113, 0.3);
+            color: #fee2e2;
+        }
+        .badge-info {
+            background: rgba(59, 130, 246, 0.3);
+            color: #dbeafe;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.show {
+            display: flex;
+        }
+        .modal-content {
+            background: rgba(255, 255, 255, 0.95);
+            color: #333;
+            border-radius: 20px;
+            padding: 2rem;
+            max-width: 700px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #333;
+        }
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            color: #333;
+        }
+        .form-group textarea {
+            resize: vertical;
+        }
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-top: 2rem;
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+            color: white;
+        }
+        .btn-edit {
+            background: rgba(59, 130, 246, 0.3);
+            color: white;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .btn-delete {
+            background: rgba(248, 113, 113, 0.3);
+            color: white;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .btn-permissions {
+            background: rgba(147, 51, 234, 0.3);
+            color: white;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .permissions-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .permission-badge {
+            padding: 0.25rem 0.5rem;
+            background: rgba(147, 51, 234, 0.2);
+            border-radius: 6px;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 角色管理</h1>
+            <div>
+                <a href="/" class="btn btn-secondary">返回首頁</a>
+                <button onclick="showAddModal()" class="btn btn-primary">新增角色</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div id="loadingMessage" style="text-align: center; padding: 2rem;">載入中...</div>
+            <table id="rolesTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>角色名稱</th>
+                        <th>描述</th>
+                        <th>權限</th>
+                        <th>建立時間</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="rolesBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 新增/編輯 Modal -->
+    <div id="roleModal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle">新增角色</h2>
+            <form id="roleForm">
+                <input type="hidden" id="roleId">
+                
+                <div class="form-group">
+                    <label for="roleName">角色名稱 *</label>
+                    <input type="text" id="roleName" required placeholder="例如: ROLE_ADMIN">
+                    <small style="color: #666;">建議格式: ROLE_XXX</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="description">描述</label>
+                    <textarea id="description" rows="3" placeholder="角色說明"></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" onclick="closeModal()" class="btn btn-secondary">取消</button>
+                    <button type="submit" class="btn btn-primary">儲存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 權限分配 Modal -->
+    <div id="permissionsModal" class="modal">
+        <div class="modal-content">
+            <h2>分配權限 - <span id="permissionsModalRoleName"></span></h2>
+            <form id="permissionsForm">
+                <input type="hidden" id="permissionsRoleId">
+                
+                <div class="form-group">
+                    <label>選擇權限</label>
+                    <div id="permissionsCheckboxGroup" class="checkbox-group">
+                        <!-- 動態載入權限選項 -->
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" onclick="closePermissionsModal()" class="btn btn-secondary">取消</button>
+                    <button type="button" onclick="saveRolePermissions()" class="btn btn-primary">儲存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // 檢查認證狀態，如果未登入則重定向到登入頁
+        async function checkAuthAndRedirect() {
+            const backendUrl = window.location.protocol + '//' + window.location.hostname + ':8080';
+            try {
+                const response = await fetch(`${backendUrl}/api/auth/current-user`, {
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const user = await response.json();
+                    if (user.authenticated) {
+                        console.log('✅ 用戶已認證:', user.username || user.email);
+                        return true;
+                    }
+                }
+            } catch (error) {
+                console.error('檢查認證狀態失敗:', error);
+            }
+            
+            // 未登入，重定向到登入頁
+            console.log('❌ 用戶未認證，重定向到登入頁');
+            window.location.href = '/login.html';
+            return false;
+        }
+        
+        // 頁面載入時檢查認證
+        window.addEventListener('load', async function() {
+            const isAuthenticated = await checkAuthAndRedirect();
+            if (!isAuthenticated) {
+                return; // 已重定向，停止執行
+            }
+        });
+
+        const backendUrl = window.location.protocol + '//' + window.location.hostname + ':8080';
+        let roles = [];
+        let permissions = [];
+
+        // 載入權限列表
+        async function loadPermissions() {
+            try {
+                const response = await fetch(`${backendUrl}/api/permissions`, {
+                    credentials: 'include'
+                });
+                if (response.ok) {
+                    permissions = await response.json();
+                    renderPermissionsCheckboxes();
+                }
+            } catch (error) {
+                console.error('載入權限失敗:', error);
+            }
+        }
+
+        // 渲染權限複選框
+        function renderPermissionsCheckboxes() {
+            const container = document.getElementById('permissionsCheckboxGroup');
+            container.innerHTML = '';
+            permissions.forEach(perm => {
+                const checkboxItem = document.createElement('div');
+                checkboxItem.className = 'checkbox-item';
+                checkboxItem.innerHTML = `
+                    <input type="checkbox" id="perm_${perm.id}" value="${perm.id}">
+                    <label for="perm_${perm.id}" style="margin: 0; font-weight: normal;">${perm.permissionCode} - ${perm.permissionName}</label>
+                `;
+                container.appendChild(checkboxItem);
+            });
+        }
+
+        // 載入角色列表
+        async function loadRoles() {
+            try {
+                const response = await fetch(`${backendUrl}/api/roles`, {
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    throw new Error('載入失敗');
+                }
+                
+                roles = await response.json();
+                renderTable();
+            } catch (error) {
+                console.error('載入角色失敗:', error);
+                document.getElementById('loadingMessage').textContent = '載入失敗: ' + error.message;
+            }
+        }
+
+        // 渲染表格
+        function renderTable() {
+            const tbody = document.getElementById('rolesBody');
+            tbody.innerHTML = '';
+
+            if (roles.length === 0) {
+                document.getElementById('loadingMessage').textContent = '暫無角色';
+                return;
+            }
+
+            document.getElementById('loadingMessage').style.display = 'none';
+            document.getElementById('rolesTable').style.display = 'table';
+
+            roles.forEach(role => {
+                const row = document.createElement('tr');
+                const permsList = role.permissions && role.permissions.length > 0 
+                    ? role.permissions.map(p => `<span class="permission-badge">${p.permissionCode}</span>`).join('')
+                    : '<span style="opacity: 0.6;">無</span>';
+                
+                row.innerHTML = `
+                    <td>${role.id}</td>
+                    <td>${role.roleName}</td>
+                    <td>${role.description || '-'}</td>
+                    <td class="permissions-list">${permsList}</td>
+                    <td>${role.createdAt ? new Date(role.createdAt).toLocaleString('zh-TW') : '-'}</td>
+                    <td class="actions">
+                        <button onclick="editRole(${role.id})" class="btn-edit">編輯</button>
+                        <button onclick="manageRolePermissions(${role.id})" class="btn-permissions">權限</button>
+                        <button onclick="deleteRole(${role.id})" class="btn-delete">刪除</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // 顯示新增 Modal
+        function showAddModal() {
+            document.getElementById('modalTitle').textContent = '新增角色';
+            document.getElementById('roleForm').reset();
+            document.getElementById('roleId').value = '';
+            document.getElementById('roleModal').classList.add('show');
+        }
+
+        // 編輯角色
+        async function editRole(id) {
+            const role = roles.find(r => r.id === id);
+            if (!role) return;
+
+            document.getElementById('modalTitle').textContent = '編輯角色';
+            document.getElementById('roleId').value = role.id;
+            document.getElementById('roleName').value = role.roleName || '';
+            document.getElementById('description').value = role.description || '';
+
+            document.getElementById('roleModal').classList.add('show');
+        }
+
+        // 管理角色權限
+        async function manageRolePermissions(id) {
+            const role = roles.find(r => r.id === id);
+            if (!role) return;
+
+            document.getElementById('permissionsRoleId').value = role.id;
+            document.getElementById('permissionsModalRoleName').textContent = role.roleName;
+
+            // 清除所有複選框
+            permissions.forEach(perm => {
+                const checkbox = document.getElementById(`perm_${perm.id}`);
+                if (checkbox) checkbox.checked = false;
+            });
+
+            // 選中角色的權限
+            if (role.permissions) {
+                role.permissions.forEach(perm => {
+                    const checkbox = document.getElementById(`perm_${perm.id}`);
+                    if (checkbox) checkbox.checked = true;
+                });
+            }
+
+            document.getElementById('permissionsModal').classList.add('show');
+        }
+
+        // 保存角色權限
+        async function saveRolePermissions() {
+            const roleId = document.getElementById('permissionsRoleId').value;
+            const selectedPermissions = [];
+            permissions.forEach(perm => {
+                const checkbox = document.getElementById(`perm_${perm.id}`);
+                if (checkbox && checkbox.checked) {
+                    // 確保 ID 為數字類型
+                    selectedPermissions.push(typeof perm.id === 'number' ? perm.id : parseInt(perm.id));
+                }
+            });
+
+            try {
+                const response = await fetch(`${backendUrl}/api/roles/${roleId}/permissions`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ permissionIds: selectedPermissions })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert('權限分配成功');
+                    closePermissionsModal();
+                    loadRoles();
+                } else {
+                    alert('操作失敗: ' + data.message);
+                }
+            } catch (error) {
+                console.error('操作失敗:', error);
+                alert('操作失敗: ' + error.message);
+            }
+        }
+
+        // 刪除角色
+        async function deleteRole(id) {
+            const role = roles.find(r => r.id === id);
+            if (!confirm(`確定要刪除角色 "${role.roleName}" 嗎？`)) return;
+
+            try {
+                const response = await fetch(`${backendUrl}/api/roles/${id}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert('刪除成功');
+                    loadRoles();
+                } else {
+                    alert('刪除失敗: ' + data.message);
+                }
+            } catch (error) {
+                console.error('刪除失敗:', error);
+                alert('刪除失敗: ' + error.message);
+            }
+        }
+
+        // 關閉 Modal
+        function closeModal() {
+            document.getElementById('roleModal').classList.remove('show');
+        }
+
+        function closePermissionsModal() {
+            document.getElementById('permissionsModal').classList.remove('show');
+        }
+
+        // 提交表單
+        document.getElementById('roleForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const roleId = document.getElementById('roleId').value;
+            const formData = {
+                roleName: document.getElementById('roleName').value,
+                description: document.getElementById('description').value || null
+            };
+
+            const url = roleId ? `${backendUrl}/api/roles/${roleId}` : `${backendUrl}/api/roles`;
+            const method = roleId ? 'PUT' : 'POST';
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert(roleId ? '更新成功' : '創建成功');
+                    closeModal();
+                    loadRoles();
+                } else {
+                    alert('操作失敗: ' + data.message);
+                }
+            } catch (error) {
+                console.error('操作失敗:', error);
+                alert('操作失敗: ' + error.message);
+            }
+        });
+
+        // 點擊 Modal 外部關閉
+        document.getElementById('roleModal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+
+        document.getElementById('permissionsModal').addEventListener('click', function(e) {
+            if (e.target === this) closePermissionsModal();
+        });
+
+        // 頁面載入時載入數據
+        window.addEventListener('load', async function() {
+            await loadPermissions();
+            await loadRoles();
+        });
+    </script>
+</body>
+</html>
