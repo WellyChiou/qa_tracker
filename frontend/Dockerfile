@@ -1,11 +1,31 @@
+# 構建階段
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# 複製 package 文件
+COPY package*.json ./
+COPY vite.config.js ./
+
+# 安裝依賴
+RUN npm install
+
+# 複製源代碼
+COPY . .
+
+# 構建應用
+RUN npm run build
+
+# 生產階段
 FROM nginx:alpine
 
-# 複製前端文件到 nginx 的 html 目錄
-COPY app /usr/share/nginx/html
+# 複製構建結果到 nginx
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-# 暴露 80 端口
+# 複製 nginx 配置（如果需要）
+# COPY nginx.conf /etc/nginx/nginx.conf
+
+# 暴露端口
 EXPOSE 80
 
-# nginx 會自動啟動，不需要 CMD
-
-
+# nginx 會自動啟動
