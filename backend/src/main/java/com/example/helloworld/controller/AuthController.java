@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -119,8 +120,16 @@ public class AuthController {
      * 登出
      */
     @PostMapping("/logout")
-    public ResponseEntity<Map<String, Object>> logout() {
+    public ResponseEntity<Map<String, Object>> logout(HttpServletRequest request) {
+        // 清除 SecurityContext
         SecurityContextHolder.clearContext();
+        
+        // 使 session 無效
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            session.invalidate();
+        }
+        
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
         response.put("message", "登出成功");

@@ -82,13 +82,9 @@ public class SecurityConfig {
             )
             // 禁用默認的表單登入，因為我們使用 REST API 登入
             // .formLogin() 會與 REST API 衝突導致重定向循環
-            .logout(logout -> logout
-                .logoutUrl("/api/auth/logout")
-                .logoutSuccessUrl("/login.html?logout=true")
-                .invalidateHttpSession(true)
-                .deleteCookies("JSESSIONID")
-                .permitAll()
-            )
+            // 禁用 Spring Security 的登出處理器，使用 AuthController 的登出端點
+            // 因為我們使用 REST API，不需要重定向，而是返回 JSON
+            .logout(logout -> logout.disable())
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((request, response, authException) -> {
                     // 如果是 API 請求，返回 JSON 錯誤

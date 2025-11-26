@@ -14,28 +14,30 @@
         </router-link>
         <div
           v-else-if="menu.children && menu.children.length > 0"
-          class="menu-item has-submenu"
-          @click="toggleSubmenu(index)"
-          :class="{ active: activeSubmenu === index }"
+          class="menu-item-wrapper"
         >
-          {{ menu.icon || '' }} {{ menu.menuName }}
-          <span class="arrow">▼</span>
-          <Transition name="submenu">
-            <div v-if="activeSubmenu === index" class="submenu" @click.stop>
-              <template v-for="child in menu.children" :key="child?.id || child">
-                <router-link
-                  v-if="child && child.url && child.url !== '#'"
-                  :to="normalizeMenuUrl(child.url)"
-                  class="submenu-item"
-                  :class="{ active: $route.path.startsWith(normalizeMenuUrl(child.url)) }"
-                  @click="handleSubmenuClick(index)"
-                >
-                  <span class="submenu-icon">{{ child.icon || '📄' }}</span>
-                  {{ child.menuName }}
-                </router-link>
-              </template>
-            </div>
-          </Transition>
+          <div
+            class="menu-item has-submenu"
+            @click.stop="toggleSubmenu(index, $event)"
+            :class="{ active: activeSubmenu === index }"
+          >
+            {{ menu.icon || '' }} {{ menu.menuName }}
+            <span class="arrow">▼</span>
+          </div>
+          <div v-if="activeSubmenu === index" class="submenu" @click.stop>
+            <template v-for="child in menu.children" :key="child?.id || child">
+              <router-link
+                v-if="child && child.url && child.url !== '#'"
+                :to="normalizeMenuUrl(child.url)"
+                class="submenu-item"
+                :class="{ active: $route.path.startsWith(normalizeMenuUrl(child.url)) }"
+                @click.stop="handleSubmenuClick(index, $event)"
+              >
+                <span class="submenu-icon">{{ child.icon || '📄' }}</span>
+                {{ child.menuName }}
+              </router-link>
+            </template>
+          </div>
         </div>
         <span v-else class="menu-item" style="cursor: default; opacity: 0.7;">
           {{ menu.icon || '' }} {{ menu.menuName }}
@@ -82,21 +84,34 @@ const isChildOfMenu = (menu) => {
 
 // 標記用戶是否正在手動操作子菜單
 let isUserClicking = false
+let justNavigatedFromSubmenu = false // 標記是否剛剛從子菜單導航
 let clickTimeout = null
 
 // 監聽路由變化，自動展開包含當前路由的父菜單
-watch(() => route.path, () => {
-  // 如果用戶正在手動操作，不自動展開或關閉
-  if (isUserClicking) {
+watch(() => route.path, (newPath, oldPath) => {
+  console.log('路由變化:', oldPath, '->', newPath, 'isUserClicking:', isUserClicking, 'justNavigatedFromSubmenu:', justNavigatedFromSubmenu)
+  
+  // 如果用戶正在手動操作或剛剛從子菜單導航，不自動展開或關閉
+  if (isUserClicking || justNavigatedFromSubmenu) {
+    console.log('路由變化，但用戶正在操作或剛剛從子菜單導航，跳過自動展開')
     return
   }
   
-  // 自動展開包含當前路由的父菜單
+  // 如果 oldPath 存在且不是根路徑，說明這是導航操作，不自動展開
+  if (oldPath !== undefined && oldPath !== null && oldPath !== '/') {
+    console.log('路由變化，這是導航操作（oldPath:', oldPath, '），不自動展開子菜單')
+    return
+  }
+  
+  // 只有在頁面首次加載時（oldPath 為 undefined 或 null）才自動展開
+  // 自動展開包含當前路由的父菜單（僅在首次加載時）
   let foundActiveMenu = false
   menus.value.forEach((menu, index) => {
     if (isChildOfMenu(menu)) {
+      // 只有在子菜單當前關閉時才自動展開
       if (activeSubmenu.value !== index) {
         activeSubmenu.value = index
+        console.log('首次加載，自動展開子菜單:', index)
       }
       foundActiveMenu = true
     }
@@ -104,7 +119,11 @@ watch(() => route.path, () => {
   
   // 如果當前路由不屬於任何子菜單，關閉所有子菜單
   if (!foundActiveMenu) {
-    activeSubmenu.value = null
+    // 只有在子菜單當前打開時才關閉
+    if (activeSubmenu.value !== null) {
+      console.log('路由變化，關閉所有子菜單')
+      activeSubmenu.value = null
+    }
   }
 }, { immediate: false })
 
@@ -121,31 +140,49 @@ const toggleSubmenu = (index) => {
   const wasOpen = activeSubmenu.value === index
   if (wasOpen) {
     activeSubmenu.value = null
-    console.log('關閉子菜單:', index)
+    console.log('關閉子菜單:', index, 'activeSubmenu.value:', activeSubmenu.value)
   } else {
     activeSubmenu.value = index
-    console.log('打開子菜單:', index, 'activeSubmenu.value:', activeSubmenu.value)
+    console.log('打開子菜單:', index, 'activeSubmenu.value:', activeSubmenu.value, 'type:', typeof activeSubmenu.value, 'type of index:', typeof index)
+    // 檢查菜單是否有子項
+    const menu = menus.value[index]
+    console.log('菜單:', menu?.menuName, '子項數量:', menu?.children?.length, '子項:', menu?.children)
   }
   
-  // 500ms 後重置標記，允許路由監聽器工作
+  // 延長到 1000ms 後重置標記，確保子菜單有足夠時間顯示
   clickTimeout = setTimeout(() => {
     isUserClicking = false
-  }, 500)
+    console.log('重置 isUserClicking 標記，當前 activeSubmenu.value:', activeSubmenu.value)
+  }, 1000)
 }
 
 // 點擊子菜單項時的處理（點擊後關閉子菜單）
-const handleSubmenuClick = (menuIndex) => {
-  // 標記這是用戶點擊子菜單項
-  isUserClicking = true
+const handleSubmenuClick = (menuIndex, event) => {
+  // 阻止事件冒泡
+  if (event) {
+    event.stopPropagation()
+  }
   
-  // 延遲關閉子菜單，讓路由先變化
-  setTimeout(() => {
-    activeSubmenu.value = null
-    // 300ms 後重置標記
-    setTimeout(() => {
-      isUserClicking = false
-    }, 300)
-  }, 100)
+  // 立即設置標記，在路由變化之前
+  isUserClicking = true
+  justNavigatedFromSubmenu = true
+  console.log('點擊子菜單項，設置標記 - isUserClicking:', isUserClicking, 'justNavigatedFromSubmenu:', justNavigatedFromSubmenu)
+  
+  // 立即關閉子菜單
+  activeSubmenu.value = null
+  console.log('點擊子菜單項，關閉子菜單，activeSubmenu.value:', activeSubmenu.value)
+  
+  // 延長標記時間，防止 watch 自動重新打開
+  if (clickTimeout) {
+    clearTimeout(clickTimeout)
+  }
+  
+  // 使用更長的時間，確保路由變化完成後也不自動展開
+  clickTimeout = setTimeout(() => {
+    isUserClicking = false
+    justNavigatedFromSubmenu = false
+    console.log('重置 isUserClicking 和 justNavigatedFromSubmenu 標記（子菜單點擊後）')
+  }, 5000) // 延長到 5 秒，確保路由變化完成後也不自動展開
 }
 
 const handleLogout = async () => {
@@ -167,13 +204,16 @@ const loadMenus = async () => {
         console.log(`菜單 ${index} (${menu.menuName}) 有 ${menu.children.length} 個子項:`, menu.children)
       }
     })
-    // 加載菜單後，檢查是否需要自動展開（只有在不是用戶手動操作的情況下）
-    if (!isUserClicking) {
+    // 加載菜單後，檢查是否需要自動展開（只有在不是用戶手動操作且不是剛剛從子菜單導航的情況下）
+    if (!isUserClicking && !justNavigatedFromSubmenu) {
       menus.value.forEach((menu, index) => {
         if (isChildOfMenu(menu)) {
           activeSubmenu.value = index
+          console.log('載入菜單後，自動展開子菜單:', index)
         }
       })
+    } else {
+      console.log('載入菜單，但跳過自動展開 - isUserClicking:', isUserClicking, 'justNavigatedFromSubmenu:', justNavigatedFromSubmenu)
     }
   } catch (error) {
     console.error('載入菜單失敗:', error)
@@ -228,6 +268,9 @@ onMounted(async () => {
 
 .menu-item-wrapper {
   position: relative;
+  overflow: visible; /* 確保子菜單可以顯示 */
+  z-index: 1;
+  display: inline-block; /* 確保包裝器不會影響佈局 */
 }
 
 .menu-item {
@@ -236,7 +279,7 @@ onMounted(async () => {
   border-radius: var(--border-radius);
   text-decoration: none;
   color: white;
-  transition: var(--transition);
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease; /* 明確指定過渡屬性，避免閃爍 */
   border: 1px solid rgba(255, 255, 255, 0.25);
   display: inline-block;
   cursor: pointer;
@@ -244,7 +287,8 @@ onMounted(async () => {
   font-size: 0.95rem;
   backdrop-filter: blur(10px);
   position: relative;
-  overflow: hidden;
+  overflow: visible; /* 改為 visible，讓子菜單可以顯示 */
+  will-change: transform; /* 優化動畫性能 */
 }
 
 .menu-item::before {
@@ -256,6 +300,8 @@ onMounted(async () => {
   height: 100%;
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
   transition: left 0.5s;
+  pointer-events: none; /* 防止影響點擊事件 */
+  z-index: -1; /* 確保在內容下方 */
 }
 
 .menu-item:hover::before {
@@ -297,18 +343,15 @@ a.menu-item {
   border-radius: var(--border-radius-lg);
   min-width: 220px;
   box-shadow: var(--shadow-xl);
-  z-index: 10000;
+  z-index: 10000 !important;
   overflow: hidden;
   border: 1px solid var(--border-color);
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
-.submenu-enter-active {
-  animation: slideDown 0.3s;
-}
-
-.submenu-leave-active {
-  animation: slideUp 0.2s;
-}
+/* 移除 Transition 相關的 CSS，因為我們不再使用 Transition 組件 */
 
 @keyframes slideDown {
   from {
