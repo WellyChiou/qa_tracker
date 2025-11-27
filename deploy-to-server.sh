@@ -124,6 +124,15 @@ sshpass -p "${SERVER_PASSWORD}" ssh -o StrictHostKeyChecking=no "${SERVER_USER}@
     
     cd "\$REMOTE_PATH"
     
+    # 備份證書目錄（如果存在）
+    CERT_BACKUP_DIR="/tmp/\${PROJECT_NAME}_cert_backup"
+    if [ -d "\$PROJECT_NAME/certbot/conf" ]; then
+        echo "備份 SSL 證書..."
+        rm -rf "\$CERT_BACKUP_DIR"
+        cp -r "\$PROJECT_NAME/certbot/conf" "\$CERT_BACKUP_DIR" 2>/dev/null || true
+        echo "✅ 證書已備份"
+    fi
+    
     # 備份舊目錄（如果存在）
     if [ -d "\$PROJECT_NAME" ]; then
         echo "備份現有目錄..."
@@ -153,6 +162,14 @@ sshpass -p "${SERVER_PASSWORD}" ssh -o StrictHostKeyChecking=no "${SERVER_USER}@
     
     echo "當前目錄: \$(pwd)"
     
+    # 恢復證書目錄（如果備份存在且新目錄中沒有證書）
+    if [ -d "\$CERT_BACKUP_DIR" ] && [ ! -d "certbot/conf/live" ]; then
+        echo "恢復 SSL 證書..."
+        mkdir -p certbot/conf
+        cp -r "\$CERT_BACKUP_DIR"/* certbot/conf/ 2>/dev/null || true
+        echo "✅ 證書已恢復"
+    fi
+    
     # 檢查 deploy.sh 是否存在
     if [ ! -f "deploy.sh" ]; then
         echo "錯誤：找不到 deploy.sh"
@@ -179,8 +196,19 @@ if [ $? -eq 0 ]; then
     echo "==========================================${NC}"
     echo ""
     echo "服務訪問地址："
-    echo "  - 前端: http://${SERVER_IP}"
-    echo "  - 後端 API: http://${SERVER_IP}:8080/api/hello"
+    echo "  - 前端: http://wc-project.duckdns.org 或 http://${SERVER_IP}"
+    echo "  - 後端 API: http://wc-project.duckdns.org/api 或 http://${SERVER_IP}/api"
+    echo ""
+    echo "⚠️  HTTPS 設置："
+    echo "  如果已設置 HTTPS，請使用："
+    echo "  - 前端: https://wc-project.duckdns.org"
+    echo "  - 後端 API: https://wc-project.duckdns.org/api"
+    echo "  - LINE Bot Webhook: https://wc-project.duckdns.org/api/line/webhook"
+    echo ""
+    echo "  如需設置 HTTPS，請執行："
+    echo "    ssh ${SERVER_USER}@${SERVER_IP}"
+    echo "    cd ${REMOTE_PATH}/${PROJECT_NAME}"
+    echo "    ./setup-https-on-server.sh"
     echo ""
     echo "查看服務狀態："
     echo "  ssh ${SERVER_USER}@${SERVER_IP}"

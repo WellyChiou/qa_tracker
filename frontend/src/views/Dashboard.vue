@@ -90,7 +90,11 @@ const dashboardMenus = computed(() => {
 
 const checkBackendStatus = async () => {
   try {
-    const response = await fetch(`${window.location.protocol}//${window.location.hostname}:8080/api/hello`)
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 
+      (import.meta.env.DEV 
+        ? `${window.location.protocol}//${window.location.hostname}:8080/api`
+        : `${window.location.protocol}//${window.location.hostname}/api`)
+    const response = await fetch(`${apiBaseUrl}/hello`)
     if (response.ok) {
       backendStatus.value = 'success'
       backendStatusText.value = '✓ 運行中'

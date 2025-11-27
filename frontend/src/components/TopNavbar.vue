@@ -53,10 +53,10 @@
         </button>
 
         <div v-if="showUserMenu" class="user-menu">
-          <router-link to="/profile" class="user-menu-item" @click="closeUserMenu">
+          <button class="user-menu-item" @click="openProfileModal">
             <i class="fas fa-user-cog me-2"></i>
             個人資料設定
-          </router-link>
+          </button>
           <hr class="user-menu-divider">
           <button class="user-menu-item logout-btn" @click="handleLogout">
             <i class="fas fa-sign-out-alt me-2"></i>
@@ -66,6 +66,9 @@
       </div>
     </div>
   </nav>
+
+  <!-- 個人資料設定 Modal -->
+  <ProfileModal :show="showProfileModal" @close="closeProfileModal" />
 </template>
 
 <script setup>
@@ -73,6 +76,7 @@ import { ref, onMounted, onUnmounted, watch, computed, Transition } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 import { apiService } from '@/composables/useApi'
+import ProfileModal from './ProfileModal.vue'
 
 // 模組級變量：記錄被用戶手動關閉的子菜單索引（永久記錄，直到用戶手動展開）
 // 使用 sessionStorage 確保在組件重新創建時不會丟失
@@ -102,6 +106,7 @@ const { currentUser, logout: authLogout } = useAuth()
 const menus = ref([])
 const activeSubmenu = ref(null)
 const showUserMenu = ref(false)
+const showProfileModal = ref(false)
 
 // 點擊外部關閉用戶選單
 const handleClickOutside = (event) => {
@@ -254,6 +259,15 @@ const toggleUserMenu = () => {
 
 const closeUserMenu = () => {
   showUserMenu.value = false
+}
+
+const openProfileModal = () => {
+  closeUserMenu()
+  showProfileModal.value = true
+}
+
+const closeProfileModal = () => {
+  showProfileModal.value = false
 }
 
 const handleLogout = async () => {
@@ -583,6 +597,9 @@ a.submenu-item {
   display: flex;
   align-items: center;
   width: 100%;
+  background: none;
+  border: none;
+  text-align: left;
   padding: 0.75rem 1rem;
   color: #495057;
   text-decoration: none;

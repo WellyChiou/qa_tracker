@@ -99,9 +99,18 @@ docker compose down -v
 
 - **[📚 完整文檔目錄](./docs/README.md)** - 所有文檔的索引
 - **[🚀 快速部署指南](./docs/deployment/QUICK_START.md)** - 快速開始部署
+- **[🔒 HTTPS 完整指南](./docs/deployment/HTTPS_COMPLETE_GUIDE.md)** ⭐ - HTTPS 設置（推薦）
 - **[🔧 故障排除指南](./docs/TROUBLESHOOTING.md)** - 遇到問題時先看這個！
 - **[👥 系統管理指南](./docs/admin/ADMIN_SYSTEM_GUIDE.md)** - 系統管理功能說明
 - **[💻 開發指南](./docs/development/)** - 開發相關文檔
+- **[📱 LINE Bot 功能](./LINE_BOT_README.md)** - LINE Bot 使用說明
+
+### 🌐 當前部署狀態
+
+- **域名**：`wc-project.duckdns.org`
+- **HTTPS**：✅ 已啟用
+- **SSL 證書**：Let's Encrypt（自動續期）
+- **部署方式**：一鍵部署（`deploy-to-server.bat`）
 
 ## 常見問題
 

@@ -25,8 +25,9 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: java_backend
-    ports:
-      - "8080:8080"
+    # 移除對外端口，由 nginx 反向代理處理
+    # ports:
+    #   - "8080:8080"
     depends_on:
       mysql:
         condition: service_healthy
@@ -35,13 +36,13 @@ services:
       SPRING_DATASOURCE_USERNAME: appuser
       SPRING_DATASOURCE_PASSWORD: apppassword
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
-      # LINE Bot 配置 (請根據實際情況設置)
-      LINE_BOT_CHANNEL_TOKEN: ${LINE_BOT_CHANNEL_TOKEN:-}
-      LINE_BOT_CHANNEL_SECRET: ${LINE_BOT_CHANNEL_SECRET:-}
-      LINE_BOT_WEBHOOK_URL: ${LINE_BOT_WEBHOOK_URL:-http://your-domain.com:8080/api/line/webhook}
-      LINE_BOT_DAILY_REMINDER_ENABLED: ${LINE_BOT_DAILY_REMINDER_ENABLED:-true}
-      LINE_BOT_DAILY_REMINDER_TIME: ${LINE_BOT_DAILY_REMINDER_TIME:-20:00}
-      LINE_BOT_ADMIN_USER_ID: ${LINE_BOT_ADMIN_USER_ID:-}
+      # LINE Bot 配置
+      LINE_BOT_CHANNEL_TOKEN: cY5CAs65/W4KfcU/6qTISLiqs2MCD9wHz/z/BF9vUexvUulGNrz4zPNQVy1saAlYggahICdEUiNLiVzkPYp6UDbX6QjMbvnjrkwBj75Owd/nKS/sGNkJFaT7O5CF66mtF3LS4pLqJ1dx7TnA21+ZnQdB04t89/1O/w1cDnyilFU=
+      LINE_BOT_CHANNEL_SECRET: 6075d3893ea1293b31307e8f673e26c2
+      LINE_BOT_WEBHOOK_URL: https://wc-project.duckdns.org/api/line/webhook
+      LINE_BOT_DAILY_REMINDER_ENABLED: true
+      LINE_BOT_DAILY_REMINDER_TIME: 20:00
+      LINE_BOT_ADMIN_USER_ID: 
     restart: unless-stopped
 
   # Vue 前端
@@ -50,11 +51,41 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: vue_frontend
-    ports:
-      - "80:80"
+    # 移除對外端口，由 nginx 反向代理處理
+    # ports:
+    #   - "80:80"
     depends_on:
       - backend
     restart: unless-stopped
+
+  # Nginx 反向代理（處理 HTTPS）
+  nginx:
+    image: nginx:alpine
+    container_name: nginx_proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    networks:
+      - default
+    depends_on:
+      - frontend
+      - backend
+    restart: unless-stopped
+    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
+
+  # Certbot（自動申請和續期 SSL 證書）
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
 
 volumes:
   mysql_data:

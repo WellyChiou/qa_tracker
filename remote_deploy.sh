@@ -7,6 +7,15 @@ ARCHIVE_NAME="docker-vue-java-mysql.tar.gz"
 
 cd "$REMOTE_PATH"
 
+# 備份證書目錄（如果存在）
+CERT_BACKUP_DIR="/tmp/${PROJECT_NAME}_cert_backup"
+if [ -d "$PROJECT_NAME/certbot/conf" ]; then
+    echo "備份 SSL 證書..."
+    rm -rf "$CERT_BACKUP_DIR"
+    cp -r "$PROJECT_NAME/certbot/conf" "$CERT_BACKUP_DIR" 2>/dev/null || true
+    echo "✅ 證書已備份"
+fi
+
 if [ -d "$PROJECT_NAME" ]; then
     if [ -d "${PROJECT_NAME}_backup" ]; then
         rm -rf "${PROJECT_NAME}_backup"
@@ -25,6 +34,15 @@ fi
 
 if [ -d "$PROJECT_NAME" ]; then
     cd "$PROJECT_NAME"
+    
+    # 恢復證書目錄（如果備份存在且新目錄中沒有證書）
+    if [ -d "$CERT_BACKUP_DIR" ] && [ ! -d "certbot/conf/live" ]; then
+        echo "恢復 SSL 證書..."
+        mkdir -p certbot/conf
+        cp -r "$CERT_BACKUP_DIR"/* certbot/conf/ 2>/dev/null || true
+        echo "✅ 證書已恢復"
+    fi
+    
     # Fix Windows line ending issue
     sed -i 's/\r$//' deploy.sh
     chmod +x deploy.sh

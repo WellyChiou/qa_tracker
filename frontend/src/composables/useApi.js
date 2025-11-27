@@ -1,6 +1,10 @@
 // 支持環境變量配置，開發環境使用默認值
+// 生產環境：使用當前域名（Nginx 反向代理）
+// 開發環境：使用 8080 端口
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
-  `${window.location.protocol}//${window.location.hostname}:8080/api`
+  (import.meta.env.DEV 
+    ? `${window.location.protocol}//${window.location.hostname}:8080/api`
+    : `${window.location.protocol}//${window.location.hostname}/api`)
 
 // 全局 loading 狀態管理
 let loadingCount = 0
@@ -285,9 +289,10 @@ class ApiService {
   }
 
   async sendLineTestMessage(userId, message) {
+    // 使用 JSON body 方式發送
     return this.request('/line/test/push', {
       method: 'POST',
-      params: { userId, message }
+      body: JSON.stringify({ userId, message })
     })
   }
 

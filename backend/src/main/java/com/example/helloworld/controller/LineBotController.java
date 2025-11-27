@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -90,17 +91,48 @@ public class LineBotController {
 
     /**
      * 手動發送推播訊息測試端點
+     * 支持兩種方式：
+     * 1. URL 查詢參數: /api/line/test/push?userId=xxx&message=xxx
+     * 2. JSON body: { "userId": "xxx", "message": "xxx" }
      */
     @PostMapping("/test/push")
-    public ResponseEntity<String> testPushMessage(
-            @RequestParam String userId,
-            @RequestParam String message) {
+    public ResponseEntity<Map<String, Object>> testPushMessage(
+            @RequestParam(required = false) String userId,
+            @RequestParam(required = false) String message,
+            @RequestBody(required = false) Map<String, String> body) {
 
         try {
-            lineBotService.sendPushMessage(userId, message);
-            return ResponseEntity.ok("推播訊息已發送");
+            // 優先使用 body 中的參數，如果沒有則使用查詢參數
+            String finalUserId = (body != null && body.containsKey("userId")) 
+                ? body.get("userId") 
+                : userId;
+            String finalMessage = (body != null && body.containsKey("message")) 
+                ? body.get("message") 
+                : message;
+
+            if (finalUserId == null || finalUserId.isEmpty()) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("success", false);
+                errorResponse.put("message", "userId 參數不能為空");
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
+            if (finalMessage == null || finalMessage.isEmpty()) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("success", false);
+                errorResponse.put("message", "message 參數不能為空");
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
+
+            lineBotService.sendPushMessage(finalUserId, finalMessage);
+            Map<String, Object> successResponse = new HashMap<>();
+            successResponse.put("success", true);
+            successResponse.put("message", "推播訊息已發送");
+            return ResponseEntity.ok(successResponse);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("發送失敗: " + e.getMessage());
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "發送失敗: " + e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
         }
     }
 }

@@ -46,6 +46,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/public/**").permitAll()
                 .requestMatchers("/api/hello").permitAll()
                 .requestMatchers("/api/utils/**").permitAll() // 工具 API（生成密碼 hash 等）
+                .requestMatchers("/api/line/**").permitAll() // LINE Bot Webhook（LINE 平台會直接調用，無需認證）
                 // 靜態資源和登入頁面
                 .requestMatchers("/login.html").permitAll()
                 .requestMatchers("/*.css", "/*.js", "/api.js", "/style.css").permitAll()
@@ -131,7 +132,9 @@ public class SecurityConfig {
             "http://38.54.89.136",
             "http://38.54.89.136:80",
             "https://38.54.89.136",
-            "https://38.54.89.136:443"
+            "https://38.54.89.136:443",
+            "http://wc-project.duckdns.org",
+            "https://wc-project.duckdns.org"
         ));
         
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));

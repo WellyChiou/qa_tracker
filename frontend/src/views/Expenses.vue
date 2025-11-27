@@ -275,7 +275,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
+import { ref, computed, onMounted, watch, onUnmounted, nextTick } from 'vue'
 import TopNavbar from '@/components/TopNavbar.vue'
 import { apiService } from '@/composables/useApi'
 import ChartsModal from './expenses/ChartsModal.vue'
@@ -566,19 +566,26 @@ const copyRecord = (id) => {
   }
   
   editingId.value = null
-  form.value = {
-    member: record.member,
-    type: record.type,
-    mainCategory: record.mainCategory,
-    subCategory: record.subCategory,
-    amount: record.amount,
-    currency: record.currency || 'TWD',
-    date: new Date().toISOString().split('T')[0],
-    description: record.description || ''
-  }
   
-  showModal.value = true
-  showNotification('記錄已複製到表單', 'success')
+  // 先設置類型，確保類別選項列表正確
+  form.value.type = record.type
+  
+  // 使用 nextTick 確保類別選項列表已更新後再設置類別
+  nextTick(() => {
+    form.value.member = record.member
+    form.value.mainCategory = record.mainCategory || ''
+    // 再次使用 nextTick 確保細項選項列表已更新
+    nextTick(() => {
+      form.value.subCategory = record.subCategory || ''
+      form.value.amount = record.amount
+      form.value.currency = record.currency || 'TWD'
+      form.value.date = new Date().toISOString().split('T')[0]
+      form.value.description = record.description || ''
+      
+      showModal.value = true
+      showNotification('記錄已複製到表單', 'success')
+    })
+  })
 }
 
 const deleteRecord = async (id) => {

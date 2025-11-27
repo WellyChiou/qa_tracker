@@ -58,7 +58,11 @@ const systemStatus = ref('checking') // 'checking', 'online', 'offline'
 const checkSystemStatus = async () => {
   try {
     // 嘗試訪問後端健康檢查 API
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:8080/api`}/hello`, {
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 
+      (import.meta.env.DEV 
+        ? `${window.location.protocol}//${window.location.hostname}:8080/api`
+        : `${window.location.protocol}//${window.location.hostname}/api`)
+    const response = await fetch(`${apiBaseUrl}/hello`, {
       method: 'GET',
       credentials: 'include',
       signal: AbortSignal.timeout(3000) // 3秒超時

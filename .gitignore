@@ -44,3 +44,11 @@ tmp/
 temp/
 *.tmp
 
+# SSL Certificates (不要提交證書文件)
+certbot/conf/
+*.pem
+*.key
+*.crt
+
+# Nginx logs
+nginx/logs/

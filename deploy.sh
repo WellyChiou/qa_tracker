@@ -71,6 +71,30 @@ fi
 
 echo "✅ 項目文件檢查通過"
 
+# 檢查並創建 HTTPS 相關目錄
+echo ""
+echo "檢查 HTTPS 配置目錄..."
+mkdir -p nginx/conf.d
+mkdir -p certbot/conf
+mkdir -p certbot/www
+echo "✅ HTTPS 目錄檢查完成"
+
+# 嘗試從備份目錄恢復證書（如果當前目錄沒有證書）
+BACKUP_DIR="../docker-vue-java-mysql_backup"
+if [ ! -f "certbot/conf/live/wc-project.duckdns.org/fullchain.pem" ] && [ -d "$BACKUP_DIR/certbot/conf" ]; then
+    echo ""
+    echo "從備份目錄恢復 SSL 證書..."
+    if [ -d "$BACKUP_DIR/certbot/conf/live" ]; then
+        cp -r "$BACKUP_DIR/certbot/conf/live" certbot/conf/ 2>/dev/null || true
+    fi
+    if [ -d "$BACKUP_DIR/certbot/conf/archive" ]; then
+        cp -r "$BACKUP_DIR/certbot/conf/archive" certbot/conf/ 2>/dev/null || true
+    fi
+    if [ -f "certbot/conf/live/wc-project.duckdns.org/fullchain.pem" ]; then
+        echo "✅ 證書已從備份恢復"
+    fi
+fi
+
 # 停止並刪除現有容器（如果存在）
 # 注意：使用 docker compose down（不含 -v）會保留資料庫資料
 # 只有使用 docker compose down -v 才會清空資料
@@ -81,7 +105,7 @@ docker compose down 2>/dev/null || true
 # 強制刪除可能殘留的容器（避免名稱衝突）
 # ⚠️ 注意：只刪除容器，不會刪除 volume（資料庫資料會保留）
 echo "清理殘留容器（資料庫資料會保留）..."
-docker rm -f mysql_db java_backend vue_frontend 2>/dev/null || true
+docker rm -f mysql_db java_backend vue_frontend nginx_proxy certbot 2>/dev/null || true
 
 # 構建並啟動所有服務
 echo ""
@@ -100,6 +124,22 @@ echo ""
 echo "等待服務啟動..."
 sleep 10
 
+# 自動檢測並應用 HTTPS 配置
+echo ""
+echo "檢查 HTTPS 證書..."
+if [ -f "certbot/conf/live/wc-project.duckdns.org/fullchain.pem" ]; then
+    echo "✅ 檢測到 SSL 證書，自動切換到 HTTPS 配置..."
+    if [ -f "nginx/nginx-https.conf" ]; then
+        cp nginx/nginx-https.conf nginx/nginx.conf
+        echo "✅ 已切換到 HTTPS 配置"
+    else
+        echo "⚠️  警告: 找不到 nginx-https.conf，使用 HTTP 配置"
+    fi
+else
+    echo "ℹ️  未檢測到 SSL 證書，使用 HTTP 配置"
+    echo "   如需設置 HTTPS，請執行: ./setup-https-on-server.sh"
+fi
+
 # 檢查服務狀態
 echo ""
 echo "檢查服務狀態..."
@@ -110,9 +150,20 @@ echo "=========================================="
 echo "✅ 部署完成！"
 echo "=========================================="
 echo ""
-echo "服務訪問地址："
-echo "  - 前端: http://localhost (或您的域名)"
-echo "  - 後端 API: http://localhost:8080/api/hello"
+if [ -f "certbot/conf/live/wc-project.duckdns.org/fullchain.pem" ]; then
+    echo "服務訪問地址（HTTPS）："
+    echo "  - 前端: https://wc-project.duckdns.org"
+    echo "  - 後端 API: https://wc-project.duckdns.org/api"
+    echo "  - LINE Bot Webhook: https://wc-project.duckdns.org/api/line/webhook"
+else
+    echo "服務訪問地址（HTTP）："
+    echo "  - 前端: http://wc-project.duckdns.org"
+    echo "  - 後端 API: http://wc-project.duckdns.org/api"
+    echo ""
+    echo "⚠️  HTTPS 設置："
+    echo "  如需設置 HTTPS，請執行："
+    echo "    ./setup-https-on-server.sh"
+fi
 echo ""
 echo "數據庫信息："
 echo "  - 數據庫名: qa_tracker"
