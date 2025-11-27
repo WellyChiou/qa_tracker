@@ -105,6 +105,18 @@ class ApiService {
     return this.request(`/records/${id}`, { method: 'DELETE' })
   }
 
+  // Config API
+  async getConfig(configKey) {
+    return this.request(`/config/${configKey}`, { showLoading: false })
+  }
+
+  async saveConfig(configKey, data) {
+    return this.request(`/config/${configKey}`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  }
+
   async getInProgressCount() {
     return this.request('/records/stats/in-progress', { showLoading: false })
   }
@@ -199,6 +211,12 @@ class ApiService {
     return this.request('/exchange-rates', {
       method: 'POST',
       body: JSON.stringify(exchangeRate)
+    })
+  }
+
+  async autoFillExchangeRates(days = 7) {
+    return this.request(`/exchange-rates/auto-fill?days=${days}`, {
+      method: 'POST'
     })
   }
 
@@ -369,6 +387,57 @@ class ApiService {
 
   async getActiveUrlPermissions() {
     return this.request('/url-permissions/active')
+  }
+
+  // Scheduled Jobs API
+  async getScheduledJobs() {
+    return this.request('/scheduled-jobs')
+  }
+
+  async getScheduledJobById(id) {
+    return this.request(`/scheduled-jobs/${id}`)
+  }
+
+  async createScheduledJob(job) {
+    return this.request('/scheduled-jobs', {
+      method: 'POST',
+      body: JSON.stringify(job)
+    })
+  }
+
+  async updateScheduledJob(id, job) {
+    return this.request(`/scheduled-jobs/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(job)
+    })
+  }
+
+  async deleteScheduledJob(id) {
+    return this.request(`/scheduled-jobs/${id}`, { method: 'DELETE' })
+  }
+
+  async executeScheduledJob(id) {
+    return this.request(`/scheduled-jobs/${id}/execute`, {
+      method: 'POST'
+    })
+  }
+
+  async toggleScheduledJob(id, enabled) {
+    return this.request(`/scheduled-jobs/${id}/toggle?enabled=${enabled}`, {
+      method: 'PUT'
+    })
+  }
+
+  async getJobExecutions(jobId) {
+    return this.request(`/scheduled-jobs/${jobId}/executions`)
+  }
+
+  async getLatestJobExecution(jobId) {
+    return this.request(`/scheduled-jobs/${jobId}/executions/latest`)
+  }
+
+  async getJobExecutionById(executionId) {
+    return this.request(`/scheduled-jobs/executions/${executionId}`)
   }
 }
 

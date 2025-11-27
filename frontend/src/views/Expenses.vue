@@ -14,12 +14,28 @@
           <span class="label">本月支出</span>
           <span class="amount expense">${{ formatNumber(monthlyExpense) }}</span>
         </div>
-        <div class="summary-item">
-          <span class="label">本月淨收入</span>
-          <span class="amount net-income">${{ formatNumber(monthlyNetIncome) }}</span>
-        </div>
+      <div class="summary-item">
+        <span class="label">本月淨收入</span>
+        <span class="amount net-income">${{ formatNumber(monthlyNetIncome) }}</span>
       </div>
-    </header>
+    </div>
+    
+    <!-- 功能按鈕區域 -->
+    <div class="function-buttons-section">
+      <button class="btn btn-chart" @click="showChartsModal">
+        📊 圖表分析
+      </button>
+      <button class="btn btn-primary" @click="showAssetPortfolio">
+        📊 資產組合管理
+      </button>
+      <button class="btn btn-secondary" @click="showExchangeRates">
+        💱 匯率管理
+      </button>
+      <button class="btn btn-info" @click="showTradingFeesConfig">
+        💰 交易費用配置
+      </button>
+    </div>
+  </header>
 
     <main class="main-content">
       <!-- Modal：新增 / 編輯記錄 -->
@@ -240,6 +256,18 @@
       </section>
     </main>
 
+    <!-- 圖表分析 Modal -->
+    <ChartsModal v-if="showChartsModalFlag" @close="hideChartsModal" :records="records" />
+    
+    <!-- 匯率管理 Modal -->
+    <ExchangeRateModal v-if="showExchangeRateModal" @close="hideExchangeRates" />
+    
+    <!-- 資產組合管理 Modal -->
+    <AssetPortfolioModal v-if="showAssetPortfolioModal" @close="hideAssetPortfolio" />
+    
+    <!-- 交易費用配置 Modal -->
+    <TradingFeesConfigModal v-if="showTradingFeesModal" @close="hideTradingFeesConfig" />
+
     <div v-if="notification.show" class="notification" :class="notification.type">
       {{ notification.message }}
     </div>
@@ -250,6 +278,10 @@
 import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import TopNavbar from '@/components/TopNavbar.vue'
 import { apiService } from '@/composables/useApi'
+import ChartsModal from './expenses/ChartsModal.vue'
+import ExchangeRateModal from './expenses/ExchangeRateModal.vue'
+import AssetPortfolioModal from './expenses/AssetPortfolioModal.vue'
+import TradingFeesConfigModal from './expenses/TradingFeesConfigModal.vue'
 
 const records = ref([])
 const editingId = ref(null)
@@ -257,6 +289,10 @@ const currentPage = ref(1)
 const recordsPerPage = ref(10)
 const jumpPage = ref(1)
 const showModal = ref(false)
+const showChartsModalFlag = ref(false)
+const showExchangeRateModal = ref(false)
+const showAssetPortfolioModal = ref(false)
+const showTradingFeesModal = ref(false)
 
 const form = ref({
   member: '',
@@ -592,11 +628,45 @@ watch(() => recordsPerPage.value, () => {
 onMounted(async () => {
   await loadRecords()
   document.addEventListener('keydown', handleEscape)
+  // 注意：自動補足匯率功能已移至後端，每天早上 7:00 自動執行
 })
 
 onUnmounted(() => {
   document.removeEventListener('keydown', handleEscape)
 })
+
+// 功能按鈕處理函數
+const showChartsModal = () => {
+  showChartsModalFlag.value = true
+}
+
+const hideChartsModal = () => {
+  showChartsModalFlag.value = false
+}
+
+const showExchangeRates = () => {
+  showExchangeRateModal.value = true
+}
+
+const hideExchangeRates = () => {
+  showExchangeRateModal.value = false
+}
+
+const showAssetPortfolio = () => {
+  showAssetPortfolioModal.value = true
+}
+
+const hideAssetPortfolio = () => {
+  showAssetPortfolioModal.value = false
+}
+
+const showTradingFeesConfig = () => {
+  showTradingFeesModal.value = true
+}
+
+const hideTradingFeesConfig = () => {
+  showTradingFeesModal.value = false
+}
 </script>
 
 <style scoped>
@@ -1227,6 +1297,101 @@ onUnmounted(() => {
 
 .h-4 {
   height: 1rem;
+}
+
+.function-buttons-section {
+  display: flex;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 1.5rem;
+  padding: 1.75rem;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 100%);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.function-buttons-section .btn {
+  min-width: 180px;
+  padding: 1rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 12px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 2px solid transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+.function-buttons-section .btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s;
+}
+
+.function-buttons-section .btn:hover::before {
+  left: 100%;
+}
+
+.function-buttons-section .btn:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.function-buttons-section .btn:active {
+  transform: translateY(-2px) scale(0.98);
+}
+
+.function-buttons-section .btn-chart {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.function-buttons-section .btn-chart:hover {
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.5);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.function-buttons-section .btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.function-buttons-section .btn-primary:hover {
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.5);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.function-buttons-section .btn-secondary {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.function-buttons-section .btn-secondary:hover {
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.5);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.function-buttons-section .btn-info {
+  background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+  color: white;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.function-buttons-section .btn-info:hover {
+  box-shadow: 0 8px 24px rgba(6, 182, 212, 0.5);
+  border-color: rgba(255, 255, 255, 0.4);
 }
 </style>
 

@@ -59,6 +59,12 @@ const routes = [
     name: 'AdminUrlPermissions',
     component: () => import('@/views/admin/UrlPermissions.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/admin/scheduled-jobs',
+    name: 'AdminScheduledJobs',
+    component: () => import('@/views/admin/ScheduledJobs.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 

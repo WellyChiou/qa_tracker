@@ -173,3 +173,8 @@ SELECT 'ADMIN_URL_PERMISSIONS', 'URL 權限管理', '🔗', '/admin/url-permissi
     (SELECT id FROM menu_items WHERE menu_code = 'ADMIN' LIMIT 1), 5, 'ADMIN_ACCESS'
 WHERE NOT EXISTS (SELECT 1 FROM menu_items WHERE menu_code = 'ADMIN_URL_PERMISSIONS');
 
+INSERT IGNORE INTO menu_items (menu_code, menu_name, icon, url, parent_id, order_index, required_permission)
+SELECT 'ADMIN_SCHEDULED_JOBS', '定時任務管理', '⏰', '/admin/scheduled-jobs', 
+    (SELECT id FROM menu_items WHERE menu_code = 'ADMIN' LIMIT 1), 6, 'ADMIN_ACCESS'
+WHERE NOT EXISTS (SELECT 1 FROM menu_items WHERE menu_code = 'ADMIN_SCHEDULED_JOBS');
+

@@ -8,6 +8,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -71,6 +73,19 @@ public class ExchangeRateController {
             exchangeRate.setDate(date);
             return ResponseEntity.ok(exchangeRateService.saveExchangeRate(exchangeRate));
         }
+    }
+
+    /**
+     * 手動觸發補足匯率（用於測試或手動執行）
+     * @param days 要檢查的天數，預設為 7 天
+     */
+    @PostMapping("/auto-fill")
+    public ResponseEntity<Map<String, Object>> autoFillExchangeRates(@RequestParam(defaultValue = "7") int days) {
+        int filledCount = exchangeRateService.checkAndAutoFillMissingRates(days);
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "已補足 " + filledCount + " 個日期的匯率");
+        response.put("filledCount", filledCount);
+        return ResponseEntity.ok(response);
     }
 }
 

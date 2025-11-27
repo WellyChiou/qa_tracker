@@ -6,6 +6,7 @@
 
 ### 🚀 [部署指南](./deployment/)
 - [快速開始](./deployment/QUICK_START.md) - 快速部署指南
+- [SSH 免密碼登入](./deployment/SSH_PASSWORDLESS_LOGIN.md) - 設置 SSH 免密碼登入到虛擬主機
 - [Windows 部署](./deployment/DEPLOY_WINDOWS.md) - Windows 環境部署說明
 - [虛擬主機部署](./deployment/DEPLOY.md) - 詳細的虛擬主機部署指南
 - [Docker Compose 安裝](./deployment/INSTALL_DOCKER_COMPOSE.md) - Docker Compose 安裝指南
@@ -62,9 +63,10 @@ docs/
 ## 📌 重要提示
 
 1. **首次部署**：請先閱讀 [快速開始](./deployment/QUICK_START.md)
-2. **遇到問題**：優先查看 [故障排除](./TROUBLESHOOTING.md)
-3. **Windows 用戶**：請參考 [Windows 部署](./deployment/DEPLOY_WINDOWS.md)
-4. **系統管理**：詳細說明請查看 [系統管理指南](./admin/ADMIN_SYSTEM_GUIDE.md)
+2. **SSH 設置**：建議先設置 [SSH 免密碼登入](./deployment/SSH_PASSWORDLESS_LOGIN.md)，方便後續部署操作
+3. **遇到問題**：優先查看 [故障排除](./TROUBLESHOOTING.md)
+4. **Windows 用戶**：請參考 [Windows 部署](./deployment/DEPLOY_WINDOWS.md)
+5. **系統管理**：詳細說明請查看 [系統管理指南](./admin/ADMIN_SYSTEM_GUIDE.md)
 
 ## 🔄 文檔更新
 

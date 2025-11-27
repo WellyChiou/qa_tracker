@@ -358,6 +358,131 @@
       </section>
     </main>
 
+    <!-- GitLab Issues Modal -->
+    <div v-if="showGitlabModal" class="modal-overlay" @click="closeGitlabModal">
+      <div class="gitlab-modal-panel" @click.stop>
+        <div class="gitlab-modal-header">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-orange-100 grid place-items-center">
+              <svg class="w-6 h-6 text-orange-600" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M23.546 10.93L13.067.452c-.604-.603-1.582-.603-2.188 0L.452 10.93c-.6.605-.6 1.584 0 2.189l10.48 10.477c.604.604 1.582.604 2.186 0l10.428-10.477c.603-.603.603-1.582 0-2.189z"/>
+              </svg>
+            </div>
+            <div>
+              <h2 class="text-xl md:text-2xl font-bold text-slate-800">GitLab Issues</h2>
+              <p class="text-xs text-slate-500">查詢並匯入 GitLab 專案的 Issues</p>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-sm font-medium text-slate-600 px-3 py-1.5 bg-slate-100 rounded-lg">
+              已選 {{ selectedGitlabIssues.length }} 筆
+            </span>
+            <button class="btn-secondary text-sm" @click="toggleSelectAllGitlab">
+              {{ allGitlabSelected ? '全不選' : '全選' }}
+            </button>
+            <button class="btn btn-primary text-sm" @click="importSelectedGitlabIssues" :disabled="importingGitlab">
+              {{ importingGitlab ? '匯入中...' : '匯入選取' }}
+            </button>
+            <button class="btn-secondary text-sm" @click="closeGitlabModal">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+              關閉
+            </button>
+          </div>
+        </div>
+        <div class="gitlab-modal-search">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-sm font-medium text-slate-600 mb-1.5">Assignee</label>
+              <input 
+                v-model="gitlabFilters.assignee" 
+                class="inp" 
+                placeholder="例如：Welly.Chiu"
+                @keyup.enter="searchGitlabIssues"
+              />
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-slate-600 mb-1.5">Project 路徑</label>
+              <input 
+                v-model="gitlabFilters.project" 
+                class="inp" 
+                placeholder="例如：kh/imp 或 gitlab.com/group/project"
+                @keyup.enter="searchGitlabIssues"
+              />
+            </div>
+          </div>
+          <div class="mt-3 flex justify-end">
+            <button class="btn btn-info" @click="searchGitlabIssues" :disabled="loadingGitlabIssues">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              </svg>
+              {{ loadingGitlabIssues ? '查詢中...' : '查詢 Issues' }}
+            </button>
+          </div>
+        </div>
+        <div class="gitlab-modal-body">
+          <div v-if="gitlabIssues.length === 0 && !loadingGitlabIssues" class="text-center py-12">
+            <svg class="w-16 h-16 mx-auto text-slate-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            <p class="text-slate-500 text-sm">請輸入查詢條件並按「查詢 Issues」</p>
+          </div>
+          <div v-else-if="loadingGitlabIssues" class="text-center py-12">
+            <p class="text-slate-500 text-sm">讀取中...</p>
+          </div>
+          <ul v-else class="divide-y divide-slate-200">
+            <li v-for="issue in gitlabIssues" :key="issue.iid" class="py-3">
+              <div class="flex items-start gap-3">
+                <input 
+                  type="checkbox"
+                  class="gl-select mt-1"
+                  :checked="isGitlabIssueSelected(issue.iid)"
+                  @change="toggleGitlabIssue(issue)"
+                />
+                <div class="flex-1">
+                  <div class="flex items-start justify-between gap-3">
+                    <div>
+                      <a :href="issue.web_url" target="_blank" class="text-brand-700 font-semibold underline">
+                        #{{ issue.iid }} {{ issue.title }}
+                      </a>
+                      <div class="text-xs text-slate-500 mt-1">
+                        專案：{{ issue.references?.full || '' }}<br>
+                        更新時間：{{ formatGitlabDate(issue.updated_at) }}
+                      </div>
+                    </div>
+                    <button 
+                      class="btn-secondary text-sm px-3 py-1.5"
+                      @click="toggleGitlabIssueDetail(issue.iid)"
+                    >
+                      {{ expandedGitlabDetails.has(issue.iid) ? '隱藏' : '詳細資訊' }}
+                    </button>
+                  </div>
+                  <div v-if="expandedGitlabDetails.has(issue.iid)" class="mt-3">
+                    <div v-if="gitlabIssueNotes[issue.iid] === undefined" class="text-slate-500 text-sm">
+                      讀取留言中…
+                    </div>
+                    <div v-else-if="gitlabIssueNotes[issue.iid].length === 0" class="text-slate-600 text-sm">
+                      沒有留言。
+                    </div>
+                    <div v-else class="border rounded-xl p-3 bg-slate-50">
+                      <div v-for="note in gitlabIssueNotes[issue.iid]" :key="note.id" class="mb-3">
+                        <div class="text-sm font-medium text-slate-700">
+                          {{ note.author?.name || note.author?.username || '未知' }}
+                        </div>
+                        <div class="text-xs text-slate-500">{{ formatGitlabDate(note.created_at) }}</div>
+                        <div class="mt-1 whitespace-pre-wrap text-slate-800">{{ note.body || '' }}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
     <div v-if="notification.show" class="notification" :class="notification.type">
       {{ notification.message }}
     </div>
@@ -369,6 +494,7 @@ import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import TopNavbar from '@/components/TopNavbar.vue'
 import DateRangePicker from '@/components/DateRangePicker.vue'
 import { apiService } from '@/composables/useApi'
+import * as XLSX from 'xlsx'
 
 const records = ref([])
 const totalRecords = ref(0)
@@ -379,6 +505,21 @@ const recordsPerPage = ref(10)
 const showModal = ref(false)
 const showGitlabModal = ref(false)
 const jumpPage = ref(1)
+
+// GitLab Issues 相關狀態
+const gitlabIssues = ref([])
+const selectedGitlabIssues = ref([])
+const allGitlabSelected = ref(false)
+const loadingGitlabIssues = ref(false)
+const importingGitlab = ref(false)
+const expandedGitlabDetails = ref(new Set())
+const gitlabIssueNotes = ref({})
+const gitlabToken = ref(null)
+const gitlabFilters = ref({
+  assignee: 'Welly.Chiu',
+  project: 'kh/imp'
+})
+const GITLAB_BASE = 'https://gitlab.fb-tek.com/api/v4'
 
 const form = ref({
   issueNumber: null,
@@ -582,9 +723,24 @@ const closeModal = () => {
   resetForm()
 }
 
-const openGitlabModal = () => {
+const openGitlabModal = async () => {
   showGitlabModal.value = true
-  showNotification('GitLab Issues 功能開發中', 'info')
+  // 預設值
+  if (!gitlabFilters.value.assignee) gitlabFilters.value.assignee = 'Welly.Chiu'
+  if (!gitlabFilters.value.project) gitlabFilters.value.project = 'kh/imp'
+  // 載入 token
+  await loadGitlabToken()
+  // 自動查詢
+  await searchGitlabIssues()
+}
+
+const closeGitlabModal = () => {
+  showGitlabModal.value = false
+  gitlabIssues.value = []
+  selectedGitlabIssues.value = []
+  expandedGitlabDetails.value.clear()
+  gitlabIssueNotes.value = {}
+  allGitlabSelected.value = false
 }
 
 const filterByInProgress = () => {
@@ -610,6 +766,8 @@ const clearFilters = () => {
 
 const exportExcel = async () => {
   try {
+    showNotification('正在準備匯出 Excel...', 'info')
+    
     // 使用當前篩選條件獲取所有記錄
     const params = {
       status: filters.value.status,
@@ -644,12 +802,171 @@ const exportExcel = async () => {
     const response = await apiService.getRecords(params)
     const allRecords = response.content || []
     
-    // 這裡可以實現 Excel 匯出邏輯
-    // 目前先顯示通知
-    showNotification(`準備匯出 ${allRecords.length} 筆記錄（Excel 匯出功能開發中）`, 'info')
+    if (allRecords.length === 0) {
+      showNotification('沒有資料可匯出', 'info')
+      return
+    }
+    
+    // 1) 產生表頭
+    const headers = ['ISSUE#', '狀態', '類型', '功能', 'Test Plan', 'BUG', '驗證失敗', '開始測試日期', '預計交付日期', '完成日期', '測試案例', 'MEMO']
+    
+    // 2) 轉換工具
+    const statusText = (v) => {
+      const n = Number(v)
+      if (n === 1) return '執行中'
+      if (n === 0) return '執行中止'
+      if (n === 2) return '完成'
+      return ''
+    }
+    
+    const categoryText = (v) => {
+      const map = { 1: 'BUG', 2: '改善', 3: '優化', 4: '模組', 5: 'QA' }
+      return map[Number(v)] || ''
+    }
+    
+    const toYN = (v) => (v === 1 || v === '1' || String(v).toUpperCase() === 'Y') ? 'Y' : 'N'
+    
+    const fmt = (v) => {
+      if (!v) return ''
+      try {
+        const d = new Date(v)
+        if (isNaN(d.getTime())) return ''
+        const yyyy = d.getFullYear()
+        const mm = String(d.getMonth() + 1).padStart(2, '0')
+        const dd = String(d.getDate()).padStart(2, '0')
+        return `${yyyy}-${mm}-${dd}`
+      } catch {
+        return ''
+      }
+    }
+    
+    // 3) 取得用來判斷季度的日期
+    const pickDate = (r) => {
+      let d = r?.testStartDate || r?.completedAt || r?.createdAt
+      if (!d) return null
+      return new Date(d)
+    }
+    
+    const getQuarter = (d) => {
+      if (!(d instanceof Date) || isNaN(d.getTime())) return null
+      const m = d.getMonth() + 1 // 1~12
+      if (m >= 1 && m <= 3) return 'Q1'
+      if (m >= 4 && m <= 6) return 'Q2'
+      if (m >= 7 && m <= 9) return 'Q3'
+      if (m >= 10 && m <= 12) return 'Q4'
+      return null
+    }
+    
+    // 4) 把 rows 依季度分桶
+    const buckets = { Q1: [], Q2: [], Q3: [], Q4: [] }
+    for (const r of allRecords) {
+      const d = pickDate(r)
+      const q = getQuarter(d) || 'Q1' // 沒日期就先歸 Q1，避免遺漏
+      const row = [
+        r.issueNumber ?? '',
+        statusText(r.status),
+        categoryText(r.category),
+        r.feature ?? '',
+        toYN(r.testPlan),
+        toYN(r.bugFound),
+        toYN(r.verifyFailed),
+        fmt(r.testStartDate),
+        fmt(r.etaDate),
+        fmt(r.completedAt),
+        r.testCases ?? '',
+        (r.memo ?? '').toString().replaceAll('\n', ' ')
+      ]
+      buckets[q].push(row)
+    }
+    
+    // 5) 產生四個季度的 sheet
+    const wb = XLSX.utils.book_new()
+    const wsQ1 = XLSX.utils.aoa_to_sheet([headers, ...buckets.Q1])
+    const wsQ2 = XLSX.utils.aoa_to_sheet([headers, ...buckets.Q2])
+    const wsQ3 = XLSX.utils.aoa_to_sheet([headers, ...buckets.Q3])
+    const wsQ4 = XLSX.utils.aoa_to_sheet([headers, ...buckets.Q4])
+    XLSX.utils.book_append_sheet(wb, wsQ1, 'Q1列表')
+    XLSX.utils.book_append_sheet(wb, wsQ2, 'Q2列表')
+    XLSX.utils.book_append_sheet(wb, wsQ3, 'Q3列表')
+    XLSX.utils.book_append_sheet(wb, wsQ4, 'Q4列表')
+    
+    // 6) 摘要統計（依開始測試日期分月 + 季度彙總，限定狀態=完成）
+    const monthly = new Map() // key: 'YYYY-MM' -> {A..G}
+    for (const r of allRecords) {
+      if (Number(r.status) !== 2) continue // 僅統計完成
+      
+      let d = r?.testStartDate || r?.completedAt || r?.createdAt
+      if (!d) continue
+      d = new Date(d)
+      if (!(d instanceof Date) || isNaN(d.getTime())) continue
+      
+      const y = d.getFullYear()
+      const m = d.getMonth() + 1
+      const key = `${y}-${String(m).padStart(2, '0')}`
+      
+      if (!monthly.has(key)) monthly.set(key, { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0, G: 0 })
+      const acc = monthly.get(key)
+      
+      const bug = Number(r.bugFound ?? 0)
+      const tp = (r.testPlan === 1 || r.testPlan === '1') ? 1 : 0
+      const opt = Number(r.optimizationPoints ?? 0)
+      const cases = Number(r.testCases ?? 0)
+      const vf = Number(r.verifyFailed ?? 0)
+      const files = Number(r.fileCount ?? 0)
+      
+      if (bug === 1) acc.A += 1 // A: 發現BUG=1 的筆數
+      acc.B += Number.isFinite(opt) ? opt : 0 // B: 可優化項目數
+      if (tp === 1) acc.C += 1 // C: Test Plan=1 的筆數
+      if (bug === 0 && tp === 0) acc.D += 1 // D: BUG=0 且 TP=0 的筆數
+      acc.E += Number.isFinite(cases) ? cases : 0 // E: 測試案例總數
+      if (vf === 1) acc.F += 1 // F: 驗證失敗=1 的筆數
+      acc.G += Number.isFinite(files) ? files : 0 // G: 檔案數總數
+    }
+    
+    const lines = [['Monthly Summary']]
+    const sortedMonths = Array.from(monthly.entries()).sort((a, b) => a[0].localeCompare(b[0]))
+    for (const [key, v] of sortedMonths) {
+      const monthNum = Number(key.slice(5))
+      const text = `${monthNum}月 發現 ${v.B} 個可優化項目，開立 ${v.A} 張優化 issues｜ 產生 ${v.C} 份測試報告｜ ${v.D} 張驗證單，複驗 ${v.F} 張單｜ 建立 ${v.G} 個測試範本、${v.E} 項測試案例`
+      lines.push([text])
+    }
+    
+    function quarterOf(month) {
+      return Math.floor((month - 1) / 3) + 1
+    }
+    const quarterly = new Map() // key: 'YYYY-Qn' -> {A..G}
+    for (const [ym, v] of sortedMonths) {
+      const y = ym.slice(0, 4)
+      const m = Number(ym.slice(5))
+      const qKey = `${y}-Q${quarterOf(m)}`
+      if (!quarterly.has(qKey)) quarterly.set(qKey, { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0, G: 0 })
+      const acc = quarterly.get(qKey)
+      acc.A += v.A
+      acc.B += v.B
+      acc.C += v.C
+      acc.D += v.D
+      acc.E += v.E
+      acc.F += v.F
+      acc.G += v.G
+    }
+    
+    lines.push([''], ['Quarterly Summary'])
+    const sortedQuarters = Array.from(quarterly.entries()).sort((a, b) => a[0].localeCompare(b[0]))
+    for (const [qKey, v] of sortedQuarters) {
+      const [year, qLabel] = qKey.split('-')
+      const textQ = `${qLabel}: 發現 ${v.B} 個可優化項目，開立 ${v.A} 張優化 issues｜ 產生 ${v.C} 份測試報告｜ ${v.D} 張驗證單，複驗 ${v.F} 張單｜ 建立 ${v.G} 個測試範本、${v.E} 項測試案例`
+      lines.push([`${year} ${textQ}`])
+    }
+    
+    const wsSummary = XLSX.utils.aoa_to_sheet(lines)
+    XLSX.utils.book_append_sheet(wb, wsSummary, '摘要')
+    
+    // 7) 輸出
+    XLSX.writeFile(wb, 'records.xlsx')
+    showNotification(`成功匯出 ${allRecords.length} 筆記錄`, 'success')
   } catch (error) {
     console.error('匯出失敗:', error)
-    showNotification('匯出失敗', 'error')
+    showNotification('匯出失敗: ' + error.message, 'error')
   }
 }
 
@@ -713,6 +1030,235 @@ const resetForm = () => {
     testStartDate: '',
     etaDate: '',
     completedAt: null
+  }
+}
+
+// GitLab Issues 相關函數
+const loadGitlabToken = async () => {
+  if (gitlabToken.value) return gitlabToken.value
+  
+  try {
+    const response = await apiService.getConfig('gitlab_token')
+    
+    if (!response || !response.value || response.value.trim() === '') {
+      throw new Error('GitLab token 配置為空，請先在系統設定中配置 GitLab API Token')
+    }
+    gitlabToken.value = response.value
+    console.log('成功載入 GitLab token')
+    return gitlabToken.value
+  } catch (error) {
+    console.error('載入 GitLab token 失敗:', error)
+    showNotification('載入 GitLab token 失敗: ' + error.message, 'error')
+    throw error
+  }
+}
+
+const searchGitlabIssues = async () => {
+  if (!gitlabFilters.value.project?.trim()) {
+    showNotification('請輸入 Project 路徑', 'error')
+    return
+  }
+  
+  loadingGitlabIssues.value = true
+  gitlabIssues.value = []
+  
+  try {
+    const token = await loadGitlabToken()
+    const project = encodeURIComponent(gitlabFilters.value.project.trim())
+    const assignee = gitlabFilters.value.assignee?.trim()
+    
+    const params = new URLSearchParams({ state: 'opened', per_page: '50' })
+    if (assignee) params.set('assignee_username', assignee)
+    
+    const url = `${GITLAB_BASE}/projects/${project}/issues?${params.toString()}`
+    const res = await fetch(url, {
+      headers: { 'PRIVATE-TOKEN': token, 'Accept': 'application/json' }
+    })
+    
+    if (!res.ok) throw new Error('GitLab API 錯誤：' + res.status)
+    
+    const issues = await res.json()
+    if (!Array.isArray(issues) || issues.length === 0) {
+      gitlabIssues.value = []
+      showNotification('沒有符合條件的 Issue', 'info')
+      return
+    }
+    
+    gitlabIssues.value = issues
+    selectedGitlabIssues.value = []
+    allGitlabSelected.value = false
+    showNotification(`找到 ${issues.length} 筆 Issues`, 'success')
+  } catch (error) {
+    console.error('查詢 GitLab Issues 失敗:', error)
+    showNotification('查詢失敗: ' + error.message, 'error')
+    gitlabIssues.value = []
+  } finally {
+    loadingGitlabIssues.value = false
+  }
+}
+
+const toggleGitlabIssue = (issue) => {
+  const index = selectedGitlabIssues.value.findIndex(i => i.iid === issue.iid)
+  if (index >= 0) {
+    selectedGitlabIssues.value.splice(index, 1)
+  } else {
+    selectedGitlabIssues.value.push(issue)
+  }
+  updateGitlabSelectedCount()
+}
+
+const isGitlabIssueSelected = (iid) => {
+  return selectedGitlabIssues.value.some(i => i.iid === iid)
+}
+
+const toggleSelectAllGitlab = () => {
+  allGitlabSelected.value = !allGitlabSelected.value
+  if (allGitlabSelected.value) {
+    selectedGitlabIssues.value = [...gitlabIssues.value]
+  } else {
+    selectedGitlabIssues.value = []
+  }
+  updateGitlabSelectedCount()
+}
+
+const updateGitlabSelectedCount = () => {
+  // 這個函數已經通過 computed 在模板中處理了
+}
+
+const toggleGitlabIssueDetail = async (iid) => {
+  if (expandedGitlabDetails.value.has(iid)) {
+    expandedGitlabDetails.value.delete(iid)
+    return
+  }
+  
+  expandedGitlabDetails.value.add(iid)
+  
+  // 如果已經載入過 notes，就不重新載入
+  if (gitlabIssueNotes.value[iid] !== undefined) {
+    return
+  }
+  
+  try {
+    const token = await loadGitlabToken()
+    const project = encodeURIComponent(gitlabFilters.value.project.trim())
+    const url = `${GITLAB_BASE}/projects/${project}/issues/${iid}/notes?per_page=100`
+    const res = await fetch(url, {
+      headers: { 'PRIVATE-TOKEN': token, 'Accept': 'application/json' }
+    })
+    
+    if (!res.ok) throw new Error(`讀取留言失敗：${res.status}`)
+    
+    const notes = await res.json()
+    if (!Array.isArray(notes)) {
+      gitlabIssueNotes.value[iid] = []
+      return
+    }
+    
+    // 過濾掉系統訊息
+    const humanNotes = notes.filter(n => !n.system)
+    gitlabIssueNotes.value[iid] = humanNotes
+  } catch (error) {
+    console.error('讀取留言失敗:', error)
+    gitlabIssueNotes.value[iid] = []
+  }
+}
+
+const formatGitlabDate = (dateStr) => {
+  if (!dateStr) return ''
+  try {
+    return new Date(dateStr).toLocaleString('zh-TW')
+  } catch {
+    return dateStr
+  }
+}
+
+const thisFriday = (from = new Date()) => {
+  const d = new Date(from)
+  const day = d.getDay()
+  const map = { 0: 7, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6 }
+  const dow = map[day]
+  const delta = 5 - dow
+  d.setDate(d.getDate() + delta)
+  return d
+}
+
+const formatDateInput = (d) => {
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
+const importSelectedGitlabIssues = async () => {
+  if (selectedGitlabIssues.value.length === 0) {
+    showNotification('請先勾選要匯入的資料', 'error')
+    return
+  }
+  
+  importingGitlab.value = true
+  
+  try {
+    const today = new Date()
+    let successCount = 0
+    let skippedCount = 0
+    let failCount = 0
+    
+    for (const issue of selectedGitlabIssues.value) {
+      const iid = Number(issue.iid)
+      const title = issue.title || ''
+      const url = issue.web_url || ''
+      
+      // 檢查是否已存在相同 issue_number 的記錄
+      try {
+        const checkParams = { issueNumber: iid, page: 0, size: 1 }
+        const checkResponse = await apiService.getRecords(checkParams)
+        if (checkResponse.content && checkResponse.content.length > 0) {
+          console.log(`Issue ${iid} 已存在，略過匯入`)
+          skippedCount++
+          continue
+        }
+      } catch (err) {
+        console.error('檢查記錄失敗:', err)
+      }
+      
+      // 準備匯入資料
+      const payload = {
+        status: 1,
+        completedAt: null,
+        issueNumber: iid,
+        testPlan: '0',
+        category: null,
+        feature: '透過系統匯入請手動調整',
+        memo: title,
+        testStartDate: formatDateInput(today),
+        etaDate: formatDateInput(thisFriday(today)),
+        bugFound: 0,
+        optimizationPoints: 0,
+        verifyFailed: 0,
+        testCases: 0,
+        fileCount: 0,
+        issueLink: url
+      }
+      
+      try {
+        await apiService.createRecord(payload)
+        successCount++
+      } catch (err) {
+        console.error(`匯入 Issue ${iid} 失敗：`, err)
+        failCount++
+      }
+    }
+    
+    const message = `匯入完成：\n成功 ${successCount} 筆\n略過（已存在） ${skippedCount} 筆\n失敗 ${failCount} 筆`
+    showNotification(message, successCount > 0 ? 'success' : 'info')
+    
+    closeGitlabModal()
+    await loadRecords() // 重新載入表格
+  } catch (error) {
+    console.error('匯入發生錯誤:', error)
+    showNotification('匯入發生錯誤: ' + error.message, 'error')
+  } finally {
+    importingGitlab.value = false
   }
 }
 
@@ -1479,29 +2025,27 @@ onUnmounted(() => {
 }
 
 .page-size-select {
-  padding: 10px 16px;
-  border: 2px solid rgba(255, 255, 255, 0.25);
-  border-radius: var(--border-radius);
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
-  font-size: 14px;
+  padding: 0.625rem 0.875rem;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 0.75rem;
+  background: white;
+  color: #1e293b;
+  font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
-  backdrop-filter: blur(10px);
-  transition: var(--transition);
+  transition: all 0.2s ease;
   min-width: 80px;
 }
 
 .page-size-select:focus {
   outline: none;
-  border-color: rgba(255, 255, 255, 0.5);
-  background: rgba(255, 255, 255, 0.25);
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+  border-color: #818cf8;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
 }
 
 .page-size-select option {
-  background: #667eea;
-  color: white;
+  background: white;
+  color: #1e293b;
   padding: 8px;
 }
 
@@ -1512,21 +2056,25 @@ onUnmounted(() => {
 }
 
 .pagination button {
-  padding: 10px 20px;
-  border: 2px solid rgba(255, 255, 255, 0.25);
-  border-radius: var(--border-radius);
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
+  padding: 0.625rem 1.25rem;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 0.75rem;
+  background: white;
+  color: #475569;
   cursor: pointer;
-  transition: var(--transition);
+  transition: all 0.2s ease;
   font-weight: 600;
-  backdrop-filter: blur(10px);
+  font-size: 0.875rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .pagination button:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.25);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  background: #f8fafc;
+  border-color: #94a3b8;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .pagination button:disabled {
@@ -1535,32 +2083,36 @@ onUnmounted(() => {
   transform: none;
 }
 
-.page-select {
-  padding: 10px 16px;
-  border: 2px solid rgba(255, 255, 255, 0.25);
-  border-radius: var(--border-radius);
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
-  font-size: 14px;
+.page-jump {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.page-input {
+  padding: 0.5rem 0.75rem;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 0.5rem;
+  background: white;
+  color: #1e293b;
+  font-size: 0.875rem;
   font-weight: 600;
-  cursor: pointer;
-  margin: 0 var(--spacing-sm);
-  min-width: 70px;
-  backdrop-filter: blur(10px);
-  transition: var(--transition);
+  width: 60px;
+  text-align: center;
+  transition: all 0.2s ease;
 }
 
-.page-select option {
-  background: #667eea;
-  color: white;
-  padding: 8px;
-}
-
-.page-select:focus {
+.page-input:focus {
   outline: none;
-  border-color: rgba(255, 255, 255, 0.5);
-  background: rgba(255, 255, 255, 0.25);
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+  border-color: #818cf8;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+
+.pagination-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #475569;
+  white-space: nowrap;
 }
 
 .notification {
@@ -1616,5 +2168,323 @@ onUnmounted(() => {
 
 .h-5 {
   height: 1.25rem;
+}
+
+/* GitLab Modal 樣式 */
+.gitlab-modal-panel {
+  width: 100%;
+  max-width: 56rem;
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e2e8f0;
+  margin: 2rem 0;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.gitlab-modal-header {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(to right, #fff7ed, white);
+  border-radius: 1rem 1rem 0 0;
+}
+
+.gitlab-modal-search {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: white;
+}
+
+.gitlab-modal-body {
+  padding: 1.25rem 1.5rem;
+  max-height: 60vh;
+  overflow-y: auto;
+  background: #f8fafc;
+}
+
+.inp {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  border-radius: 0.75rem;
+  border: 1.5px solid #cbd5e1;
+  outline: none;
+  background: white;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+  color: #1e293b;
+  box-sizing: border-box;
+}
+
+.inp:focus {
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+  border-color: #818cf8;
+}
+
+.inp::placeholder {
+  color: #94a3b8;
+}
+
+.gl-select {
+  cursor: pointer;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.text-brand-700 {
+  color: #4338ca;
+}
+
+.grid {
+  display: grid;
+}
+
+.grid-cols-1 {
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+@media (min-width: 768px) {
+  .md\:grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  
+  .md\:col-span-2 {
+    grid-column: span 2 / span 2;
+  }
+  
+  .md\:text-2xl {
+    font-size: 1.5rem;
+    line-height: 2rem;
+  }
+  
+  .md\:px-6 {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+  
+  .md\:flex-row {
+    flex-direction: row;
+  }
+  
+  .md\:items-center {
+    align-items: center;
+  }
+  
+  .md\:justify-between {
+    justify-content: space-between;
+  }
+}
+
+.flex {
+  display: flex;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.items-start {
+  align-items: flex-start;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.gap-2 {
+  gap: 0.5rem;
+}
+
+.gap-3 {
+  gap: 0.75rem;
+}
+
+.flex-wrap {
+  flex-wrap: wrap;
+}
+
+.flex-1 {
+  flex: 1 1 0%;
+}
+
+.divide-y > :not([hidden]) ~ :not([hidden]) {
+  border-top-width: 1px;
+  border-color: #e2e8f0;
+}
+
+.py-3 {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.mt-1 {
+  margin-top: 0.25rem;
+}
+
+.mt-3 {
+  margin-top: 0.75rem;
+}
+
+.mb-1\.5 {
+  margin-bottom: 0.375rem;
+}
+
+.mb-3 {
+  margin-bottom: 0.75rem;
+}
+
+.mb-4 {
+  margin-bottom: 1rem;
+}
+
+.text-sm {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.text-xs {
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.text-xl {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+.font-semibold {
+  font-weight: 600;
+}
+
+.font-medium {
+  font-weight: 500;
+}
+
+.text-slate-500 {
+  color: #64748b;
+}
+
+.text-slate-600 {
+  color: #475569;
+}
+
+.text-slate-700 {
+  color: #334155;
+}
+
+.text-slate-800 {
+  color: #1e293b;
+}
+
+.text-red-600 {
+  color: #dc2626;
+}
+
+.underline {
+  text-decoration-line: underline;
+}
+
+.whitespace-pre-wrap {
+  white-space: pre-wrap;
+}
+
+.rounded-lg {
+  border-radius: 0.5rem;
+}
+
+.rounded-xl {
+  border-radius: 0.75rem;
+}
+
+.bg-slate-50 {
+  background-color: #f8fafc;
+}
+
+.bg-slate-100 {
+  background-color: #f1f5f9;
+}
+
+.bg-orange-100 {
+  background-color: #ffedd5;
+}
+
+.text-orange-600 {
+  color: #ea580c;
+}
+
+.px-3 {
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
+
+.py-1\.5 {
+  padding-top: 0.375rem;
+  padding-bottom: 0.375rem;
+}
+
+.p-3 {
+  padding: 0.75rem;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.py-12 {
+  padding-top: 3rem;
+  padding-bottom: 3rem;
+}
+
+.mx-auto {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.w-4 {
+  width: 1rem;
+}
+
+.h-4 {
+  height: 1rem;
+}
+
+.w-6 {
+  width: 1.5rem;
+}
+
+.h-6 {
+  height: 1.5rem;
+}
+
+.w-10 {
+  width: 2.5rem;
+}
+
+.h-10 {
+  height: 2.5rem;
+}
+
+.w-16 {
+  width: 4rem;
+}
+
+.h-16 {
+  height: 4rem;
+}
+
+.place-items-center {
+  place-items: center;
+}
+
+.block {
+  display: block;
 }
 </style>
