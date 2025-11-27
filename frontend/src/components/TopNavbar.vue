@@ -57,6 +57,27 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 import { apiService } from '@/composables/useApi'
 
+// 模組級變量：記錄被用戶手動關閉的子菜單索引（永久記錄，直到用戶手動展開）
+// 使用 sessionStorage 確保在組件重新創建時不會丟失
+const getManuallyClosedSubmenus = () => {
+  try {
+    const stored = sessionStorage.getItem('manuallyClosedSubmenus')
+    return stored ? new Set(JSON.parse(stored)) : new Set()
+  } catch {
+    return new Set()
+  }
+}
+
+const saveManuallyClosedSubmenus = (set) => {
+  try {
+    sessionStorage.setItem('manuallyClosedSubmenus', JSON.stringify(Array.from(set)))
+  } catch (e) {
+    console.error('保存 manuallyClosedSubmenus 失敗:', e)
+  }
+}
+
+let manuallyClosedSubmenus = getManuallyClosedSubmenus()
+
 const router = useRouter()
 const route = useRoute()
 const { currentUser, logout: authLogout } = useAuth()
@@ -89,7 +110,31 @@ let clickTimeout = null
 
 // 監聽路由變化，自動展開包含當前路由的父菜單
 watch(() => route.path, (newPath, oldPath) => {
-  console.log('路由變化:', oldPath, '->', newPath, 'isUserClicking:', isUserClicking, 'justNavigatedFromSubmenu:', justNavigatedFromSubmenu)
+  console.log('路由變化:', oldPath, '->', newPath, 'isUserClicking:', isUserClicking, 'justNavigatedFromSubmenu:', justNavigatedFromSubmenu, 'manuallyClosedSubmenus:', Array.from(manuallyClosedSubmenus))
+  
+  // 首先，無論什麼情況，都要確保被手動關閉的子菜單保持關閉狀態
+  menus.value.forEach((menu, index) => {
+    if (manuallyClosedSubmenus.has(index)) {
+      // 強制關閉子菜單，無論當前狀態如何
+      activeSubmenu.value = null
+      console.log('路由變化，強制關閉被用戶手動關閉的子菜單（優先檢查）:', index, 'manuallyClosedSubmenus:', Array.from(manuallyClosedSubmenus))
+    }
+  })
+  
+  // 檢查當前路由是否屬於被手動關閉的子菜單
+  let isCurrentRouteInClosedSubmenu = false
+  menus.value.forEach((menu, index) => {
+    if (manuallyClosedSubmenus.has(index) && isChildOfMenu(menu)) {
+      isCurrentRouteInClosedSubmenu = true
+      console.log('路由變化，檢測到當前路由屬於被手動關閉的子菜單:', index)
+    }
+  })
+  
+  // 如果當前路由屬於被手動關閉的子菜單，絕對不自動展開
+  if (isCurrentRouteInClosedSubmenu) {
+    console.log('路由變化，跳過自動展開（當前路由屬於被手動關閉的子菜單）')
+    return
+  }
   
   // 如果用戶正在手動操作或剛剛從子菜單導航，不自動展開或關閉
   if (isUserClicking || justNavigatedFromSubmenu) {
@@ -104,10 +149,10 @@ watch(() => route.path, (newPath, oldPath) => {
   }
   
   // 只有在頁面首次加載時（oldPath 為 undefined 或 null）才自動展開
-  // 自動展開包含當前路由的父菜單（僅在首次加載時）
+  // 自動展開包含當前路由的父菜單（僅在首次加載時），但跳過被手動關閉的子菜單
   let foundActiveMenu = false
   menus.value.forEach((menu, index) => {
-    if (isChildOfMenu(menu)) {
+    if (isChildOfMenu(menu) && !manuallyClosedSubmenus.has(index)) {
       // 只有在子菜單當前關閉時才自動展開
       if (activeSubmenu.value !== index) {
         activeSubmenu.value = index
@@ -140,10 +185,16 @@ const toggleSubmenu = (index) => {
   const wasOpen = activeSubmenu.value === index
   if (wasOpen) {
     activeSubmenu.value = null
-    console.log('關閉子菜單:', index, 'activeSubmenu.value:', activeSubmenu.value)
+    // 記錄用戶手動關閉的子菜單
+    manuallyClosedSubmenus.add(index)
+    saveManuallyClosedSubmenus(manuallyClosedSubmenus)
+    console.log('關閉子菜單:', index, 'activeSubmenu.value:', activeSubmenu.value, 'manuallyClosedSubmenus:', Array.from(manuallyClosedSubmenus))
   } else {
     activeSubmenu.value = index
-    console.log('打開子菜單:', index, 'activeSubmenu.value:', activeSubmenu.value, 'type:', typeof activeSubmenu.value, 'type of index:', typeof index)
+    // 當用戶手動展開子菜單時，從關閉記錄中移除，允許正常的自動展開邏輯
+    manuallyClosedSubmenus.delete(index)
+    saveManuallyClosedSubmenus(manuallyClosedSubmenus)
+    console.log('打開子菜單:', index, 'activeSubmenu.value:', activeSubmenu.value, 'manuallyClosedSubmenus:', Array.from(manuallyClosedSubmenus), 'type:', typeof activeSubmenu.value, 'type of index:', typeof index)
     // 檢查菜單是否有子項
     const menu = menus.value[index]
     console.log('菜單:', menu?.menuName, '子項數量:', menu?.children?.length, '子項:', menu?.children)
@@ -163,10 +214,14 @@ const handleSubmenuClick = (menuIndex, event) => {
     event.stopPropagation()
   }
   
+  // 記錄被手動關閉的子菜單（永久記錄，直到用戶手動展開）
+  manuallyClosedSubmenus.add(menuIndex)
+  saveManuallyClosedSubmenus(manuallyClosedSubmenus)
+  
   // 立即設置標記，在路由變化之前
   isUserClicking = true
   justNavigatedFromSubmenu = true
-  console.log('點擊子菜單項，設置標記 - isUserClicking:', isUserClicking, 'justNavigatedFromSubmenu:', justNavigatedFromSubmenu)
+  console.log('點擊子菜單項，設置標記 - isUserClicking:', isUserClicking, 'justNavigatedFromSubmenu:', justNavigatedFromSubmenu, 'manuallyClosedSubmenus:', Array.from(manuallyClosedSubmenus))
   
   // 立即關閉子菜單
   activeSubmenu.value = null
@@ -182,7 +237,7 @@ const handleSubmenuClick = (menuIndex, event) => {
     isUserClicking = false
     justNavigatedFromSubmenu = false
     console.log('重置 isUserClicking 和 justNavigatedFromSubmenu 標記（子菜單點擊後）')
-  }, 5000) // 延長到 5 秒，確保路由變化完成後也不自動展開
+  }, 2000) // 2秒後重置標記
 }
 
 const handleLogout = async () => {
@@ -204,16 +259,80 @@ const loadMenus = async () => {
         console.log(`菜單 ${index} (${menu.menuName}) 有 ${menu.children.length} 個子項:`, menu.children)
       }
     })
+    // 從 sessionStorage 恢復 manuallyClosedSubmenus（防止組件重新創建時丟失）
+    manuallyClosedSubmenus = getManuallyClosedSubmenus()
+    
+    // 首先，無論什麼情況，都要確保被手動關閉的子菜單保持關閉狀態
+    console.log('loadMenus 開始執行，manuallyClosedSubmenus:', Array.from(manuallyClosedSubmenus), 'manuallyClosedSubmenus.size:', manuallyClosedSubmenus.size, 'isUserClicking:', isUserClicking, 'justNavigatedFromSubmenu:', justNavigatedFromSubmenu, '當前路由:', route.path)
+    
+    // 強制關閉所有在 manuallyClosedSubmenus 中的子菜單
+    if (manuallyClosedSubmenus.size > 0) {
+      manuallyClosedSubmenus.forEach((index) => {
+        activeSubmenu.value = null
+        console.log('載入菜單後，強制關閉被用戶手動關閉的子菜單:', index)
+      })
+    }
+    
+    // 檢查當前路由是否屬於被手動關閉的子菜單
+    let isCurrentRouteInClosedSubmenu = false
+    manuallyClosedSubmenus.forEach((index) => {
+      const menu = menus.value[index]
+      if (menu && isChildOfMenu(menu)) {
+        isCurrentRouteInClosedSubmenu = true
+        console.log('載入菜單後，檢測到當前路由屬於被手動關閉的子菜單:', index, '當前路由:', route.path, '菜單:', menu.menuName)
+      }
+    })
+    
+    console.log('isCurrentRouteInClosedSubmenu:', isCurrentRouteInClosedSubmenu)
+    
+    // 如果當前路由屬於被手動關閉的子菜單，絕對不自動展開
+    if (isCurrentRouteInClosedSubmenu) {
+      console.log('載入菜單，跳過自動展開（當前路由屬於被手動關閉的子菜單）')
+      return
+    }
+    
+    // 額外檢查：如果 manuallyClosedSubmenus 中有任何索引，並且該菜單有子項，就檢查當前路由
+    // 這是一個額外的安全檢查
+    let foundInClosedSubmenu = false
+    manuallyClosedSubmenus.forEach((index) => {
+      const menu = menus.value[index]
+      if (menu && menu.children && menu.children.length > 0) {
+        const currentPath = route.path
+        const isInSubmenu = menu.children.some(child => {
+          if (!child || !child.url) return false
+          const childUrl = normalizeMenuUrl(child.url)
+          return childUrl && currentPath.startsWith(childUrl)
+        })
+        if (isInSubmenu) {
+          foundInClosedSubmenu = true
+          console.log('載入菜單，額外檢查發現當前路由屬於被手動關閉的子菜單:', index)
+        }
+      }
+    })
+    
+    if (foundInClosedSubmenu) {
+      console.log('載入菜單，額外檢查確認，跳過自動展開')
+      return
+    }
+    
     // 加載菜單後，檢查是否需要自動展開（只有在不是用戶手動操作且不是剛剛從子菜單導航的情況下）
+    // 並且跳過被手動關閉的子菜單
+    console.log('準備檢查是否自動展開，isUserClicking:', isUserClicking, 'justNavigatedFromSubmenu:', justNavigatedFromSubmenu)
     if (!isUserClicking && !justNavigatedFromSubmenu) {
       menus.value.forEach((menu, index) => {
-        if (isChildOfMenu(menu)) {
-          activeSubmenu.value = index
-          console.log('載入菜單後，自動展開子菜單:', index)
+        // 雙重檢查：確保不在 manuallyClosedSubmenus 中，並且是當前路由的子菜單
+        if (isChildOfMenu(menu) && !manuallyClosedSubmenus.has(index)) {
+          // 再次確認：如果這個索引在 manuallyClosedSubmenus 中，絕對不展開
+          if (!manuallyClosedSubmenus.has(index)) {
+            activeSubmenu.value = index
+            console.log('載入菜單後，自動展開子菜單:', index)
+          } else {
+            console.log('載入菜單後，跳過自動展開（子菜單在 manuallyClosedSubmenus 中）:', index)
+          }
         }
       })
     } else {
-      console.log('載入菜單，但跳過自動展開 - isUserClicking:', isUserClicking, 'justNavigatedFromSubmenu:', justNavigatedFromSubmenu)
+      console.log('載入菜單，但跳過自動展開 - isUserClicking:', isUserClicking, 'justNavigatedFromSubmenu:', justNavigatedFromSubmenu, 'manuallyClosedSubmenus:', Array.from(manuallyClosedSubmenus))
     }
   } catch (error) {
     console.error('載入菜單失敗:', error)
