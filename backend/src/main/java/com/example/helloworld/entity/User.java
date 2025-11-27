@@ -39,6 +39,9 @@ public class User {
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
 
+    @Column(name = "line_user_id", length = 50)
+    private String lineUserId; // LINE 用戶 ID，用於 LINE Bot 綁定
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
@@ -108,6 +111,9 @@ public class User {
 
     public Boolean getIsAccountNonLocked() { return isAccountNonLocked; }
     public void setIsAccountNonLocked(Boolean isAccountNonLocked) { this.isAccountNonLocked = isAccountNonLocked; }
+
+    public String getLineUserId() { return lineUserId; }
+    public void setLineUserId(String lineUserId) { this.lineUserId = lineUserId; }
 
     public Set<Role> getRoles() { return roles; }
     public void setRoles(Set<Role> roles) { this.roles = roles; }

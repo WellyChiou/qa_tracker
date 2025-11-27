@@ -41,12 +41,17 @@ export function useAuth() {
     }
   }
 
+  const getUser = () => {
+    return currentUser.value
+  }
+
   return {
     currentUser,
     isAuthenticated,
     checkAuth,
     login,
-    logout
+    logout,
+    getUser
   }
 }
 

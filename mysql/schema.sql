@@ -8,14 +8,21 @@ USE qa_tracker;
 -- 1. 使用者表（對應 Firestore users collection）
 CREATE TABLE IF NOT EXISTS users (
     uid VARCHAR(128) PRIMARY KEY COMMENT 'Firebase UID',
-    email VARCHAR(255) COMMENT '電子郵件',
+    email VARCHAR(255) UNIQUE COMMENT '電子郵件',
+    username VARCHAR(100) UNIQUE COMMENT '用戶名（用於登入）',
+    password VARCHAR(255) COMMENT '加密後的密碼',
     display_name VARCHAR(255) COMMENT '顯示名稱',
     photo_url TEXT COMMENT '頭像 URL',
-    provider_id VARCHAR(50) COMMENT '登入提供者',
+    provider_id VARCHAR(50) COMMENT '登入提供者（如 local, firebase, google 等）',
+    is_enabled BOOLEAN NOT NULL DEFAULT TRUE COMMENT '帳號是否啟用',
+    is_account_non_locked BOOLEAN NOT NULL DEFAULT TRUE COMMENT '帳號是否未鎖定',
     last_login_at DATETIME COMMENT '最後登入時間',
+    line_user_id VARCHAR(50) UNIQUE COMMENT 'LINE 用戶 ID，用於 LINE Bot 綁定',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '建立時間',
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新時間',
-    INDEX idx_email (email)
+    INDEX idx_email (email),
+    INDEX idx_username (username),
+    INDEX idx_line_user_id (line_user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='使用者表';
 
 -- 2. 記錄表（對應 Firestore records collection）

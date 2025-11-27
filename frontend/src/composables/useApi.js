@@ -266,6 +266,31 @@ class ApiService {
     })
   }
 
+  // LINE Bot API
+  async getUserLineStatus(uid) {
+    return this.request(`/users/${uid}/line-status`)
+  }
+
+  async bindUserLineAccount(uid, lineUserId) {
+    return this.request(`/users/${uid}/bind-line`, {
+      method: 'POST',
+      body: JSON.stringify({ lineUserId })
+    })
+  }
+
+  async unbindUserLineAccount(uid) {
+    return this.request(`/users/${uid}/unbind-line`, {
+      method: 'POST'
+    })
+  }
+
+  async sendLineTestMessage(userId, message) {
+    return this.request('/line/test/push', {
+      method: 'POST',
+      params: { userId, message }
+    })
+  }
+
   // Admin - Roles API
   async getRoles() {
     return this.request('/roles')

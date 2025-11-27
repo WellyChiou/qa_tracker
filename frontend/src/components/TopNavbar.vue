@@ -45,14 +45,31 @@
       </div>
     </div>
     <div v-if="currentUser" class="user-info">
-      <span>{{ currentUser.displayName || currentUser.username || currentUser.email || '用戶' }}</span>
-      <button class="logout-btn" @click="handleLogout">登出</button>
+      <div class="user-menu-wrapper">
+        <button class="user-name-btn" @click="toggleUserMenu">
+          <i class="fas fa-user-circle me-1"></i>
+          {{ currentUser.displayName || currentUser.username || currentUser.email || '用戶' }}
+          <i class="fas fa-chevron-down ms-1" :class="{ 'rotate': showUserMenu }"></i>
+        </button>
+
+        <div v-if="showUserMenu" class="user-menu">
+          <router-link to="/profile" class="user-menu-item" @click="closeUserMenu">
+            <i class="fas fa-user-cog me-2"></i>
+            個人資料設定
+          </router-link>
+          <hr class="user-menu-divider">
+          <button class="user-menu-item logout-btn" @click="handleLogout">
+            <i class="fas fa-sign-out-alt me-2"></i>
+            登出
+          </button>
+        </div>
+      </div>
     </div>
   </nav>
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed, Transition } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed, Transition } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 import { apiService } from '@/composables/useApi'
@@ -84,6 +101,15 @@ const { currentUser, logout: authLogout } = useAuth()
 
 const menus = ref([])
 const activeSubmenu = ref(null)
+const showUserMenu = ref(false)
+
+// 點擊外部關閉用戶選單
+const handleClickOutside = (event) => {
+  const userMenuWrapper = event.target.closest('.user-menu-wrapper')
+  if (!userMenuWrapper && showUserMenu.value) {
+    showUserMenu.value = false
+  }
+}
 
 // 正規化菜單 URL：移除 .html 後綴，轉換為 Vue Router 路徑
 const normalizeMenuUrl = (url) => {
@@ -222,7 +248,16 @@ const handleSubmenuClick = (menuIndex, event) => {
   }, 2000) // 2秒後重置標記
 }
 
+const toggleUserMenu = () => {
+  showUserMenu.value = !showUserMenu.value
+}
+
+const closeUserMenu = () => {
+  showUserMenu.value = false
+}
+
 const handleLogout = async () => {
+  closeUserMenu()
   await authLogout()
   router.push('/login')
 }
@@ -301,6 +336,11 @@ const loadMenus = async () => {
 
 onMounted(async () => {
   await loadMenus()
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
 })
 </script>
 
@@ -495,9 +535,15 @@ a.submenu-item {
   gap: 1rem;
 }
 
-.logout-btn {
-  padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, rgba(220, 53, 69, 0.9) 0%, rgba(185, 28, 28, 0.9) 100%);
+.user-menu-wrapper {
+  position: relative;
+}
+
+.user-name-btn {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: var(--border-radius);
   color: white;
@@ -509,10 +555,71 @@ a.submenu-item {
   backdrop-filter: blur(10px);
 }
 
-.logout-btn:hover {
-  background: linear-gradient(135deg, rgba(220, 53, 69, 1) 0%, rgba(185, 28, 28, 1) 100%);
-  transform: translateY(-2px);
+.user-name-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
   box-shadow: var(--shadow-lg);
+}
+
+.user-name-btn .rotate {
+  transform: rotate(180deg);
+}
+
+.user-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  min-width: 200px;
+  background: white;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  margin-top: 0.5rem;
+  overflow: hidden;
+}
+
+.user-menu-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  color: #495057;
+  text-decoration: none;
+  transition: var(--transition);
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.user-menu-item:hover {
+  background: #f8f9fa;
+  color: #212529;
+}
+
+.user-menu-item.router-link-active {
+  background: rgba(102, 126, 234, 0.1);
+  color: #667eea;
+  font-weight: 600;
+}
+
+.user-menu-divider {
+  margin: 0.25rem 0;
+  border: 0;
+  border-top: 1px solid #e9ecef;
+}
+
+.logout-btn {
+  background: none;
+  border: none;
+  color: #dc3545;
+  font-weight: 500;
+}
+
+.logout-btn:hover {
+  background: #f8d7da;
+  color: #b02a37;
 }
 </style>
 
