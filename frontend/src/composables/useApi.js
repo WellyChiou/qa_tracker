@@ -125,6 +125,14 @@ class ApiService {
     return this.request('/records/stats/in-progress', { showLoading: false })
   }
 
+  async getTotalRecordCount(year = new Date().getFullYear(), showLoading = true) {
+    return this.request(`/records/stats/total?year=${year}`, { showLoading })
+  }
+
+  async getYearlyStats(year = new Date().getFullYear(), showLoading = true) {
+    return this.request(`/records/stats/yearly?year=${year}`, { showLoading })
+  }
+
   // Expenses API
   async getExpenses(params = {}) {
     const queryParams = new URLSearchParams()

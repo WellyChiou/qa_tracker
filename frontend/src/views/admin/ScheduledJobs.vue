@@ -57,7 +57,7 @@
                   查看記錄
                 </button>
               </div>
-              <span v-else style="color: #94a3b8;">-</span>
+              <span v-else style="color: #94a3b8;">未執行</span>
             </td>
             <td class="actions">
               <button class="btn-sm btn-execute" @click="executeJob(job.id)" :disabled="executingJobId === job.id">
@@ -217,10 +217,15 @@ const loadLatestExecution = async (jobId) => {
       if (execution.status === 'RUNNING' || execution.status === 'PENDING') {
         startPolling(jobId)
       }
+    } else {
+      // 沒有執行記錄，設置為 null
+      jobExecutions.value[jobId] = null
     }
   } catch (error) {
-    // 如果沒有執行記錄，忽略錯誤
-    if (error.message && !error.message.includes('404')) {
+    // 如果是 404 錯誤（沒有執行記錄），這是正常的
+    if (error.message && (error.message.includes('404') || error.message.includes('Not Found'))) {
+      jobExecutions.value[jobId] = null
+    } else {
       console.error('載入執行狀態失敗:', error)
     }
   }
@@ -242,9 +247,17 @@ const startPolling = (jobId) => {
         if (execution.status === 'SUCCESS' || execution.status === 'FAILED') {
           stopPolling(jobId)
         }
+      } else {
+        jobExecutions.value[jobId] = null
       }
     } catch (error) {
-      console.error('輪詢執行狀態失敗:', error)
+      // 如果是 404 錯誤，停止輪詢
+      if (error.message && (error.message.includes('404') || error.message.includes('Not Found'))) {
+        jobExecutions.value[jobId] = null
+        stopPolling(jobId)
+      } else {
+        console.error('輪詢執行狀態失敗:', error)
+      }
     }
   }, 2000)
 }

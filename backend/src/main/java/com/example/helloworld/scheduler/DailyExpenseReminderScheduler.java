@@ -30,9 +30,8 @@ public class DailyExpenseReminderScheduler {
 
     /**
      * 每日費用記錄提醒任務
-     * 每天晚上 8 點檢查用戶是否已記錄今日費用
+     * 通過動態排程器系統調度執行
      */
-    @Scheduled(cron = "${line.bot.daily-reminder-cron:0 0 20 * * ?}")
     public void sendDailyExpenseReminder() {
         if (!lineBotConfig.isDailyReminderEnabled()) {
             System.out.println("⏰ 每日費用提醒功能已關閉");
@@ -105,10 +104,15 @@ public class DailyExpenseReminderScheduler {
     private void sendExpenseReminder(User user) {
         String message = String.format(
             "💰 提醒：%s，您今天還沒有記錄任何費用哦！\n\n" +
-            "📝 您可以直接在 LINE 中輸入：\n" +
-            "支出 餐費 150 午餐\n" +
-            "收入 薪水 50000\n\n" +
-            "或者登入網頁應用來記錄詳細的費用。",
+            "📝 記錄格式：\n" +
+            "支出 [細項] [金額] [備註]     ← 推薦\n" +
+            "支出 [主類別] [細項] [金額] [備註]  ← 完整格式\n\n" +
+            "💡 範例：\n" +
+            "• 支出 外食 150 早餐     ← 系統自動識別為「食 > 外食」\n" +
+            "• 支出 行 交通費 50 公車  ← 完整指定類別\n" +
+            "• 收入 本薪 50000 月薪\n\n" +
+            "📊 智慧辨識：直接輸入細項，系統會自動找到對應的主類別！\n\n" +
+            "🔍 輸入「幫助」查看所有支援的細項。",
             user.getDisplayName() != null ? user.getDisplayName() : user.getUsername()
         );
 
@@ -117,9 +121,8 @@ public class DailyExpenseReminderScheduler {
 
     /**
      * 每日費用統計報告任務
-     * 每天晚上 9 點發送今日費用統計給用戶
+     * 通過動態排程器系統調度執行
      */
-    @Scheduled(cron = "0 0 21 * * ?")
     public void sendDailyExpenseReport() {
         if (!lineBotConfig.isDailyReminderEnabled()) {
             return;
@@ -160,20 +163,21 @@ public class DailyExpenseReminderScheduler {
      */
     private String generateDailyExpenseReport(User user, LocalDate date) {
         try {
-            List<Expense> todayExpenses = expenseService.getAllExpenses(
-                date.getYear(),
-                date.getMonthValue(),
-                user.getDisplayName() != null ? user.getDisplayName() : user.getUsername(),
-                null, null
-            );
+            // 根據用戶的 UID 查詢該用戶創建的所有費用記錄
+            List<Expense> allUserExpenses = expenseService.getExpensesByUserUid(user.getUid());
 
-            // 過濾今日費用
-            List<Expense> todaysRecords = todayExpenses.stream()
+            // 過濾出今日的記錄
+            List<Expense> todaysRecords = allUserExpenses.stream()
                 .filter(expense -> expense.getDate().equals(date))
                 .toList();
 
             if (todaysRecords.isEmpty()) {
-                return null; // 沒有記錄，不發送報告
+                // 沒有記錄時也發送一個提示訊息（用於手動測試）
+                return String.format("📊 %s 的今日費用統計\n\n" +
+                                   "💭 今日尚無費用記錄\n\n" +
+                                   "💡 您可以：\n" +
+                                   "• 在 LINE 中輸入費用記錄\n" +
+                                   "• 登入網頁應用記錄詳細費用", date.toString());
             }
 
             // 計算統計
@@ -220,6 +224,52 @@ public class DailyExpenseReminderScheduler {
         } catch (Exception e) {
             System.err.println("❌ 生成費用統計報告時發生錯誤: " + e.getMessage());
             return null;
+        }
+    }
+
+    /**
+     * 獲取每日費用提醒任務執行器
+     */
+    public Runnable getDailyExpenseReminderJob() {
+        return new DailyExpenseReminderJob(this);
+    }
+
+    /**
+     * 獲取每日費用統計報告任務執行器
+     */
+    public Runnable getDailyExpenseReportJob() {
+        return new DailyExpenseReportJob(this);
+    }
+
+    /**
+     * 每日費用提醒任務執行器
+     */
+    public static class DailyExpenseReminderJob implements Runnable {
+        private final DailyExpenseReminderScheduler scheduler;
+
+        public DailyExpenseReminderJob(DailyExpenseReminderScheduler scheduler) {
+            this.scheduler = scheduler;
+        }
+
+        @Override
+        public void run() {
+            scheduler.sendDailyExpenseReminder();
+        }
+    }
+
+    /**
+     * 每日費用統計報告任務執行器
+     */
+    public static class DailyExpenseReportJob implements Runnable {
+        private final DailyExpenseReminderScheduler scheduler;
+
+        public DailyExpenseReportJob(DailyExpenseReminderScheduler scheduler) {
+            this.scheduler = scheduler;
+        }
+
+        @Override
+        public void run() {
+            scheduler.sendDailyExpenseReport();
         }
     }
 }

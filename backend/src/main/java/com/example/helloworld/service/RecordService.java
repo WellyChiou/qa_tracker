@@ -1,12 +1,16 @@
 package com.example.helloworld.service;
 
 import com.example.helloworld.entity.Record;
+import com.example.helloworld.entity.User;
 import com.example.helloworld.repository.RecordRepository;
+import com.example.helloworld.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +23,9 @@ public class RecordService {
     
     @Autowired
     private RecordRepository recordRepository;
+
+    @Autowired
+    private UserRepository userRepository;
     
     // 取得所有記錄
     public List<Record> getAllRecords() {
@@ -33,6 +40,13 @@ public class RecordService {
     // 建立記錄
     @Transactional
     public Record createRecord(Record record) {
+        // 設置用戶 ID
+        String currentUserUid = getCurrentUserUid();
+        if (record.getCreatedByUid() == null) {
+            record.setCreatedByUid(currentUserUid);
+        }
+        record.setUpdatedByUid(currentUserUid);
+
         return recordRepository.save(record);
     }
     
@@ -41,7 +55,7 @@ public class RecordService {
     public Record updateRecord(Long id, Record record) {
         Record existingRecord = recordRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Record not found with id: " + id));
-        
+
         // 更新欄位
         if (record.getIssueNumber() != null) existingRecord.setIssueNumber(record.getIssueNumber());
         if (record.getIssueLink() != null) existingRecord.setIssueLink(record.getIssueLink());
@@ -58,8 +72,10 @@ public class RecordService {
         if (record.getTestStartDate() != null) existingRecord.setTestStartDate(record.getTestStartDate());
         if (record.getEtaDate() != null) existingRecord.setEtaDate(record.getEtaDate());
         if (record.getCompletedAt() != null) existingRecord.setCompletedAt(record.getCompletedAt());
-        if (record.getUpdatedByUid() != null) existingRecord.setUpdatedByUid(record.getUpdatedByUid());
-        
+
+        // 設置更新用戶 ID
+        existingRecord.setUpdatedByUid(getCurrentUserUid());
+
         return recordRepository.save(existingRecord);
     }
     
@@ -121,6 +137,16 @@ public class RecordService {
     public long countInProgress() {
         return recordRepository.countByStatus(1);
     }
+
+    // 統計指定年份的執行中筆數
+    public long countInProgressByYear(int year) {
+        return recordRepository.countByTestStartDateYearAndStatus(year, 1);
+    }
+
+    // 統計指定年份的已完成筆數
+    public long countCompletedByYear(int year) {
+        return recordRepository.countByTestStartDateYearAndStatus(year, 2);
+    }
     
     // 統計符合查詢條件的記錄中各種狀態的數量
     public long countBySearchConditionsAndStatus(
@@ -140,6 +166,27 @@ public class RecordService {
             status, category, testPlan, bugFound, issueNumber, keyword,
             testStartDateFrom, testStartDateTo, etaDateFrom, etaDateTo, targetStatus
         );
+    }
+
+    // 統計指定年份的總記錄數
+    public long countTotalRecordsByYear(int year) {
+        return recordRepository.countByTestStartDateYear(year);
+    }
+
+    /**
+     * 獲取當前登入用戶的 UID
+     */
+    private String getCurrentUserUid() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated() &&
+            !authentication.getPrincipal().equals("anonymousUser")) {
+            String username = authentication.getName();
+            // 根據 username 查找對應的 uid
+            return userRepository.findByUsername(username)
+                    .map(User::getUid)
+                    .orElse(null);
+        }
+        return null;
     }
 }
 

@@ -34,7 +34,7 @@ public interface RecordRepository extends JpaRepository<Record, Long> {
            "(:testPlan IS NULL OR r.testPlan = :testPlan) AND " +
            "(:bugFound IS NULL OR r.bugFound = :bugFound) AND " +
            "(:issueNumber IS NULL OR r.issueNumber = :issueNumber) AND " +
-           "(:keyword IS NULL OR r.feature LIKE CONCAT('%', :keyword, '%') OR r.memo LIKE CONCAT('%', :keyword, '%')) AND " +
+           "(:keyword IS NULL OR r.feature LIKE CONCAT('%', :keyword, '%') OR r.memo LIKE CONCAT('%', :keyword, '%') OR CAST(r.issueNumber AS string) LIKE CONCAT('%', :keyword, '%')) AND " +
            "(:testStartDateFrom IS NULL OR r.testStartDate >= :testStartDateFrom) AND " +
            "(:testStartDateTo IS NULL OR r.testStartDate <= :testStartDateTo) AND " +
            "(:etaDateFrom IS NULL OR r.etaDate >= :etaDateFrom) AND " +
@@ -55,6 +55,14 @@ public interface RecordRepository extends JpaRepository<Record, Long> {
     
     // 統計執行中筆數
     long countByStatus(Integer status);
+
+    // 統計指定年份的總記錄數（開始測試日期）
+    @Query("SELECT COUNT(r) FROM Record r WHERE YEAR(r.testStartDate) = :year")
+    long countByTestStartDateYear(@Param("year") int year);
+
+    // 統計指定年份和狀態的記錄數
+    @Query("SELECT COUNT(r) FROM Record r WHERE YEAR(r.testStartDate) = :year AND r.status = :status")
+    long countByTestStartDateYearAndStatus(@Param("year") int year, @Param("status") int status);
     
     // 統計符合查詢條件的記錄中各種狀態的數量
     @Query("SELECT COUNT(r) FROM Record r WHERE " +
@@ -63,7 +71,7 @@ public interface RecordRepository extends JpaRepository<Record, Long> {
            "(:testPlan IS NULL OR r.testPlan = :testPlan) AND " +
            "(:bugFound IS NULL OR r.bugFound = :bugFound) AND " +
            "(:issueNumber IS NULL OR r.issueNumber = :issueNumber) AND " +
-           "(:keyword IS NULL OR r.feature LIKE CONCAT('%', :keyword, '%') OR r.memo LIKE CONCAT('%', :keyword, '%')) AND " +
+           "(:keyword IS NULL OR r.feature LIKE CONCAT('%', :keyword, '%') OR r.memo LIKE CONCAT('%', :keyword, '%') OR CAST(r.issueNumber AS string) LIKE CONCAT('%', :keyword, '%')) AND " +
            "(:testStartDateFrom IS NULL OR r.testStartDate >= :testStartDateFrom) AND " +
            "(:testStartDateTo IS NULL OR r.testStartDate <= :testStartDateTo) AND " +
            "(:etaDateFrom IS NULL OR r.etaDate >= :etaDateFrom) AND " +

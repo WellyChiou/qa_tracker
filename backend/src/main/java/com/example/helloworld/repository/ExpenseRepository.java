@@ -19,8 +19,11 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long> {
     Page<Expense> findByDateBetween(LocalDate startDate, LocalDate endDate, Pageable pageable);
     
     List<Expense> findByDateBetween(LocalDate startDate, LocalDate endDate);
-    
+
+    List<Expense> findByCreatedByUid(String createdByUid);
+
     @Query("SELECT e FROM Expense e WHERE " +
+           "(:filterByUser = false OR e.createdByUid = :currentUserUid) AND " +
            "(:year IS NULL OR YEAR(e.date) = :year) AND " +
            "(:month IS NULL OR MONTH(e.date) = :month) AND " +
            "(:member IS NULL OR e.member = :member) AND " +
@@ -28,6 +31,8 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long> {
            "(:mainCategory IS NULL OR e.mainCategory = :mainCategory) " +
            "ORDER BY e.date DESC, e.createdAt DESC")
     Page<Expense> findByFilters(
+        @Param("currentUserUid") String currentUserUid,
+        @Param("filterByUser") boolean filterByUser,
         @Param("year") Integer year,
         @Param("month") Integer month,
         @Param("member") String member,
@@ -35,8 +40,9 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long> {
         @Param("mainCategory") String mainCategory,
         Pageable pageable
     );
-    
+
     @Query("SELECT e FROM Expense e WHERE " +
+           "(:filterByUser = false OR e.createdByUid = :currentUserUid) AND " +
            "(:year IS NULL OR YEAR(e.date) = :year) AND " +
            "(:month IS NULL OR MONTH(e.date) = :month) AND " +
            "(:member IS NULL OR e.member = :member) AND " +
@@ -44,6 +50,8 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long> {
            "(:mainCategory IS NULL OR e.mainCategory = :mainCategory) " +
            "ORDER BY e.date DESC, e.createdAt DESC")
     List<Expense> findByFiltersList(
+        @Param("currentUserUid") String currentUserUid,
+        @Param("filterByUser") boolean filterByUser,
         @Param("year") Integer year,
         @Param("month") Integer month,
         @Param("member") String member,

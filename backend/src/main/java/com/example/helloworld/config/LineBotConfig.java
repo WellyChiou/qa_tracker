@@ -48,4 +48,24 @@ public class LineBotConfig {
     public String getAdminUserId() {
         return adminUserId;
     }
+
+    /**
+     * 獲取每日提醒的 Cron 表達式
+     * 如果設定了具體時間，則轉換為對應的 Cron；否則使用預設值
+     */
+    public String getDailyReminderCron() {
+        if (dailyReminderTime != null && !dailyReminderTime.trim().isEmpty()) {
+            // 將 HH:MM 格式轉換為 Cron 表達式
+            try {
+                String[] parts = dailyReminderTime.split(":");
+                int hour = Integer.parseInt(parts[0]);
+                int minute = Integer.parseInt(parts[1]);
+                return String.format("0 %d %d * * ?", minute, hour);
+            } catch (Exception e) {
+                // 如果解析失敗，使用預設值
+                return "0 0 20 * * ?";
+            }
+        }
+        return "0 0 20 * * ?";
+    }
 }

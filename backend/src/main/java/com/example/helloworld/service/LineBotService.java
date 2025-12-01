@@ -19,6 +19,7 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -37,7 +38,7 @@ public class LineBotService {
     private UserRepository userRepository;
 
     private static final Pattern EXPENSE_PATTERN = Pattern.compile(
-        "(支出|收入)\\s*[:：]?\\s*([^\\d]+)\\s*(\\d+(?:\\.\\d{1,2})?)\\s*(.*)",
+        "(支出|收入)\\s+([^\\d\\s]+)(?:\\s+([^\\d\\s]+))?\\s+(\\d+(?:\\.\\d{1,2})?)(?:\\s+(.*))?",
         Pattern.CASE_INSENSITIVE
     );
 
@@ -114,12 +115,44 @@ public class LineBotService {
     private String processExpenseMessage(Matcher matcher, User user) {
         try {
             String type = matcher.group(1); // 支出或收入
-            String category = matcher.group(2).trim(); // 類別
-            String amountStr = matcher.group(3); // 金額
-            String description = matcher.group(4).trim(); // 描述
+            String firstPart = matcher.group(2).trim(); // 第一個分類詞彙
+            String secondPart = matcher.group(3); // 第二個分類詞彙（可選）
+            String amountStr = matcher.group(4); // 金額
+            String description = matcher.group(5) != null ? matcher.group(5).trim() : ""; // 描述
 
             // 轉換為支出/收入類型
             String expenseType = "支出".equals(type) ? "支出" : "收入";
+
+            String mainCategory;
+            String subCategory;
+
+            // 解析分類邏輯
+            if (secondPart != null && !secondPart.trim().isEmpty()) {
+                // 有兩個分類詞彙：第一個是主類別，第二個是細項
+                mainCategory = firstPart;
+                subCategory = secondPart.trim();
+
+                // 驗證主類別和細項組合
+                if (!isValidCategory(expenseType, mainCategory, subCategory)) {
+                    return String.format("❌ 無效的類別組合：%s > %s\n\n請輸入「幫助」查看支援的類別和細項。",
+                        mainCategory, subCategory);
+                }
+            } else {
+                // 只有一個分類詞彙，假設它是細項，嘗試推斷主類別
+                subCategory = firstPart;
+                mainCategory = inferMainCategoryFromSubCategory(expenseType, subCategory);
+
+                if (mainCategory == null) {
+                    return String.format("❌ 無法識別的細項：%s\n\n請輸入「幫助」查看支援的細項，或使用完整格式：%s [主類別] %s [金額]",
+                        subCategory, type, subCategory);
+                }
+
+                // 雙重驗證：確保推斷出的組合是有效的
+                if (!isValidCategory(expenseType, mainCategory, subCategory)) {
+                    return String.format("❌ 系統錯誤：推斷的類別組合無效\n\n請使用完整格式：%s [主類別] %s [金額]",
+                        type, subCategory);
+                }
+            }
 
             // 解析金額
             BigDecimal amount = new BigDecimal(amountStr);
@@ -129,7 +162,8 @@ public class LineBotService {
             expense.setDate(LocalDate.now());
             expense.setMember(user.getDisplayName() != null ? user.getDisplayName() : user.getUsername());
             expense.setType(expenseType);
-            expense.setMainCategory(category);
+            expense.setMainCategory(mainCategory);
+            expense.setSubCategory(subCategory);
             expense.setAmount(amount);
             expense.setCurrency("TWD");
             expense.setDescription(description);
@@ -138,11 +172,12 @@ public class LineBotService {
 
             Expense saved = expenseService.saveExpense(expense);
 
-            return String.format("✅ 已記錄：%s %s %.2f 元\n類別：%s\n%s",
+            return String.format("✅ 已記錄：%s %s %.2f 元\n類別：%s > %s\n%s",
                 saved.getDate().toString(),
                 expenseType,
                 saved.getAmount(),
-                category,
+                mainCategory,
+                subCategory,
                 description.isEmpty() ? "" : "描述：" + description
             );
 
@@ -258,19 +293,92 @@ public class LineBotService {
                "綁定成功後，您就可以記錄費用了！";
     }
 
+
+    /**
+     * 從細項推斷主類別
+     */
+    private String inferMainCategoryFromSubCategory(String expenseType, String subCategory) {
+        // 定義細項到主類別的映射
+        Map<String, String> subToMainExpense = Map.ofEntries(
+            Map.entry("外食", "食"), Map.entry("食材", "食"), Map.entry("飲料", "食"), Map.entry("零食", "食"),
+            Map.entry("服飾", "衣"), Map.entry("鞋子", "衣"), Map.entry("配件", "衣"), Map.entry("美容", "衣"),
+            Map.entry("房貸", "住"), Map.entry("租金", "住"), Map.entry("水電瓦斯", "住"), Map.entry("居家用品", "住"),
+            Map.entry("家具家電", "住"), Map.entry("裝潢修繕", "住"), Map.entry("網路費", "住"), Map.entry("通訊", "住"),
+            Map.entry("交通費", "行"), Map.entry("油費", "行"), Map.entry("停車費", "行"), Map.entry("大眾運輸", "行"),
+            Map.entry("交通工具保養", "行"),
+            Map.entry("學費", "育"), Map.entry("書籍", "育"), Map.entry("進修", "育"), Map.entry("文具", "育"),
+            Map.entry("娛樂", "樂"), Map.entry("旅遊", "樂"), Map.entry("運動", "樂"), Map.entry("社交", "樂"),
+            Map.entry("診療", "醫療"), Map.entry("藥品", "醫療"), Map.entry("健檢", "醫療"), Map.entry("醫療用品", "醫療"),
+            Map.entry("投資", "其他支出"), Map.entry("教會奉獻", "其他支出"), Map.entry("保險", "其他支出"),
+            Map.entry("稅務", "其他支出")
+        );
+
+        Map<String, String> subToMainIncome = Map.ofEntries(
+            Map.entry("本薪", "薪資"), Map.entry("獎金", "薪資"), Map.entry("兼職", "薪資"),
+            Map.entry("股票", "投資"), Map.entry("基金", "投資"), Map.entry("債券", "投資"), Map.entry("加密貨幣", "投資")
+        );
+
+        Map<String, String> subToMainMap = "支出".equals(expenseType) ? subToMainExpense : subToMainIncome;
+        return subToMainMap.get(subCategory);
+    }
+
+    /**
+     * 驗證類別和細項的有效性
+     */
+    private boolean isValidCategory(String expenseType, String mainCategory, String subCategory) {
+        // 定義有效的類別組合
+        Map<String, Set<String>> expenseCategories = Map.of(
+            "食", Set.of("外食", "食材", "飲料", "零食", "其他"),
+            "衣", Set.of("服飾", "鞋子", "配件", "美容", "其他"),
+            "住", Set.of("房貸", "租金", "水電瓦斯", "居家用品", "家具家電", "裝潢修繕", "網路費", "通訊", "其他"),
+            "行", Set.of("交通費", "油費", "停車費", "大眾運輸", "交通工具保養", "其他"),
+            "育", Set.of("學費", "書籍", "進修", "文具", "其他"),
+            "樂", Set.of("娛樂", "旅遊", "運動", "社交", "其他"),
+            "醫療", Set.of("診療", "藥品", "健檢", "醫療用品", "其他"),
+            "其他支出", Set.of("投資", "教會奉獻", "保險", "稅務", "其他")
+        );
+
+        Map<String, Set<String>> incomeCategories = Map.of(
+            "薪資", Set.of("本薪", "獎金", "兼職", "其他"),
+            "投資", Set.of("股票", "基金", "債券", "加密貨幣", "其他")
+        );
+
+        Map<String, Set<String>> categoryMap = "支出".equals(expenseType) ? expenseCategories : incomeCategories;
+        Set<String> validSubCategories = categoryMap.get(mainCategory);
+
+        return validSubCategories != null && validSubCategories.contains(subCategory);
+    }
+
     /**
      * 獲取幫助訊息
      */
     private String getHelpMessage() {
         return "💡 費用記錄 LINE Bot 使用說明：\n\n" +
-               "📝 記錄費用：\n" +
-               "支出 餐費 150 午餐\n" +
-               "收入 薪水 50000\n\n" +
-               "📊 查詢指令：\n" +
-               "狀態 - 查看今日費用總計\n" +
-               "今天 - 查看今日所有費用\n\n" +
+               "📝 記錄格式：\n" +
+               "支出 [細項] [金額] [備註]     ← 推薦\n" +
+               "支出 [主類別] [細項] [金額] [備註]  ← 完整格式\n\n" +
+               "📊 支援的細項（系統會自動辨識主類別）：\n" +
+               "🏠 支出：\n" +
+               "• 食：外食、食材、飲料、零食\n" +
+               "• 衣：服飾、鞋子、配件、美容\n" +
+               "• 住：房貸、租金、水電瓦斯、網路費、通訊\n" +
+               "• 行：交通費、油費、停車費、大眾運輸\n" +
+               "• 育：學費、書籍、文具\n" +
+               "• 樂：娛樂、旅遊、運動、社交\n" +
+               "• 醫療：診療、藥品、健檢\n" +
+               "• 其他：投資、保險、稅務\n\n" +
+               "💼 收入：\n" +
+               "• 薪資：本薪、獎金、兼職\n" +
+               "• 投資：股票、基金、債券\n\n" +
+               "💡 智慧範例：\n" +
+               "• 支出 外食 150 早餐     ← 自動識別為「食 > 外食」\n" +
+               "• 支出 交通費 50 公車     ← 自動識別為「行 > 交通費」\n" +
+               "• 收入 本薪 50000 月薪    ← 自動識別為「薪資 > 本薪」\n\n" +
+               "📈 查詢指令：\n" +
+               "• 狀態 - 查看今日費用總計\n" +
+               "• 今天 - 查看今日所有費用\n\n" +
                "❓ 其他：\n" +
-               "幫助 - 顯示此說明";
+               "• 幫助 - 顯示此說明";
     }
 
     /**

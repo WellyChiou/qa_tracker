@@ -138,5 +138,30 @@ public class RecordController {
         response.put("count", count);
         return ResponseEntity.ok(response);
     }
+
+    // 統計總記錄數（按年份篩選）
+    @GetMapping("/stats/total")
+    public ResponseEntity<Map<String, Long>> getTotalRecordCount(@RequestParam(defaultValue = "#{T(java.time.LocalDate).now().getYear()}") int year) {
+        long count = recordService.countTotalRecordsByYear(year);
+        Map<String, Long> response = new HashMap<>();
+        response.put("count", count);
+        response.put("year", (long) year);
+        return ResponseEntity.ok(response);
+    }
+
+    // 統計年度執行中和已完成數量
+    @GetMapping("/stats/yearly")
+    public ResponseEntity<Map<String, Long>> getYearlyStats(@RequestParam(defaultValue = "#{T(java.time.LocalDate).now().getYear()}") int year) {
+        long totalCount = recordService.countTotalRecordsByYear(year);
+        long inProgressCount = recordService.countInProgressByYear(year);
+        long completedCount = recordService.countCompletedByYear(year);
+
+        Map<String, Long> response = new HashMap<>();
+        response.put("year", (long) year);
+        response.put("total", totalCount);
+        response.put("inProgress", inProgressCount);
+        response.put("completed", completedCount);
+        return ResponseEntity.ok(response);
+    }
 }
 

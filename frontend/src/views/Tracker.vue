@@ -5,10 +5,21 @@
       <div class="header-top">
         <h1>QA Tracker</h1>
       </div>
+
+      <!-- 年份選擇器 -->
+      <div class="year-filter">
+        <label class="year-filter-label">統計年份：</label>
+        <select v-model.number="selectedYear" @change="handleYearChange" class="year-filter-select">
+          <option v-for="year in [new Date().getFullYear() + 1, new Date().getFullYear(), new Date().getFullYear() - 1, new Date().getFullYear() - 2, new Date().getFullYear() - 3]" :key="year" :value="year">
+            {{ year }}年
+          </option>
+        </select>
+      </div>
+
       <div class="summary">
         <div class="summary-item">
           <span class="label">總記錄數</span>
-          <span class="amount">{{ totalRecords }}</span>
+          <span class="amount">{{ totalRecordsByYear }}</span>
         </div>
         <div class="summary-item">
           <span class="label">執行中</span>
@@ -498,6 +509,8 @@ import * as XLSX from 'xlsx'
 
 const records = ref([])
 const totalRecords = ref(0)
+const totalRecordsByYear = ref(0) // 新增：按年份篩選的總記錄數
+const selectedYear = ref(new Date().getFullYear()) // 新增：選擇的年份
 const totalPages = ref(0)
 const editingId = ref(null)
 const currentPage = ref(1)
@@ -621,6 +634,26 @@ const showNotification = (message, type = 'success') => {
   }, 3000)
 }
 
+// 載入年度統計（總記錄數、執行中、已完成）
+const loadYearlyStats = async (year = selectedYear.value, showLoading = true) => {
+  try {
+    const response = await apiService.getYearlyStats(year, showLoading)
+    totalRecordsByYear.value = response.total || 0
+    inProgressCount.value = response.inProgress || 0
+    completedCount.value = response.completed || 0
+  } catch (error) {
+    console.error('載入年度統計失敗:', error)
+    totalRecordsByYear.value = 0
+    inProgressCount.value = 0
+    completedCount.value = 0
+  }
+}
+
+// 年份選擇器變化處理
+const handleYearChange = async () => {
+  await loadYearlyStats(selectedYear.value)
+}
+
 const loadRecords = async () => {
   try {
     const params = {
@@ -665,16 +698,15 @@ const loadRecords = async () => {
     records.value = response.content || []
     totalRecords.value = response.totalElements || 0
     totalPages.value = response.totalPages || 1
-    
+
     // 更新統計信息（查詢結果中的狀態統計）
     if (response.stats) {
-      inProgressCount.value = response.stats.inProgress || 0
-      completedCount.value = response.stats.completed || 0
-    } else {
-      // 降級方案：從當前記錄計算
-      inProgressCount.value = records.value.filter(r => r.status === 1).length
-      completedCount.value = records.value.filter(r => r.status === 2).length
+      // 注意：這裡的統計是查詢結果的統計，不是年度統計
+      // 年度統計由 loadYearlyStats 單獨處理
     }
+
+    // 載入年度統計（總記錄數、執行中、已完成）
+    await loadYearlyStats(selectedYear.value, false)
   } catch (error) {
     console.error('載入記錄失敗:', error)
     showNotification('載入記錄失敗', 'error')
@@ -1400,6 +1432,11 @@ onUnmounted(() => {
   transition: var(--transition);
   position: relative;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
 }
 
 .summary-item::before {
@@ -1442,6 +1479,52 @@ onUnmounted(() => {
 .summary-item .amount.completed {
   color: #4ade80;
   text-shadow: 0 2px 10px rgba(74, 222, 128, 0.3);
+}
+
+.year-filter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 12px 20px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.year-filter-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin: 0;
+}
+
+.year-filter-select {
+  background: rgba(255, 255, 255, 0.95);
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1e293b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 100px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.year-filter-select:focus {
+  outline: none;
+  border-color: #818cf8;
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.2);
+  background: white;
+}
+
+.year-filter-select:hover {
+  border-color: #94a3b8;
+  background: white;
 }
 
 .main-content {
