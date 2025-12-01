@@ -1318,6 +1318,18 @@ watch(() => recordsPerPage.value, () => {
   loadRecords()
 })
 
+// 監聽狀態變化，自動設置完成日期
+watch(() => form.value.status, (newStatus, oldStatus) => {
+  // 當狀態改為完成(2)時，自動設置完成日期為當日
+  if (newStatus === 2 && (!form.value.completedAt || form.value.completedAt === '')) {
+    form.value.completedAt = new Date().toISOString().split('T')[0]
+  }
+  // 如果狀態從完成改為其他狀態，可以選擇清空完成日期（可選）
+  // else if (oldStatus === 2 && newStatus !== 2) {
+  //   form.value.completedAt = null
+  // }
+})
+
 
 const jumpToPage = () => {
   if (jumpPage.value >= 1 && jumpPage.value <= totalPages.value) {
