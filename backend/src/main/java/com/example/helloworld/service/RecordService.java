@@ -55,7 +55,7 @@ public class RecordService {
     public Record updateRecord(Long id, Record record) {
         Record existingRecord = recordRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Record not found with id: " + id));
-
+        
         // 更新欄位
         if (record.getIssueNumber() != null) existingRecord.setIssueNumber(record.getIssueNumber());
         if (record.getIssueLink() != null) existingRecord.setIssueLink(record.getIssueLink());
@@ -75,7 +75,7 @@ public class RecordService {
 
         // 設置更新用戶 ID
         existingRecord.setUpdatedByUid(getCurrentUserUid());
-
+        
         return recordRepository.save(existingRecord);
     }
     

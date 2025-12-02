@@ -9,8 +9,20 @@
       <div class="picker-container" @click.stop>
         <div class="picker-header">
           <button @click="prevMonth" class="nav-btn">‹</button>
-          <span class="month-year">{{ currentMonthYear }}</span>
+          <span class="month-year" @click="showYearPicker = !showYearPicker">{{ currentMonthYear }}</span>
           <button @click="nextMonth" class="nav-btn">›</button>
+        </div>
+        <div v-if="showYearPicker" class="year-picker">
+          <div class="year-grid">
+            <button
+              v-for="year in years"
+              :key="year"
+              @click="selectYear(year)"
+              :class="['year-btn', { 'active': year === currentYear }]"
+            >
+              {{ year }}
+            </button>
+          </div>
         </div>
         <div class="picker-body">
           <div class="calendar-wrapper">
@@ -65,11 +77,22 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 
 const showPicker = ref(false)
+const showYearPicker = ref(false)
 const currentMonth = ref(new Date().getMonth())
 const currentYear = ref(new Date().getFullYear())
 const selectedDates = ref([...props.modelValue]) // [start, end]
 
 const dayNames = ['日', '一', '二', '三', '四', '五', '六']
+const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
+
+const years = computed(() => {
+  const currentYear = new Date().getFullYear()
+  const years = []
+  for (let i = currentYear - 10; i <= currentYear + 10; i++) {
+    years.push(i)
+  }
+  return years
+})
 
 const daysInMonth = computed(() => {
   const date = new Date(currentYear.value, currentMonth.value, 1)
@@ -180,6 +203,7 @@ const togglePicker = () => {
   if (showPicker.value) {
     // 打開時，重置為當前的 modelValue（恢復原值）
     selectedDates.value = [...props.modelValue]
+    showYearPicker.value = false // 關閉年份選擇器
     // 如果有已選擇的日期，顯示對應的月份
     if (props.modelValue.length > 0 && props.modelValue[0]) {
       const date = new Date(props.modelValue[0])
@@ -189,11 +213,20 @@ const togglePicker = () => {
   } else {
     // 關閉時，如果沒有點擊"確定"，恢復原值
     selectedDates.value = [...props.modelValue]
+    showYearPicker.value = false // 關閉年份選擇器
   }
 }
 
 const closePicker = () => {
   showPicker.value = false
+}
+
+const yearChanged = () => {
+  // 年份改變時保持當前月份
+}
+
+const monthChanged = () => {
+  // 月份改變時保持當前年份
 }
 
 const prevMonth = () => {
@@ -212,6 +245,11 @@ const nextMonth = () => {
   } else {
     currentMonth.value++
   }
+}
+
+const selectYear = (year) => {
+  currentYear.value = year
+  showYearPicker.value = false
 }
 
 // 監聽外部值變化
@@ -234,35 +272,29 @@ watch(() => props.modelValue, (newVal) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
-  border: 2px solid #cbd5e1;
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  border: 1.5px solid #cbd5e1;
   border-radius: 0.75rem;
   background: white;
   color: #1e293b;
   cursor: pointer;
   transition: all 0.2s ease;
-  min-height: 45px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-sizing: border-box;
 }
 
 .date-range-input:hover {
-  border-color: #818cf8;
-  box-shadow: 0 0 0 3px rgba(79, 70, 234, 0.1);
+  border-color: #94a3b8;
 }
 
 .date-range-input:focus-within {
   border-color: #818cf8;
-  box-shadow: 0 0 0 3px rgba(79, 70, 234, 0.15);
-}
-
-.date-range-input:hover {
-  border-color: rgba(255, 255, 255, 0.4);
-  background: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
 }
 
 .date-text {
   flex: 1;
-  font-size: 15px;
+  font-size: 0.875rem;
   font-weight: 500;
   color: #1e293b;
 }
@@ -270,7 +302,7 @@ watch(() => props.modelValue, (newVal) => {
 .placeholder {
   flex: 1;
   color: #94a3b8;
-  font-size: 15px;
+  font-size: 0.875rem;
 }
 
 .calendar-icon {
@@ -341,6 +373,53 @@ watch(() => props.modelValue, (newVal) => {
   font-size: 1.1rem;
   font-weight: 600;
   color: var(--text-primary);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.month-year:hover {
+  background-color: rgba(102, 126, 234, 0.1);
+}
+
+.year-picker {
+  margin-top: 8px;
+  padding: 12px;
+  background: var(--bg-card);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+}
+
+.year-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.year-btn {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.year-btn:hover {
+  background: rgba(102, 126, 234, 0.1);
+  border-color: var(--primary-color);
+}
+
+.year-btn.active {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
 }
 
 .nav-btn {

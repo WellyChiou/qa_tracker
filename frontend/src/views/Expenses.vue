@@ -542,7 +542,7 @@ const editRecord = (id) => {
     showNotification('找不到要編輯的記錄', 'error')
     return
   }
-
+  
   editingId.value = id
 
   // 先設置類型，確保類別選項列表正確
@@ -559,8 +559,8 @@ const editRecord = (id) => {
       form.value.currency = record.currency || 'TWD'
       form.value.date = record.date
       form.value.description = record.description || ''
-
-      showModal.value = true
+  
+  showModal.value = true
     })
   })
 }

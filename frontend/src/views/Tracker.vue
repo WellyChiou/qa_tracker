@@ -208,10 +208,10 @@
               </select>
             </div>
             <div class="filter-group full-width">
-              <label>開始日期範圍</label>
+              <label>開始測試日期範圍</label>
               <DateRangePicker 
                 v-model="filters.testStartDateRange" 
-                placeholder="選擇開始日期範圍"
+                placeholder="選擇開始測試日期範圍"
               />
             </div>
             <div class="filter-group full-width">
@@ -502,8 +502,8 @@
 
 <script setup>
 import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
-import TopNavbar from '@/components/TopNavbar.vue'
 import DateRangePicker from '@/components/DateRangePicker.vue'
+import TopNavbar from '@/components/TopNavbar.vue'
 import { apiService } from '@/composables/useApi'
 import * as XLSX from 'xlsx'
 
@@ -665,7 +665,7 @@ const loadRecords = async () => {
       keyword: filters.value.keyword || undefined
     }
     
-    // 處理開始日期範圍
+    // 處理開始測試日期範圍
     if (filters.value.testStartDateRange && filters.value.testStartDateRange.length > 0) {
       const sortedDates = [...filters.value.testStartDateRange].sort()
       if (sortedDates[0]) {
@@ -698,7 +698,7 @@ const loadRecords = async () => {
     records.value = response.content || []
     totalRecords.value = response.totalElements || 0
     totalPages.value = response.totalPages || 1
-
+    
     // 更新統計信息（查詢結果中的狀態統計）
     if (response.stats) {
       // 注意：這裡的統計是查詢結果的統計，不是年度統計
@@ -776,7 +776,17 @@ const closeGitlabModal = () => {
 }
 
 const filterByInProgress = () => {
-  filters.value.status = 1
+  // 清除所有其他篩選條件，只保留狀態為執行中
+  filters.value = {
+    status: 1,
+    category: null,
+    issueNumber: null,
+    keyword: '',
+    testPlan: '',
+    bugFound: null,
+    testStartDateRange: [],
+    etaDateRange: []
+  }
   currentPage.value = 1
   loadRecords()
 }
@@ -812,16 +822,26 @@ const exportExcel = async () => {
       size: 10000 // 獲取大量記錄用於匯出
     }
     
+    // 處理開始測試日期範圍
     if (filters.value.testStartDateRange && filters.value.testStartDateRange.length > 0) {
       const sortedDates = [...filters.value.testStartDateRange].sort()
-      if (sortedDates[0]) params.testStartDateFrom = sortedDates[0]
-      if (sortedDates.length > 1 && sortedDates[1]) params.testStartDateTo = sortedDates[1]
+      if (sortedDates[0]) {
+        params.testStartDateFrom = sortedDates[0]
+      }
+      if (sortedDates.length > 1 && sortedDates[1]) {
+        params.testStartDateTo = sortedDates[1]
     }
-    
+    }
+
+    // 處理預計交付日期範圍
     if (filters.value.etaDateRange && filters.value.etaDateRange.length > 0) {
       const sortedDates = [...filters.value.etaDateRange].sort()
-      if (sortedDates[0]) params.etaDateFrom = sortedDates[0]
-      if (sortedDates.length > 1 && sortedDates[1]) params.etaDateTo = sortedDates[1]
+      if (sortedDates[0]) {
+        params.etaDateFrom = sortedDates[0]
+      }
+      if (sortedDates.length > 1 && sortedDates[1]) {
+        params.etaDateTo = sortedDates[1]
+      }
     }
     
     // 移除 null 和 undefined 值
@@ -1899,6 +1919,7 @@ onUnmounted(() => {
   background: white;
   color: #1e293b;
 }
+
 
 .table-wrap {
   overflow-x: auto;

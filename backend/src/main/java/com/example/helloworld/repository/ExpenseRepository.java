@@ -21,7 +21,7 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long> {
     List<Expense> findByDateBetween(LocalDate startDate, LocalDate endDate);
 
     List<Expense> findByCreatedByUid(String createdByUid);
-
+    
     @Query("SELECT e FROM Expense e WHERE " +
            "(:filterByUser = false OR e.createdByUid = :currentUserUid) AND " +
            "(:year IS NULL OR YEAR(e.date) = :year) AND " +
@@ -40,7 +40,7 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long> {
         @Param("mainCategory") String mainCategory,
         Pageable pageable
     );
-
+    
     @Query("SELECT e FROM Expense e WHERE " +
            "(:filterByUser = false OR e.createdByUid = :currentUserUid) AND " +
            "(:year IS NULL OR YEAR(e.date) = :year) AND " +

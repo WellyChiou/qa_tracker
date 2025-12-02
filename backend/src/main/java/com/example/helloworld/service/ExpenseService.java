@@ -25,7 +25,7 @@ public class ExpenseService {
     @Autowired
     private UserRepository userRepository;
 
-    public Page<Expense> getExpenses(Integer year, Integer month, String member, String type,
+    public Page<Expense> getExpenses(Integer year, Integer month, String member, String type, 
                                      String mainCategory, int page, int size) {
         // 默認不過濾用戶，讓所有用戶都能看到所有記錄
         String currentUserUid = getCurrentUserUid();

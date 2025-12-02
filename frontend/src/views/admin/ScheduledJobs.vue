@@ -256,7 +256,7 @@ const startPolling = (jobId) => {
         jobExecutions.value[jobId] = null
         stopPolling(jobId)
       } else {
-        console.error('輪詢執行狀態失敗:', error)
+      console.error('輪詢執行狀態失敗:', error)
       }
     }
   }, 2000)
