@@ -1,7 +1,5 @@
--- 初始化崗位人員配置
--- 將現有的寫死資料插入資料庫
--- 注意：此腳本只會在 MySQL 容器首次初始化時執行
--- 如果資料庫已存在，此腳本不會執行
+-- 修復崗位配置的字符編碼問題
+-- 刪除現有的亂碼數據並重新插入
 
 USE church;
 
@@ -9,8 +7,10 @@ USE church;
 SET NAMES utf8mb4;
 SET CHARACTER SET utf8mb4;
 
--- 插入默認崗位配置（如果不存在則插入，如果存在則更新）
--- 使用 ON DUPLICATE KEY UPDATE 確保可以安全地重複執行
+-- 刪除現有的配置（如果存在）
+DELETE FROM position_config WHERE config_name = 'default';
+
+-- 重新插入正確的配置
 INSERT INTO position_config (config_name, config_data, is_default) 
 VALUES (
     'default',
@@ -29,7 +29,5 @@ VALUES (
         )
     ),
     1
-) ON DUPLICATE KEY UPDATE
-    config_data = VALUES(config_data),
-    updated_at = CURRENT_TIMESTAMP;
+);
 

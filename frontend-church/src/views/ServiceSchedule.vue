@@ -203,7 +203,7 @@
             <div class="schedule-actions">
               <button v-if="isEditing" @click="cancelEdit" class="btn btn-cancel">取消</button>
               <button v-if="isEditing" @click="updateSchedule" class="btn btn-save" :disabled="saving">保存修改</button>
-              <button v-else @click="saveSchedule" class="btn btn-save" :disabled="saving">保存服事表</button>
+              <button v-else-if="!isLoadedFromHistory" @click="saveSchedule" class="btn btn-save" :disabled="saving">保存服事表</button>
               <button @click="exportSchedule" class="btn btn-export">匯出安排表</button>
             </div>
           </div>
@@ -301,6 +301,7 @@ const savingConfig = ref(false)
 const isEditing = ref(false)
 const editingScheduleId = ref(null)
 const originalSchedule = ref([]) // 保存原始數據，用於取消編輯
+const isLoadedFromHistory = ref(false) // 標記是否從歷史記錄載入（載入的不應該顯示「保存服事表」按鈕）
 
 // API 基礎 URL
 const API_BASE_URL = import.meta.env.DEV 
@@ -474,6 +475,11 @@ const generateSchedule = () => {
     return
   }
   
+  // 重置狀態
+  isEditing.value = false
+  editingScheduleId.value = null
+  isLoadedFromHistory.value = false
+  
   schedule.value = distributePersons(weekendDates)
   
   // 設置格式化日期
@@ -592,6 +598,7 @@ const loadSchedule = async (id) => {
       // 退出編輯模式
       isEditing.value = false
       editingScheduleId.value = null
+      isLoadedFromHistory.value = true // 標記為從歷史記錄載入
       
       alert('安排表載入成功！')
     } else {
@@ -656,11 +663,14 @@ const editSchedule = async (id) => {
 // 取消編輯
 const cancelEdit = () => {
   if (confirm('確定要取消編輯嗎？未保存的修改將丟失。')) {
-    // 恢復原始數據
-    schedule.value = JSON.parse(JSON.stringify(originalSchedule.value))
+    // 清空所有資料
+    schedule.value = []
+    dateRange.value = []
     isEditing.value = false
     editingScheduleId.value = null
     originalSchedule.value = []
+    isLoadedFromHistory.value = false
+    alert('已取消編輯，資料已清空。')
   }
 }
 
@@ -730,6 +740,7 @@ const updateSchedule = async () => {
       isEditing.value = false
       editingScheduleId.value = null
       originalSchedule.value = []
+      isLoadedFromHistory.value = true // 更新後仍然是從歷史記錄載入的狀態
       await loadHistory() // 重新載入歷史記錄
     } else {
       alert('更新失敗：' + (result.error || '未知錯誤'))
@@ -832,9 +843,25 @@ const loadPositionConfig = async () => {
     const response = await fetch(`${API_BASE_URL}/church/position-config/default`)
     if (response.ok) {
       const result = await response.json()
+      console.log('載入崗位配置響應：', result)
+      
       if (result.config && Object.keys(result.config).length > 0) {
-        positionConfig.value = result.config
+        // 確保配置結構正確
+        const config = result.config
+        positionConfig.value = {
+          computer: config.computer || { saturday: [], sunday: [] },
+          sound: config.sound || { saturday: [], sunday: [] },
+          light: config.light || { saturday: [], sunday: [] }
+        }
+        console.log('崗位配置載入成功：', positionConfig.value)
+      } else {
+        console.warn('崗位配置為空，使用默認空配置')
+        // 保持空配置，用戶可以手動添加
       }
+    } else {
+      const errorText = await response.text()
+      console.error('載入崗位配置失敗，HTTP 狀態：', response.status, errorText)
+      // 如果載入失敗，使用空配置（用戶可以手動添加）
     }
   } catch (error) {
     console.error('載入崗位配置失敗：', error)

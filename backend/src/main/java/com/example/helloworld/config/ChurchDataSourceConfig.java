@@ -40,8 +40,14 @@ public class ChurchDataSourceConfig {
 
     @Bean(name = "churchDataSource")
     public DataSource churchDataSource() {
+        // 確保 URL 包含正確的字符集參數
+        String url = churchUrl;
+        if (!url.contains("characterEncoding")) {
+            url += (url.contains("?") ? "&" : "?") + "characterEncoding=utf8mb4&useUnicode=true&connectionCollation=utf8mb4_unicode_ci";
+        }
+        
         return DataSourceBuilder.create()
-            .url(churchUrl)
+            .url(url)
             .username(churchUsername)
             .password(churchPassword)
             .driverClassName(churchDriverClassName)
