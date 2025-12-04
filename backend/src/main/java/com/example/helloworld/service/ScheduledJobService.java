@@ -10,6 +10,7 @@ import org.springframework.scheduling.support.CronTrigger;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.concurrent.ScheduledFuture;
 
@@ -227,7 +228,9 @@ public class ScheduledJobService {
         }
 
         try {
-            CronTrigger trigger = new CronTrigger(job.getCronExpression());
+            // 指定時區為台灣時間 (Asia/Taipei, UTC+8)
+            ZoneId taiwanZone = ZoneId.of("Asia/Taipei");
+            CronTrigger trigger = new CronTrigger(job.getCronExpression(), taiwanZone);
             ScheduledFuture<?> future = taskScheduler.schedule(() -> {
                 try {
                     System.out.println("🔄 執行定時任務: " + job.getJobName());
