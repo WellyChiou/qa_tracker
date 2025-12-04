@@ -41,9 +41,10 @@ public class ChurchDataSourceConfig {
     @Bean(name = "churchDataSource")
     public DataSource churchDataSource() {
         // 確保 URL 包含正確的字符集參數
+        // 注意：Java 不認識 'utf8mb4'，必須使用 'UTF-8'
         String url = churchUrl;
         if (!url.contains("characterEncoding")) {
-            url += (url.contains("?") ? "&" : "?") + "characterEncoding=utf8mb4&useUnicode=true&connectionCollation=utf8mb4_unicode_ci";
+            url += (url.contains("?") ? "&" : "?") + "characterEncoding=UTF-8&useUnicode=true&connectionCollation=utf8mb4_unicode_ci";
         }
         
         return DataSourceBuilder.create()
