@@ -29,6 +29,106 @@
 3. 記下以下資訊：
    - Channel Access Token
    - Channel Secret
+   - **Bot ID**（用於用戶搜尋和加入 Bot）
+   - **QR Code**（用於用戶掃描加入 Bot）
+
+### 1.1 獲取 Bot 的 QR Code 和 ID
+
+**找到 Bot ID 的方法：**
+
+1. 登入 [LINE Developers Console](https://developers.line.biz/console/)
+2. 選擇您的 Provider，然後進入 Bot Channel
+3. 點擊「Messaging API」標籤
+4. 在頁面頂部或「Basic settings」中，您會看到：
+   - **Channel ID**：這是 Bot 的內部 ID（格式如：`1234567890`）
+   - **Channel name**：Bot 的名稱
+
+**注意：** LINE Messaging API 的 Bot 通常沒有傳統的「Bot ID」（如 `@botname`），而是使用：
+- **加入連結**：格式為 `https://line.me/R/ti/p/@channel_id`（需要先啟用「Add friends」功能）
+- **QR Code**：在「Messaging API」頁面的「QR Code」區域可以下載
+
+**如果沒有 QR Code：**
+- 可以在 LINE Developers Console 的「Messaging API」頁面找到「QR Code」區域並下載
+- 或者使用加入連結（需要先啟用「Add friends」功能）
+
+### 1.2 配置 Bot 資訊到系統（可選）
+
+為了讓用戶在網頁中直接看到 QR Code 或 Bot ID，您可以將這些資訊配置到資料庫：
+
+**方法 1：配置 QR Code URL（推薦）**
+
+**選項 A：放在項目中（推薦，最簡單）**
+1. 在 LINE Developers Console 下載 QR Code 圖片
+2. 將圖片放在 `frontend/public/` 目錄（例如：`frontend/public/line-bot-qrcode.png`）
+3. 在資料庫中配置相對路徑或完整 URL：
+   ```sql
+   -- 使用相對路徑（推薦，自動適配域名）
+   UPDATE config 
+   SET config_value = '/line-bot-qrcode.png' 
+   WHERE config_key = 'line_bot_qr_code_url';
+   
+   -- 或使用完整 URL（如果需要）
+   UPDATE config 
+   SET config_value = 'https://wc-project.duckdns.org/line-bot-qrcode.png' 
+   WHERE config_key = 'line_bot_qr_code_url';
+   ```
+4. 重新部署前端，圖片會自動包含在構建中
+
+**選項 B：使用圖床服務**
+1. 將 QR Code 圖片上傳到圖床服務（如 [imgur](https://imgur.com)、[imgbb](https://imgbb.com) 等）
+2. 獲取圖片的公開 URL
+3. 在資料庫中配置：
+   ```sql
+   UPDATE config 
+   SET config_value = 'https://圖床服務的URL/qrcode.png' 
+   WHERE config_key = 'line_bot_qr_code_url';
+   ```
+
+**選項 C：使用 GitHub**
+1. 將 QR Code 圖片上傳到 GitHub 倉庫
+2. 使用 GitHub 的 raw URL：
+   ```sql
+   UPDATE config 
+   SET config_value = 'https://raw.githubusercontent.com/您的用戶名/qa_tracker/main/frontend/public/qrcode.png' 
+   WHERE config_key = 'line_bot_qr_code_url';
+   ```
+
+**方法 2：配置加入連結（推薦，最簡單）**
+
+**步驟 1：找到 Channel ID**
+1. 登入 [LINE Developers Console](https://developers.line.biz/console/)
+2. 選擇您的 Provider，進入 Bot Channel
+3. 點擊「Messaging API」標籤
+4. 在頁面頂部可以看到「Channel ID」（一串數字，例如：`1234567890`）
+5. 複製這個 Channel ID
+
+**步驟 2：生成加入連結**
+加入連結格式：`https://line.me/R/ti/p/@您的ChannelID`
+
+例如：如果 Channel ID 是 `1234567890`，則加入連結為：
+```
+https://line.me/R/ti/p/@1234567890
+```
+
+**步驟 3：配置到資料庫**
+```sql
+-- 直接配置加入連結（推薦）
+UPDATE config 
+SET config_value = 'https://line.me/R/ti/p/@您的ChannelID' 
+WHERE config_key = 'line_bot_join_url';
+
+-- 或者使用 INSERT（如果配置項不存在）
+INSERT INTO config (config_key, config_value, description) 
+VALUES ('line_bot_join_url', 'https://line.me/R/ti/p/@您的ChannelID', 'LINE Bot 加入連結')
+ON DUPLICATE KEY UPDATE config_value = VALUES(config_value);
+```
+
+**注意：** 如果加入連結無法使用，可能需要：
+1. 在 LINE Developers Console 的「Messaging API」頁面
+2. 啟用「Add friends」功能
+3. 然後重新生成加入連結
+
+配置後，用戶在「個人資料設定」頁面中就能直接看到 QR Code 或加入連結，無需向管理員索取。
 
 ### 2. 配置環境變數
 
@@ -51,11 +151,22 @@ LINE_BOT_DAILY_REMINDER_TIME=20:00
 
 **獲取方法：**
 
-**方法 1：通過 LINE 應用**
-1. 開啟 LINE 應用
-2. 點擊右上角的「⋯」選單
-3. 選擇「設定」→「個人資料」
-4. 找到「LINE ID」下方的系統 ID（長字符串）
+**方法 1：通過 LINE Bot 獲取（最簡單，推薦）**
+
+**步驟 1：加入 LINE Bot**
+1. 在 LINE Developers Console 中找到您的 Bot
+2. 進入 Bot 的「Messaging API」頁面
+3. 找到「QR Code」或「Bot ID」
+4. 使用 LINE 掃描 QR Code 或搜尋 Bot ID 加入 Bot
+
+**步驟 2：獲取 LINE User ID**
+1. 在 LINE 中發送任何訊息給 Bot（例如：「你好」或「test」）
+2. Bot 會自動回覆並顯示您的 LINE User ID（以 `U` 開頭的長字符串）
+3. 複製這個 ID
+
+**步驟 3：綁定帳號**
+1. 在網頁應用的「個人資料設定」中輸入剛才獲取的 LINE User ID
+2. 點擊「綁定 LINE 帳號」完成綁定
 
 **方法 2：使用瀏覽器開發者工具**
 1. 在電腦上訪問 https://line.me
@@ -67,10 +178,9 @@ LINE_BOT_DAILY_REMINDER_TIME=20:00
    ```
 5. 顯示的即為您的 LINE User ID
 
-**方法 3：使用 LINE Bot 測試**
-1. 先在網頁應用中輸入一個臨時 ID（如 `Utest12345678901234567890123456789012`）
-2. 在 LINE 中發送訊息給 Bot
-3. 查看後端日誌，會顯示您的真實 LINE User ID
+**方法 3：查看後端日誌**
+1. 在 LINE 中發送訊息給 Bot
+2. 查看後端日誌，會顯示您的真實 LINE User ID
 
 ### 3. 數據庫更新
 

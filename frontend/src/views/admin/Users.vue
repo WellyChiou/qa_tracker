@@ -4,7 +4,9 @@
     <header class="header">
       <div class="header-top">
         <h1>👥 用戶管理</h1>
-        <button class="btn btn-primary" @click="showAddModal = true">新增用戶</button>
+        <button class="btn btn-primary btn-add" @click="showAddModal = true">
+          <i class="fas fa-plus me-2"></i>新增用戶
+        </button>
       </div>
     </header>
 
@@ -39,6 +41,7 @@
             </td>
             <td class="actions">
               <button class="btn-sm btn-edit" @click="editUser(user)">編輯</button>
+              <button class="btn-sm btn-roles" @click="editRoles(user)">角色</button>
               <button class="btn-sm btn-delete" @click="deleteUser(user.uid)">刪除</button>
             </td>
           </tr>
@@ -48,38 +51,90 @@
 
     <!-- 新增/編輯模態框 -->
     <div v-if="showAddModal || editingUser" class="modal-overlay" @click="closeModal">
-      <div class="modal-content" @click.stop>
-        <h2>{{ editingUser ? '編輯用戶' : '新增用戶' }}</h2>
-        <form @submit.prevent="handleSubmit">
-          <div class="form-group">
-            <label>UID</label>
-            <input v-model="form.uid" :disabled="!!editingUser" required />
-          </div>
-          <div class="form-group">
-            <label>用戶名</label>
-            <input v-model="form.username" required />
-          </div>
-          <div class="form-group">
-            <label>Email</label>
-            <input type="email" v-model="form.email" />
-          </div>
-          <div class="form-group">
-            <label>顯示名稱</label>
-            <input v-model="form.displayName" />
-          </div>
-          <div class="form-group">
-            <label>密碼</label>
-            <input type="password" v-model="form.password" :required="!editingUser" />
-          </div>
-          <div class="form-group">
-            <label>啟用</label>
-            <input type="checkbox" v-model="form.isEnabled" />
+      <div class="modal-panel" @click.stop>
+        <div class="modal-header">
+          <h2 class="modal-title">{{ editingUser ? '編輯用戶' : '新增用戶' }}</h2>
+          <button class="btn-close" @click="closeModal">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <form @submit.prevent="handleSubmit" class="form-container">
+            <div v-if="editingUser" class="form-group">
+              <label class="form-label">UID</label>
+              <input v-model="form.uid" disabled class="form-input" />
+              <small class="form-text text-muted">UID 無法修改</small>
+            </div>
+            <div class="form-group">
+              <label class="form-label">用戶名 <span class="text-danger">*</span></label>
+              <input v-model="form.username" required class="form-input" placeholder="請輸入用戶名" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Email</label>
+              <input type="email" v-model="form.email" class="form-input" placeholder="請輸入電子郵件" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">顯示名稱</label>
+              <input v-model="form.displayName" class="form-input" placeholder="請輸入顯示名稱" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">密碼 <span v-if="!editingUser" class="text-danger">*</span></label>
+              <input type="password" v-model="form.password" :required="!editingUser" class="form-input" placeholder="請輸入密碼" />
+              <small v-if="editingUser" class="form-text text-muted">留空則不修改密碼</small>
+            </div>
+            <div class="form-group checkbox-group">
+              <label class="checkbox-label">
+                <input type="checkbox" v-model="form.isEnabled" class="checkbox-input" />
+                <span>啟用帳號</span>
+              </label>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save me-2"></i>儲存
+              </button>
+              <button type="button" class="btn btn-secondary" @click="closeModal">
+                <i class="fas fa-times me-2"></i>取消
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- 角色分配模態框 -->
+    <div v-if="showRolesModal" class="modal-overlay" @click="closeRolesModal">
+      <div class="modal-panel" @click.stop style="max-width: 600px;">
+        <div class="modal-header">
+          <h2 class="modal-title">分配角色: {{ selectedUser?.displayName || selectedUser?.username }}</h2>
+          <button class="btn-close" @click="closeRolesModal">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="roles-list">
+            <label v-for="role in allRoles" :key="role.id" class="role-item">
+              <input 
+                type="checkbox" 
+                :value="role.id" 
+                v-model="selectedRoleIds"
+                class="checkbox-input" />
+              <span>{{ role.roleName }}</span>
+              <small v-if="role.description" class="role-description">{{ role.description }}</small>
+            </label>
           </div>
           <div class="form-actions">
-            <button type="submit" class="btn btn-primary">儲存</button>
-            <button type="button" class="btn btn-secondary" @click="closeModal">取消</button>
+            <button type="button" class="btn btn-primary" @click="saveRoles">
+              <i class="fas fa-save me-2"></i>儲存角色
+            </button>
+            <button type="button" class="btn btn-secondary" @click="closeRolesModal">
+              <i class="fas fa-times me-2"></i>取消
+            </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
 
@@ -97,6 +152,10 @@ import { apiService } from '@/composables/useApi'
 const users = ref([])
 const showAddModal = ref(false)
 const editingUser = ref(null)
+const showRolesModal = ref(false)
+const selectedUser = ref(null)
+const allRoles = ref([])
+const selectedRoleIds = ref([])
 const notification = ref({ show: false, message: '', type: 'success' })
 
 const form = ref({
@@ -116,10 +175,37 @@ const loadUsers = async () => {
   }
 }
 
+const loadRoles = async () => {
+  try {
+    allRoles.value = await apiService.getRoles()
+  } catch (error) {
+    showNotification('載入角色失敗', 'error')
+  }
+}
+
 const handleSubmit = async () => {
   try {
     const userData = { ...form.value }
-    if (!userData.password) delete userData.password
+    
+    // 新增用戶時，不發送 UID（讓後端自動生成）
+    if (!editingUser.value) {
+      delete userData.uid
+    }
+    
+    // 編輯用戶時，如果密碼為空則不發送
+    if (editingUser.value && !userData.password) {
+      delete userData.password
+    } else if (!editingUser.value && !userData.password) {
+      // 新增用戶時，密碼為必填
+      showNotification('請輸入密碼', 'error')
+      return
+    }
+    
+    // 編輯用戶時，不發送 roles 字段（角色應該通過專門的角色管理功能來更新）
+    // 避免意外清空用戶的角色
+    if (editingUser.value) {
+      delete userData.roles
+    }
     
     if (editingUser.value) {
       await apiService.updateUser(editingUser.value.uid, userData)
@@ -158,6 +244,30 @@ const deleteUser = async (uid) => {
   }
 }
 
+const editRoles = async (user) => {
+  selectedUser.value = user
+  // 載入用戶當前的角色 ID
+  selectedRoleIds.value = user.roles ? user.roles.map(r => r.id) : []
+  showRolesModal.value = true
+}
+
+const closeRolesModal = () => {
+  showRolesModal.value = false
+  selectedUser.value = null
+  selectedRoleIds.value = []
+}
+
+const saveRoles = async () => {
+  try {
+    await apiService.updateUserRoles(selectedUser.value.uid, selectedRoleIds.value)
+    showNotification('角色已更新', 'success')
+    closeRolesModal()
+    await loadUsers()
+  } catch (error) {
+    showNotification(error.message || '更新失敗', 'error')
+  }
+}
+
 const closeModal = () => {
   showAddModal.value = false
   editingUser.value = null
@@ -176,7 +286,10 @@ const showNotification = (message, type = 'success') => {
   setTimeout(() => { notification.value.show = false }, 3000)
 }
 
-onMounted(loadUsers)
+onMounted(() => {
+  loadUsers()
+  loadRoles()
+})
 </script>
 
 <style scoped>
@@ -350,11 +463,26 @@ onMounted(loadUsers)
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: 1px solid rgba(255, 255, 255, 0.2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
 .btn-primary:hover {
   transform: translateY(-3px);
   box-shadow: 0 10px 25px rgba(102, 126, 234, 0.5);
+}
+
+.btn-add {
+  font-size: 1rem;
+  padding: 0.875rem 1.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.me-2 {
+  margin-right: 0.5rem;
 }
 
 .btn-secondary {
@@ -399,18 +527,27 @@ onMounted(loadUsers)
   box-shadow: var(--shadow-md);
 }
 
+.btn-roles {
+  background: rgba(139, 92, 246, 0.25);
+  color: #c4b5fd;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.btn-roles:hover {
+  background: rgba(139, 92, 246, 0.35);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
   animation: fadeIn 0.3s;
 }
 
@@ -419,17 +556,17 @@ onMounted(loadUsers)
   to { opacity: 1; }
 }
 
-.modal-content {
-  background: var(--bg-card);
-  color: var(--text-primary);
-  padding: var(--spacing-2xl);
-  border-radius: var(--border-radius-xl);
-  min-width: 400px;
+.modal-panel {
+  width: 100%;
   max-width: 600px;
-  box-shadow: var(--shadow-xl);
-  animation: slideUp 0.3s;
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  border: 1px solid #e2e8f0;
+  margin: 2rem;
   max-height: 90vh;
   overflow-y: auto;
+  animation: slideUp 0.3s;
 }
 
 @keyframes slideUp {
@@ -443,12 +580,49 @@ onMounted(loadUsers)
   }
 }
 
-.modal-content h2 {
-  margin-top: 0;
-  margin-bottom: var(--spacing-xl);
-  font-size: 1.75rem;
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(to right, #f8fafc, white);
+  border-radius: 1rem 1rem 0 0;
+}
+
+.modal-title {
+  font-size: 1.5rem;
   font-weight: 700;
-  color: var(--text-primary);
+  color: #1e293b;
+  margin: 0;
+}
+
+.btn-close {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.btn-close:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.form-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
 }
 
 .form-group {
@@ -463,44 +637,181 @@ onMounted(loadUsers)
   font-size: 0.95rem;
 }
 
+.form-input,
 .form-group input[type="text"],
 .form-group input[type="email"],
 .form-group input[type="password"] {
   width: 100%;
   padding: 12px 16px;
-  border: 2px solid var(--border-color);
-  border-radius: var(--border-radius);
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
   font-size: 15px;
-  transition: var(--transition);
-  background: var(--bg-secondary);
-  color: var(--text-primary);
+  transition: all 0.2s ease;
+  background: #ffffff;
+  color: #1f2937;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
+.form-input:focus,
 .form-group input:focus {
   outline: none;
-  border-color: var(--primary-color);
+  border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  background: #ffffff;
 }
 
+.form-input:disabled,
 .form-group input:disabled {
-  background: var(--bg-primary);
+  background: #f9fafb;
   opacity: 0.6;
   cursor: not-allowed;
+  border-color: #e5e7eb;
 }
 
-.form-group input[type="checkbox"] {
+.form-text {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.text-danger {
+  color: #ef4444;
+}
+
+.text-muted {
+  color: #6b7280;
+}
+
+.checkbox-group {
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 0.95rem;
+  gap: 0.75rem;
+}
+
+.checkbox-input {
   width: 20px;
   height: 20px;
   cursor: pointer;
-  accent-color: var(--primary-color);
+  accent-color: #667eea;
+  border-radius: 4px;
+  border: 2px solid #d1d5db;
+  transition: all 0.2s ease;
+}
+
+.checkbox-input:checked {
+  background-color: #667eea;
+  border-color: #667eea;
+}
+
+.checkbox-input:hover {
+  border-color: #667eea;
+}
+
+.roles-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+
+.role-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.role-item:hover {
+  border-color: #667eea;
+  background: #f8fafc;
+}
+
+.role-item input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: #667eea;
+}
+
+.role-item span {
+  font-weight: 600;
+  color: #1f2937;
+  flex: 1;
+}
+
+.role-description {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: normal;
+  margin-left: 0.5rem;
 }
 
 .form-actions {
   display: flex;
-  gap: var(--spacing-md);
-  margin-top: var(--spacing-xl);
-  padding-top: var(--spacing-lg);
-  border-top: 1px solid var(--border-color);
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  justify-content: flex-end;
+}
+
+.btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 4px 6px -1px rgba(102, 126, 234, 0.3);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px -2px rgba(102, 126, 234, 0.4);
+}
+
+.btn-secondary {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+}
+
+.btn-secondary:hover {
+  background: #e5e7eb;
+  color: #1f2937;
+}
+
+.me-2 {
+  margin-right: 0.5rem;
 }
 
 .notification {

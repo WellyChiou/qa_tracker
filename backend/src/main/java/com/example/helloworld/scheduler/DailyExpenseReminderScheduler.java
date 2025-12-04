@@ -120,40 +120,58 @@ public class DailyExpenseReminderScheduler {
     }
 
     /**
-     * 每日費用統計報告任務
+     * 每日費用檢查任務
+     * 每天晚上 9 點檢查用戶是否已記錄今日費用
+     * - 如果沒有記錄，發送提醒通知
+     * - 如果有記錄，發送統計報告
      * 通過動態排程器系統調度執行
      */
-    public void sendDailyExpenseReport() {
+    public void checkAndNotifyDailyExpense() {
         if (!lineBotConfig.isDailyReminderEnabled()) {
+            System.out.println("⏰ 每日費用提醒功能已關閉");
             return;
         }
 
-        System.out.println("📊 開始執行每日費用統計報告任務...");
+        System.out.println("⏰ 開始執行每日費用檢查任務（晚上 9 點）...");
 
         try {
+            // 獲取所有已綁定 LINE 的用戶
             List<User> lineUsers = userRepository.findAll().stream()
                 .filter(user -> user.getLineUserId() != null && !user.getLineUserId().trim().isEmpty())
                 .toList();
 
+            System.out.println("👥 找到 " + lineUsers.size() + " 個已綁定 LINE 的用戶");
+
             LocalDate today = LocalDate.now();
+            int reminderCount = 0;
             int reportCount = 0;
 
             for (User user : lineUsers) {
                 try {
-                    String report = generateDailyExpenseReport(user, today);
-                    if (report != null) {
-                        lineBotService.sendPushMessage(user.getLineUserId(), report);
-                        reportCount++;
+                    // 檢查用戶今日是否已記錄費用
+                    if (!hasRecordedExpenseToday(user, today)) {
+                        // 沒有記錄，發送提醒通知
+                        sendExpenseReminder(user);
+                        reminderCount++;
+                        System.out.println("📤 已發送費用記錄提醒給用戶: " + user.getDisplayName());
+                    } else {
+                        // 有記錄，發送統計報告
+                        String report = generateDailyExpenseReport(user, today);
+                        if (report != null) {
+                            lineBotService.sendPushMessage(user.getLineUserId(), report);
+                            reportCount++;
+                            System.out.println("📊 已發送費用統計報告給用戶: " + user.getDisplayName());
+                        }
                     }
                 } catch (Exception e) {
-                    System.err.println("❌ 發送統計報告給用戶 " + user.getDisplayName() + " 時發生錯誤: " + e.getMessage());
+                    System.err.println("❌ 處理用戶 " + user.getDisplayName() + " 時發生錯誤: " + e.getMessage());
                 }
             }
 
-            System.out.println("✅ 每日費用統計報告任務完成，共發送 " + reportCount + " 個報告");
+            System.out.println("✅ 每日費用檢查任務完成，共發送 " + reminderCount + " 個個人提醒，" + reportCount + " 個個人統計報告");
 
         } catch (Exception e) {
-            System.err.println("❌ 執行每日費用統計報告任務時發生錯誤: " + e.getMessage());
+            System.err.println("❌ 執行每日費用檢查任務時發生錯誤: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -228,26 +246,12 @@ public class DailyExpenseReminderScheduler {
     }
 
     /**
-     * 獲取每日費用提醒任務執行器
+     * 每日費用記錄提醒任務執行器（用於定時任務管理系統）
      */
-    public Runnable getDailyExpenseReminderJob() {
-        return new DailyExpenseReminderJob(this);
-    }
-
-    /**
-     * 獲取每日費用統計報告任務執行器
-     */
-    public Runnable getDailyExpenseReportJob() {
-        return new DailyExpenseReportJob(this);
-    }
-
-    /**
-     * 每日費用提醒任務執行器
-     */
-    public static class DailyExpenseReminderJob implements Runnable {
+    public static class SendDailyExpenseReminderJob implements Runnable {
         private final DailyExpenseReminderScheduler scheduler;
 
-        public DailyExpenseReminderJob(DailyExpenseReminderScheduler scheduler) {
+        public SendDailyExpenseReminderJob(DailyExpenseReminderScheduler scheduler) {
             this.scheduler = scheduler;
         }
 
@@ -258,18 +262,32 @@ public class DailyExpenseReminderScheduler {
     }
 
     /**
-     * 每日費用統計報告任務執行器
+     * 每日費用檢查與統計任務執行器（用於定時任務管理系統）
      */
-    public static class DailyExpenseReportJob implements Runnable {
+    public static class CheckAndNotifyDailyExpenseJob implements Runnable {
         private final DailyExpenseReminderScheduler scheduler;
 
-        public DailyExpenseReportJob(DailyExpenseReminderScheduler scheduler) {
+        public CheckAndNotifyDailyExpenseJob(DailyExpenseReminderScheduler scheduler) {
             this.scheduler = scheduler;
         }
 
         @Override
         public void run() {
-            scheduler.sendDailyExpenseReport();
+            scheduler.checkAndNotifyDailyExpense();
         }
+    }
+
+    /**
+     * 獲取每日費用記錄提醒任務執行器
+     */
+    public Runnable getSendDailyExpenseReminderJob() {
+        return new SendDailyExpenseReminderJob(this);
+    }
+
+    /**
+     * 獲取每日費用檢查與統計任務執行器
+     */
+    public Runnable getCheckAndNotifyDailyExpenseJob() {
+        return new CheckAndNotifyDailyExpenseJob(this);
     }
 }

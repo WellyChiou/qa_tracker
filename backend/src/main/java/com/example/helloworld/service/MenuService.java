@@ -26,42 +26,74 @@ public class MenuService {
      */
     @Transactional(readOnly = true)
     public List<MenuItemDTO> getVisibleMenus() {
-        // 獲取當前用戶的權限
-        Collection<? extends GrantedAuthority> authorities = SecurityContextHolder.getContext()
-            .getAuthentication().getAuthorities();
-        
-        Set<String> userPermissions = authorities.stream()
-            .map(GrantedAuthority::getAuthority)
-            .collect(Collectors.toSet());
-
-        // 獲取所有啟用的根菜單
-        List<MenuItem> rootMenus = menuItemRepository.findActiveRootMenus();
-        
-        List<MenuItemDTO> visibleMenus = new ArrayList<>();
-        
-        for (MenuItem rootMenu : rootMenus) {
-            if (hasPermission(rootMenu, userPermissions)) {
-                MenuItemDTO menuDTO = convertToDTO(rootMenu);
-                
-                // 獲取子菜單
-                List<MenuItem> childMenus = menuItemRepository.findActiveChildMenus(rootMenu.getId());
-                List<MenuItemDTO> visibleChildren = new ArrayList<>();
-                
-                for (MenuItem childMenu : childMenus) {
-                    if (hasPermission(childMenu, userPermissions)) {
-                        visibleChildren.add(convertToDTO(childMenu));
+        try {
+            // 獲取當前用戶的權限
+            Set<String> userPermissions = new java.util.HashSet<>();
+            
+            try {
+                org.springframework.security.core.Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+                if (authentication != null && authentication.isAuthenticated() && 
+                    !authentication.getPrincipal().equals("anonymousUser")) {
+                    Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
+                    if (authorities != null) {
+                        userPermissions = authorities.stream()
+                            .map(GrantedAuthority::getAuthority)
+                            .collect(Collectors.toSet());
                     }
                 }
-                
-                if (!visibleChildren.isEmpty()) {
-                    menuDTO.setChildren(visibleChildren);
-                }
-                
-                visibleMenus.add(menuDTO);
+            } catch (Exception e) {
+                // 如果獲取權限失敗，使用空權限集合（只顯示不需要權限的菜單）
+                System.err.println("獲取用戶權限失敗: " + e.getMessage());
             }
+
+            // 獲取所有啟用的根菜單
+            List<MenuItem> rootMenus = menuItemRepository.findActiveRootMenus();
+            
+            if (rootMenus == null) {
+                return new ArrayList<>();
+            }
+            
+            List<MenuItemDTO> visibleMenus = new ArrayList<>();
+            
+            for (MenuItem rootMenu : rootMenus) {
+                try {
+                    if (hasPermission(rootMenu, userPermissions)) {
+                        MenuItemDTO menuDTO = convertToDTO(rootMenu);
+                        
+                        // 獲取子菜單
+                        List<MenuItem> childMenus = menuItemRepository.findActiveChildMenus(rootMenu.getId());
+                        List<MenuItemDTO> visibleChildren = new ArrayList<>();
+                        
+                        if (childMenus != null) {
+                            for (MenuItem childMenu : childMenus) {
+                                try {
+                                    if (hasPermission(childMenu, userPermissions)) {
+                                        visibleChildren.add(convertToDTO(childMenu));
+                                    }
+                                } catch (Exception e) {
+                                    System.err.println("處理子菜單時發生錯誤: " + e.getMessage());
+                                }
+                            }
+                        }
+                        
+                        if (!visibleChildren.isEmpty()) {
+                            menuDTO.setChildren(visibleChildren);
+                        }
+                        
+                        visibleMenus.add(menuDTO);
+                    }
+                } catch (Exception e) {
+                    System.err.println("處理根菜單時發生錯誤: " + e.getMessage());
+                }
+            }
+            
+            return visibleMenus;
+        } catch (Exception e) {
+            System.err.println("獲取可見菜單時發生錯誤: " + e.getMessage());
+            e.printStackTrace();
+            // 返回空列表而不是拋出異常
+            return new ArrayList<>();
         }
-        
-        return visibleMenus;
     }
 
     /**

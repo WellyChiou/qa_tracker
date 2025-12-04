@@ -158,6 +158,16 @@ INSERT INTO scheduled_jobs (job_name, job_class, cron_expression, description, e
 VALUES ('自動補足匯率', 'com.example.helloworld.scheduler.ExchangeRateScheduler$AutoFillExchangeRatesJob', '0 0 7 * * ?', '每天早上 7:00 自動補足最近 7 天的匯率', 1)
 ON DUPLICATE KEY UPDATE job_name = job_name;
 
+-- 插入 LINE Bot 每日費用提醒任務（晚上 8 點）
+INSERT INTO scheduled_jobs (job_name, job_class, cron_expression, description, enabled) 
+VALUES ('LINE Bot 每日費用提醒', 'com.example.helloworld.scheduler.DailyExpenseReminderScheduler$SendDailyExpenseReminderJob', '0 0 20 * * ?', '每天晚上 20:00 檢查用戶是否已記錄今日費用，如果沒有則發送提醒通知', 1)
+ON DUPLICATE KEY UPDATE job_name = job_name;
+
+-- 插入 LINE Bot 每日費用檢查與統計任務（晚上 9 點）
+INSERT INTO scheduled_jobs (job_name, job_class, cron_expression, description, enabled) 
+VALUES ('LINE Bot 每日費用檢查與統計', 'com.example.helloworld.scheduler.DailyExpenseReminderScheduler$CheckAndNotifyDailyExpenseJob', '0 0 21 * * ?', '每天晚上 21:00 檢查用戶是否已記錄今日費用，如果沒有則發送提醒，如果有則發送統計報告（包含個人和群組）', 1)
+ON DUPLICATE KEY UPDATE job_name = job_name;
+
 -- 8. Job 執行記錄表
 CREATE TABLE IF NOT EXISTS job_executions (
     id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主鍵 ID',
@@ -173,4 +183,14 @@ CREATE TABLE IF NOT EXISTS job_executions (
     INDEX idx_created_at (created_at),
     FOREIGN KEY (job_id) REFERENCES scheduled_jobs(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Job 執行記錄表';
+
+-- 9. LINE 群組表
+CREATE TABLE IF NOT EXISTS line_groups (
+    group_id VARCHAR(100) PRIMARY KEY COMMENT 'LINE 群組 ID',
+    group_name VARCHAR(255) COMMENT '群組名稱',
+    is_active BOOLEAN NOT NULL DEFAULT TRUE COMMENT '是否啟用通知',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '建立時間',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新時間',
+    INDEX idx_is_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='LINE 群組表';
 

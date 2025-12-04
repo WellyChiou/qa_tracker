@@ -111,8 +111,12 @@ public class UserService {
             existing.setPassword(passwordEncoder.encode(userUpdate.getPassword()));
         }
 
-        // 更新角色
-        if (userUpdate.getRoles() != null) {
+        // 更新角色（只有在明確提供角色時才更新，避免意外清空角色）
+        // 注意：角色應該通過專門的 updateUserRoles 方法來更新，這裡只作為備用
+        // 如果 userUpdate.getRoles() 為 null，表示前端沒有發送角色信息，不更新角色
+        // 如果 userUpdate.getRoles() 為空集合，表示前端明確要清空角色，才執行清空操作
+        // 但為了安全起見，我們只在角色不為 null 且不為空時才更新
+        if (userUpdate.getRoles() != null && !userUpdate.getRoles().isEmpty()) {
             Set<Role> roles = new HashSet<>();
             for (Role role : userUpdate.getRoles()) {
                 if (role != null && role.getId() != null) {
@@ -122,6 +126,7 @@ public class UserService {
             }
             existing.setRoles(roles);
         }
+        // 如果 roles 為 null，表示前端沒有發送角色信息，保留現有角色不變
 
         return userRepository.save(existing);
     }

@@ -83,19 +83,102 @@
 
             <!-- 綁定 LINE 帳號 -->
             <div v-if="!lineBindingStatus.isBound" class="line-bind-form">
+              <div class="alert alert-info mb-3">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>第一步：加入 LINE Bot</strong>
+                <p class="mb-2">如果您還沒有加入 Bot，請使用以下方式加入：</p>
+                
+                <!-- QR Code 顯示區域 -->
+                <div v-if="lineBotQrCodeUrl" class="text-center mb-3">
+                  <p class="mb-2"><strong>掃描 QR Code 加入 Bot：</strong></p>
+                  <img 
+                    :src="lineBotQrCodeUrl" 
+                    alt="LINE Bot QR Code" 
+                    class="line-bot-qrcode"
+                    style="max-width: 200px; border: 2px solid #ddd; border-radius: 8px; padding: 10px; background: white;"
+                  />
+                  <p class="small text-muted mt-2">使用 LINE 掃描上方 QR Code 即可加入 Bot</p>
+                </div>
+                
+                <!-- Bot 加入連結顯示區域 -->
+                <div v-if="lineBotJoinUrl && !lineBotQrCodeUrl" class="mb-3">
+                  <p class="mb-2"><strong>點擊連結加入 Bot：</strong></p>
+                  <div class="input-group">
+                    <input 
+                      type="text" 
+                      :value="lineBotJoinUrl" 
+                      readonly 
+                      class="form-control text-center font-monospace"
+                      style="font-size: 0.85rem;"
+                    />
+                    <button 
+                      class="btn btn-outline-secondary" 
+                      type="button"
+                      @click="copyBotJoinUrl"
+                      title="複製加入連結"
+                    >
+                      <i class="fas fa-copy"></i> 複製
+                    </button>
+                  </div>
+                  <div class="mt-2">
+                    <a 
+                      :href="lineBotJoinUrl" 
+                      target="_blank" 
+                      class="btn btn-primary btn-sm"
+                    >
+                      <i class="fab fa-line me-1"></i>
+                      在 LINE 中開啟並加入
+                    </a>
+                  </div>
+                  <p class="small text-muted mt-2">點擊上方按鈕或複製連結到 LINE 中開啟</p>
+                </div>
+                
+                <!-- Bot ID 顯示區域（如果只有 ID，沒有連結） -->
+                <div v-if="lineBotId && !lineBotQrCodeUrl && !lineBotJoinUrl" class="mb-3">
+                  <p class="mb-2"><strong>Bot ID：</strong></p>
+                  <div class="input-group">
+                    <input 
+                      type="text" 
+                      :value="lineBotId" 
+                      readonly 
+                      class="form-control text-center font-monospace"
+                      style="font-size: 0.9rem;"
+                    />
+                    <button 
+                      class="btn btn-outline-secondary" 
+                      type="button"
+                      @click="copyBotId"
+                      title="複製 Bot ID"
+                    >
+                      <i class="fas fa-copy"></i> 複製
+                    </button>
+                  </div>
+                  <p class="small text-muted mt-2">請向管理員詢問如何加入此 Bot</p>
+                </div>
+                
+                <!-- 如果沒有配置，顯示提示 -->
+                <div v-if="!lineBotQrCodeUrl && !lineBotJoinUrl && !lineBotId" class="mb-2">
+                  <p class="mb-0">請向管理員索取 Bot 的 QR Code、加入連結或 Bot ID</p>
+                </div>
+              </div>
+              
               <div class="alert alert-success">
                 <i class="fas fa-magic me-2"></i>
-                <strong>簡單綁定方法（推薦）：</strong>
+                <strong>第二步：獲取 LINE User ID（推薦方法）</strong>
                 <ol>
-                  <li>在下方輸入框輸入任意臨時 ID（如：test123 或 abc123）</li>
-                  <li>點擊「綁定 LINE 帳號」按鈕</li>
-                  <li>在 LINE 中發送任意訊息給 Bot（如：hello 或 test）</li>
-                  <li>Bot 會回復您的真實 LINE User ID（以 U 開頭的長字符串）</li>
-                  <li>複製回復的真實 ID，回到此頁面重新綁定</li>
+                  <li>在 LINE 中發送任意訊息給 Bot（如：「你好」或「test」）</li>
+                  <li>Bot 會自動回復並顯示您的 LINE User ID（以 U 開頭的長字符串）</li>
+                  <li>複製這個 ID</li>
                 </ol>
-                <p class="alert-footer">
+                <p class="alert-footer mb-0">
                   🎯 <strong>超簡單！</strong>讓 LINE Bot 告訴您您的 ID
                 </p>
+              </div>
+              
+              <div class="alert alert-secondary">
+                <i class="fas fa-keyboard me-2"></i>
+                <strong>第三步：綁定帳號</strong>
+                <p class="mb-0">在下方輸入框貼上剛才複製的 LINE User ID，然後點擊「綁定 LINE 帳號」</p>
               </div>
 
               <div class="alert alert-info">
@@ -159,8 +242,8 @@
                 <strong>LINE 帳號已綁定！</strong>
                 <p>現在您可以通過 LINE 使用以下功能：</p>
                 <ul>
-                  <li>發送「支出 餐費 150 午餐」記錄費用</li>
-                  <li>發送「收入 薪水 50000」記錄收入</li>
+                  <li>發送「支出 食 外食 150 午餐」記錄費用</li>
+                  <li>發送「收入 薪資 本薪 50000」記錄收入</li>
                   <li>發送「狀態」查看今日統計</li>
                   <li>發送「今天」查看今日記錄</li>
                   <li>發送「幫助」查看更多指令</li>
@@ -210,12 +293,28 @@
               <div v-show="accordionOpen.expenseRecording" class="accordion-body">
                 <p>在 LINE 中發送以下格式的訊息來記錄費用：</p>
                 <div class="code-block">
-                  <code>支出 [類別] [金額] [描述]</code><br>
-                  <code>收入 [類別] [金額] [描述]</code>
+                  <code>類型 主類別 細項 金額 描述</code>
                 </div>
                 <p class="example">例如：<br>
-                  <code>支出 餐費 150 午餐</code><br>
-                  <code>收入 薪水 50000 月薪</code>
+                  <code>支出 食 外食 150 午餐</code><br>
+                  <code>收入 薪資 本薪 50000</code>
+                </p>
+                <p class="mt-2"><strong>格式說明：</strong></p>
+                <ul>
+                  <li><strong>類型</strong>：支出 或 收入</li>
+                  <li><strong>主類別</strong>：
+                    <ul>
+                      <li>支出：食、衣、住、行、育、樂、醫療、其他支出</li>
+                      <li>收入：薪資、投資</li>
+                    </ul>
+                  </li>
+                  <li><strong>細項</strong>：根據主類別選擇對應的細項，例如「食」的細項有：外食、食材、飲料、零食、其他</li>
+                  <li><strong>金額</strong>：數字，可包含小數點</li>
+                  <li><strong>描述</strong>：可選，用於補充說明</li>
+                </ul>
+                <p class="mt-2 text-muted small">
+                  <i class="fas fa-info-circle me-1"></i>
+                  提示：發送「幫助」指令可查看完整的類別和細項列表
                 </p>
               </div>
             </div>
@@ -283,6 +382,9 @@ const loading = ref(false)
 const isBinding = ref(false)
 const isUnbinding = ref(false)
 const isTesting = ref(false)
+const lineBotQrCodeUrl = ref(null)
+const lineBotId = ref(null)
+const lineBotJoinUrl = ref(null)
 const accordionOpen = ref({
   expenseRecording: false,
   queryCommands: false,
@@ -316,12 +418,100 @@ const loadUserProfile = async () => {
 
     if (user.value?.uid) {
       await loadLineBindingStatus()
+      await loadLineBotInfo()
     }
   } catch (error) {
     console.error('載入用戶資料失敗:', error)
     alert('載入用戶資料失敗，請稍後再試')
   } finally {
     loading.value = false
+  }
+}
+
+const loadLineBotInfo = async () => {
+  try {
+    // 嘗試獲取 QR Code URL
+    try {
+      const qrCodeResponse = await api.request('/config/line_bot_qr_code_url')
+      if (qrCodeResponse?.value) {
+        lineBotQrCodeUrl.value = qrCodeResponse.value
+      }
+    } catch (e) {
+      // QR Code URL 不存在，忽略
+    }
+
+    // 嘗試獲取加入連結（優先）
+    try {
+      const joinUrlResponse = await api.request('/config/line_bot_join_url')
+      if (joinUrlResponse?.value) {
+        lineBotJoinUrl.value = joinUrlResponse.value
+      }
+    } catch (e) {
+      // 加入連結不存在，忽略
+    }
+
+    // 嘗試獲取 Bot ID（如果沒有加入連結）
+    if (!lineBotJoinUrl.value) {
+      try {
+        const botIdResponse = await api.request('/config/line_bot_id')
+        if (botIdResponse?.value) {
+          lineBotId.value = botIdResponse.value
+        }
+      } catch (e) {
+        // Bot ID 不存在，忽略
+      }
+    }
+  } catch (error) {
+    console.error('載入 LINE Bot 資訊失敗:', error)
+    // 靜默處理錯誤
+  }
+}
+
+const copyBotId = async () => {
+  if (!lineBotId.value) return
+  
+  try {
+    await navigator.clipboard.writeText(lineBotId.value)
+    alert('Bot ID 已複製到剪貼簿！')
+  } catch (error) {
+    // 如果 clipboard API 不可用，使用傳統方法
+    const textArea = document.createElement('textarea')
+    textArea.value = lineBotId.value
+    textArea.style.position = 'fixed'
+    textArea.style.opacity = '0'
+    document.body.appendChild(textArea)
+    textArea.select()
+    try {
+      document.execCommand('copy')
+      alert('Bot ID 已複製到剪貼簿！')
+    } catch (e) {
+      alert('複製失敗，請手動複製：' + lineBotId.value)
+    }
+    document.body.removeChild(textArea)
+  }
+}
+
+const copyBotJoinUrl = async () => {
+  if (!lineBotJoinUrl.value) return
+  
+  try {
+    await navigator.clipboard.writeText(lineBotJoinUrl.value)
+    alert('加入連結已複製到剪貼簿！')
+  } catch (error) {
+    // 如果 clipboard API 不可用，使用傳統方法
+    const textArea = document.createElement('textarea')
+    textArea.value = lineBotJoinUrl.value
+    textArea.style.position = 'fixed'
+    textArea.style.opacity = '0'
+    document.body.appendChild(textArea)
+    textArea.select()
+    try {
+      document.execCommand('copy')
+      alert('加入連結已複製到剪貼簿！')
+    } catch (e) {
+      alert('複製失敗，請手動複製：' + lineBotJoinUrl.value)
+    }
+    document.body.removeChild(textArea)
   }
 }
 
@@ -346,16 +536,16 @@ const bindLineAccount = async () => {
 
     const response = await api.bindUserLineAccount(user.value.uid, lineUserIdInput.value.trim())
 
-    if (response.data.success) {
+    if (response && response.success) {
       alert('LINE 帳號綁定成功！')
       lineUserIdInput.value = ''
       await loadLineBindingStatus()
     } else {
-      alert('綁定失敗：' + (response.data.message || '未知錯誤'))
+      alert('綁定失敗：' + (response?.message || '未知錯誤'))
     }
   } catch (error) {
     console.error('綁定 LINE 帳號失敗:', error)
-    const errorMessage = error.response?.data?.message || '綁定失敗，請稍後再試'
+    const errorMessage = error.message || '綁定失敗，請稍後再試'
     alert(errorMessage)
   } finally {
     isBinding.value = false
@@ -372,15 +562,15 @@ const unbindLineAccount = async () => {
 
     const response = await api.unbindUserLineAccount(user.value.uid)
 
-    if (response.data.success) {
+    if (response && response.success) {
       alert('LINE 帳號解除綁定成功！')
       await loadLineBindingStatus()
     } else {
-      alert('解除綁定失敗：' + (response.data.message || '未知錯誤'))
+      alert('解除綁定失敗：' + (response?.message || '未知錯誤'))
     }
   } catch (error) {
     console.error('解除 LINE 帳號綁定失敗:', error)
-    const errorMessage = error.response?.data?.message || '解除綁定失敗，請稍後再試'
+    const errorMessage = error.message || '解除綁定失敗，請稍後再試'
     alert(errorMessage)
   } finally {
     isUnbinding.value = false

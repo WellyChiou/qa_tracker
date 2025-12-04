@@ -57,7 +57,10 @@ public class SecurityConfig {
                 
                 // ===== 管理端點（只有 ADMIN 可以訪問）=====
                 // 注意：這些規則必須放在通用規則之前，因為 Spring Security 按順序匹配
-                .requestMatchers("/api/users/**").hasRole("ADMIN")
+                // 用戶管理端點：要求認證，具體權限檢查在 Controller 層面進行
+                // LINE 帳號綁定相關端點允許已認證的用戶訪問自己的帳號（通過 Controller 的 hasPermission 檢查）
+                // 其他用戶管理端點需要 ADMIN 角色（通過 @PreAuthorize 註解檢查）
+                .requestMatchers("/api/users/**").authenticated()
                 .requestMatchers("/api/roles/**").hasRole("ADMIN")
                 .requestMatchers("/api/permissions/**").hasRole("ADMIN")
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")

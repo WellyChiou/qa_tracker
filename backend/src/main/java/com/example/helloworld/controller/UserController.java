@@ -1,11 +1,14 @@
 package com.example.helloworld.controller;
 
 import com.example.helloworld.entity.User;
+import com.example.helloworld.repository.UserRepository;
 import com.example.helloworld.service.LineBotService;
 import com.example.helloworld.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -24,6 +27,35 @@ public class UserController {
 
     @Autowired
     private LineBotService lineBotService;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    /**
+     * 檢查當前用戶是否有權限訪問指定 UID 的資源
+     * 用戶只能訪問自己的資源，除非是 ADMIN
+     */
+    private boolean hasPermission(String uid) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return false;
+        }
+
+        // ADMIN 可以訪問所有資源
+        if (authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
+            return true;
+        }
+
+        // 普通用戶只能訪問自己的資源
+        String username = authentication.getName();
+        Optional<User> currentUser = userRepository.findByUsername(username);
+        if (currentUser.isPresent() && currentUser.get().getUid().equals(uid)) {
+            return true;
+        }
+
+        return false;
+    }
 
     /**
      * 獲取所有用戶
@@ -165,6 +197,14 @@ public class UserController {
             @PathVariable String uid,
             @RequestBody Map<String, String> request) {
 
+        // 檢查權限：用戶只能綁定自己的帳號，除非是 ADMIN
+        if (!hasPermission(uid)) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "無權限訪問此資源");
+            return ResponseEntity.status(403).body(response);
+        }
+
         try {
             String lineUserId = request.get("lineUserId");
             if (lineUserId == null || lineUserId.trim().isEmpty()) {
@@ -185,8 +225,9 @@ public class UserController {
                 String welcomeMessage = String.format(
                     "🎉 綁定成功！\n\n歡迎 %s 使用費用記錄 LINE Bot！\n\n" +
                     "📝 您現在可以直接在 LINE 中記錄費用：\n" +
-                    "• 支出 餐費 150 午餐\n" +
-                    "• 收入 薪水 50000\n\n" +
+                    "• 支出 食 外食 150 午餐\n" +
+                    "• 收入 薪資 本薪 50000\n\n" +
+                    "格式：類型 主類別 細項 金額 描述\n" +
                     "💡 輸入「幫助」查看更多功能",
                     userService.getUserByUid(uid).map(User::getDisplayName).orElse("用戶")
                 );
@@ -213,6 +254,14 @@ public class UserController {
      */
     @PostMapping("/{uid}/unbind-line")
     public ResponseEntity<Map<String, Object>> unbindLineAccount(@PathVariable String uid) {
+        // 檢查權限：用戶只能解除綁定自己的帳號，除非是 ADMIN
+        if (!hasPermission(uid)) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "無權限訪問此資源");
+            return ResponseEntity.status(403).body(response);
+        }
+
         try {
             Optional<User> userOpt = userService.getUserByUid(uid);
             if (!userOpt.isPresent()) {
@@ -225,8 +274,9 @@ public class UserController {
             User user = userOpt.get();
             String lineUserId = user.getLineUserId();
 
+            // 直接更新 LINE User ID，避免觸發密碼更新邏輯
             user.setLineUserId(null);
-            userService.updateUser(uid, user);
+            userRepository.save(user);
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -252,6 +302,14 @@ public class UserController {
      */
     @GetMapping("/{uid}/line-status")
     public ResponseEntity<Map<String, Object>> getLineBindingStatus(@PathVariable String uid) {
+        // 檢查權限：用戶只能查看自己的綁定狀態，除非是 ADMIN
+        if (!hasPermission(uid)) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "無權限訪問此資源");
+            return ResponseEntity.status(403).body(response);
+        }
+
         try {
             Optional<User> userOpt = userService.getUserByUid(uid);
             if (!userOpt.isPresent()) {

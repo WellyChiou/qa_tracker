@@ -43,8 +43,24 @@ class ApiService {
         throw new Error(errorText || `請求失敗: ${response.status}`)
       }
       
-      if (response.status === 204) return null
-      return await response.json()
+      // 處理空響應（204 No Content）
+      if (response.status === 204) {
+        return null
+      }
+      
+      // 嘗試解析 JSON，如果響應體為空則返回 null
+      const text = await response.text()
+      if (!text || text.trim().length === 0) {
+        return null
+      }
+      
+      try {
+        return JSON.parse(text)
+      } catch (e) {
+        // 如果不是有效的 JSON，返回原始文本或 null
+        console.warn('響應不是有效的 JSON:', text)
+        return null
+      }
     } finally {
       if (showLoader && loadingCallbacks.hide) {
         loadingCallbacks.hide()

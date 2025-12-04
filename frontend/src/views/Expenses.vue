@@ -544,10 +544,10 @@ const editRecord = (id) => {
   }
   
   editingId.value = id
-
+  
   // 先設置類型，確保類別選項列表正確
   form.value.type = record.type
-
+  
   // 使用 nextTick 確保類別選項列表已更新後再設置類別
   nextTick(() => {
     form.value.member = record.member
@@ -559,8 +559,8 @@ const editRecord = (id) => {
       form.value.currency = record.currency || 'TWD'
       form.value.date = record.date
       form.value.description = record.description || ''
-  
-  showModal.value = true
+      
+      showModal.value = true
     })
   })
 }

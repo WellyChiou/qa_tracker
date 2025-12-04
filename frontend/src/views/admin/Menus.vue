@@ -4,7 +4,9 @@
     <header class="header">
       <div class="header-top">
         <h1>📑 菜單管理</h1>
-        <button class="btn btn-primary" @click="showAddModal = true">新增菜單</button>
+        <button class="btn btn-primary btn-add" @click="showAddModal = true">
+          <i class="fas fa-plus me-2"></i>新增菜單
+        </button>
       </div>
     </header>
 
@@ -48,57 +50,74 @@
 
     <!-- 新增/編輯模態框 -->
     <div v-if="showAddModal || editingMenu" class="modal-overlay" @click="closeModal">
-      <div class="modal-content" @click.stop>
-        <h2>{{ editingMenu ? '編輯菜單' : '新增菜單' }}</h2>
-        <form @submit.prevent="handleSubmit">
-          <div class="form-group">
-            <label>菜單代碼</label>
-            <input v-model="form.menuCode" required />
-          </div>
-          <div class="form-group">
-            <label>菜單名稱</label>
-            <input v-model="form.menuName" required />
-          </div>
-          <div class="form-group">
-            <label>圖標</label>
-            <input v-model="form.icon" placeholder="例如: 📊 或 icon-class" />
-          </div>
-          <div class="form-group">
-            <label>URL</label>
-            <input v-model="form.url" placeholder="/path 或 #" />
-          </div>
-          <div class="form-group">
-            <label>父菜單</label>
-            <select v-model.number="form.parentId">
-              <option :value="null">無（頂層菜單）</option>
-              <option v-for="m in menus" :key="m.id" :value="m.id">{{ m.menuName }}</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>排序</label>
-            <input type="number" v-model.number="form.orderIndex" />
-          </div>
-          <div class="form-group">
-            <label>啟用</label>
-            <input type="checkbox" v-model="form.isActive" />
-          </div>
-          <div class="form-group">
-            <label>顯示在儀表板</label>
-            <input type="checkbox" v-model="form.showInDashboard" />
-          </div>
-          <div class="form-group">
-            <label>所需權限</label>
-            <input v-model="form.requiredPermission" />
-          </div>
-          <div class="form-group">
-            <label>描述</label>
-            <textarea v-model="form.description" rows="3"></textarea>
-          </div>
-          <div class="form-actions">
-            <button type="submit" class="btn btn-primary">儲存</button>
-            <button type="button" class="btn btn-secondary" @click="closeModal">取消</button>
-          </div>
-        </form>
+      <div class="modal-panel" @click.stop>
+        <div class="modal-header">
+          <h2 class="modal-title">{{ editingMenu ? '編輯菜單' : '新增菜單' }}</h2>
+          <button class="btn-close" @click="closeModal">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <form @submit.prevent="handleSubmit" class="form-container">
+            <div class="form-group">
+              <label class="form-label">菜單代碼 <span class="text-danger">*</span></label>
+              <input v-model="form.menuCode" required class="form-input" placeholder="請輸入菜單代碼" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">菜單名稱 <span class="text-danger">*</span></label>
+              <input v-model="form.menuName" required class="form-input" placeholder="請輸入菜單名稱" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">圖標</label>
+              <input v-model="form.icon" class="form-input" placeholder="例如: 📊 或 icon-class" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">URL</label>
+              <input v-model="form.url" class="form-input" placeholder="/path 或 #" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">父菜單</label>
+              <select v-model.number="form.parentId" class="form-input">
+                <option :value="null">無（頂層菜單）</option>
+                <option v-for="m in menus" :key="m.id" :value="m.id">{{ m.menuName }}</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">排序</label>
+              <input type="number" v-model.number="form.orderIndex" class="form-input" placeholder="0" />
+            </div>
+            <div class="form-group checkbox-group">
+              <label class="checkbox-label">
+                <input type="checkbox" v-model="form.isActive" class="checkbox-input" />
+                <span>啟用</span>
+              </label>
+            </div>
+            <div class="form-group checkbox-group">
+              <label class="checkbox-label">
+                <input type="checkbox" v-model="form.showInDashboard" class="checkbox-input" />
+                <span>顯示在儀表板</span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label class="form-label">所需權限</label>
+              <input v-model="form.requiredPermission" class="form-input" placeholder="請輸入權限代碼" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">描述</label>
+              <textarea v-model="form.description" rows="3" class="form-input" placeholder="請輸入描述"></textarea>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save me-2"></i>儲存
+              </button>
+              <button type="button" class="btn btn-secondary" @click="closeModal">
+                <i class="fas fa-times me-2"></i>取消
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
 
@@ -368,11 +387,26 @@ onMounted(loadMenus)
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: 1px solid rgba(255, 255, 255, 0.2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
 .btn-primary:hover {
   transform: translateY(-3px);
   box-shadow: 0 10px 25px rgba(102, 126, 234, 0.5);
+}
+
+.btn-add {
+  font-size: 1rem;
+  padding: 0.875rem 1.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.me-2 {
+  margin-right: 0.5rem;
 }
 
 .btn-secondary {
@@ -419,16 +453,13 @@ onMounted(loadMenus)
 
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
   animation: fadeIn 0.3s;
 }
 
@@ -437,16 +468,16 @@ onMounted(loadMenus)
   to { opacity: 1; }
 }
 
-.modal-content {
-  background: var(--bg-card);
-  color: var(--text-primary);
-  padding: var(--spacing-2xl);
-  border-radius: var(--border-radius-xl);
-  min-width: 400px;
-  max-width: 600px;
+.modal-panel {
+  width: 100%;
+  max-width: 700px;
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  border: 1px solid #e2e8f0;
+  margin: 2rem;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: var(--shadow-xl);
   animation: slideUp 0.3s;
 }
 
@@ -461,66 +492,164 @@ onMounted(loadMenus)
   }
 }
 
-.modal-content h2 {
-  margin-top: 0;
-  margin-bottom: var(--spacing-xl);
-  font-size: 1.75rem;
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(to right, #f8fafc, white);
+  border-radius: 1rem 1rem 0 0;
+}
+
+.modal-title {
+  font-size: 1.5rem;
   font-weight: 700;
-  color: var(--text-primary);
+  color: #1e293b;
+  margin: 0;
+}
+
+.btn-close {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.btn-close:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.form-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
 }
 
 .form-group {
-  margin-bottom: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
-.form-group label {
-  display: block;
-  margin-bottom: var(--spacing-sm);
+.form-label {
   font-weight: 600;
-  color: var(--text-primary);
-  font-size: 0.95rem;
+  color: #374151;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
-.form-group input,
-.form-group select,
-.form-group textarea {
+.form-input {
   width: 100%;
-  padding: 12px 16px;
-  border: 2px solid var(--border-color);
-  border-radius: var(--border-radius);
-  font-size: 15px;
-  transition: var(--transition);
-  background: var(--bg-secondary);
-  color: var(--text-primary);
+  padding: 0.75rem 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 0.5rem;
+  font-size: 0.9375rem;
+  transition: all 0.2s;
+  background: white;
+  color: #1f2937;
+  font-family: inherit;
 }
 
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
+.form-input:focus {
   outline: none;
-  border-color: var(--primary-color);
+  border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
-.form-group input:disabled {
-  background: var(--bg-primary);
-  opacity: 0.6;
-  cursor: not-allowed;
+.form-input::placeholder {
+  color: #9ca3af;
 }
 
-.form-group input[type="checkbox"] {
-  width: 20px;
-  height: 20px;
+textarea.form-input {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.checkbox-group {
+  margin-top: 0.5rem;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   cursor: pointer;
-  accent-color: var(--primary-color);
+  font-weight: 500;
+  color: #374151;
+}
+
+.checkbox-input {
+  width: 1.25rem;
+  height: 1.25rem;
+  cursor: pointer;
+  accent-color: #667eea;
 }
 
 .form-actions {
   display: flex;
-  gap: var(--spacing-md);
-  margin-top: var(--spacing-xl);
-  padding-top: var(--spacing-lg);
-  border-top: 1px solid var(--border-color);
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  justify-content: flex-end;
+}
+
+.btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 4px 6px -1px rgba(102, 126, 234, 0.3);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px -2px rgba(102, 126, 234, 0.4);
+}
+
+.btn-secondary {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+}
+
+.btn-secondary:hover {
+  background: #e5e7eb;
+  color: #1f2937;
+}
+
+.me-2 {
+  margin-right: 0.5rem;
+}
+
+.text-danger {
+  color: #ef4444;
 }
 
 .notification {
