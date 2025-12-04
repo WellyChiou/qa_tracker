@@ -69,6 +69,9 @@ public class ChurchDataSourceConfig {
         properties.setProperty("hibernate.hbm2ddl.auto", "update");
         properties.setProperty("hibernate.dialect", "org.hibernate.dialect.MySQLDialect");
         properties.setProperty("hibernate.show_sql", "true");
+        // 確保使用 UTF-8 編碼
+        properties.setProperty("hibernate.connection.characterEncoding", "utf8");
+        properties.setProperty("hibernate.connection.useUnicode", "true");
         em.setJpaProperties(properties);
         
         return em;

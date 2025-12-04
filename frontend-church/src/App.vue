@@ -22,11 +22,17 @@
         <p>&copy; 2024 教會網站. 版權所有.</p>
       </div>
     </footer>
+    <LoadingSpinner />
   </div>
 </template>
 
 <script setup>
-// 教會網站主應用組件
+import { onMounted } from 'vue'
+import { useLoading } from '@/composables/useLoading'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
+
+// 初始化 loading 系統（註冊回調到 API 服務）
+useLoading()
 </script>
 
 <style scoped>

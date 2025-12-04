@@ -18,6 +18,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import jakarta.servlet.http.HttpServletResponse;
 
 import java.util.Arrays;
 
@@ -38,21 +39,20 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> 
-                session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS) // 改為 STATELESS，避免 session 相關的重定向
             )
             .authorizeHttpRequests(auth -> auth
                 // ===== 公開的端點（所有人可訪問，無需認證）=====
+                // 注意：必須按照從具體到通用的順序排列
+                .requestMatchers("/api/church/**").permitAll() // 教會網站 API（公開訪問）- 放在最前面
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/public/**").permitAll()
                 .requestMatchers("/api/hello").permitAll()
                 .requestMatchers("/api/utils/**").permitAll() // 工具 API（生成密碼 hash 等）
                 .requestMatchers("/api/line/**").permitAll() // LINE Bot Webhook（LINE 平台會直接調用，無需認證）
-                .requestMatchers("/api/church/**").permitAll() // 教會網站 API（公開訪問）
-                // 靜態資源和登入頁面
-                .requestMatchers("/login.html").permitAll()
+                // 靜態資源和前端入口
                 .requestMatchers("/*.css", "/*.js", "/api.js", "/style.css").permitAll()
-                .requestMatchers("/", "/index.html").permitAll()
-                .requestMatchers("/expenses.html", "/tracker.html").permitAll()
+                .requestMatchers("/", "/index.html").permitAll() // Vue SPA 入口文件
                 .requestMatchers("/admin/**").authenticated() // 管理頁面需要認證
                 
                 // ===== 管理端點（只有 ADMIN 可以訪問）=====
@@ -90,16 +90,37 @@ public class SecurityConfig {
             // 禁用 Spring Security 的登出處理器，使用 AuthController 的登出端點
             // 因為我們使用 REST API，不需要重定向，而是返回 JSON
             .logout(logout -> logout.disable())
+            .httpBasic(httpBasic -> httpBasic.disable()) // 禁用 HTTP Basic 認證，避免重定向
+            .formLogin(formLogin -> formLogin.disable()) // 明確禁用表單登入
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((request, response, authException) -> {
-                    // 如果是 API 請求，返回 JSON 錯誤
-                    if (request.getRequestURI().startsWith("/api/")) {
-                        response.setStatus(401);
+                    String requestURI = request.getRequestURI();
+                    // 如果是 API 請求（包括教會 API），返回 JSON 錯誤，不要重定向
+                    if (requestURI.startsWith("/api/")) {
+                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                         response.setContentType("application/json;charset=UTF-8");
                         response.getWriter().write("{\"error\":\"未授權\",\"authenticated\":false}");
+                        response.getWriter().flush();
                     } else {
-                        // 否則重定向到登入頁
-                        response.sendRedirect("/login.html");
+                        // 否則重定向到登入頁（使用相對路徑，自動匹配當前協議）
+                        // 前端已改為 Vue SPA，登入頁面是路由 /login，重定向到根路徑讓 Vue Router 處理
+                        // 注意：對於教會網站前端，不應該重定向到登入頁
+                        // 因為教會網站是公開的，不需要登入
+                        // 使用相對路徑，讓瀏覽器自動匹配協議
+                        String redirectUrl = "/";
+                        response.sendRedirect(redirectUrl);
+                    }
+                })
+                .accessDeniedHandler((request, response, accessDeniedException) -> {
+                    String requestURI = request.getRequestURI();
+                    // 如果是 API 請求，返回 JSON 錯誤
+                    if (requestURI.startsWith("/api/")) {
+                        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                        response.setContentType("application/json;charset=UTF-8");
+                        response.getWriter().write("{\"error\":\"禁止訪問\",\"authenticated\":true}");
+                        response.getWriter().flush();
+                    } else {
+                        response.sendRedirect("/");
                     }
                 })
             )

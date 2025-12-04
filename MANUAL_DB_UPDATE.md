@@ -44,7 +44,7 @@ docker compose exec mysql mysql -u appuser -papppassword qa_tracker < mysql/chec
 
 ```bash
 # 進入 MySQL 容器
-docker-compose exec mysql mysql -u appuser -papppassword qa_tracker
+docker compose exec mysql mysql -u appuser -papppassword qa_tracker
 
 # 在 MySQL 提示符下執行：
 source /tmp/check-and-update-users-table.sql

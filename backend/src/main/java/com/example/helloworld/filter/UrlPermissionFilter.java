@@ -31,6 +31,13 @@ public class UrlPermissionFilter extends OncePerRequestFilter {
         
         String requestPath = request.getRequestURI();
         String httpMethod = request.getMethod();
+        
+        // 教會網站 API 是公開的，直接跳過權限檢查
+        if (requestPath.startsWith("/api/church/")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+        
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         // 獲取所有啟用的 URL 權限配置
@@ -122,7 +129,8 @@ public class UrlPermissionFilter extends OncePerRequestFilter {
             response.setContentType("application/json;charset=UTF-8");
             response.getWriter().write("{\"error\":\"未授權\",\"authenticated\":false}");
         } else {
-            response.sendRedirect("/login.html");
+            // 前端已改為 Vue SPA，重定向到根路徑讓 Vue Router 處理
+            response.sendRedirect("/");
         }
     }
 

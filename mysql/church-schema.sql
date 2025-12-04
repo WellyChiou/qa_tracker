@@ -28,15 +28,6 @@ CREATE TABLE IF NOT EXISTS service_schedules (
     INDEX idx_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='服事安排表';
 
--- 崗位人員配置表（默認配置）
-CREATE TABLE IF NOT EXISTS position_config (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主鍵 ID',
-    config_name VARCHAR(100) NOT NULL DEFAULT 'default' COMMENT '配置名稱（用於支持多套配置）',
-    config_data JSON NOT NULL COMMENT '崗位人員配置（JSON 格式）',
-    is_default TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否為默認配置（1=是，0=否）',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '建立時間',
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新時間',
-    UNIQUE KEY uk_config_name (config_name),
-    INDEX idx_is_default (is_default)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='崗位人員配置表';
+-- 注意：position_config 表已移除，崗位配置現在使用 positions, persons, position_persons 表管理
+-- 詳見 mysql/church-positions-schema.sql
 

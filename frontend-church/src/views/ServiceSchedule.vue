@@ -8,153 +8,27 @@
         <div class="card">
           <div class="card-header">
             <h2>崗位人員配置</h2>
-            <button @click="savePositionConfig" class="btn btn-save-config" :disabled="savingConfig">
-              {{ savingConfig ? '保存中...' : '保存配置' }}
+            <button @click="openPositionManagement" class="btn btn-manage-positions">
+              管理崗位
             </button>
           </div>
-          <div class="position-config">
-            <!-- 電腦崗位 -->
-            <div class="position-group">
-              <h3>電腦</h3>
-              <div class="day-group">
-                <label>週六：</label>
-                <div class="person-tags">
-                  <span 
-                    v-for="(person, index) in positionConfig.computer.saturday" 
-                    :key="index"
-                    class="person-tag"
-                  >
-                    {{ person }}
-                    <button @click="removePersonFromPosition('computer', 'saturday', index)" class="tag-remove">×</button>
-                  </span>
-                  <input
-                    type="text"
-                    v-model="newPersonInput.computer.saturday"
-                    placeholder="添加人員"
-                    class="tag-input"
-                    @keyup.enter="addPersonToPosition('computer', 'saturday')"
-                    @blur="addPersonToPosition('computer', 'saturday')"
-                  />
-                </div>
-              </div>
-              <div class="day-group">
-                <label>週日：</label>
-                <div class="person-tags">
-                  <span 
-                    v-for="(person, index) in positionConfig.computer.sunday" 
-                    :key="index"
-                    class="person-tag"
-                  >
-                    {{ person }}
-                    <button @click="removePersonFromPosition('computer', 'sunday', index)" class="tag-remove">×</button>
-                  </span>
-                  <input
-                    type="text"
-                    v-model="newPersonInput.computer.sunday"
-                    placeholder="添加人員"
-                    class="tag-input"
-                    @keyup.enter="addPersonToPosition('computer', 'sunday')"
-                    @blur="addPersonToPosition('computer', 'sunday')"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <!-- 音控崗位 -->
-            <div class="position-group">
-              <h3>音控</h3>
-              <div class="day-group">
-                <label>週六：</label>
-                <div class="person-tags">
-                  <span 
-                    v-for="(person, index) in positionConfig.sound.saturday" 
-                    :key="index"
-                    class="person-tag"
-                  >
-                    {{ person }}
-                    <button @click="removePersonFromPosition('sound', 'saturday', index)" class="tag-remove">×</button>
-                  </span>
-                  <input
-                    type="text"
-                    v-model="newPersonInput.sound.saturday"
-                    placeholder="添加人員"
-                    class="tag-input"
-                    @keyup.enter="addPersonToPosition('sound', 'saturday')"
-                    @blur="addPersonToPosition('sound', 'saturday')"
-                  />
-                </div>
-              </div>
-              <div class="day-group">
-                <label>週日：</label>
-                <div class="person-tags">
-                  <span 
-                    v-for="(person, index) in positionConfig.sound.sunday" 
-                    :key="index"
-                    class="person-tag"
-                  >
-                    {{ person }}
-                    <button @click="removePersonFromPosition('sound', 'sunday', index)" class="tag-remove">×</button>
-                  </span>
-                  <input
-                    type="text"
-                    v-model="newPersonInput.sound.sunday"
-                    placeholder="添加人員"
-                    class="tag-input"
-                    @keyup.enter="addPersonToPosition('sound', 'sunday')"
-                    @blur="addPersonToPosition('sound', 'sunday')"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <!-- 燈光崗位 -->
-            <div class="position-group">
-              <h3>燈光</h3>
-              <div class="day-group">
-                <label>週六：</label>
-                <div class="person-tags">
-                  <span 
-                    v-for="(person, index) in positionConfig.light.saturday" 
-                    :key="index"
-                    class="person-tag"
-                  >
-                    {{ person }}
-                    <button @click="removePersonFromPosition('light', 'saturday', index)" class="tag-remove">×</button>
-                  </span>
-                  <input
-                    type="text"
-                    v-model="newPersonInput.light.saturday"
-                    placeholder="添加人員"
-                    class="tag-input"
-                    @keyup.enter="addPersonToPosition('light', 'saturday')"
-                    @blur="addPersonToPosition('light', 'saturday')"
-                  />
-                </div>
-              </div>
-              <div class="day-group">
-                <label>週日：</label>
-                <div class="person-tags">
-                  <span 
-                    v-for="(person, index) in positionConfig.light.sunday" 
-                    :key="index"
-                    class="person-tag"
-                  >
-                    {{ person }}
-                    <button @click="removePersonFromPosition('light', 'sunday', index)" class="tag-remove">×</button>
-                  </span>
-                  <input
-                    type="text"
-                    v-model="newPersonInput.light.sunday"
-                    placeholder="添加人員"
-                    class="tag-input"
-                    @keyup.enter="addPersonToPosition('light', 'sunday')"
-                    @blur="addPersonToPosition('light', 'sunday')"
-                  />
-                </div>
+          <div class="position-config-summary">
+            <p>點擊「管理崗位」按鈕來配置各崗位的人員（週六/週日）</p>
+            <div class="position-summary-list">
+              <div v-for="(posData, posCode) in positionConfig" :key="posCode" class="position-summary-item">
+                <strong>{{ posData.positionName || posCode }}：</strong>
+                <span>週六 {{ (posData.saturday || []).length }} 人</span>
+                <span>週日 {{ (posData.sunday || []).length }} 人</span>
               </div>
             </div>
           </div>
         </div>
+
+        <!-- 崗位管理 Modal -->
+        <PositionManagementModal
+          :show="showPositionManagement"
+          @close="closePositionManagement"
+        />
 
         <!-- 日期範圍選擇 -->
         <div class="card">
@@ -168,7 +42,7 @@
               />
             </div>
             <button @click="generateSchedule" class="btn btn-primary" :disabled="!canGenerate">
-              產生安排表
+              產生服事表
             </button>
           </div>
         </div>
@@ -199,12 +73,12 @@
         <!-- 安排結果 -->
         <div class="card" v-if="schedule.length > 0">
           <div class="schedule-header">
-            <h2>服事安排表 <span v-if="isEditing" class="editing-badge">編輯模式</span></h2>
+            <h2>服事表 <span v-if="isEditing" class="editing-badge">編輯模式</span></h2>
             <div class="schedule-actions">
               <button v-if="isEditing" @click="cancelEdit" class="btn btn-cancel">取消</button>
               <button v-if="isEditing" @click="updateSchedule" class="btn btn-save" :disabled="saving">保存修改</button>
               <button v-else-if="!isLoadedFromHistory" @click="saveSchedule" class="btn btn-save" :disabled="saving">保存服事表</button>
-              <button @click="exportSchedule" class="btn btn-export">匯出安排表</button>
+              <button @click="exportSchedule" class="btn btn-export">匯出服事表</button>
             </div>
           </div>
           <div class="schedule-table">
@@ -213,8 +87,9 @@
                 <tr>
                   <th>日期</th>
                   <th>電腦</th>
-                  <th>音控</th>
+                  <th>混音</th>
                   <th>燈光</th>
+                  <th>直播</th>
                 </tr>
               </thead>
               <tbody>
@@ -247,6 +122,15 @@
                     </select>
                     <span v-else>{{ item.light }}</span>
                   </td>
+                  <td>
+                    <select v-if="isEditing" v-model="item.live" class="edit-select">
+                      <option value="">-- 請選擇 --</option>
+                      <option v-for="person in getAvailablePersons(item, 'live')" :key="person" :value="person">
+                        {{ person }}
+                      </option>
+                    </select>
+                    <span v-else>{{ item.live }}</span>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -258,31 +142,16 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import DateRangePicker from '@/components/DateRangePicker.vue'
+import PositionManagementModal from '@/components/PositionManagementModal.vue'
+import { apiRequest } from '@/utils/api'
 
-// 崗位人員配置（從資料庫載入）
-const positionConfig = ref({
-  computer: {
-    saturday: [],
-    sunday: []
-  },
-  sound: {
-    saturday: [],
-    sunday: []
-  },
-  light: {
-    saturday: [],
-    sunday: []
-  }
-})
+// 崗位人員配置（從新的 API 載入）
+const positionConfig = ref({})
 
-// 新增人員輸入框
-const newPersonInput = ref({
-  computer: { saturday: '', sunday: '' },
-  sound: { saturday: '', sunday: '' },
-  light: { saturday: '', sunday: '' }
-})
+// 崗位管理 Modal 顯示狀態
+const showPositionManagement = ref(false)
 
 // 日期範圍（格式：[startDate, endDate]，日期格式為 'YYYY-MM-DD'）
 const dateRange = ref([])
@@ -295,7 +164,6 @@ const historyList = ref([])
 
 // 保存狀態
 const saving = ref(false)
-const savingConfig = ref(false)
 
 // 編輯狀態
 const isEditing = ref(false)
@@ -303,31 +171,37 @@ const editingScheduleId = ref(null)
 const originalSchedule = ref([]) // 保存原始數據，用於取消編輯
 const isLoadedFromHistory = ref(false) // 標記是否從歷史記錄載入（載入的不應該顯示「保存服事表」按鈕）
 
-// API 基礎 URL
-const API_BASE_URL = import.meta.env.DEV 
-  ? `${window.location.protocol}//${window.location.hostname}:8080/api`
-  : `${window.location.protocol}//${window.location.hostname}/api`
 
-// 檢查是否可以產生安排表
+// 檢查是否可以產生服事表
 const canGenerate = computed(() => {
-  const hasComputer = positionConfig.value.computer.saturday.length > 0 || positionConfig.value.computer.sunday.length > 0
-  const hasSound = positionConfig.value.sound.saturday.length > 0 || positionConfig.value.sound.sunday.length > 0
-  const hasLight = positionConfig.value.light.saturday.length > 0 || positionConfig.value.light.sunday.length > 0
-  return hasComputer && hasSound && hasLight && dateRange.value && dateRange.value.length === 2
+  const checkPosition = (posCode) => {
+    const posData = positionConfig.value[posCode]
+    if (!posData) return false
+    const satCount = (posData.saturday || []).length
+    const sunCount = (posData.sunday || []).length
+    return satCount > 0 || sunCount > 0
+  }
+  
+  const hasComputer = checkPosition('computer')
+  const hasSound = checkPosition('sound')
+  const hasLight = checkPosition('light')
+  const hasLive = checkPosition('live')
+  
+  return hasComputer && hasSound && hasLight && hasLive && dateRange.value && dateRange.value.length === 2
 })
 
-// 添加人員到崗位
-const addPersonToPosition = (position, day) => {
-  const name = newPersonInput.value[position][day].trim()
-  if (name && !positionConfig.value[position][day].includes(name)) {
-    positionConfig.value[position][day].push(name)
-    newPersonInput.value[position][day] = ''
-  }
+// 打開崗位管理 Modal
+const openPositionManagement = () => {
+  showPositionManagement.value = true
 }
 
-// 從崗位移除人員
-const removePersonFromPosition = (position, day, index) => {
-  positionConfig.value[position][day].splice(index, 1)
+// 關閉崗位管理 Modal
+const closePositionManagement = async () => {
+  showPositionManagement.value = false
+  await loadPositionConfig() // 重新載入配置
+  
+  // 如果正在編輯模式，確保下拉選單顯示最新的人員列表
+  // 由於 positionConfig 是響應式的，下拉選單會自動更新
 }
 
 // 獲取日期範圍內的所有週六和週日
@@ -377,10 +251,30 @@ const distributePersons = (dates) => {
   const serviceCount = {}
   
   // 初始化服務次數統計
+  // 只統計參與自動分配的人員
   const allPersons = new Set()
   Object.keys(positionConfig.value).forEach(position => {
-    positionConfig.value[position].saturday.forEach(p => allPersons.add(p))
-    positionConfig.value[position].sunday.forEach(p => allPersons.add(p))
+    const posData = positionConfig.value[position]
+    if (posData && posData.saturday) {
+      posData.saturday.forEach(p => {
+        // 如果是對象且有 includeInAutoSchedule 字段，檢查是否為 true
+        // 如果是字符串，默認參與自動分配
+        if (typeof p === 'string' || (typeof p === 'object' && (p.includeInAutoSchedule !== false))) {
+          const personName = typeof p === 'string' ? p : (p.personName || p.displayName)
+          allPersons.add(personName)
+        }
+      })
+    }
+    if (posData && posData.sunday) {
+      posData.sunday.forEach(p => {
+        // 如果是對象且有 includeInAutoSchedule 字段，檢查是否為 true
+        // 如果是字符串，默認參與自動分配
+        if (typeof p === 'string' || (typeof p === 'object' && (p.includeInAutoSchedule !== false))) {
+          const personName = typeof p === 'string' ? p : (p.personName || p.displayName)
+          allPersons.add(personName)
+        }
+      })
+    }
   })
   
   allPersons.forEach(person => {
@@ -388,6 +282,7 @@ const distributePersons = (dates) => {
       computer: 0,
       sound: 0,
       light: 0,
+      live: 0,
       total: 0
     }
   })
@@ -401,23 +296,50 @@ const distributePersons = (dates) => {
       formattedDate: formatDateDisplay(dateInfo.date, dateInfo.dayOfWeek), // 格式化顯示日期
       computer: '',
       sound: '',
-      light: ''
+      light: '',
+      live: ''
     }
     
     // 為每個崗位分配人員
-    const positions = ['computer', 'sound', 'light']
-    const usedPersons = new Set() // 記錄今天已使用的人員
+    // 主要崗位（電腦、混音、燈光）之間不能重複，但直播不受限制
+    const mainPositions = ['computer', 'sound', 'light'] // 主要崗位
+    const livePosition = 'live' // 直播崗位（不受重複限制）
+    const usedMainPersons = new Set() // 記錄今天主要崗位已使用的人員
     
-    positions.forEach(position => {
-      const availablePersons = positionConfig.value[position][dayType].filter(p => !usedPersons.has(p))
+    // 先分配主要崗位（電腦、混音、燈光）
+    mainPositions.forEach(position => {
+      const posData = positionConfig.value[position]
+      if (!posData || !posData[dayType]) {
+        return
+      }
+      // 過濾：1. 只使用參與自動分配的人員 2. 過濾掉今天已在其他主要崗位的人員
+      const availablePersons = posData[dayType]
+        .filter(p => {
+          // 只使用參與自動分配的人員
+          if (typeof p === 'object' && p.includeInAutoSchedule === false) {
+            return false
+          }
+          // 如果是字符串，默認參與自動分配
+          const personName = typeof p === 'string' ? p : (p.personName || p.displayName)
+          return !usedMainPersons.has(personName)
+        })
+        .map(p => typeof p === 'string' ? p : (p.personName || p.displayName))
       
       if (availablePersons.length === 0) {
-        // 如果沒有可用人員，從全部名單中選擇（但不在今天其他崗位）
-        const allAvailable = positionConfig.value[position][dayType].filter(p => 
-          assignment.computer !== p && 
-          assignment.sound !== p && 
-          assignment.light !== p
-        )
+        // 如果沒有可用人員，從全部名單中選擇（但不在今天其他主要崗位）
+        // 只使用參與自動分配的人員
+        const allAvailable = posData[dayType]
+          .filter(p => {
+            // 只使用參與自動分配的人員
+            if (typeof p === 'object' && p.includeInAutoSchedule === false) {
+              return false
+            }
+            const personName = typeof p === 'string' ? p : (p.personName || p.displayName)
+            return personName !== assignment.computer && 
+                   personName !== assignment.sound && 
+                   personName !== assignment.light
+          })
+          .map(p => typeof p === 'string' ? p : (p.personName || p.displayName))
         if (allAvailable.length > 0) {
           // 選擇該崗位服務次數最少的
           allAvailable.sort((a, b) => {
@@ -430,7 +352,7 @@ const distributePersons = (dates) => {
             return totalA - totalB
           })
           assignment[position] = allAvailable[0]
-          usedPersons.add(allAvailable[0])
+          usedMainPersons.add(allAvailable[0])
         }
       } else {
         // 從可用人員中選擇該崗位服務次數最少的
@@ -444,7 +366,7 @@ const distributePersons = (dates) => {
           return totalA - totalB
         })
         assignment[position] = availablePersons[0]
-        usedPersons.add(availablePersons[0])
+        usedMainPersons.add(availablePersons[0])
       }
       
       // 更新服務次數
@@ -454,16 +376,50 @@ const distributePersons = (dates) => {
       }
     })
     
+    // 分配直播崗位（不受主要崗位重複限制，可以與主要崗位重複）
+    // 但只使用參與自動分配的人員
+    const livePosData = positionConfig.value[livePosition]
+    const liveAvailablePersons = livePosData && livePosData[dayType] 
+      ? livePosData[dayType]
+          .filter(p => {
+            // 只使用參與自動分配的人員
+            if (typeof p === 'object' && p.includeInAutoSchedule === false) {
+              return false
+            }
+            return true
+          })
+          .map(p => typeof p === 'string' ? p : (p.personName || p.displayName))
+      : []
+    if (liveAvailablePersons.length > 0) {
+      // 選擇該崗位服務次數最少的（不需要檢查主要崗位的人員）
+      liveAvailablePersons.sort((a, b) => {
+        const countA = serviceCount[a] ? serviceCount[a][livePosition] : 0
+        const countB = serviceCount[b] ? serviceCount[b][livePosition] : 0
+        if (countA !== countB) return countA - countB
+        // 如果次數相同，選擇總服務次數最少的
+        const totalA = serviceCount[a] ? serviceCount[a].total : 0
+        const totalB = serviceCount[b] ? serviceCount[b].total : 0
+        return totalA - totalB
+      })
+      assignment[livePosition] = liveAvailablePersons[0]
+      
+      // 更新服務次數
+      if (assignment[livePosition] && serviceCount[assignment[livePosition]]) {
+        serviceCount[assignment[livePosition]][livePosition]++
+        serviceCount[assignment[livePosition]].total++
+      }
+    }
+    
     schedule.push(assignment)
   })
   
   return schedule
 }
 
-// 產生安排表
+// 產生服事表
 const generateSchedule = () => {
   if (!canGenerate.value) {
-    alert('請確保每個崗位至少配置一位人員，並選擇日期範圍')
+    alert('請確保每個崗位（電腦、混音、燈光、直播）至少配置一位人員，並選擇日期範圍')
     return
   }
   
@@ -507,10 +463,42 @@ const generateSchedule = () => {
   }
 }
 
-// 保存安排表
+// 驗證服事表（檢查主要崗位之間是否有重複）
+const validateSchedule = () => {
+  const mainPositions = ['computer', 'sound', 'light']
+  const errors = []
+  
+  schedule.value.forEach((item, index) => {
+    const usedMainPersons = new Set()
+    const mainPositionNames = { computer: '電腦', sound: '混音', light: '燈光' }
+    
+    // 檢查主要崗位之間是否有重複
+    mainPositions.forEach(position => {
+      const person = item[position]
+      if (person) {
+        if (usedMainPersons.has(person)) {
+          const dateStr = item.formattedDate || item.date || `第 ${index + 1} 行`
+          errors.push(`${dateStr}：${person} 同時擔任多個主要崗位（電腦、混音、燈光之間不能重複）`)
+        }
+        usedMainPersons.add(person)
+      }
+    })
+  })
+  
+  return errors
+}
+
+// 保存服事表
 const saveSchedule = async () => {
   if (schedule.value.length === 0 || dateRange.value.length !== 2) {
-    alert('請先產生安排表')
+    alert('請先產生服事表')
+    return
+  }
+
+  // 驗證主要崗位之間是否有重複
+  const validationErrors = validateSchedule()
+  if (validationErrors.length > 0) {
+    alert('驗證失敗：\n' + validationErrors.join('\n') + '\n\n請修正後再保存。')
     return
   }
 
@@ -519,11 +507,8 @@ const saveSchedule = async () => {
     const [startDate, endDate] = dateRange.value
     const scheduleDate = startDate // 使用開始日期作為安排日期
 
-    const response = await fetch(`${API_BASE_URL}/church/service-schedules`, {
+    const response = await apiRequest('/church/service-schedules', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
       body: JSON.stringify({
         scheduleDate,
         startDate,
@@ -531,12 +516,14 @@ const saveSchedule = async () => {
         scheduleData: schedule.value,
         positionConfig: positionConfig.value
       })
-    })
+    }, '保存服事表中...')
 
     const result = await response.json()
     
-    if (response.ok) {
-      alert(`安排表保存成功！版本：第 ${result.version} 版`)
+    if (response.ok && result.success !== false) {
+      alert(`服事表保存成功！版本：第 ${result.version} 版`)
+      // 標記為已保存，移除"保存服事表"按鈕
+      isLoadedFromHistory.value = true
       await loadHistory() // 重新載入歷史記錄
     } else {
       alert('保存失敗：' + (result.error || '未知錯誤'))
@@ -551,26 +538,30 @@ const saveSchedule = async () => {
 // 載入歷史記錄
 const loadHistory = async () => {
   try {
-    const response = await fetch(`${API_BASE_URL}/church/service-schedules`)
-    if (response.ok) {
-      historyList.value = await response.json()
-    }
+    const response = await apiRequest('/church/service-schedules', {
+      method: 'GET'
+    }, '載入歷史記錄中...')
+    const result = await response.json()
+    historyList.value = result || []
   } catch (error) {
     console.error('載入歷史記錄失敗：', error)
+    alert('載入歷史記錄失敗：' + error.message)
   }
 }
 
-// 載入指定的安排表
+// 載入指定的服事表
 const loadSchedule = async (id) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/church/service-schedules/${id}`)
+    const response = await apiRequest(`/church/service-schedules/${id}`, {
+      method: 'GET'
+    }, '載入服事表中...')
+    const data = await response.json()
+    
     if (response.ok) {
-      const data = await response.json()
-      
       // 載入日期範圍
       dateRange.value = [data.startDate, data.endDate]
       
-      // 載入安排表數據
+      // 載入服事表數據
       schedule.value = data.scheduleData
       
       // 確保每個項目都有 formattedDate
@@ -600,26 +591,28 @@ const loadSchedule = async (id) => {
       editingScheduleId.value = null
       isLoadedFromHistory.value = true // 標記為從歷史記錄載入
       
-      alert('安排表載入成功！')
+      alert('服事表載入成功！')
     } else {
-      alert('載入失敗')
+      alert('載入失敗：' + (data.error || '未知錯誤'))
     }
   } catch (error) {
     alert('載入失敗：' + error.message)
   }
 }
 
-// 編輯指定的安排表
+// 編輯指定的服事表
 const editSchedule = async (id) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/church/service-schedules/${id}`)
+    const response = await apiRequest(`/church/service-schedules/${id}`, {
+      method: 'GET'
+    }, '載入服事表中...')
+    const data = await response.json()
+    
     if (response.ok) {
-      const data = await response.json()
-      
       // 載入日期範圍
       dateRange.value = [data.startDate, data.endDate]
       
-      // 載入安排表數據
+      // 載入服事表數據
       schedule.value = data.scheduleData
       
       // 確保每個項目都有 formattedDate
@@ -643,6 +636,9 @@ const editSchedule = async (id) => {
       if (data.positionConfig) {
         positionConfig.value = data.positionConfig
       }
+      
+      // 重新載入最新的崗位配置，確保下拉選單顯示最新的人員列表
+      await loadPositionConfig()
       
       // 進入編輯模式
       isEditing.value = true
@@ -675,6 +671,12 @@ const cancelEdit = () => {
 }
 
 // 獲取可選人員列表
+// 注意：此函數從 positionConfig 中讀取人員列表
+// positionConfig 會在以下情況自動更新：
+// 1. 頁面載入時（onMounted）
+// 2. 進入編輯模式時（editSchedule）
+// 3. 關閉崗位管理視窗時（closePositionManagement）
+// 由於 Vue 的響應式系統，下拉選單會自動顯示最新的人員列表
 const getAvailablePersons = (item, position) => {
   // 判斷是週六還是週日
   let dayOfWeek = item.dayOfWeek
@@ -696,20 +698,55 @@ const getAvailablePersons = (item, position) => {
   const dayKey = dayOfWeek === '六' ? 'saturday' : 'sunday'
   
   // 獲取該崗位該日期的人員列表
-  const availablePersons = positionConfig.value[position]?.[dayKey] || []
+  // 編輯模式下顯示所有人員（包括不參與自動分配的）
+  const posData = positionConfig.value[position]
+  let availablePersons = (posData && posData[dayKey]) ? posData[dayKey] : []
+  
+  // 將對象轉換為字符串（用於下拉選單顯示）
+  availablePersons = availablePersons.map(p => {
+    if (typeof p === 'string') {
+      return p
+    } else {
+      return p.personName || p.displayName || ''
+    }
+  }).filter(p => p) // 過濾空值
+  
+  // 主要崗位（電腦、混音、燈光）之間不能重複，但直播不受限制
+  const mainPositions = ['computer', 'sound', 'light']
+  const isMainPosition = mainPositions.includes(position)
+  const isLivePosition = position === 'live'
+  
+  if (isMainPosition) {
+    // 對於主要崗位，過濾掉今天其他主要崗位已分配的人員
+    const usedMainPersons = new Set()
+    mainPositions.forEach(pos => {
+      if (pos !== position && item[pos]) {
+        usedMainPersons.add(item[pos])
+      }
+    })
+    availablePersons = availablePersons.filter(p => !usedMainPersons.has(p))
+  }
+  // 對於直播崗位，不需要過濾，可以選擇所有人員（包括主要崗位的人員）
   
   return availablePersons
 }
 
-// 更新安排表
+// 更新服事表
 const updateSchedule = async () => {
   if (schedule.value.length === 0 || !editingScheduleId.value) {
-    alert('請先載入要編輯的安排表')
+    alert('請先載入要編輯的服事表')
+    return
+  }
+
+  // 驗證主要崗位之間是否有重複
+  const validationErrors = validateSchedule()
+  if (validationErrors.length > 0) {
+    alert('驗證失敗：\n' + validationErrors.join('\n') + '\n\n請修正後再保存。')
     return
   }
 
   // 驗證是否有空值
-  const hasEmpty = schedule.value.some(item => !item.computer || !item.sound || !item.light)
+  const hasEmpty = schedule.value.some(item => !item.computer || !item.sound || !item.light || !item.live)
   if (hasEmpty) {
     if (!confirm('部分日期的人員未填寫完整，確定要保存嗎？')) {
       return
@@ -736,7 +773,7 @@ const updateSchedule = async () => {
     const result = await response.json()
     
     if (response.ok) {
-      alert('安排表更新成功！')
+      alert('服事表更新成功！')
       isEditing.value = false
       editingScheduleId.value = null
       originalSchedule.value = []
@@ -752,22 +789,24 @@ const updateSchedule = async () => {
   }
 }
 
-// 刪除安排表
+// 刪除服事表
 const deleteSchedule = async (id) => {
-  if (!confirm('確定要刪除此安排表嗎？')) {
+  if (!confirm('確定要刪除此服事表嗎？')) {
     return
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/church/service-schedules/${id}`, {
+    const response = await apiRequest(`/church/service-schedules/${id}`, {
       method: 'DELETE'
-    })
+    }, '刪除服事表中...')
     
-    if (response.ok) {
+    const result = await response.json()
+    
+    if (response.ok && result.success !== false) {
       alert('刪除成功')
       await loadHistory() // 重新載入歷史記錄
     } else {
-      alert('刪除失敗')
+      alert('刪除失敗：' + (result.error || '未知錯誤'))
     }
   } catch (error) {
     alert('刪除失敗：' + error.message)
@@ -816,13 +855,15 @@ const formatDisplayDate = (dateStr) => {
   return `${year}/${month}/${day}`
 }
 
-// 匯出安排表
+// 匯出服事表
 const exportSchedule = () => {
   if (schedule.value.length === 0) return
   
-  let csv = '日期,電腦/音控/燈光\n'
+  // 格式：日期,電腦/混音/燈光,直播
+  let csv = '日期,電腦/混音/燈光,直播\n'
   schedule.value.forEach(item => {
-    csv += `${item.date},${item.computer}/${item.sound}/${item.light}\n`
+    const mainPositions = `${item.computer || ''}/${item.sound || ''}/${item.light || ''}`
+    csv += `${item.date},${mainPositions},${item.live || ''}\n`
   })
   
   const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' })
@@ -830,7 +871,7 @@ const exportSchedule = () => {
   const url = URL.createObjectURL(blob)
   link.setAttribute('href', url)
   const [startDate, endDate] = dateRange.value
-  link.setAttribute('download', `服事安排表_${startDate}_${endDate}.csv`)
+  link.setAttribute('download', `服事表_${startDate}_${endDate}.csv`)
   link.style.visibility = 'hidden'
   document.body.appendChild(link)
   link.click()
@@ -838,62 +879,43 @@ const exportSchedule = () => {
 }
 
 // 載入崗位配置
+// 載入崗位配置（從新的 API）
 const loadPositionConfig = async () => {
   try {
-    const response = await fetch(`${API_BASE_URL}/church/position-config/default`)
-    if (response.ok) {
-      const result = await response.json()
-      console.log('載入崗位配置響應：', result)
+    const response = await apiRequest('/church/positions/config/full', {
+      method: 'GET'
+    }, '載入崗位配置中...')
+    const result = await response.json()
+    console.log('載入崗位配置響應：', result)
       
-      if (result.config && Object.keys(result.config).length > 0) {
-        // 確保配置結構正確
+    if (response.ok && result.config) {
+      if (Object.keys(result.config).length > 0) {
+        // 轉換為舊格式以保持兼容性
         const config = result.config
-        positionConfig.value = {
-          computer: config.computer || { saturday: [], sunday: [] },
-          sound: config.sound || { saturday: [], sunday: [] },
-          light: config.light || { saturday: [], sunday: [] }
+        const convertedConfig = {}
+        
+        for (const [posCode, posData] of Object.entries(config)) {
+          // 保留完整對象信息（包括 includeInAutoSchedule），用於產生服事表時過濾
+          convertedConfig[posCode] = {
+            positionName: posData.positionName || posCode,
+            saturday: posData.saturday || [],
+            sunday: posData.sunday || []
+          }
         }
+        
+        positionConfig.value = convertedConfig
         console.log('崗位配置載入成功：', positionConfig.value)
       } else {
-        console.warn('崗位配置為空，使用默認空配置')
-        // 保持空配置，用戶可以手動添加
+        console.warn('崗位配置為空')
+        positionConfig.value = {}
       }
     } else {
-      const errorText = await response.text()
-      console.error('載入崗位配置失敗，HTTP 狀態：', response.status, errorText)
-      // 如果載入失敗，使用空配置（用戶可以手動添加）
+      console.error('載入崗位配置失敗，HTTP 狀態：', response.status, result)
+      positionConfig.value = {}
     }
   } catch (error) {
     console.error('載入崗位配置失敗：', error)
-    // 如果載入失敗，使用空配置（用戶可以手動添加）
-  }
-}
-
-// 保存崗位配置
-const savePositionConfig = async () => {
-  savingConfig.value = true
-  try {
-    const response = await fetch(`${API_BASE_URL}/church/position-config/default`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        config: positionConfig.value
-      })
-    })
-
-    const result = await response.json()
-    
-    if (response.ok) {
-      alert('崗位配置保存成功！')
-    } else {
-      alert('保存失敗：' + (result.error || '未知錯誤'))
-    }
-  } catch (error) {
-    alert('保存失敗：' + error.message)
-  } finally {
-    savingConfig.value = false
+    positionConfig.value = {}
   }
 }
 
@@ -924,24 +946,60 @@ onMounted(() => {
   margin: 0;
 }
 
-.btn-save-config {
-  background: #28a745;
+.btn-manage-positions {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  padding: 0.5rem 1.5rem;
+  padding: 0.75rem 1.5rem;
   border: none;
-  border-radius: 5px;
+  border-radius: 0.5rem;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 1rem;
   font-weight: 500;
+  transition: all 0.2s;
 }
 
-.btn-save-config:hover:not(:disabled) {
-  background: #218838;
+.btn-manage-positions:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
-.btn-save-config:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.position-config-summary {
+  padding: 1.5rem;
+  background: #f8fafc;
+  border-radius: 0.5rem;
+  border: 1px solid #e2e8f0;
+}
+
+.position-config-summary p {
+  margin: 0 0 1rem 0;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.position-summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.position-summary-item {
+  padding: 0.75rem 1rem;
+  background: white;
+  border-radius: 0.5rem;
+  border: 1px solid #e2e8f0;
+  font-size: 0.9rem;
+  color: #475569;
+}
+
+.position-summary-item strong {
+  color: #1e293b;
+  margin-right: 0.5rem;
+}
+
+.position-summary-item span {
+  margin-right: 1rem;
+  color: #667eea;
+  font-weight: 500;
 }
 
 .card h2 {
@@ -1003,6 +1061,28 @@ onMounted(() => {
   font-size: 0.9rem;
 }
 
+.tag-edit {
+  background: none;
+  border: none;
+  color: #007bff;
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.2s;
+  margin-right: 2px;
+}
+
+.tag-edit:hover {
+  background: #e7f3ff;
+}
+
 .tag-remove {
   background: none;
   border: none;
@@ -1022,6 +1102,17 @@ onMounted(() => {
 
 .tag-remove:hover {
   background: #f8d7da;
+}
+
+.tag-edit-input {
+  padding: 0.4rem 0.8rem;
+  border: 2px solid #007bff;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  width: 120px;
+  outline: none;
+  background: white;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
 }
 
 .tag-input {
