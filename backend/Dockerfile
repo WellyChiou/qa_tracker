@@ -15,11 +15,20 @@ FROM eclipse-temurin:17-jre-alpine
 
 WORKDIR /app
 
+# 設置時區為台灣時間
+RUN apk add --no-cache tzdata && \
+    cp /usr/share/zoneinfo/Asia/Taipei /etc/localtime && \
+    echo "Asia/Taipei" > /etc/timezone && \
+    apk del tzdata
+
 # 從構建階段複製 JAR 文件
 COPY --from=build /app/target/*.jar app.jar
 
 # 暴露端口
 EXPOSE 8080
+
+# 設置時區環境變數
+ENV TZ=Asia/Taipei
 
 # 運行應用
 ENTRYPOINT ["java", "-jar", "app.jar"]

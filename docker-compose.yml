@@ -10,7 +10,9 @@ services:
       MYSQL_PASSWORD: apppassword
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./mysql/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      - ./mysql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./mysql/church-schema.sql:/docker-entrypoint-initdb.d/02-church-schema.sql
+      - ./mysql/init-position-config.sql:/docker-entrypoint-initdb.d/03-init-position-config.sql
     ports:
       - "3306:3306"
     healthcheck:
@@ -32,6 +34,7 @@ services:
       mysql:
         condition: service_healthy
     environment:
+      TZ: Asia/Taipei
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/qa_tracker?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=utf8&useUnicode=true
       SPRING_DATASOURCE_USERNAME: appuser
       SPRING_DATASOURCE_PASSWORD: apppassword
@@ -58,6 +61,17 @@ services:
       - backend
     restart: unless-stopped
 
+  # 教會網站前端
+  frontend-church:
+    build:
+      context: ./frontend-church
+      dockerfile: Dockerfile
+    container_name: vue_frontend_church
+    # 移除對外端口，由 nginx 反向代理處理
+    depends_on:
+      - backend
+    restart: unless-stopped
+
   # Nginx 反向代理（處理 HTTPS）
   nginx:
     image: nginx:alpine
@@ -74,6 +88,7 @@ services:
       - default
     depends_on:
       - frontend
+      - frontend-church
       - backend
     restart: unless-stopped
     command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"

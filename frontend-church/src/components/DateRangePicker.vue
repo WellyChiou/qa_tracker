@@ -258,14 +258,6 @@ const closePicker = () => {
   showPicker.value = false
 }
 
-const yearChanged = () => {
-  // 年份改變時保持當前月份
-}
-
-const monthChanged = () => {
-  // 月份改變時保持當前年份
-}
-
 const prevMonth = () => {
   if (currentMonth.value === 0) {
     currentMonth.value = 11
@@ -337,50 +329,43 @@ watch(() => props.modelValue, (newVal) => {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 0.625rem 0.875rem;
-  border: 1.5px solid #cbd5e1;
-  border-radius: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 5px;
   background: white;
-  color: #1e293b;
+  color: #333;
   cursor: pointer;
   transition: all 0.2s ease;
   box-sizing: border-box;
 }
 
 .date-range-input:hover {
-  border-color: #94a3b8;
+  border-color: #667eea;
 }
 
 .date-range-input:focus-within {
-  border-color: #818cf8;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
 }
 
 .date-text {
   flex: 1;
-  font-size: 0.875rem;
+  font-size: 0.9rem;
   font-weight: 500;
-  color: #1e293b;
+  color: #333;
 }
 
 .placeholder {
   flex: 1;
-  color: #94a3b8;
-  font-size: 0.875rem;
+  color: #999;
+  font-size: 0.9rem;
 }
 
 .calendar-icon {
-  font-size: 14px;
+  font-size: 16px;
   margin-left: 8px;
-  color: #64748b;
+  color: #667eea;
   line-height: 1;
-}
-
-.date-range-hint {
-  margin-top: 0.5rem;
-  font-size: 0.75rem;
-  color: #64748b;
-  font-weight: 500;
 }
 
 .picker-overlay {
@@ -404,10 +389,10 @@ watch(() => props.modelValue, (newVal) => {
 }
 
 .picker-container {
-  background: var(--bg-card);
-  border-radius: var(--border-radius-xl);
-  box-shadow: var(--shadow-xl);
-  padding: var(--spacing-xl);
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  padding: 1.5rem;
   min-width: 350px;
   max-width: 400px;
   animation: slideUp 0.3s;
@@ -428,15 +413,15 @@ watch(() => props.modelValue, (newVal) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: var(--spacing-lg);
-  padding-bottom: var(--spacing-md);
-  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #eee;
 }
 
 .month-year {
   font-size: 1.1rem;
   font-weight: 600;
-  color: var(--text-primary);
+  color: #333;
   cursor: pointer;
   padding: 4px 8px;
   border-radius: 4px;
@@ -451,9 +436,9 @@ watch(() => props.modelValue, (newVal) => {
 .month-picker {
   margin-top: 8px;
   padding: 12px;
-  background: var(--bg-card);
-  border-radius: var(--border-radius);
-  border: 1px solid var(--border-color);
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #ddd;
 }
 
 .year-grid {
@@ -466,10 +451,10 @@ watch(() => props.modelValue, (newVal) => {
 
 .year-btn {
   padding: 8px 12px;
-  border: 1px solid var(--border-color);
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  border-radius: var(--border-radius-sm);
+  border: 1px solid #ddd;
+  background: white;
+  color: #333;
+  border-radius: 5px;
   cursor: pointer;
   font-size: 0.9rem;
   font-weight: 500;
@@ -478,13 +463,13 @@ watch(() => props.modelValue, (newVal) => {
 
 .year-btn:hover {
   background: rgba(102, 126, 234, 0.1);
-  border-color: var(--primary-color);
+  border-color: #667eea;
 }
 
 .year-btn.active {
-  background: var(--primary-color);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  border-color: var(--primary-color);
+  border-color: #667eea;
 }
 
 .month-grid {
@@ -495,10 +480,10 @@ watch(() => props.modelValue, (newVal) => {
 
 .month-btn {
   padding: 12px;
-  border: 1px solid var(--border-color);
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  border-radius: var(--border-radius-sm);
+  border: 1px solid #ddd;
+  background: white;
+  color: #333;
+  border-radius: 5px;
   cursor: pointer;
   font-size: 0.95rem;
   font-weight: 500;
@@ -507,24 +492,24 @@ watch(() => props.modelValue, (newVal) => {
 
 .month-btn:hover {
   background: rgba(102, 126, 234, 0.1);
-  border-color: var(--primary-color);
+  border-color: #667eea;
 }
 
 .month-btn.active {
-  background: var(--primary-color);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  border-color: var(--primary-color);
+  border-color: #667eea;
 }
 
 .nav-btn {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius);
+  background: #f8f9fa;
+  border: 1px solid #ddd;
+  border-radius: 5px;
   padding: 6px 12px;
   cursor: pointer;
   font-size: 1.2rem;
-  color: var(--text-primary);
-  transition: var(--transition);
+  color: #333;
+  transition: all 0.2s;
   min-width: 36px;
 }
 
@@ -533,14 +518,14 @@ watch(() => props.modelValue, (newVal) => {
 }
 
 .nav-btn:hover {
-  background: var(--bg-primary);
-  border-color: var(--primary-color);
+  background: #e9ecef;
+  border-color: #667eea;
 }
 
 .picker-body {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
+  gap: 1rem;
 }
 
 .calendar-wrapper {
@@ -563,7 +548,7 @@ watch(() => props.modelValue, (newVal) => {
 .day-name {
   text-align: center;
   font-weight: 700;
-  color: var(--primary-color);
+  color: #667eea;
   font-size: 0.9rem;
   padding: 8px 0;
 }
@@ -580,11 +565,11 @@ watch(() => props.modelValue, (newVal) => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  border-radius: var(--border-radius-sm);
-  transition: var(--transition);
+  border-radius: 5px;
+  transition: all 0.2s;
   font-size: 0.95rem;
   font-weight: 500;
-  color: var(--text-primary);
+  color: #333;
   position: relative;
 }
 
@@ -599,7 +584,7 @@ watch(() => props.modelValue, (newVal) => {
 }
 
 .calendar-day.is-today {
-  border: 2px solid var(--primary-color);
+  border: 2px solid #667eea;
   font-weight: 700;
 }
 
@@ -613,53 +598,53 @@ watch(() => props.modelValue, (newVal) => {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   font-weight: 700;
-  border-radius: var(--border-radius-sm) 0 0 var(--border-radius-sm);
+  border-radius: 5px 0 0 5px;
 }
 
 .calendar-day.is-end {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   font-weight: 700;
-  border-radius: 0 var(--border-radius-sm) var(--border-radius-sm) 0;
+  border-radius: 0 5px 5px 0;
 }
 
 .calendar-day.is-in-range {
   background: rgba(102, 126, 234, 0.15);
-  color: var(--text-primary);
+  color: #333;
   border-radius: 0;
 }
 
 .calendar-day.is-start.is-end {
-  border-radius: var(--border-radius-sm);
+  border-radius: 5px;
 }
 
 .picker-actions {
   display: flex;
-  gap: var(--spacing-md);
+  gap: 0.75rem;
   justify-content: flex-end;
-  padding-top: var(--spacing-md);
-  border-top: 1px solid var(--border-color);
+  padding-top: 1rem;
+  border-top: 1px solid #eee;
 }
 
 .btn-clear,
 .btn-close {
   padding: 10px 20px;
   border: none;
-  border-radius: var(--border-radius);
+  border-radius: 5px;
   font-weight: 600;
   cursor: pointer;
-  transition: var(--transition);
+  transition: all 0.2s;
   font-size: 14px;
 }
 
 .btn-clear {
-  background: var(--bg-primary);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
+  background: #f8f9fa;
+  color: #666;
+  border: 1px solid #ddd;
 }
 
 .btn-clear:hover {
-  background: var(--bg-secondary);
+  background: #e9ecef;
 }
 
 .btn-close {
@@ -669,6 +654,7 @@ watch(() => props.modelValue, (newVal) => {
 
 .btn-close:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 </style>
+

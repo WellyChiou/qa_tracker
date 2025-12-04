@@ -47,6 +47,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/hello").permitAll()
                 .requestMatchers("/api/utils/**").permitAll() // 工具 API（生成密碼 hash 等）
                 .requestMatchers("/api/line/**").permitAll() // LINE Bot Webhook（LINE 平台會直接調用，無需認證）
+                .requestMatchers("/api/church/**").permitAll() // 教會網站 API（公開訪問）
                 // 靜態資源和登入頁面
                 .requestMatchers("/login.html").permitAll()
                 .requestMatchers("/*.css", "/*.js", "/api.js", "/style.css").permitAll()
