@@ -776,17 +776,48 @@ const handlePositionSelectionChange = (posCode) => {
   const isSelected = localSelectedPositions.value[posCode]
   
   if (isSelected) {
-    localSchedule.value.forEach(item => {
-      if (!item.hasOwnProperty(posCode)) {
-        item[posCode] = ''
-        item[posCode + 'Id'] = null
-      }
-    })
+    // 檢查原始資料中是否有該崗位的資料
+    const hasOriginalData = originalSchedule.value.length > 0 && 
+      originalSchedule.value.some(item => 
+        (item[posCode] && item[posCode] !== '') || 
+        (item[posCode + 'Id'] && item[posCode + 'Id'] !== null)
+      )
     
-    if (hasPositionConfig(posCode) && localSchedule.value.length > 0) {
-      autoAssignPositionForNewSelection(posCode)
+    if (hasOriginalData) {
+      // 如果有原始資料，從 originalSchedule 中恢復
+      localSchedule.value.forEach((item, index) => {
+        const originalItem = originalSchedule.value[index]
+        if (originalItem) {
+          if (originalItem[posCode] || originalItem[posCode + 'Id']) {
+            item[posCode] = originalItem[posCode] || ''
+            item[posCode + 'Id'] = originalItem[posCode + 'Id'] || null
+          } else {
+            // 如果原始資料中該日期沒有該崗位資料，則初始化為空
+            item[posCode] = ''
+            item[posCode + 'Id'] = null
+          }
+        } else {
+          // 如果沒有對應的原始資料，初始化為空
+          item[posCode] = ''
+          item[posCode + 'Id'] = null
+        }
+      })
+    } else {
+      // 如果沒有原始資料，初始化為空
+      localSchedule.value.forEach(item => {
+        if (!item.hasOwnProperty(posCode)) {
+          item[posCode] = ''
+          item[posCode + 'Id'] = null
+        }
+      })
+      
+      // 如果有崗位配置，才自動分配（僅針對沒有原始資料的情況）
+      if (hasPositionConfig(posCode) && localSchedule.value.length > 0) {
+        autoAssignPositionForNewSelection(posCode)
+      }
     }
   } else {
+    // 取消勾選時，清空該崗位的資料
     localSchedule.value.forEach(item => {
       item[posCode] = ''
       item[posCode + 'Id'] = null
