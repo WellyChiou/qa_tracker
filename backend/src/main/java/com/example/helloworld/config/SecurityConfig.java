@@ -39,7 +39,8 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> 
-                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS) // 改為 STATELESS，避免 session 相關的重定向
+                session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED) // 使用 IF_REQUIRED 以支持 session 認證
+                    .sessionFixation().migrateSession() // 遷移 session，提高安全性
             )
             .authorizeHttpRequests(auth -> auth
                 // ===== 公開的端點（所有人可訪問，無需認證）=====

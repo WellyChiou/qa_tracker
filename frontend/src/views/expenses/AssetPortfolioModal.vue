@@ -529,6 +529,10 @@ const getCurrencyByMarket = (stockCode) => {
   else if (/^\d{4}[A-Za-z]?$/.test(stockCode)) {
     return 'TWD'
   }
+  // 台股：5位數字 或 5位數字+字母（如 0050, 00937, 00937B）
+  else if (/^\d{5}[A-Za-z]?$/.test(stockCode)) {
+    return 'TWD'
+  }
   // 其他情況預設為台幣
   else {
     return 'TWD'
@@ -539,83 +543,202 @@ const getCurrencyByMarket = (stockCode) => {
 const tryYahooFinance = async (stockCode) => {
   console.log(`📊 Yahoo Finance: ${stockCode}`)
   
-  try {
-    // 根據股票代碼自動添加市場後綴
-    let yahooSymbol = stockCode.toUpperCase()
+  // 常見美國ETF列表
+  const usEtfSymbols = ["SPY", "VOO", "VTI", "IVV", "QQQ", "SCHD", "JEPI", "VT", "ARKK", "ARKQ", "ARKW", "ARKG", "ARKF", "XLF", "XLK", "XLE", "XLI", "XLV", "XLY", "XLP", "XLU", "XLRE", "XLB", "XLC", "XLNX"]
+  
+  // 根據股票代碼類型決定要嘗試的後綴
+  const suffixes = []
+  
+  if (/^[A-Za-z]/.test(stockCode)) {
+    // 美股：無後綴
+    suffixes.push('')
+  } else if (/^00\d{3}[A-Za-z]$/.test(stockCode)) {
+    // 台股債券 ETF：5位數字+字母（如00937B），優先使用 .TWO
+    suffixes.push('.TWO', '.TW')
+  } else if (/^00\d{3}$/.test(stockCode)) {
+    // 台股 ETF：5位數字以 00 開頭（如 0050, 00692, 00937），優先使用 .TWO
+    suffixes.push('.TWO', '.TW')
+  } else if (/^\d{5}[A-Za-z]?$/.test(stockCode)) {
+    // 台股：其他5位數字或5位數字+字母
+    suffixes.push('.TWO', '.TW')
+  } else if (/^\d{4}[A-Za-z]?$/.test(stockCode)) {
+    // 台股：4位數字或4位數字+字母（如 2330, 2330A）
+    suffixes.push('.TW', '.TWO')
+  } else {
+    // 其他情況：嘗試台股後綴
+    suffixes.push('.TW', '.TWO')
+  }
+  
+  // 多個代理服務列表
+  const proxyServices = [
+    (yahooCode) => `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${yahooCode}?interval=1d&range=1mo`)}`,
+    (yahooCode) => `https://api.allorigins.win/get?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${yahooCode}?interval=1d&range=1mo`)}`,
+    (yahooCode) => `https://corsproxy.io/?${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${yahooCode}?interval=1d&range=1mo`)}`
+  ]
+  
+  // 嘗試不同的後綴
+  for (const suffix of suffixes) {
+    const yahooCode = stockCode.toUpperCase() + suffix
+    console.log(`嘗試 Yahoo Finance: ${stockCode} -> ${yahooCode}`)
     
-    // 常見美國ETF列表
-    const usEtfSymbols = ["SPY", "VOO", "VTI", "IVV", "QQQ", "SCHD", "JEPI", "VT", "ARKK", "ARKQ", "ARKW", "ARKG", "ARKF", "XLF", "XLK", "XLE", "XLI", "XLV", "XLY", "XLP", "XLU", "XLRE", "XLB", "XLC", "XLNX"]
-    
-    // 檢測股票代碼類型並添加相應的市場後綴
-    if (/^\d{4}[A-Za-z]?$/.test(stockCode)) {
-      // 台股：4位數字或4位數字+字母（如00692B）
-      yahooSymbol = `${stockCode}.TW`
-      console.log(`台股代碼: ${stockCode} -> ${yahooSymbol}`)
-    } else if (usEtfSymbols.includes(stockCode.toUpperCase())) {
-      // 美國ETF：直接使用代碼
-      yahooSymbol = stockCode.toUpperCase()
-      console.log(`美國ETF: ${stockCode} -> ${yahooSymbol}`)
-    } else if (/^[A-Za-z]{1,5}$/.test(stockCode)) {
-      // 美國股票：直接使用代碼
-      yahooSymbol = stockCode.toUpperCase()
-      console.log(`美國股票: ${stockCode} -> ${yahooSymbol}`)
-    } else if (/^\d{4}$/.test(stockCode)) {
-      // 4位純數字：可能是台股
-      yahooSymbol = `${stockCode}.TW`
-      console.log(`4位數字台股: ${stockCode} -> ${yahooSymbol}`)
-    } else {
-      // 其他情況：預設為美股
-      yahooSymbol = stockCode.toUpperCase()
-      console.log(`預設美股: ${stockCode} -> ${yahooSymbol}`)
-    }
-    
-    const apiUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=1mo`
-    console.log(`Yahoo Finance API URL: ${apiUrl}`)
-    
-    // 使用 allorigins.win 的 raw 端點
-    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(apiUrl)}`
-    console.log(`CORS 代理 URL: ${proxyUrl}`)
-    
-    const response = await fetch(proxyUrl, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    // 嘗試不同的代理服務
+    for (const getProxyUrl of proxyServices) {
+      try {
+        const proxyUrl = getProxyUrl(yahooCode)
+        console.log(`嘗試代理: ${proxyUrl}`)
+        
+        const response = await fetch(proxyUrl, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+          }
+        })
+        
+        if (!response.ok) {
+          console.warn(`代理請求失敗: ${response.status}`)
+          continue
+        }
+        
+        let data
+        if (proxyUrl.includes('allorigins.win/get')) {
+          // allorigins.win/get 返回包裝的 JSON
+          const proxyData = await response.json()
+          data = JSON.parse(proxyData.contents)
+        } else {
+          // allorigins.win/raw 或其他代理直接返回 JSON
+          data = await response.json()
+        }
+        
+        console.log('Yahoo Finance 回應:', data)
+        
+        // 解析 Yahoo Finance 回應
+        if (data.chart && data.chart.result) {
+          if (data.chart.result.length === 0) {
+            console.warn(`Yahoo Finance 無結果: ${yahooCode}`)
+            continue
+          }
+          
+          const result = data.chart.result[0]
+          
+          // 檢查是否有錯誤
+          if (result.error) {
+            console.warn(`Yahoo Finance 錯誤: ${yahooCode} - ${result.error.description || result.error}`)
+            continue
+          }
+          
+          const meta = result.meta
+          
+          // 嘗試從 meta 獲取價格，如果沒有則從 indicators 獲取
+          let currentPrice = null
+          if (meta && meta.regularMarketPrice) {
+            currentPrice = meta.regularMarketPrice
+          } else if (result.indicators && result.indicators.quote && result.indicators.quote[0] && result.indicators.quote[0].close) {
+            const closes = result.indicators.quote[0].close
+            // 過濾掉 null 值
+            const validCloses = closes.filter(price => price !== null && price > 0)
+            if (validCloses.length > 0) {
+              currentPrice = validCloses[validCloses.length - 1]
+            }
+          }
+          
+          if (currentPrice && currentPrice > 0) {
+            const currency = (meta && meta.currency) || getCurrencyByMarket(stockCode)
+            const symbol = (meta && meta.symbol) || stockCode
+            
+            console.log(`✅ Yahoo Finance 成功: ${yahooCode} = ${currentPrice} ${currency}`)
+            return {
+              price: currentPrice,
+              currency: currency,
+              symbol: symbol
+            }
+          } else {
+            console.warn(`Yahoo Finance 無有效價格: ${yahooCode}`)
+          }
+        } else {
+          console.warn(`Yahoo Finance 回應格式異常: ${yahooCode}`, data)
+        }
+      } catch (error) {
+        console.warn(`代理失敗 (${yahooCode}):`, error.message)
+        continue
       }
-    })
+    }
+  }
+  
+  throw new Error(`無法從 Yahoo Finance 取得 ${stockCode} 的價格（已嘗試所有後綴和代理服務）`)
+}
+
+// Financial Modeling Prep API (免費版，無需 API Key)
+const tryFinancialModelingPrep = async (stockCode) => {
+  console.log(`💰 Financial Modeling Prep: ${stockCode}`)
+  
+  try {
+    const url = `https://financialmodelingprep.com/api/v3/quote/${stockCode}`
+    console.log(`FMP URL: ${url}`)
+    
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`
+    const response = await fetch(proxyUrl)
+    
+    console.log(`FMP 回應狀態: ${response.status}`)
     
     if (!response.ok) {
-      throw new Error(`代理請求失敗: ${response.status} ${response.statusText}`)
+      throw new Error(`FMP 請求失敗: ${response.status}`)
     }
     
-    const data = await response.json()
-    console.log('Yahoo Finance 回應:', data)
+    const proxyData = await response.json()
+    console.log(`FMP 代理回應:`, proxyData)
     
-    // 解析 Yahoo Finance 回應
-    if (data.chart && data.chart.result && data.chart.result.length > 0) {
-      const result = data.chart.result[0]
-      const meta = result.meta
-      
-      if (meta && meta.regularMarketPrice) {
-        const price = meta.regularMarketPrice
-        const currency = meta.currency || getCurrencyByMarket(stockCode)
-        const symbol = meta.symbol || stockCode
-        
-        console.log(`✅ Yahoo Finance 解析成功: ${price} ${currency}`)
-        return {
-          price: price,
-          currency: currency,
-          symbol: symbol
-        }
-      } else {
-        throw new Error('無法從 Yahoo Finance 回應中提取價格數據')
-      }
+    const data = JSON.parse(proxyData.contents)
+    console.log(`FMP 資料:`, data)
+    
+    if (data && data.length > 0 && data[0].price) {
+      const price = data[0].price
+      const currency = getCurrencyByMarket(stockCode)
+      console.log(`✅ FMP 成功: ${stockCode} = ${price} ${currency}`)
+      return { price, currency }
     } else {
-      throw new Error('Yahoo Finance 回應格式異常')
+      throw new Error('FMP 無有效價格資料')
     }
   } catch (error) {
-    console.error(`Yahoo Finance 代理失敗:`, error)
-    throw error
+    console.error(`FMP 錯誤:`, error.message)
+    throw new Error(`Financial Modeling Prep API 失敗: ${error.message}`)
+  }
+}
+
+// MarketStack API (免費版，無需 API Key)
+const tryMarketStack = async (stockCode) => {
+  console.log(`📊 MarketStack: ${stockCode}`)
+  
+  try {
+    const url = `http://api.marketstack.com/v1/eod/latest?access_key=free&symbols=${stockCode}`
+    console.log(`MarketStack URL: ${url}`)
+    
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`
+    const response = await fetch(proxyUrl)
+    
+    console.log(`MarketStack 回應狀態: ${response.status}`)
+    
+    if (!response.ok) {
+      throw new Error(`MarketStack 請求失敗: ${response.status}`)
+    }
+    
+    const proxyData = await response.json()
+    console.log(`MarketStack 代理回應:`, proxyData)
+    
+    const data = JSON.parse(proxyData.contents)
+    console.log(`MarketStack 資料:`, data)
+    
+    if (data.data && data.data.length > 0 && data.data[0].close) {
+      const price = data.data[0].close
+      const currency = getCurrencyByMarket(stockCode)
+      console.log(`✅ MarketStack 成功: ${stockCode} = ${price} ${currency}`)
+      return { price, currency }
+    } else {
+      throw new Error('MarketStack 無有效價格資料')
+    }
+  } catch (error) {
+    console.error(`MarketStack 錯誤:`, error.message)
+    throw new Error(`MarketStack API 失敗: ${error.message}`)
   }
 }
 
@@ -633,6 +756,30 @@ const fetchRealStockPrice = async (stockCode) => {
     }
   } catch (error) {
     console.warn(`❌ Yahoo Finance 失敗:`, error.message)
+  }
+  
+  // 備用：嘗試 Financial Modeling Prep
+  try {
+    console.log(`嘗試 Financial Modeling Prep API`)
+    const result = await tryFinancialModelingPrep(stockCode)
+    if (result) {
+      console.log(`✅ Financial Modeling Prep 成功: ${stockCode} = ${result.price} ${result.currency}`)
+      return result
+    }
+  } catch (error) {
+    console.warn(`❌ Financial Modeling Prep 失敗:`, error.message)
+  }
+  
+  // 備用：嘗試 MarketStack
+  try {
+    console.log(`嘗試 MarketStack API`)
+    const result = await tryMarketStack(stockCode)
+    if (result) {
+      console.log(`✅ MarketStack 成功: ${stockCode} = ${result.price} ${result.currency}`)
+      return result
+    }
+  } catch (error) {
+    console.warn(`❌ MarketStack 失敗:`, error.message)
   }
   
   throw new Error(`無法取得 ${stockCode} 的價格資料，請手動輸入當前價格`)

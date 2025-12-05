@@ -84,7 +84,12 @@ router.beforeEach(async (to, from, next) => {
   const { checkAuth } = useAuth()
   
   if (to.meta.requiresAuth) {
-    const isAuthenticated = await checkAuth()
+    let isAuthenticated = await checkAuth()
+    // 如果認證失敗，重試一次（可能是 session cookie 還沒完全設置好）
+    if (!isAuthenticated) {
+      await new Promise(resolve => setTimeout(resolve, 100))
+      isAuthenticated = await checkAuth()
+    }
     if (!isAuthenticated) {
       next({ name: 'Login', query: { redirect: to.fullPath } })
       return

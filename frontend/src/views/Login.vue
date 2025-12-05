@@ -47,7 +47,7 @@ import { apiService } from '@/composables/useApi'
 
 const router = useRouter()
 const route = useRoute()
-const { login } = useAuth()
+const { login, checkAuth } = useAuth()
 
 const username = ref('')
 const password = ref('')
@@ -97,6 +97,25 @@ const handleLogin = async () => {
   
   try {
     await login(username.value, password.value)
+    
+    // 確保認證狀態已更新，等待一小段時間讓 session cookie 設置完成
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
+    // 驗證認證狀態，最多重試 3 次
+    let isAuthenticated = false
+    for (let i = 0; i < 3; i++) {
+      isAuthenticated = await checkAuth()
+      if (isAuthenticated) {
+        break
+      }
+      // 如果還沒認證，等待一下再重試
+      await new Promise(resolve => setTimeout(resolve, 200))
+    }
+    
+    if (!isAuthenticated) {
+      throw new Error('認證狀態驗證失敗，請重新登入')
+    }
+    
     const redirect = route.query.redirect || '/'
     router.push(redirect)
   } catch (err) {
