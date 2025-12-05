@@ -183,8 +183,11 @@ const handlePositionCreated = async () => {
 }
 
 const openEditPositionModal = (position) => {
-  editingPositionInfo.value = position
+  console.log('打開編輯崗位 Modal，position:', position)
+  // 深拷貝 position 對象，確保資料正確傳遞
+  editingPositionInfo.value = { ...position }
   showEditPositionModal.value = true
+  console.log('editingPositionInfo.value:', editingPositionInfo.value)
 }
 
 const closeEditPositionModal = () => {

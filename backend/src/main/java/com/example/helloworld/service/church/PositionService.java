@@ -77,6 +77,9 @@ public class PositionService {
         position.setDescription(positionData.getDescription());
         position.setIsActive(positionData.getIsActive());
         position.setSortOrder(positionData.getSortOrder());
+        if (positionData.getAllowDuplicate() != null) {
+            position.setAllowDuplicate(positionData.getAllowDuplicate());
+        }
         
         return positionRepository.save(position);
     }
@@ -276,6 +279,7 @@ public class PositionService {
             positionData.put("id", position.getId());
             positionData.put("positionCode", position.getPositionCode());
             positionData.put("positionName", position.getPositionName());
+            positionData.put("allowDuplicate", position.getAllowDuplicate() != null ? position.getAllowDuplicate() : false);
             positionData.put("saturday", personsByDay.get("saturday"));
             positionData.put("sunday", personsByDay.get("sunday"));
             

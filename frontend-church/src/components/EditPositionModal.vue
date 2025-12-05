@@ -65,6 +65,18 @@
             </label>
           </div>
 
+          <div class="form-group">
+            <label class="form-label">
+              <input
+                type="checkbox"
+                v-model="form.allowDuplicate"
+                class="form-checkbox"
+              />
+              <span class="checkbox-label">允許與其他崗位重複（同一天同一人可以擔任多個崗位）</span>
+            </label>
+            <small class="form-hint">勾選後，該崗位的人員可以與其他崗位的人員重複（例如：直播崗位）</small>
+          </div>
+
           <div class="form-actions">
             <button type="submit" class="btn btn-primary" :disabled="saving">
               {{ saving ? '保存中...' : '保存' }}
@@ -102,18 +114,25 @@ const form = ref({
   positionName: '',
   description: '',
   sortOrder: 0,
-  isActive: true
+  isActive: true,
+  allowDuplicate: false
 })
 
 const loadPositionData = () => {
+  console.log('載入崗位資料，props.position:', props.position)
+  console.log('props.show:', props.show)
   if (props.position) {
     form.value = {
       positionCode: props.position.positionCode || '',
       positionName: props.position.positionName || '',
       description: props.position.description || '',
       sortOrder: props.position.sortOrder || 0,
-      isActive: props.position.isActive !== false
+      isActive: props.position.isActive !== false,
+      allowDuplicate: props.position.allowDuplicate === true
     }
+    console.log('載入後的 form.value:', form.value)
+  } else {
+    console.warn('props.position 為空，無法載入資料')
   }
 }
 
@@ -158,7 +177,8 @@ const resetForm = () => {
     positionName: '',
     description: '',
     sortOrder: 0,
-    isActive: true
+    isActive: true,
+    allowDuplicate: false
   }
 }
 
@@ -168,18 +188,20 @@ const closeModal = () => {
 }
 
 watch(() => props.show, (newVal) => {
-  if (newVal) {
+  if (newVal && props.position) {
+    // 當 modal 打開時，立即載入資料
     loadPositionData()
-  } else {
+  } else if (!newVal) {
     resetForm()
   }
 })
 
-watch(() => props.position, () => {
-  if (props.show && props.position) {
+watch(() => props.position, (newPosition) => {
+  // 當 position 改變時，如果 modal 是打開的，立即載入資料
+  if (props.show && newPosition) {
     loadPositionData()
   }
-})
+}, { immediate: true })
 </script>
 
 <style scoped>

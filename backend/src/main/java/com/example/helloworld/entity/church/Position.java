@@ -27,6 +27,9 @@ public class Position {
     @Column(name = "sort_order")
     private Integer sortOrder = 0;
 
+    @Column(name = "allow_duplicate", nullable = false)
+    private Boolean allowDuplicate = false; // 是否允許與其他崗位重複（同一天同一人可以擔任多個崗位）
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
@@ -95,6 +98,14 @@ public class Position {
 
     public void setSortOrder(Integer sortOrder) {
         this.sortOrder = sortOrder;
+    }
+
+    public Boolean getAllowDuplicate() {
+        return allowDuplicate;
+    }
+
+    public void setAllowDuplicate(Boolean allowDuplicate) {
+        this.allowDuplicate = allowDuplicate != null ? allowDuplicate : false;
     }
 
     public LocalDateTime getCreatedAt() {

@@ -9,7 +9,7 @@
             <h2>聯絡資訊</h2>
             <div class="info-item">
               <strong>地址：</strong>
-              <p>新北市淡水區民族路31巷1號B1</p>
+              <p>251新北市淡水區民族路31巷1號B1</p>
             </div>
             <div class="info-item">
               <strong>電話：</strong>

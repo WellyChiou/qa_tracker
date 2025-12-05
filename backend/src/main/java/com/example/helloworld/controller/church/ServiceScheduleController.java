@@ -1,16 +1,18 @@
 package com.example.helloworld.controller.church;
 
+import com.example.helloworld.entity.church.Person;
 import com.example.helloworld.entity.church.ServiceSchedule;
+import com.example.helloworld.entity.church.ServiceScheduleDate;
+import com.example.helloworld.entity.church.ServiceSchedulePositionConfig;
+import com.example.helloworld.entity.church.ServiceScheduleAssignment;
 import com.example.helloworld.service.church.ServiceScheduleService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/church/service-schedules")
@@ -20,36 +22,36 @@ public class ServiceScheduleController {
     @Autowired
     private ServiceScheduleService service;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
     /**
      * 保存服事安排表
      */
     @PostMapping
     public ResponseEntity<Map<String, Object>> saveSchedule(@RequestBody Map<String, Object> request) {
         try {
-            LocalDate scheduleDate = LocalDate.parse((String) request.get("scheduleDate"));
-            LocalDate startDate = LocalDate.parse((String) request.get("startDate"));
-            LocalDate endDate = LocalDate.parse((String) request.get("endDate"));
-            Object scheduleData = request.get("scheduleData");
-            Object positionConfig = request.get("positionConfig");
+            String name = (String) request.get("name");
+            if (name == null || name.trim().isEmpty()) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "名稱不能為空");
+                return ResponseEntity.badRequest().body(error);
+            }
 
-            ServiceSchedule schedule = service.saveSchedule(
-                scheduleDate, startDate, endDate, scheduleData, positionConfig
-            );
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> scheduleData = (List<Map<String, Object>>) request.get("scheduleData");
+
+            ServiceSchedule schedule = service.saveSchedule(name, scheduleData);
 
             Map<String, Object> response = new HashMap<>();
             response.put("id", schedule.getId());
-            response.put("scheduleDate", schedule.getScheduleDate().toString());
-            response.put("version", schedule.getVersion());
-            response.put("startDate", schedule.getStartDate().toString());
-            response.put("endDate", schedule.getEndDate().toString());
+            response.put("name", schedule.getName());
+            response.put("createdAt", schedule.getCreatedAt());
+            response.put("updatedAt", schedule.getUpdatedAt());
             response.put("message", "安排表保存成功");
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             Map<String, Object> error = new HashMap<>();
             error.put("error", "保存失敗：" + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.badRequest().body(error);
         }
     }
@@ -64,56 +66,96 @@ public class ServiceScheduleController {
     }
 
     /**
-     * 根據 ID 獲取安排表
+     * 根據 ID 獲取安排表（包含 dates 數據）
      */
     @GetMapping("/{id}")
     public ResponseEntity<Map<String, Object>> getScheduleById(@PathVariable Long id) {
         return service.getScheduleById(id)
             .map(schedule -> {
-                try {
                     Map<String, Object> response = new HashMap<>();
                     response.put("id", schedule.getId());
-                    response.put("scheduleDate", schedule.getScheduleDate().toString());
-                    response.put("version", schedule.getVersion());
-                    response.put("startDate", schedule.getStartDate().toString());
-                    response.put("endDate", schedule.getEndDate().toString());
-                    response.put("scheduleData", objectMapper.readValue(schedule.getScheduleData(), Object.class));
-                    if (schedule.getPositionConfig() != null) {
-                        response.put("positionConfig", objectMapper.readValue(schedule.getPositionConfig(), Object.class));
+                response.put("name", schedule.getName());
+                response.put("createdAt", schedule.getCreatedAt());
+                response.put("updatedAt", schedule.getUpdatedAt());
+                
+                // 載入 dates 數據並轉換為前端格式
+                if (schedule.getDates() != null && !schedule.getDates().isEmpty()) {
+                    List<Map<String, Object>> scheduleData = new ArrayList<>();
+                    LocalDate minDate = null;
+                    LocalDate maxDate = null;
+                    
+                    for (ServiceScheduleDate date : schedule.getDates()) {
+                        Map<String, Object> dateItem = new HashMap<>();
+                        dateItem.put("date", date.getDate().toString());
+                        dateItem.put("dayOfWeek", date.getDayOfWeekLabel());
+                        
+                        // 格式化日期顯示
+                        String formattedDate = formatDate(date.getDate(), date.getDayOfWeekLabel());
+                        dateItem.put("formattedDate", formattedDate);
+                        
+                        // 載入崗位配置和人員分配
+                        if (date.getPositionConfigs() != null) {
+                            for (ServiceSchedulePositionConfig config : date.getPositionConfigs()) {
+                                String positionCode = config.getPosition().getPositionCode();
+                                
+                                // 獲取該崗位的人員分配
+                                if (config.getAssignments() != null && !config.getAssignments().isEmpty()) {
+                                    ServiceScheduleAssignment firstAssignment = config.getAssignments().stream()
+                                        .sorted(Comparator.comparing(ServiceScheduleAssignment::getSortOrder))
+                                        .findFirst()
+                                        .orElse(null);
+                                    
+                                    if (firstAssignment != null && firstAssignment.getPerson() != null) {
+                                        Person person = firstAssignment.getPerson();
+                                        // 同時返回 ID 和名稱
+                                        dateItem.put(positionCode, person.getDisplayName() != null ? 
+                                            person.getDisplayName() : person.getPersonName());
+                                        dateItem.put(positionCode + "Id", person.getId());
+                                    }
+                                }
+                            }
+                        }
+                        
+                        scheduleData.add(dateItem);
+                        
+                        // 計算日期範圍
+                        if (minDate == null || date.getDate().isBefore(minDate)) {
+                            minDate = date.getDate();
+                        }
+                        if (maxDate == null || date.getDate().isAfter(maxDate)) {
+                            maxDate = date.getDate();
+                        }
                     }
-                    response.put("createdAt", schedule.getCreatedAt());
-                    response.put("updatedAt", schedule.getUpdatedAt());
-                    return ResponseEntity.ok(response);
-                } catch (Exception e) {
-                    Map<String, Object> error = new HashMap<>();
-                    error.put("error", "解析數據失敗：" + e.getMessage());
-                    return ResponseEntity.badRequest().body(error);
+                    
+                    // 按日期排序
+                    scheduleData.sort((a, b) -> {
+                        LocalDate dateA = LocalDate.parse((String) a.get("date"));
+                        LocalDate dateB = LocalDate.parse((String) b.get("date"));
+                        return dateA.compareTo(dateB);
+                    });
+                    
+                    response.put("scheduleData", scheduleData);
+                    if (minDate != null && maxDate != null) {
+                        response.put("startDate", minDate.toString());
+                        response.put("endDate", maxDate.toString());
+                    }
+                } else {
+                    response.put("scheduleData", new ArrayList<>());
                 }
+                
+                return ResponseEntity.ok(response);
             })
             .orElse(ResponseEntity.notFound().build());
     }
 
     /**
-     * 根據日期獲取所有版本
+     * 格式化日期顯示
      */
-    @GetMapping("/date/{date}")
-    public ResponseEntity<List<ServiceSchedule>> getSchedulesByDate(@PathVariable String date) {
-        LocalDate scheduleDate = LocalDate.parse(date);
-        List<ServiceSchedule> schedules = service.getSchedulesByDate(scheduleDate);
-        return ResponseEntity.ok(schedules);
-    }
-
-    /**
-     * 根據日期範圍獲取安排表
-     */
-    @GetMapping("/range")
-    public ResponseEntity<List<ServiceSchedule>> getSchedulesInRange(
-            @RequestParam String startDate,
-            @RequestParam String endDate) {
-        LocalDate start = LocalDate.parse(startDate);
-        LocalDate end = LocalDate.parse(endDate);
-        List<ServiceSchedule> schedules = service.getSchedulesInDateRange(start, end);
-        return ResponseEntity.ok(schedules);
+    private String formatDate(LocalDate date, String dayOfWeekLabel) {
+        int year = date.getYear();
+        int month = date.getMonthValue();
+        int day = date.getDayOfMonth();
+        return String.format("%d/%02d/%02d(%s)", year, month, day, dayOfWeekLabel);
     }
 
     /**
@@ -122,25 +164,30 @@ public class ServiceScheduleController {
     @PutMapping("/{id}")
     public ResponseEntity<Map<String, Object>> updateSchedule(@PathVariable Long id, @RequestBody Map<String, Object> request) {
         try {
-            LocalDate startDate = LocalDate.parse((String) request.get("startDate"));
-            LocalDate endDate = LocalDate.parse((String) request.get("endDate"));
-            Object scheduleData = request.get("scheduleData");
-            Object positionConfig = request.get("positionConfig");
+            String name = (String) request.get("name");
+            if (name == null || name.trim().isEmpty()) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "名稱不能為空");
+                return ResponseEntity.badRequest().body(error);
+            }
 
-            ServiceSchedule schedule = service.updateSchedule(id, startDate, endDate, scheduleData, positionConfig);
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> scheduleData = (List<Map<String, Object>>) request.get("scheduleData");
+
+            ServiceSchedule schedule = service.updateSchedule(id, name, scheduleData);
 
             Map<String, Object> response = new HashMap<>();
             response.put("id", schedule.getId());
-            response.put("scheduleDate", schedule.getScheduleDate().toString());
-            response.put("version", schedule.getVersion());
-            response.put("startDate", schedule.getStartDate().toString());
-            response.put("endDate", schedule.getEndDate().toString());
+            response.put("name", schedule.getName());
+            response.put("createdAt", schedule.getCreatedAt());
+            response.put("updatedAt", schedule.getUpdatedAt());
             response.put("message", "安排表更新成功");
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             Map<String, Object> error = new HashMap<>();
             error.put("error", "更新失敗：" + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.badRequest().body(error);
         }
     }

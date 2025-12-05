@@ -3,7 +3,10 @@
     <nav class="navbar">
       <div class="nav-container">
         <div class="nav-logo">
-          <router-link to="/">教會網站</router-link>
+          <router-link to="/" class="logo-link">
+            <img src="/images/logo.png" alt="極光教會 Logo" class="logo-image" />
+            <span class="logo-text">極光教會-PLC</span>
+          </router-link>
         </div>
         <ul class="nav-menu">
           <li><router-link to="/">首頁</router-link></li>
@@ -19,7 +22,7 @@
     </main>
     <footer class="footer">
       <div class="footer-container">
-        <p>&copy; 2024 教會網站. 版權所有.</p>
+        <p>&copy; 2026 極光教會網站. 版權所有.</p>
       </div>
     </footer>
     <LoadingSpinner />
@@ -57,6 +60,25 @@ useLoading()
   font-weight: bold;
   color: white;
   text-decoration: none;
+}
+
+.logo-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.logo-image {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  border-radius: 50%;
+}
+
+.logo-text {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: white;
 }
 
 .nav-menu {

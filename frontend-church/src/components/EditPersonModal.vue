@@ -179,18 +179,20 @@ const closeModal = () => {
 }
 
 watch(() => props.show, (newVal) => {
-  if (newVal) {
+  if (newVal && props.person) {
+    // 當 Modal 顯示時，立即載入資料
     loadPersonData()
-  } else {
+  } else if (!newVal) {
     resetForm()
   }
 })
 
-watch(() => props.person, () => {
-  if (props.show && props.person) {
+watch(() => props.person, (newPerson) => {
+  // 當 person prop 變化時，如果 Modal 正在顯示，重新載入資料
+  if (props.show && newPerson) {
     loadPersonData()
   }
-})
+}, { immediate: true })
 </script>
 
 <style scoped>

@@ -8,7 +8,6 @@
           <div class="card activity-card" v-for="activity in activities" :key="activity.id">
             <div class="activity-header">
               <h3>{{ activity.title }}</h3>
-              <span class="activity-date">{{ activity.date }}</span>
             </div>
             <p class="activity-time">時間：{{ activity.time }}</p>
             <p class="activity-location">地點：{{ activity.location }}</p>
@@ -16,6 +15,7 @@
             <div class="activity-tags">
               <span class="tag" v-for="tag in activity.tags" :key="tag">{{ tag }}</span>
             </div>
+            <span class="activity-date">{{ activity.date }}</span>
           </div>
         </div>
       </div>
@@ -29,39 +29,39 @@ import { ref } from 'vue'
 const activities = ref([
   {
     id: 1,
-    title: '聖誕節慶祝活動',
-    date: '2024-12-25',
-    time: '晚上 7:00',
-    location: '教會大堂',
-    description: '一起慶祝聖誕節，有詩歌、見證分享和愛宴。',
-    tags: ['節慶', '聚會']
+    title: '聯合受洗主日',
+    date: '2024-12-28',
+    time: '10:00am',
+    location: '榮耀堂',
+    description: '聯合受洗主日，歡迎弟兄姊妹一同參與這個重要的時刻。',
+    tags: ['主日', '受洗']
   },
   {
     id: 2,
-    title: '青年團契',
-    date: '每週六',
-    time: '下午 2:00',
-    location: '青年中心',
-    description: '青年人的團契時間，有查經、遊戲和分享。',
-    tags: ['青年', '團契']
+    title: '極光元旦登高',
+    date: '2025-01-01',
+    time: '9:30am',
+    location: '觀音山遊客中心',
+    description: '新的一年，讓我們一起登高，迎接新的開始！',
+    tags: ['戶外', '運動']
   },
   {
     id: 3,
-    title: '社區服務日',
-    date: '2024-12-30',
-    time: '上午 9:00',
-    location: '社區中心',
-    description: '到社區進行關懷服務，歡迎大家一起參與。',
-    tags: ['服務', '社區']
+    title: '極光同工尾牙',
+    date: '2025-01-11',
+    time: '傍晚（時間待定）',
+    location: '地點待定',
+    description: '感謝同工們一年來的辛勞，讓我們一起歡聚慶祝！',
+    tags: ['同工', '聚餐']
   },
   {
     id: 4,
-    title: '讀經分享會',
-    date: '每週四',
-    time: '晚上 7:30',
-    location: '教會副堂',
-    description: '一起讀經、分享和討論，加深對神話語的認識。',
-    tags: ['查經', '分享']
+    title: '極光門徒退修會',
+    date: '2025-02-27 ~ 2025-02-28',
+    time: '兩天一夜',
+    location: '桃園復興鄉',
+    description: '門徒退修會，讓我們在安靜中親近神，重新得力。',
+    tags: ['退修會', '門徒']
   }
 ])
 </script>
@@ -74,7 +74,9 @@ const activities = ref([
 }
 
 .activity-card {
+  position: relative;
   transition: transform 0.3s, box-shadow 0.3s;
+  padding-bottom: 3.5rem; /* 為日期預留空間 */
 }
 
 .activity-card:hover {
@@ -83,25 +85,26 @@ const activities = ref([
 }
 
 .activity-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: start;
   margin-bottom: 1rem;
 }
 
 .activity-header h3 {
   color: #667eea;
   font-size: 1.5rem;
-  flex: 1;
+  margin: 0;
 }
 
 .activity-date {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
   background: #667eea;
   color: white;
   padding: 0.25rem 0.75rem;
   border-radius: 5px;
   font-size: 0.9rem;
   white-space: nowrap;
+  z-index: 1;
 }
 
 .activity-time,
@@ -119,6 +122,8 @@ const activities = ref([
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+  margin-bottom: 0.5rem; /* 與日期保持距離 */
+  max-width: calc(100% - 150px); /* 為日期預留空間，避免重疊 */
 }
 
 .tag {

@@ -1,8 +1,9 @@
 package com.example.helloworld.entity.church;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "service_schedules")
@@ -11,29 +12,18 @@ public class ServiceSchedule {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "schedule_date", nullable = false)
-    private LocalDate scheduleDate;
-
-    @Column(name = "version", nullable = false)
-    private Integer version = 1;
-
-    @Column(name = "start_date", nullable = false)
-    private LocalDate startDate;
-
-    @Column(name = "end_date", nullable = false)
-    private LocalDate endDate;
-
-    @Column(name = "schedule_data", columnDefinition = "JSON", nullable = false)
-    private String scheduleData; // JSON 格式的安排表數據
-
-    @Column(name = "position_config", columnDefinition = "JSON")
-    private String positionConfig; // JSON 格式的崗位配置
+    @Column(name = "name", nullable = false, length = 255)
+    private String name; // 使用者自訂義名稱
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @OneToMany(mappedBy = "serviceSchedule", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore // 避免 JSON 序列化時觸發懶加載
+    private List<ServiceScheduleDate> dates;
 
     @PrePersist
     protected void onCreate() {
@@ -55,52 +45,12 @@ public class ServiceSchedule {
         this.id = id;
     }
 
-    public LocalDate getScheduleDate() {
-        return scheduleDate;
+    public String getName() {
+        return name;
     }
 
-    public void setScheduleDate(LocalDate scheduleDate) {
-        this.scheduleDate = scheduleDate;
-    }
-
-    public Integer getVersion() {
-        return version;
-    }
-
-    public void setVersion(Integer version) {
-        this.version = version;
-    }
-
-    public LocalDate getStartDate() {
-        return startDate;
-    }
-
-    public void setStartDate(LocalDate startDate) {
-        this.startDate = startDate;
-    }
-
-    public LocalDate getEndDate() {
-        return endDate;
-    }
-
-    public void setEndDate(LocalDate endDate) {
-        this.endDate = endDate;
-    }
-
-    public String getScheduleData() {
-        return scheduleData;
-    }
-
-    public void setScheduleData(String scheduleData) {
-        this.scheduleData = scheduleData;
-    }
-
-    public String getPositionConfig() {
-        return positionConfig;
-    }
-
-    public void setPositionConfig(String positionConfig) {
-        this.positionConfig = positionConfig;
+    public void setName(String name) {
+        this.name = name;
     }
 
     public LocalDateTime getCreatedAt() {
@@ -117,6 +67,14 @@ public class ServiceSchedule {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public List<ServiceScheduleDate> getDates() {
+        return dates;
+    }
+
+    public void setDates(List<ServiceScheduleDate> dates) {
+        this.dates = dates;
     }
 }
 

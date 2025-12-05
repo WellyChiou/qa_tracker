@@ -8,9 +8,14 @@
         <div class="card">
           <div class="card-header">
             <h2>崗位人員配置</h2>
+            <div class="header-buttons">
+              <button @click="openPersonManagement" class="btn btn-manage-persons">
+                管理人員
+              </button>
             <button @click="openPositionManagement" class="btn btn-manage-positions">
               管理崗位
             </button>
+            </div>
           </div>
           <div class="position-config-summary">
             <p>點擊「管理崗位」按鈕來配置各崗位的人員（週六/週日）</p>
@@ -24,25 +29,27 @@
           </div>
         </div>
 
+        <!-- 人員管理 Modal -->
+        <PersonManagementModal
+          :show="showPersonManagement"
+          @close="closePersonManagement"
+        />
+
         <!-- 崗位管理 Modal -->
         <PositionManagementModal
           :show="showPositionManagement"
           @close="closePositionManagement"
         />
 
-        <!-- 日期範圍選擇 -->
+        <!-- 通知組件 -->
+        <Notification ref="notificationRef" />
+
+        <!-- 新增按鈕 -->
         <div class="card">
-          <h2>日期範圍設定</h2>
-          <div class="date-range-group">
-            <div class="date-range-input-wrapper">
-              <label>日期範圍：</label>
-              <DateRangePicker 
-                v-model="dateRange" 
-                placeholder="選擇日期範圍"
-              />
-            </div>
-            <button @click="generateSchedule" class="btn btn-primary" :disabled="!canGenerate">
-              產生服事表
+          <div class="schedule-header">
+            <h2>服事表管理</h2>
+            <button @click="openAddModal" class="btn btn-primary">
+              + 新增服事表
             </button>
           </div>
         </div>
@@ -53,114 +60,152 @@
             <h2>歷史記錄</h2>
             <button @click="loadHistory" class="btn btn-refresh">重新載入</button>
           </div>
-          <div class="history-list" v-if="historyList.length > 0">
-            <div class="history-item" v-for="item in historyList" :key="item.id">
-              <div class="history-info">
-                <span class="history-date">{{ formatDisplayDate(item.scheduleDate) }}</span>
-                <span class="history-version">第 {{ item.version }} 版</span>
-                <span class="history-range">{{ formatDisplayDate(item.startDate) }} ~ {{ formatDisplayDate(item.endDate) }}</span>
+          <div v-if="historyList.length > 0">
+            <div class="pagination-info">
+              顯示第 {{ (currentPage - 1) * recordsPerPage + 1 }} - 
+              {{ Math.min(currentPage * recordsPerPage, historyList.length) }} 筆，共 {{ historyList.length }} 筆
+            </div>
+            <div class="history-list">
+              <div class="history-item" v-for="item in paginatedHistoryList" :key="item.id">
+                <div class="history-info">
+                  <div class="history-name">{{ item.name || '未命名' }}</div>
+                  <div class="history-details">
+                  <span class="history-date">{{ formatDisplayDate(item.scheduleDate) }}</span>
+                    <span class="history-version" v-if="item.version">第 {{ item.version }} 版</span>
+                    <span class="history-range" v-if="item.startDate && item.endDate">{{ formatDisplayDate(item.startDate) }} ~ {{ formatDisplayDate(item.endDate) }}</span>
+                  </div>
+                  <div class="history-time" v-if="item.createdAt">
+                    <small>建立時間：{{ formatDateTime(item.createdAt) }}</small>
+                  </div>
+                </div>
+                <div class="history-actions">
+                  <button @click="openViewModal(item.id)" class="btn btn-view">檢視</button>
+                  <button @click="openEditModal(item.id)" class="btn btn-edit">修改</button>
+                  <button @click="deleteSchedule(item.id)" class="btn btn-delete">刪除</button>
+                </div>
               </div>
-              <div class="history-actions">
-                <button @click="loadSchedule(item.id)" class="btn btn-load">載入</button>
-                <button @click="editSchedule(item.id)" class="btn btn-edit">編輯</button>
-                <button @click="deleteSchedule(item.id)" class="btn btn-delete">刪除</button>
+            </div>
+            <div class="pagination">
+              <div class="pagination-left">
+                <label for="pageSize" class="pagination-label">顯示筆數：</label>
+                <select id="pageSize" v-model.number="recordsPerPage" class="page-size-select">
+                  <option :value="10">10</option>
+                  <option :value="20">20</option>
+                  <option :value="50">50</option>
+                  <option :value="100">100</option>
+                </select>
+                <span class="pagination-info">共 {{ historyList.length }} 筆 (第 {{ currentPage }}/{{ totalPages }} 頁)</span>
+              </div>
+              <div class="pagination-right">
+                <button class="btn btn-secondary" @click="currentPage--" :disabled="currentPage === 1">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                  </svg>
+                  上一頁
+                </button>
+                <div class="page-jump">
+                  <span class="pagination-label">到第</span>
+                  <input type="number" v-model.number="jumpPage" min="1" :max="totalPages" class="page-input" @keyup.enter="jumpToPage" />
+                  <span class="pagination-label">頁</span>
+                </div>
+                <button class="btn btn-secondary" @click="currentPage++" :disabled="currentPage === totalPages">
+                  下一頁
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                  </svg>
+                </button>
               </div>
             </div>
           </div>
           <p v-else class="empty-message">尚無歷史記錄</p>
         </div>
 
-        <!-- 安排結果 -->
-        <div class="card" v-if="schedule.length > 0">
-          <div class="schedule-header">
-            <h2>服事表 <span v-if="isEditing" class="editing-badge">編輯模式</span></h2>
-            <div class="schedule-actions">
-              <button v-if="isEditing" @click="cancelEdit" class="btn btn-cancel">取消</button>
-              <button v-if="isEditing" @click="updateSchedule" class="btn btn-save" :disabled="saving">保存修改</button>
-              <button v-else-if="!isLoadedFromHistory" @click="saveSchedule" class="btn btn-save" :disabled="saving">保存服事表</button>
-              <button @click="exportSchedule" class="btn btn-export">匯出服事表</button>
-            </div>
-          </div>
-          <div class="schedule-table">
-            <table>
-              <thead>
-                <tr>
-                  <th>日期</th>
-                  <th>電腦</th>
-                  <th>混音</th>
-                  <th>燈光</th>
-                  <th>直播</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(item, index) in schedule" :key="index">
-                  <td>{{ item.formattedDate || formatDisplayDate(item.date) || item.date }}</td>
-                  <td>
-                    <select v-if="isEditing" v-model="item.computer" class="edit-select">
-                      <option value="">-- 請選擇 --</option>
-                      <option v-for="person in getAvailablePersons(item, 'computer')" :key="person" :value="person">
-                        {{ person }}
-                      </option>
-                    </select>
-                    <span v-else>{{ item.computer }}</span>
-                  </td>
-                  <td>
-                    <select v-if="isEditing" v-model="item.sound" class="edit-select">
-                      <option value="">-- 請選擇 --</option>
-                      <option v-for="person in getAvailablePersons(item, 'sound')" :key="person" :value="person">
-                        {{ person }}
-                      </option>
-                    </select>
-                    <span v-else>{{ item.sound }}</span>
-                  </td>
-                  <td>
-                    <select v-if="isEditing" v-model="item.light" class="edit-select">
-                      <option value="">-- 請選擇 --</option>
-                      <option v-for="person in getAvailablePersons(item, 'light')" :key="person" :value="person">
-                        {{ person }}
-                      </option>
-                    </select>
-                    <span v-else>{{ item.light }}</span>
-                  </td>
-                  <td>
-                    <select v-if="isEditing" v-model="item.live" class="edit-select">
-                      <option value="">-- 請選擇 --</option>
-                      <option v-for="person in getAvailablePersons(item, 'live')" :key="person" :value="person">
-                        {{ person }}
-                      </option>
-                    </select>
-                    <span v-else>{{ item.live }}</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <!-- 服事表 Modal -->
+        <ServiceScheduleModal
+          :show="showScheduleModal"
+          :mode="scheduleModalMode"
+          :schedule-id="currentScheduleId"
+          :position-config="positionConfig"
+          @close="closeScheduleModal"
+          @saved="handleScheduleSaved"
+          @updated="handleScheduleUpdated"
+        />
       </div>
     </section>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import DateRangePicker from '@/components/DateRangePicker.vue'
 import PositionManagementModal from '@/components/PositionManagementModal.vue'
+import PersonManagementModal from '@/components/PersonManagementModal.vue'
+import ServiceScheduleModal from '@/components/ServiceScheduleModal.vue'
+import Notification from '@/components/Notification.vue'
 import { apiRequest } from '@/utils/api'
 
 // 崗位人員配置（從新的 API 載入）
 const positionConfig = ref({})
 
+// 人員管理 Modal 顯示狀態
+const showPersonManagement = ref(false)
+
 // 崗位管理 Modal 顯示狀態
 const showPositionManagement = ref(false)
 
+// 服事表 Modal 顯示狀態
+const showScheduleModal = ref(false)
+const scheduleModalMode = ref('add') // 'add' | 'edit' | 'view'
+
 // 日期範圍（格式：[startDate, endDate]，日期格式為 'YYYY-MM-DD'）
 const dateRange = ref([])
+
+// 選擇的崗位（用於產生服事表時）- 動態初始化
+const selectedPositions = ref({}) // 編輯模式下的崗位選擇
+const initialSelectedPositions = ref({}) // 新增服事表時的崗位選擇
 
 // 安排結果
 const schedule = ref([])
 
 // 歷史記錄列表
 const historyList = ref([])
+
+// 分頁相關
+const currentPage = ref(1)
+const recordsPerPage = ref(10)
+const jumpPage = ref(1)
+
+// 計算分頁後的歷史記錄
+const paginatedHistoryList = computed(() => {
+  const start = (currentPage.value - 1) * recordsPerPage.value
+  const end = start + recordsPerPage.value
+  return historyList.value.slice(start, end)
+})
+
+// 計算總頁數
+const totalPages = computed(() => {
+  return Math.ceil(historyList.value.length / recordsPerPage.value)
+})
+
+// 跳轉到指定頁面
+const jumpToPage = () => {
+  if (jumpPage.value >= 1 && jumpPage.value <= totalPages.value) {
+    currentPage.value = jumpPage.value
+  } else {
+    jumpPage.value = currentPage.value
+  }
+}
+
+// 監聽 currentPage 變化，同步 jumpPage
+watch(() => currentPage.value, (newVal) => {
+  jumpPage.value = newVal
+})
+
+// 監聽 recordsPerPage 變化，重置到第一頁
+watch(() => recordsPerPage.value, () => {
+  currentPage.value = 1
+  jumpPage.value = 1
+})
 
 // 保存狀態
 const saving = ref(false)
@@ -170,11 +215,25 @@ const isEditing = ref(false)
 const editingScheduleId = ref(null)
 const originalSchedule = ref([]) // 保存原始數據，用於取消編輯
 const isLoadedFromHistory = ref(false) // 標記是否從歷史記錄載入（載入的不應該顯示「保存服事表」按鈕）
+const useRandomAssignment = ref(false) // 是否使用完全隨機分配（不考慮服務次數）
+
+// 服事表名稱
+const scheduleName = ref('')
+const currentScheduleId = ref(null) // 當前載入的服事表 ID
+
+// 通知組件引用
+const notificationRef = ref(null)
+
+// 顯示通知的輔助函數
+const showNotification = (message, type = 'info', duration = 3000) => {
+  if (notificationRef.value) {
+    notificationRef.value.showNotification(message, type, duration)
+  }
+}
 
 
-// 檢查是否可以產生服事表
-const canGenerate = computed(() => {
-  const checkPosition = (posCode) => {
+// 檢查崗位是否有配置人員
+const hasPositionConfig = (posCode) => {
     const posData = positionConfig.value[posCode]
     if (!posData) return false
     const satCount = (posData.saturday || []).length
@@ -182,13 +241,126 @@ const canGenerate = computed(() => {
     return satCount > 0 || sunCount > 0
   }
   
-  const hasComputer = checkPosition('computer')
-  const hasSound = checkPosition('sound')
-  const hasLight = checkPosition('light')
-  const hasLive = checkPosition('live')
-  
-  return hasComputer && hasSound && hasLight && hasLive && dateRange.value && dateRange.value.length === 2
+// 獲取選中的崗位列表（用於表格渲染）
+const selectedPositionsList = computed(() => {
+  return Object.keys(positionConfig.value).filter(
+    posCode => selectedPositions.value[posCode] === true
+  )
 })
+
+// 檢查是否可以產生服事表
+const canGenerate = computed(() => {
+  // 檢查日期範圍
+  if (!dateRange.value || dateRange.value.length !== 2) {
+    return false
+  }
+  
+  // 至少選擇一個崗位（使用 initialSelectedPositions，因為這是新增服事表時的選擇）
+  const selectedPositionsList = Object.keys(initialSelectedPositions.value).filter(
+    posCode => initialSelectedPositions.value[posCode] === true
+  )
+  
+  if (selectedPositionsList.length === 0) {
+    return false
+  }
+  
+  // 檢查選中的崗位是否都有配置人員
+  const allSelectedHaveConfig = selectedPositionsList.every(posCode => hasPositionConfig(posCode))
+  
+  return allSelectedHaveConfig
+})
+
+// 獲取產生服事表按鈕的提示信息
+const getGenerateButtonTooltip = () => {
+  if (!dateRange.value || dateRange.value.length !== 2) {
+    return '請先選擇日期範圍'
+  }
+  
+  const selectedPositionsList = Object.keys(initialSelectedPositions.value).filter(
+    posCode => initialSelectedPositions.value[posCode] === true
+  )
+  
+  if (selectedPositionsList.length === 0) {
+    return '請至少選擇一個崗位'
+  }
+  
+  const positionsWithoutConfig = selectedPositionsList.filter(posCode => !hasPositionConfig(posCode))
+  if (positionsWithoutConfig.length > 0) {
+    const positionNames = positionsWithoutConfig.map(posCode => {
+      const posData = positionConfig.value[posCode]
+      return posData ? posData.positionName || posCode : posCode
+    }).join('、')
+    return `崗位「${positionNames}」尚未配置人員`
+  }
+  
+  return '可以產生服事表'
+}
+
+// 打開人員管理 Modal
+const openPersonManagement = () => {
+  showPersonManagement.value = true
+}
+
+// 打開服事表 Modal
+const openAddModal = () => {
+  scheduleModalMode.value = 'add'
+  currentScheduleId.value = null
+  showScheduleModal.value = true
+}
+
+const openEditModal = (id) => {
+  scheduleModalMode.value = 'edit'
+  currentScheduleId.value = id
+  showScheduleModal.value = true
+}
+
+const openViewModal = (id) => {
+  scheduleModalMode.value = 'view'
+  currentScheduleId.value = id
+  showScheduleModal.value = true
+}
+
+const closeScheduleModal = () => {
+  showScheduleModal.value = false
+  scheduleModalMode.value = 'add'
+  currentScheduleId.value = null
+}
+
+const handleScheduleSaved = () => {
+  closeScheduleModal()
+  loadHistory()
+  showNotification('服事表保存成功！', 'success', 3000)
+}
+
+const handleScheduleUpdated = () => {
+  closeScheduleModal()
+  loadHistory()
+  showNotification('服事表更新成功！', 'success', 3000)
+}
+
+// 關閉人員管理 Modal
+const closePersonManagement = async () => {
+  showPersonManagement.value = false
+  await loadPositionConfig() // 重新載入配置，確保下拉選單顯示最新的人員列表
+  
+  // 更新 initialSelectedPositions：如果崗位沒有配置人員，取消勾選
+  const newInitialSelectedPositions = { ...initialSelectedPositions.value }
+  for (const posCode in positionConfig.value) {
+    if (!hasPositionConfig(posCode)) {
+      newInitialSelectedPositions[posCode] = false
+    }
+  }
+  initialSelectedPositions.value = newInitialSelectedPositions
+  
+  // 更新 selectedPositions：如果崗位沒有配置人員，取消勾選（編輯模式下）
+  const newSelectedPositions = { ...selectedPositions.value }
+  for (const posCode in positionConfig.value) {
+    if (!hasPositionConfig(posCode)) {
+      newSelectedPositions[posCode] = false
+    }
+  }
+  selectedPositions.value = newSelectedPositions
+}
 
 // 打開崗位管理 Modal
 const openPositionManagement = () => {
@@ -199,6 +371,24 @@ const openPositionManagement = () => {
 const closePositionManagement = async () => {
   showPositionManagement.value = false
   await loadPositionConfig() // 重新載入配置
+  
+  // 更新 initialSelectedPositions：如果崗位沒有配置人員，取消勾選
+  const newInitialSelectedPositions = { ...initialSelectedPositions.value }
+  for (const posCode in positionConfig.value) {
+    if (!hasPositionConfig(posCode)) {
+      newInitialSelectedPositions[posCode] = false
+    }
+  }
+  initialSelectedPositions.value = newInitialSelectedPositions
+  
+  // 更新 selectedPositions：如果崗位沒有配置人員，取消勾選（編輯模式下）
+  const newSelectedPositions = { ...selectedPositions.value }
+  for (const posCode in positionConfig.value) {
+    if (!hasPositionConfig(posCode)) {
+      newSelectedPositions[posCode] = false
+    }
+  }
+  selectedPositions.value = newSelectedPositions
   
   // 如果正在編輯模式，確保下拉選單顯示最新的人員列表
   // 由於 positionConfig 是響應式的，下拉選單會自動更新
@@ -277,42 +467,61 @@ const distributePersons = (dates) => {
     }
   })
   
+  // 動態初始化服務次數統計（根據所有崗位）
   allPersons.forEach(person => {
-    serviceCount[person] = {
-      computer: 0,
-      sound: 0,
-      light: 0,
-      live: 0,
-      total: 0
-    }
+    const personCount = { total: 0 }
+    // 為每個崗位初始化計數
+    Object.keys(positionConfig.value).forEach(posCode => {
+      personCount[posCode] = 0
+    })
+    serviceCount[person] = personCount
   })
+  
+  // 獲取所有選中的崗位
+  const selectedPositionsList = Object.keys(selectedPositions.value).filter(
+    posCode => selectedPositions.value[posCode] === true
+  )
   
   // 為每個日期分配人員
   dates.forEach((dateInfo) => {
     const dayType = dateInfo.isSaturday ? 'saturday' : 'sunday'
+    
+    // 動態初始化 assignment 對象（只包含選中的崗位）
     const assignment = {
       date: formatDateISO(dateInfo.date), // 使用 ISO 格式存儲日期
       dayOfWeek: dateInfo.dayOfWeek, // 保存星期信息
       formattedDate: formatDateDisplay(dateInfo.date, dateInfo.dayOfWeek), // 格式化顯示日期
-      computer: '',
-      sound: '',
-      light: '',
-      live: ''
     }
     
-    // 為每個崗位分配人員
-    // 主要崗位（電腦、混音、燈光）之間不能重複，但直播不受限制
-    const mainPositions = ['computer', 'sound', 'light'] // 主要崗位
-    const livePosition = 'live' // 直播崗位（不受重複限制）
-    const usedMainPersons = new Set() // 記錄今天主要崗位已使用的人員
+    // 為每個選中的崗位初始化欄位
+    selectedPositionsList.forEach(posCode => {
+      assignment[posCode] = ''
+      assignment[posCode + 'Id'] = null
+    })
     
-    // 先分配主要崗位（電腦、混音、燈光）
-    mainPositions.forEach(position => {
-      const posData = positionConfig.value[position]
+    // 根據 allowDuplicate 分類崗位
+    const positionsWithDuplicateCheck = [] // 需要檢查重複的崗位
+    const positionsWithoutDuplicateCheck = [] // 不需要檢查重複的崗位（allowDuplicate = true）
+    
+    selectedPositionsList.forEach(posCode => {
+      const posData = positionConfig.value[posCode]
+      if (posData && posData.allowDuplicate) {
+        positionsWithoutDuplicateCheck.push(posCode)
+      } else {
+        positionsWithDuplicateCheck.push(posCode)
+      }
+    })
+    
+    const usedPersons = new Set() // 記錄今天已使用的人員（用於檢查重複）
+    
+    // 先分配需要檢查重複的崗位
+    positionsWithDuplicateCheck.forEach(posCode => {
+      const posData = positionConfig.value[posCode]
       if (!posData || !posData[dayType]) {
         return
       }
-      // 過濾：1. 只使用參與自動分配的人員 2. 過濾掉今天已在其他主要崗位的人員
+      
+      // 過濾：1. 只使用參與自動分配的人員 2. 過濾掉今天已在其他崗位的人員（如果該崗位不允許重複）
       const availablePersons = posData[dayType]
         .filter(p => {
           // 只使用參與自動分配的人員
@@ -321,94 +530,95 @@ const distributePersons = (dates) => {
           }
           // 如果是字符串，默認參與自動分配
           const personName = typeof p === 'string' ? p : (p.personName || p.displayName)
-          return !usedMainPersons.has(personName)
+          return !usedPersons.has(personName)
         })
-        .map(p => typeof p === 'string' ? p : (p.personName || p.displayName))
+        .map(p => {
+          if (typeof p === 'string') {
+            return { id: null, name: p }
+          } else {
+            const personId = p.personId || p.id
+            const personName = p.displayName || p.personName || ''
+            return { id: personId, name: personName }
+          }
+        })
+        .filter(p => p.id && p.name)
       
-      if (availablePersons.length === 0) {
-        // 如果沒有可用人員，從全部名單中選擇（但不在今天其他主要崗位）
-        // 只使用參與自動分配的人員
-        const allAvailable = posData[dayType]
-          .filter(p => {
-            // 只使用參與自動分配的人員
-            if (typeof p === 'object' && p.includeInAutoSchedule === false) {
-              return false
-            }
-            const personName = typeof p === 'string' ? p : (p.personName || p.displayName)
-            return personName !== assignment.computer && 
-                   personName !== assignment.sound && 
-                   personName !== assignment.light
-          })
-          .map(p => typeof p === 'string' ? p : (p.personName || p.displayName))
-        if (allAvailable.length > 0) {
-          // 選擇該崗位服務次數最少的
-          allAvailable.sort((a, b) => {
-            const countA = serviceCount[a] ? serviceCount[a][position] : 0
-            const countB = serviceCount[b] ? serviceCount[b][position] : 0
-            if (countA !== countB) return countA - countB
-            // 如果次數相同，選擇總服務次數最少的
-            const totalA = serviceCount[a] ? serviceCount[a].total : 0
-            const totalB = serviceCount[b] ? serviceCount[b].total : 0
-            return totalA - totalB
-          })
-          assignment[position] = allAvailable[0]
-          usedMainPersons.add(allAvailable[0])
-        }
-      } else {
+      if (availablePersons.length > 0) {
         // 從可用人員中選擇該崗位服務次數最少的
         availablePersons.sort((a, b) => {
-          const countA = serviceCount[a] ? serviceCount[a][position] : 0
-          const countB = serviceCount[b] ? serviceCount[b][position] : 0
+          const countA = serviceCount[a.name] ? (serviceCount[a.name][posCode] || 0) : 0
+          const countB = serviceCount[b.name] ? (serviceCount[b.name][posCode] || 0) : 0
           if (countA !== countB) return countA - countB
           // 如果次數相同，選擇總服務次數最少的
-          const totalA = serviceCount[a] ? serviceCount[a].total : 0
-          const totalB = serviceCount[b] ? serviceCount[b].total : 0
+          const totalA = serviceCount[a.name] ? serviceCount[a.name].total : 0
+          const totalB = serviceCount[b.name] ? serviceCount[b.name].total : 0
           return totalA - totalB
         })
-        assignment[position] = availablePersons[0]
-        usedMainPersons.add(availablePersons[0])
-      }
+        assignment[posCode] = availablePersons[0].name
+        assignment[posCode + 'Id'] = availablePersons[0].id
+        usedPersons.add(availablePersons[0].name)
       
       // 更新服務次數
-      if (assignment[position] && serviceCount[assignment[position]]) {
-        serviceCount[assignment[position]][position]++
-        serviceCount[assignment[position]].total++
+        if (assignment[posCode] && serviceCount[assignment[posCode]]) {
+          if (!serviceCount[assignment[posCode]][posCode]) {
+            serviceCount[assignment[posCode]][posCode] = 0
+          }
+          serviceCount[assignment[posCode]][posCode]++
+          serviceCount[assignment[posCode]].total++
+        }
       }
     })
     
-    // 分配直播崗位（不受主要崗位重複限制，可以與主要崗位重複）
-    // 但只使用參與自動分配的人員
-    const livePosData = positionConfig.value[livePosition]
-    const liveAvailablePersons = livePosData && livePosData[dayType] 
-      ? livePosData[dayType]
-          .filter(p => {
+    // 再分配允許重複的崗位（不需要檢查重複）
+    positionsWithoutDuplicateCheck.forEach(posCode => {
+      const posData = positionConfig.value[posCode]
+      if (!posData || !posData[dayType]) {
+        return
+      }
+      
             // 只使用參與自動分配的人員
+      const availablePersons = posData[dayType]
+        .filter(p => {
             if (typeof p === 'object' && p.includeInAutoSchedule === false) {
               return false
             }
             return true
           })
-          .map(p => typeof p === 'string' ? p : (p.personName || p.displayName))
-      : []
-    if (liveAvailablePersons.length > 0) {
-      // 選擇該崗位服務次數最少的（不需要檢查主要崗位的人員）
-      liveAvailablePersons.sort((a, b) => {
-        const countA = serviceCount[a] ? serviceCount[a][livePosition] : 0
-        const countB = serviceCount[b] ? serviceCount[b][livePosition] : 0
+        .map(p => {
+          if (typeof p === 'string') {
+            return { id: null, name: p }
+          } else {
+            const personId = p.personId || p.id
+            const personName = p.displayName || p.personName || ''
+            return { id: personId, name: personName }
+          }
+        })
+        .filter(p => p.id && p.name)
+      
+      if (availablePersons.length > 0) {
+        // 選擇該崗位服務次數最少的（不需要檢查重複）
+        availablePersons.sort((a, b) => {
+          const countA = serviceCount[a.name] ? (serviceCount[a.name][posCode] || 0) : 0
+          const countB = serviceCount[b.name] ? (serviceCount[b.name][posCode] || 0) : 0
         if (countA !== countB) return countA - countB
         // 如果次數相同，選擇總服務次數最少的
-        const totalA = serviceCount[a] ? serviceCount[a].total : 0
-        const totalB = serviceCount[b] ? serviceCount[b].total : 0
+          const totalA = serviceCount[a.name] ? serviceCount[a.name].total : 0
+          const totalB = serviceCount[b.name] ? serviceCount[b.name].total : 0
         return totalA - totalB
       })
-      assignment[livePosition] = liveAvailablePersons[0]
+        assignment[posCode] = availablePersons[0].name
+        assignment[posCode + 'Id'] = availablePersons[0].id
       
       // 更新服務次數
-      if (assignment[livePosition] && serviceCount[assignment[livePosition]]) {
-        serviceCount[assignment[livePosition]][livePosition]++
-        serviceCount[assignment[livePosition]].total++
+        if (assignment[posCode] && serviceCount[assignment[posCode]]) {
+          if (!serviceCount[assignment[posCode]][posCode]) {
+            serviceCount[assignment[posCode]][posCode] = 0
+          }
+          serviceCount[assignment[posCode]][posCode]++
+          serviceCount[assignment[posCode]].total++
       }
     }
+    })
     
     schedule.push(assignment)
   })
@@ -419,7 +629,7 @@ const distributePersons = (dates) => {
 // 產生服事表
 const generateSchedule = () => {
   if (!canGenerate.value) {
-    alert('請確保每個崗位（電腦、混音、燈光、直播）至少配置一位人員，並選擇日期範圍')
+    showNotification('請確保每個崗位（電腦、混音、燈光、直播）至少配置一位人員，並選擇日期範圍', 'warning', 4000)
     return
   }
   
@@ -427,16 +637,29 @@ const generateSchedule = () => {
   const weekendDates = getWeekendDates(startDate, endDate)
   
   if (weekendDates.length === 0) {
-    alert('選擇的日期範圍內沒有週六或週日')
+    showNotification('選擇的日期範圍內沒有週六或週日', 'warning', 3000)
     return
   }
   
   // 重置狀態
-  isEditing.value = false
   editingScheduleId.value = null
   isLoadedFromHistory.value = false
+  currentScheduleId.value = null
+  scheduleName.value = '' // 重置名稱
+  
+  // 將 initialSelectedPositions 複製到 selectedPositions（用於生成服事表）
+  selectedPositions.value = JSON.parse(JSON.stringify(initialSelectedPositions.value))
+  
+  // 確保 selectedPositions 有正確的值（從用戶選擇的崗位）
+  console.log('產生服事表前的 selectedPositions:', selectedPositions.value)
+  console.log('產生服事表前的 positionConfig:', Object.keys(positionConfig.value))
   
   schedule.value = distributePersons(weekendDates)
+  
+  console.log('產生服事表後的 selectedPositions:', selectedPositions.value)
+  console.log('產生服事表後的 positionConfig:', Object.keys(positionConfig.value))
+  console.log('產生服事表後的 schedule 第一筆資料:', schedule.value[0])
+  console.log('選中的崗位列表:', Object.keys(selectedPositions.value).filter(posCode => selectedPositions.value[posCode]))
   
   // 設置格式化日期
   schedule.value.forEach(item => {
@@ -455,32 +678,51 @@ const generateSchedule = () => {
     }
   })
   
-  // 退出編輯模式（如果正在編輯）
-  if (isEditing.value) {
-    isEditing.value = false
-    editingScheduleId.value = null
-    originalSchedule.value = []
-  }
+  // 產生服事表後自動進入編輯模式，方便用戶直接調整
+  isEditing.value = true
+  originalSchedule.value = JSON.parse(JSON.stringify(schedule.value || []))
+  useRandomAssignment.value = false // 重置隨機分配選項
+  
+  showNotification('服事表已產生，您可以直接編輯調整', 'success', 3000)
 }
 
-// 驗證服事表（檢查主要崗位之間是否有重複）
+// 驗證服事表（檢查崗位之間是否有重複，根據 allowDuplicate 欄位判斷）
 const validateSchedule = () => {
-  const mainPositions = ['computer', 'sound', 'light']
   const errors = []
   
   schedule.value.forEach((item, index) => {
-    const usedMainPersons = new Set()
-    const mainPositionNames = { computer: '電腦', sound: '混音', light: '燈光' }
+    // 根據 allowDuplicate 分類崗位
+    const positionsWithDuplicateCheck = [] // 需要檢查重複的崗位
+    const positionsWithoutDuplicateCheck = [] // 不需要檢查重複的崗位
     
-    // 檢查主要崗位之間是否有重複
-    mainPositions.forEach(position => {
-      const person = item[position]
-      if (person) {
-        if (usedMainPersons.has(person)) {
-          const dateStr = item.formattedDate || item.date || `第 ${index + 1} 行`
-          errors.push(`${dateStr}：${person} 同時擔任多個主要崗位（電腦、混音、燈光之間不能重複）`)
+    // 遍歷所有選中的崗位
+    Object.keys(selectedPositions.value).forEach(posCode => {
+      if (selectedPositions.value[posCode] && item[posCode + 'Id']) {
+        const posData = positionConfig.value[posCode]
+        if (posData && !posData.allowDuplicate) {
+          positionsWithDuplicateCheck.push(posCode)
+        } else {
+          positionsWithoutDuplicateCheck.push(posCode)
         }
-        usedMainPersons.add(person)
+      }
+    })
+    
+    // 檢查需要檢查重複的崗位之間是否有重複（使用 ID 比較）
+    const usedPersonIds = new Set()
+    positionsWithDuplicateCheck.forEach(posCode => {
+      const personId = item[posCode + 'Id']
+      if (personId) {
+        if (usedPersonIds.has(personId)) {
+          const dateStr = item.formattedDate || item.date || `第 ${index + 1} 行`
+          const personName = item[posCode] || '未知人員'
+          const positionName = positionConfig.value[posCode]?.positionName || posCode
+          const otherPositions = positionsWithDuplicateCheck
+            .filter(p => p !== posCode && item[p + 'Id'] === personId)
+            .map(p => positionConfig.value[p]?.positionName || p)
+            .join('、')
+          errors.push(`${dateStr}：${personName} 同時擔任多個崗位（${positionName} 與 ${otherPositions} 之間不能重複）`)
+        }
+        usedPersonIds.add(personId)
       }
     })
   })
@@ -490,46 +732,69 @@ const validateSchedule = () => {
 
 // 保存服事表
 const saveSchedule = async () => {
-  if (schedule.value.length === 0 || dateRange.value.length !== 2) {
-    alert('請先產生服事表')
+  if (!schedule.value || schedule.value.length === 0 || !dateRange.value || dateRange.value.length !== 2) {
+    showNotification('請先產生服事表', 'warning', 3000)
+    return
+  }
+
+  // 驗證名稱
+  if (!scheduleName.value || !scheduleName.value.trim()) {
+    showNotification('請輸入服事表名稱', 'warning', 3000)
     return
   }
 
   // 驗證主要崗位之間是否有重複
   const validationErrors = validateSchedule()
   if (validationErrors.length > 0) {
-    alert('驗證失敗：\n' + validationErrors.join('\n') + '\n\n請修正後再保存。')
+    showNotification('驗證失敗：\n' + validationErrors.join('\n') + '\n\n請修正後再保存。', 'error', 5000)
     return
   }
 
   saving.value = true
   try {
-    const [startDate, endDate] = dateRange.value
-    const scheduleDate = startDate // 使用開始日期作為安排日期
+    // 轉換為後端需要的格式：將 ID 轉換為人員名稱（用於向後兼容，但後端會改用 ID）
+    // 只保存選中的崗位（新產生的服事表）
+    const scheduleDataForBackend = schedule.value.map(item => {
+      const result = {
+        date: item.date
+      }
+      
+      // 動態保存所有選中的崗位
+      Object.keys(selectedPositions.value).forEach(posCode => {
+        if (selectedPositions.value[posCode]) {
+          result[posCode] = item[posCode] || (item[posCode + 'Id'] ? getPersonNameById(item[posCode + 'Id'], posCode, item) : '')
+          result[posCode + 'Id'] = item[posCode + 'Id'] ? Number(item[posCode + 'Id']) : null
+        }
+      })
+      
+      return result
+    })
 
     const response = await apiRequest('/church/service-schedules', {
       method: 'POST',
       body: JSON.stringify({
-        scheduleDate,
-        startDate,
-        endDate,
-        scheduleData: schedule.value,
-        positionConfig: positionConfig.value
+        name: scheduleName.value.trim(),
+        scheduleData: scheduleDataForBackend,
+        dateRange: dateRange.value
       })
     }, '保存服事表中...')
 
     const result = await response.json()
     
     if (response.ok && result.success !== false) {
-      alert(`服事表保存成功！版本：第 ${result.version} 版`)
-      // 標記為已保存，移除"保存服事表"按鈕
+      showNotification('服事表保存成功！', 'success', 3000)
+      currentScheduleId.value = result.id
+      editingScheduleId.value = result.id // 設置編輯 ID，這樣下次就可以使用「更新」按鈕
+      // 標記為已保存
       isLoadedFromHistory.value = true
+      // 保持編輯模式，讓用戶可以繼續調整
+      // isEditing.value = false // 不退出編輯模式，讓用戶可以繼續調整
       await loadHistory() // 重新載入歷史記錄
     } else {
-      alert('保存失敗：' + (result.error || '未知錯誤'))
+      showNotification('保存失敗：' + (result.error || '未知錯誤'), 'error', 4000)
     }
   } catch (error) {
-    alert('保存失敗：' + error.message)
+    showNotification('保存失敗：' + error.message, 'error', 4000)
   } finally {
     saving.value = false
   }
@@ -545,7 +810,7 @@ const loadHistory = async () => {
     historyList.value = result || []
   } catch (error) {
     console.error('載入歷史記錄失敗：', error)
-    alert('載入歷史記錄失敗：' + error.message)
+    showNotification('載入歷史記錄失敗：' + error.message, 'error', 3000)
   }
 }
 
@@ -558,45 +823,121 @@ const loadSchedule = async (id) => {
     const data = await response.json()
     
     if (response.ok) {
-      // 載入日期範圍
+      // 載入名稱
+      scheduleName.value = data.name || ''
+      currentScheduleId.value = data.id
+      
+      // 載入日期範圍（如果有）
+      if (data.startDate && data.endDate) {
       dateRange.value = [data.startDate, data.endDate]
-      
-      // 載入服事表數據
-      schedule.value = data.scheduleData
-      
-      // 確保每個項目都有 formattedDate
-      schedule.value.forEach(item => {
-        if (!item.formattedDate && item.date) {
-          const dateObj = parseDate(item.date)
-          if (dateObj) {
-            const year = dateObj.getFullYear()
-            const month = String(dateObj.getMonth() + 1).padStart(2, '0')
-            const day = String(dateObj.getDate()).padStart(2, '0')
-            const dayOfWeekChar = item.dayOfWeek || (dateObj.getDay() === 6 ? '六' : '日')
-            item.formattedDate = `${year}/${month}/${day}(${dayOfWeekChar})`
           } else {
-            // 如果解析失敗，嘗試從原始字符串提取
-            item.formattedDate = item.date
+        dateRange.value = []
+      }
+      
+      // 先載入崗位配置，以便從 ID 查找名稱（如果後端沒有返回名稱）
+      await loadPositionConfig()
+      
+      // 載入服事表數據（從新的 dates 關聯表結構）
+      if (data.scheduleData && Array.isArray(data.scheduleData) && data.scheduleData.length > 0) {
+        schedule.value = data.scheduleData.map(item => {
+          // 從人員 ID 查找名稱（用於顯示，如果後端沒有返回名稱）
+          const getPersonNameByIdLocal = (personId, position, dayOfWeek) => {
+            if (!personId) return ''
+            const dayKey = dayOfWeek === '六' ? 'saturday' : 'sunday'
+            const posData = positionConfig.value[position]
+            const persons = (posData && posData[dayKey]) ? posData[dayKey] : []
+            const person = persons.find(p => {
+              if (typeof p === 'object') {
+                return (p.personId || p.id) === personId
+              }
+              return false
+            })
+            return person && typeof person === 'object' ? (person.displayName || person.personName || '') : ''
+          }
+          
+          const dayOfWeek = item.dayOfWeek || (item.date ? (parseDate(item.date)?.getDay() === 6 ? '六' : '日') : '六')
+          
+          // 動態處理所有崗位（從 positionConfig 讀取）
+          const scheduleItem = {
+            date: item.date,
+            formattedDate: item.formattedDate || formatDisplayDate(item.date),
+            dayOfWeek: dayOfWeek
+          }
+          
+          // 處理後端返回的崗位資料
+          // 後端返回的資料中，崗位欄位是動態的，直接使用
+          for (const key in item) {
+            if (key !== 'date' && key !== 'formattedDate' && key !== 'dayOfWeek') {
+              scheduleItem[key] = item[key]
+            }
+          }
+          
+          // 確保崗位名稱欄位存在（如果只有 ID 沒有名稱，從 positionConfig 查找）
+          Object.keys(positionConfig.value).forEach(posCode => {
+            if (scheduleItem[posCode + 'Id'] && !scheduleItem[posCode]) {
+              // 如果有 ID 但沒有名稱，嘗試從 positionConfig 查找
+              const personId = scheduleItem[posCode + 'Id']
+              const personName = getPersonNameByIdLocal(personId, posCode, dayOfWeek)
+              if (personName) {
+                scheduleItem[posCode] = personName
+              }
+            }
+          })
+          
+          return scheduleItem
+        })
+          } else {
+        // 如果沒有服事表數據，設置為空數組
+        schedule.value = []
+      }
+      
+      // 根據載入的資料推斷哪些崗位被選中（檢查 schedule 中哪些崗位有資料）
+      const loadedPositions = new Set()
+      schedule.value.forEach(item => {
+        // 遍歷 item 的所有屬性，找出崗位相關的欄位
+        for (const key in item) {
+          // 如果 key 以 'Id' 結尾，且不是 'date'、'formattedDate'、'dayOfWeek' 等系統欄位
+          if (key.endsWith('Id') && item[key]) {
+            const posCode = key.replace('Id', '')
+            // 檢查這個 posCode 是否在 positionConfig 中
+            if (positionConfig.value[posCode]) {
+              loadedPositions.add(posCode)
+            }
+          } else if (!key.endsWith('Id') && key !== 'date' && key !== 'formattedDate' && key !== 'dayOfWeek' && item[key]) {
+            // 如果 key 不是系統欄位，且值不為空，可能是崗位名稱
+            if (positionConfig.value[key]) {
+              loadedPositions.add(key)
+            }
           }
         }
       })
       
-      // 載入崗位配置（如果有）
-      if (data.positionConfig) {
-        positionConfig.value = data.positionConfig
+      // 只選中載入的崗位，其他崗位設為 false
+      // 確保所有崗位都在 selectedPositions 中有對應的鍵
+      // 使用新的對象來觸發 Vue 的響應式更新
+      const newSelectedPositions = {}
+      for (const posCode in positionConfig.value) {
+        newSelectedPositions[posCode] = loadedPositions.has(posCode)
       }
+      selectedPositions.value = newSelectedPositions
+      
+      console.log('載入後的 selectedPositions:', selectedPositions.value)
+      console.log('載入後的 loadedPositions:', Array.from(loadedPositions))
+      console.log('載入後的 positionConfig:', Object.keys(positionConfig.value))
+      console.log('載入後的 schedule 第一筆資料:', schedule.value[0])
+      console.log('選中的崗位列表:', Object.keys(selectedPositions.value).filter(posCode => selectedPositions.value[posCode] === true))
       
       // 退出編輯模式
       isEditing.value = false
       editingScheduleId.value = null
       isLoadedFromHistory.value = true // 標記為從歷史記錄載入
       
-      alert('服事表載入成功！')
+      showNotification('服事表載入成功！', 'success', 3000)
     } else {
-      alert('載入失敗：' + (data.error || '未知錯誤'))
+      showNotification('載入失敗：' + (data.error || '未知錯誤'), 'error', 3000)
     }
   } catch (error) {
-    alert('載入失敗：' + error.message)
+    showNotification('載入失敗：' + error.message, 'error', 3000)
   }
 }
 
@@ -609,65 +950,470 @@ const editSchedule = async (id) => {
     const data = await response.json()
     
     if (response.ok) {
-      // 載入日期範圍
+      // 載入名稱
+      scheduleName.value = data.name || ''
+      currentScheduleId.value = data.id
+      
+      // 載入日期範圍（如果有）
+      if (data.startDate && data.endDate) {
       dateRange.value = [data.startDate, data.endDate]
-      
-      // 載入服事表數據
-      schedule.value = data.scheduleData
-      
-      // 確保每個項目都有 formattedDate
-      schedule.value.forEach(item => {
-        if (!item.formattedDate && item.date) {
-          const dateObj = parseDate(item.date)
-          if (dateObj) {
-            const year = dateObj.getFullYear()
-            const month = String(dateObj.getMonth() + 1).padStart(2, '0')
-            const day = String(dateObj.getDate()).padStart(2, '0')
-            const dayOfWeekChar = item.dayOfWeek || (dateObj.getDay() === 6 ? '六' : '日')
-            item.formattedDate = `${year}/${month}/${day}(${dayOfWeekChar})`
           } else {
-            // 如果解析失敗，嘗試從原始字符串提取
-            item.formattedDate = item.date
+        dateRange.value = []
+          }
+      
+      // 先載入崗位配置，以便從名稱查找 ID
+      await loadPositionConfig()
+      
+      // 載入服事表數據（從新的 dates 關聯表結構）
+      if (data.scheduleData && Array.isArray(data.scheduleData) && data.scheduleData.length > 0) {
+        schedule.value = data.scheduleData.map(item => {
+          // 從人員 ID 查找名稱（用於顯示，如果後端沒有返回名稱）
+          const getPersonNameById = (personId, position, dayOfWeek) => {
+            if (!personId) return ''
+            const dayKey = dayOfWeek === '六' ? 'saturday' : 'sunday'
+            const posData = positionConfig.value[position]
+            const persons = (posData && posData[dayKey]) ? posData[dayKey] : []
+            const person = persons.find(p => {
+              if (typeof p === 'object') {
+                return (p.personId || p.id) === personId
+              }
+              return false
+            })
+            return person && typeof person === 'object' ? (person.displayName || person.personName || '') : ''
+          }
+          
+          const dayOfWeek = item.dayOfWeek || (item.date ? (parseDate(item.date)?.getDay() === 6 ? '六' : '日') : '六')
+          
+          // 動態處理所有崗位（從 positionConfig 讀取）
+          const scheduleItem = {
+            date: item.date,
+            formattedDate: item.formattedDate || formatDisplayDate(item.date),
+            dayOfWeek: dayOfWeek
+          }
+          
+          // 只處理後端返回的崗位資料（不遍歷所有崗位配置，避免添加空欄位）
+          // 後端返回的資料中，崗位欄位是動態的，直接使用
+          for (const key in item) {
+            if (key !== 'date' && key !== 'formattedDate' && key !== 'dayOfWeek') {
+              scheduleItem[key] = item[key]
+            }
+          }
+          
+          return scheduleItem
+        })
+          } else {
+        // 如果沒有服事表數據，設置為空數組
+        schedule.value = []
+      }
+      
+      // 根據載入的資料推斷哪些崗位被選中（檢查 schedule 中哪些崗位有資料）
+      const loadedPositions = new Set()
+      schedule.value.forEach(item => {
+        // 遍歷 item 的所有屬性，找出崗位相關的欄位
+        for (const key in item) {
+          // 如果 key 以 'Id' 結尾，且不是 'date'、'formattedDate'、'dayOfWeek' 等系統欄位
+          if (key.endsWith('Id') && item[key]) {
+            const posCode = key.replace('Id', '')
+            // 檢查這個 posCode 是否在 positionConfig 中
+            if (positionConfig.value[posCode]) {
+              loadedPositions.add(posCode)
+            }
+          } else if (!key.endsWith('Id') && key !== 'date' && key !== 'formattedDate' && key !== 'dayOfWeek' && item[key]) {
+            // 如果 key 不是系統欄位，且值不為空，可能是崗位名稱
+            if (positionConfig.value[key]) {
+              loadedPositions.add(key)
+            }
           }
         }
       })
       
-      // 載入崗位配置（如果有）
-      if (data.positionConfig) {
-        positionConfig.value = data.positionConfig
+      // 只選中載入的崗位，其他崗位設為 false
+      // 確保所有崗位都在 selectedPositions 中有對應的鍵
+      // 使用新的對象來觸發 Vue 的響應式更新
+      const newSelectedPositions = {}
+      for (const posCode in positionConfig.value) {
+        newSelectedPositions[posCode] = loadedPositions.has(posCode)
       }
+      selectedPositions.value = newSelectedPositions
       
-      // 重新載入最新的崗位配置，確保下拉選單顯示最新的人員列表
-      await loadPositionConfig()
+      console.log('編輯模式載入後的 selectedPositions:', selectedPositions.value)
+      console.log('編輯模式載入後的 loadedPositions:', Array.from(loadedPositions))
+      console.log('編輯模式載入後的 positionConfig:', Object.keys(positionConfig.value))
+      console.log('編輯模式載入後的 schedule 第一筆資料:', schedule.value[0])
+      console.log('選中的崗位列表:', Object.keys(selectedPositions.value).filter(posCode => selectedPositions.value[posCode] === true))
       
       // 進入編輯模式
       isEditing.value = true
       editingScheduleId.value = id
+      currentScheduleId.value = id
+      isLoadedFromHistory.value = true // 標記為從歷史記錄載入（編輯模式）
+      useRandomAssignment.value = false // 重置隨機分配選項
       
       // 深拷貝原始數據，用於取消編輯
-      originalSchedule.value = JSON.parse(JSON.stringify(schedule.value))
+      originalSchedule.value = JSON.parse(JSON.stringify(schedule.value || []))
       
-      alert('已進入編輯模式，您可以修改人員安排')
+      showNotification('已進入編輯模式，您可以修改人員安排', 'info', 3000)
     } else {
-      alert('載入失敗')
+      showNotification('載入失敗', 'error', 3000)
     }
   } catch (error) {
-    alert('載入失敗：' + error.message)
+    showNotification('載入失敗：' + error.message, 'error', 3000)
   }
 }
 
 // 取消編輯
 const cancelEdit = () => {
   if (confirm('確定要取消編輯嗎？未保存的修改將丟失。')) {
+    // 如果有原始數據，恢復原始數據
+    if (originalSchedule.value.length > 0) {
+      schedule.value = JSON.parse(JSON.stringify(originalSchedule.value))
+    }
+    
+    // 如果從歷史記錄載入，恢復原始名稱
+    if (currentScheduleId.value) {
+      // 重新載入以獲取原始名稱
+      loadSchedule(currentScheduleId.value).then(() => {
+        isEditing.value = false
+        editingScheduleId.value = null
+        originalSchedule.value = []
+      })
+    } else {
     // 清空所有資料
     schedule.value = []
     dateRange.value = []
+      scheduleName.value = ''
+      currentScheduleId.value = null
     isEditing.value = false
     editingScheduleId.value = null
     originalSchedule.value = []
     isLoadedFromHistory.value = false
-    alert('已取消編輯，資料已清空。')
+    useRandomAssignment.value = false
+    selectedPositions.value = {}
+    initialSelectedPositions.value = {}
+      showNotification('已取消編輯，資料已清空。', 'info', 3000)
   }
+  }
+}
+
+// 根據 ID 獲取人員名稱（用於保存時轉換）
+const getPersonNameById = (personId, position, item) => {
+  if (!personId) return ''
+  
+  // 判斷是週六還是週日
+  let dayOfWeek = item.dayOfWeek
+  if (!dayOfWeek && item.date) {
+    const dateObj = parseDate(item.date)
+    if (dateObj) {
+      const day = dateObj.getDay()
+      dayOfWeek = day === 6 ? '六' : '日'
+    }
+  }
+  if (!dayOfWeek) dayOfWeek = '六'
+  
+  const dayKey = dayOfWeek === '六' ? 'saturday' : 'sunday'
+  const posData = positionConfig.value[position]
+  const persons = (posData && posData[dayKey]) ? posData[dayKey] : []
+  
+  const person = persons.find(p => {
+    if (typeof p === 'object') {
+      return (p.personId || p.id) === personId
+    }
+    return false
+  })
+  
+  if (person) {
+    return person.displayName || person.personName || ''
+  }
+  return ''
+}
+
+// 處理崗位選擇變化（編輯模式下新增崗位時使用）
+const handlePositionSelectionChange = (posCode) => {
+  // 只在編輯模式下處理
+  if (!isEditing.value) return
+  
+  const isSelected = selectedPositions.value[posCode]
+  
+  if (isSelected) {
+    // 如果勾選了新崗位，為所有日期添加該崗位的欄位
+    schedule.value.forEach(item => {
+      if (!item.hasOwnProperty(posCode)) {
+        item[posCode] = ''
+        item[posCode + 'Id'] = null
+      }
+    })
+    
+    // 如果該崗位有配置人員，自動為每一日分配人員
+    if (hasPositionConfig(posCode) && schedule.value.length > 0) {
+      // 使用自動分派邏輯為該崗位分配人員
+      autoAssignPositionForNewSelection(posCode)
+    }
+  } else {
+    // 如果取消勾選崗位，移除該崗位的資料（但保留欄位，只是清空）
+    schedule.value.forEach(item => {
+      item[posCode] = ''
+      item[posCode + 'Id'] = null
+    })
+  }
+}
+
+// 為新選擇的崗位自動分配人員（編輯模式下使用，類似 autoAssignPosition 但只處理空欄位）
+const autoAssignPositionForNewSelection = (posCode) => {
+  const posData = positionConfig.value[posCode]
+  if (!posData) {
+    return
+  }
+  
+  // 統計該崗位在現有服事表中的服務次數（只統計已有分配的部分）
+  const serviceCount = {}
+  schedule.value.forEach(item => {
+    const personId = item[posCode + 'Id']
+    const personName = item[posCode]
+    if (personId && personName) {
+      if (!serviceCount[personName]) {
+        serviceCount[personName] = { count: 0, id: personId }
+      }
+      serviceCount[personName].count++
+    }
+  })
+  
+  // 獲取該崗位是否允許重複
+  const allowDuplicate = posData.allowDuplicate === true
+  
+  // 為每個日期分配人員（只處理空欄位）
+  schedule.value.forEach(item => {
+    // 如果該日期已經有人員，跳過
+    if (item[posCode + 'Id']) {
+      return
+    }
+    
+    const dayOfWeek = item.dayOfWeek || (item.date ? (parseDate(item.date)?.getDay() === 6 ? '六' : '日') : '六')
+    const dayType = dayOfWeek === '六' ? 'saturday' : 'sunday'
+    const dayKey = dayType
+    
+    // 獲取該崗位該日期類型的人員列表
+    const availablePersons = (posData[dayKey] || [])
+      .filter(p => {
+        // 只使用參與自動分配的人員
+        if (typeof p === 'object' && p.includeInAutoSchedule === false) {
+          return false
+        }
+        return true
+      })
+      .map(p => {
+        if (typeof p === 'string') {
+          return { id: null, name: p }
+        } else {
+          const personId = p.personId || p.id
+          const personName = p.displayName || p.personName || ''
+          return { id: personId, name: personName }
+        }
+      })
+      .filter(p => p.id && p.name)
+    
+    if (availablePersons.length === 0) {
+      return // 沒有可用人員
+    }
+    
+    // 根據 allowDuplicate 判斷是否需要過濾已使用的人員
+    let filteredPersons = availablePersons
+    if (!allowDuplicate) {
+      // 如果不允許重複，過濾掉今天所有其他崗位已使用的人員
+      const usedPersonIds = new Set()
+      Object.keys(selectedPositions.value).forEach(otherPosCode => {
+        if (selectedPositions.value[otherPosCode] && otherPosCode !== posCode) {
+          const otherPersonId = item[otherPosCode + 'Id']
+          if (otherPersonId) {
+            usedPersonIds.add(otherPersonId)
+          }
+        }
+      })
+      filteredPersons = availablePersons.filter(p => !usedPersonIds.has(p.id))
+    }
+    // 如果 allowDuplicate === true，則不過濾，可以使用所有人員（包括已經在其他崗位的人員）
+    
+    // 如果過濾後沒有可用人員，使用全部人員
+    if (filteredPersons.length === 0) {
+      filteredPersons = availablePersons
+    }
+    
+    let selectedPerson
+    if (useRandomAssignment.value) {
+      // 完全隨機分配：不考慮服務次數
+      const randomIndex = Math.floor(Math.random() * filteredPersons.length)
+      selectedPerson = filteredPersons[randomIndex]
+    } else {
+      // 根據服務次數排序，找出服務次數最少的組
+      filteredPersons.sort((a, b) => {
+        const countA = serviceCount[a.name] ? serviceCount[a.name].count : 0
+        const countB = serviceCount[b.name] ? serviceCount[b.name].count : 0
+        return countA - countB
+      })
+      
+      // 找出服務次數最少的組（可能有多個人服務次數相同）
+      const minCount = filteredPersons.length > 0 
+        ? (serviceCount[filteredPersons[0].name] ? serviceCount[filteredPersons[0].name].count : 0)
+        : 0
+      const minCountGroup = filteredPersons.filter(p => {
+        const count = serviceCount[p.name] ? serviceCount[p.name].count : 0
+        return count === minCount
+      })
+      
+      // 在服務次數最少的組中隨機選擇
+      const randomIndex = Math.floor(Math.random() * minCountGroup.length)
+      selectedPerson = minCountGroup[randomIndex]
+    }
+    
+    if (selectedPerson) {
+      item[posCode] = selectedPerson.name
+      item[posCode + 'Id'] = selectedPerson.id
+      
+      // 更新服務次數統計（即使使用完全隨機，也更新統計以便後續使用）
+      if (!serviceCount[selectedPerson.name]) {
+        serviceCount[selectedPerson.name] = { count: 0, id: selectedPerson.id }
+      }
+      serviceCount[selectedPerson.name].count++
+    }
+  })
+  
+  showNotification(`已為崗位「${posData.positionName || posCode}」重新隨機分配人員`, 'success', 3000)
+}
+
+// 自動分派指定崗位的人員（編輯模式下使用）
+const autoAssignPosition = (posCode) => {
+  if (!isEditing.value || !schedule.value || schedule.value.length === 0) {
+    showNotification('請先進入編輯模式並載入服事表', 'warning', 3000)
+    return
+  }
+  
+  const posData = positionConfig.value[posCode]
+  if (!posData) {
+    showNotification('崗位配置不存在', 'error', 3000)
+    return
+  }
+  
+  // 檢查該崗位是否有配置人員
+  if (!hasPositionConfig(posCode)) {
+    showNotification(`崗位「${posData.positionName || posCode}」尚未配置人員`, 'warning', 3000)
+    return
+  }
+  
+  // 先清除該崗位在所有日期的現有人員（以便重新分配）
+  schedule.value.forEach(item => {
+    item[posCode] = ''
+    item[posCode + 'Id'] = null
+  })
+  
+  // 統計該崗位在現有服事表中的服務次數（重新分配後，該崗位的服務次數應該為 0）
+  // 但我們需要統計其他崗位的服務次數，以便在重新分配時避免重複（如果不允許重複）
+  const serviceCount = {}
+  schedule.value.forEach(item => {
+    const personId = item[posCode + 'Id']
+    const personName = item[posCode]
+    if (personId && personName) {
+      if (!serviceCount[personName]) {
+        serviceCount[personName] = { count: 0, id: personId }
+      }
+      serviceCount[personName].count++
+    }
+  })
+  
+  // 獲取該崗位是否允許重複
+  const allowDuplicate = posData.allowDuplicate === true
+  
+  // 為每個日期重新分配人員（「重新隨機分配」會重新分配所有日期）
+  schedule.value.forEach(item => {
+    
+    const dayOfWeek = item.dayOfWeek || (item.date ? (parseDate(item.date)?.getDay() === 6 ? '六' : '日') : '六')
+    const dayType = dayOfWeek === '六' ? 'saturday' : 'sunday'
+    const dayKey = dayType
+    
+    // 獲取該崗位該日期類型的人員列表
+    const availablePersons = (posData[dayKey] || [])
+      .filter(p => {
+        // 只使用參與自動分配的人員
+        if (typeof p === 'object' && p.includeInAutoSchedule === false) {
+          return false
+        }
+        return true
+      })
+      .map(p => {
+        if (typeof p === 'string') {
+          return { id: null, name: p }
+        } else {
+          const personId = p.personId || p.id
+          const personName = p.displayName || p.personName || ''
+          return { id: personId, name: personName }
+        }
+      })
+      .filter(p => p.id && p.name)
+    
+    if (availablePersons.length === 0) {
+      return // 沒有可用人員
+    }
+    
+    // 根據 allowDuplicate 判斷是否需要過濾已使用的人員
+    let filteredPersons = availablePersons
+    if (!allowDuplicate) {
+      // 如果不允許重複，過濾掉今天所有其他崗位已使用的人員
+      const usedPersonIds = new Set()
+      Object.keys(selectedPositions.value).forEach(otherPosCode => {
+        if (selectedPositions.value[otherPosCode] && otherPosCode !== posCode) {
+          const otherPersonId = item[otherPosCode + 'Id']
+          if (otherPersonId) {
+            usedPersonIds.add(otherPersonId)
+          }
+        }
+      })
+      filteredPersons = availablePersons.filter(p => !usedPersonIds.has(p.id))
+    }
+    // 如果 allowDuplicate === true，則不過濾，可以使用所有人員（包括已經在其他崗位的人員）
+    
+    // 如果過濾後沒有可用人員，使用全部人員
+    if (filteredPersons.length === 0) {
+      filteredPersons = availablePersons
+    }
+    
+    let selectedPerson
+    if (useRandomAssignment.value) {
+      // 完全隨機分配：不考慮服務次數
+      const randomIndex = Math.floor(Math.random() * filteredPersons.length)
+      selectedPerson = filteredPersons[randomIndex]
+    } else {
+      // 根據服務次數排序，找出服務次數最少的組
+      filteredPersons.sort((a, b) => {
+        const countA = serviceCount[a.name] ? serviceCount[a.name].count : 0
+        const countB = serviceCount[b.name] ? serviceCount[b.name].count : 0
+        return countA - countB
+      })
+      
+      // 找出服務次數最少的組（可能有多個人服務次數相同）
+      const minCount = filteredPersons.length > 0 
+        ? (serviceCount[filteredPersons[0].name] ? serviceCount[filteredPersons[0].name].count : 0)
+        : 0
+      const minCountGroup = filteredPersons.filter(p => {
+        const count = serviceCount[p.name] ? serviceCount[p.name].count : 0
+        return count === minCount
+      })
+      
+      // 在服務次數最少的組中隨機選擇
+      const randomIndex = Math.floor(Math.random() * minCountGroup.length)
+      selectedPerson = minCountGroup[randomIndex]
+    }
+    
+    if (selectedPerson) {
+      item[posCode] = selectedPerson.name
+      item[posCode + 'Id'] = selectedPerson.id
+      
+      // 更新服務次數統計（即使使用完全隨機，也更新統計以便後續使用）
+      if (!serviceCount[selectedPerson.name]) {
+        serviceCount[selectedPerson.name] = { count: 0, id: selectedPerson.id }
+      }
+      serviceCount[selectedPerson.name].count++
+    }
+  })
+  
+  showNotification(`已重新隨機分配崗位「${posData.positionName || posCode}」的人員`, 'success', 3000)
 }
 
 // 獲取可選人員列表
@@ -702,91 +1448,156 @@ const getAvailablePersons = (item, position) => {
   const posData = positionConfig.value[position]
   let availablePersons = (posData && posData[dayKey]) ? posData[dayKey] : []
   
-  // 將對象轉換為字符串（用於下拉選單顯示）
+  // 將對象轉換為包含 id 和 name 的對象（用於下拉選單顯示）
   availablePersons = availablePersons.map(p => {
     if (typeof p === 'string') {
-      return p
+      // 如果是字符串（舊格式），嘗試從所有人員中查找 ID
+      // 這種情況應該很少見，但為了兼容性保留
+      return { id: null, name: p }
     } else {
-      return p.personName || p.displayName || ''
+      // 新格式：包含 personId 的對象
+      const personId = p.personId || p.id
+      const personName = p.displayName || p.personName || ''
+      return { id: personId, name: personName }
     }
-  }).filter(p => p) // 過濾空值
+  }).filter(p => p.id && p.name) // 過濾空值，確保有 ID 和名稱
   
-  // 主要崗位（電腦、混音、燈光）之間不能重複，但直播不受限制
-  const mainPositions = ['computer', 'sound', 'light']
-  const isMainPosition = mainPositions.includes(position)
-  const isLivePosition = position === 'live'
+  // 根據 allowDuplicate 欄位判斷是否需要檢查重複
+  const allowDuplicate = posData && posData.allowDuplicate
   
-  if (isMainPosition) {
-    // 對於主要崗位，過濾掉今天其他主要崗位已分配的人員
-    const usedMainPersons = new Set()
-    mainPositions.forEach(pos => {
-      if (pos !== position && item[pos]) {
-        usedMainPersons.add(item[pos])
+  if (!allowDuplicate) {
+    // 對於不允許重複的崗位，過濾掉今天其他不允許重複的崗位已分配的人員（使用 ID 比較）
+    const usedPersonIds = new Set()
+    // 遍歷所有選中的崗位，找出其他不允許重複的崗位
+    Object.keys(selectedPositions.value).forEach(posCode => {
+      if (selectedPositions.value[posCode] && posCode !== position) {
+        const otherPosData = positionConfig.value[posCode]
+        if (otherPosData && !otherPosData.allowDuplicate) {
+          const idKey = posCode + 'Id'
+          if (item[idKey]) {
+            usedPersonIds.add(item[idKey])
+          }
+        }
       }
     })
-    availablePersons = availablePersons.filter(p => !usedMainPersons.has(p))
+    availablePersons = availablePersons.filter(p => !usedPersonIds.has(p.id))
   }
-  // 對於直播崗位，不需要過濾，可以選擇所有人員（包括主要崗位的人員）
+  // 對於允許重複的崗位，不需要過濾，可以選擇所有人員
   
   return availablePersons
 }
 
 // 更新服事表
 const updateSchedule = async () => {
-  if (schedule.value.length === 0 || !editingScheduleId.value) {
-    alert('請先載入要編輯的服事表')
+  if (!editingScheduleId.value) {
+    showNotification('請先載入要編輯的服事表', 'warning', 3000)
     return
   }
 
-  // 驗證主要崗位之間是否有重複
+  // 驗證名稱
+  if (!scheduleName.value || !scheduleName.value.trim()) {
+    showNotification('請輸入服事表名稱', 'warning', 3000)
+    return
+  }
+
+  // 如果有服事表數據，驗證主要崗位之間是否有重複
+  if (schedule.value && schedule.value.length > 0) {
   const validationErrors = validateSchedule()
   if (validationErrors.length > 0) {
-    alert('驗證失敗：\n' + validationErrors.join('\n') + '\n\n請修正後再保存。')
+      showNotification('驗證失敗：\n' + validationErrors.join('\n') + '\n\n請修正後再保存。', 'error', 5000)
     return
   }
 
-  // 驗證是否有空值
-  const hasEmpty = schedule.value.some(item => !item.computer || !item.sound || !item.light || !item.live)
+  // 驗證是否有空值（使用 ID 欄位，只檢查選中的崗位）
+  const hasEmpty = schedule.value.some(item => {
+    // 檢查所有選中的崗位是否有空值
+    return Object.keys(selectedPositions.value).some(posCode => {
+      if (selectedPositions.value[posCode]) {
+        return !item[posCode + 'Id']
+      }
+      return false
+    })
+  })
   if (hasEmpty) {
     if (!confirm('部分日期的人員未填寫完整，確定要保存嗎？')) {
       return
+      }
     }
   }
 
   saving.value = true
   try {
-    const [startDate, endDate] = dateRange.value
-
-    const response = await fetch(`${API_BASE_URL}/church/service-schedules/${editingScheduleId.value}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        startDate,
-        endDate,
-        scheduleData: schedule.value,
-        positionConfig: positionConfig.value
+    // 轉換為後端需要的格式：將 ID 轉換為人員名稱（用於向後兼容，但後端會改用 ID）
+    // 更新時保存所有選中的崗位（動態處理）
+    const scheduleDataForBackend = schedule.value.map(item => {
+      const result = {
+        date: item.date
+      }
+      
+      // 動態保存所有選中的崗位
+      Object.keys(selectedPositions.value).forEach(posCode => {
+        if (selectedPositions.value[posCode]) {
+          result[posCode] = item[posCode] || (item[posCode + 'Id'] ? getPersonNameById(item[posCode + 'Id'], posCode, item) : '')
+          result[posCode + 'Id'] = item[posCode + 'Id'] ? Number(item[posCode + 'Id']) : null
+        }
       })
+      
+      return result
     })
+
+    const response = await apiRequest(`/church/service-schedules/${editingScheduleId.value}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        name: scheduleName.value.trim(),
+        scheduleData: scheduleDataForBackend,
+        dateRange: dateRange.value
+      })
+    }, '更新服事表中...')
 
     const result = await response.json()
     
     if (response.ok) {
-      alert('服事表更新成功！')
+      showNotification('服事表更新成功！', 'success', 3000)
       isEditing.value = false
       editingScheduleId.value = null
       originalSchedule.value = []
       isLoadedFromHistory.value = true // 更新後仍然是從歷史記錄載入的狀態
       await loadHistory() // 重新載入歷史記錄
     } else {
-      alert('更新失敗：' + (result.error || '未知錯誤'))
+      showNotification('更新失敗：' + (result.error || '未知錯誤'), 'error', 4000)
     }
   } catch (error) {
-    alert('更新失敗：' + error.message)
+    showNotification('更新失敗：' + error.message, 'error', 4000)
   } finally {
     saving.value = false
   }
+}
+
+// 啟用名稱編輯
+const enableNameEdit = () => {
+  isEditing.value = true
+  editingScheduleId.value = currentScheduleId.value
+}
+
+// 啟用編輯模式（從載入的服事表）
+const enableEdit = () => {
+  if (currentScheduleId.value) {
+    editingScheduleId.value = currentScheduleId.value
+    isEditing.value = true
+    useRandomAssignment.value = false // 重置隨機分配選項
+  }
+}
+
+// 格式化日期時間
+const formatDateTime = (dateTime) => {
+  if (!dateTime) return ''
+  const date = new Date(dateTime)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${year}/${month}/${day} ${hours}:${minutes}`
 }
 
 // 刪除服事表
@@ -803,13 +1614,26 @@ const deleteSchedule = async (id) => {
     const result = await response.json()
     
     if (response.ok && result.success !== false) {
-      alert('刪除成功')
+      showNotification('刪除成功', 'success', 3000)
+      
+      // 如果刪除的是當前載入的服事表，清空顯示
+      if (currentScheduleId.value === id || editingScheduleId.value === id) {
+        schedule.value = []
+        scheduleName.value = ''
+        dateRange.value = []
+        currentScheduleId.value = null
+        editingScheduleId.value = null
+        isEditing.value = false
+        isLoadedFromHistory.value = false
+        originalSchedule.value = []
+      }
+      
       await loadHistory() // 重新載入歷史記錄
     } else {
-      alert('刪除失敗：' + (result.error || '未知錯誤'))
+      showNotification('刪除失敗：' + (result.error || '未知錯誤'), 'error', 3000)
     }
   } catch (error) {
-    alert('刪除失敗：' + error.message)
+    showNotification('刪除失敗：' + error.message, 'error', 3000)
   }
 }
 
@@ -857,13 +1681,37 @@ const formatDisplayDate = (dateStr) => {
 
 // 匯出服事表
 const exportSchedule = () => {
-  if (schedule.value.length === 0) return
+  if (!schedule.value || schedule.value.length === 0) return
   
-  // 格式：日期,電腦/混音/燈光,直播
-  let csv = '日期,電腦/混音/燈光,直播\n'
+  // 動態生成 CSV 標題（根據選中的崗位）
+  const selectedPositionsList = Object.keys(selectedPositions.value).filter(
+    posCode => selectedPositions.value[posCode] === true
+  )
+  
+  // 生成標題行
+  const headers = ['日期', ...selectedPositionsList.map(posCode => {
+    const posData = positionConfig.value[posCode]
+    return posData?.positionName || posCode
+  })]
+  let csv = headers.join(',') + '\n'
+  
+  // 生成資料行
   schedule.value.forEach(item => {
-    const mainPositions = `${item.computer || ''}/${item.sound || ''}/${item.light || ''}`
-    csv += `${item.date},${mainPositions},${item.live || ''}\n`
+    // 使用格式化日期（包含星期），如果沒有則從 date 生成
+    let dateStr = item.formattedDate
+    if (!dateStr && item.date) {
+      dateStr = formatDisplayDate(item.date)
+      // 如果 formatDisplayDate 沒有包含星期，手動添加
+      if (dateStr && !dateStr.includes('(')) {
+        const dayOfWeek = item.dayOfWeek || (item.date ? (parseDate(item.date)?.getDay() === 6 ? '六' : '日') : '六')
+        dateStr = `${dateStr}(${dayOfWeek})`
+      }
+    }
+    const row = [dateStr || item.date || '']
+    selectedPositionsList.forEach(posCode => {
+      row.push(item[posCode] || '')
+    })
+    csv += row.join(',') + '\n'
   })
   
   const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' })
@@ -895,16 +1743,50 @@ const loadPositionConfig = async () => {
         const convertedConfig = {}
         
         for (const [posCode, posData] of Object.entries(config)) {
-          // 保留完整對象信息（包括 includeInAutoSchedule），用於產生服事表時過濾
+          // 保留完整對象信息（包括 includeInAutoSchedule, allowDuplicate），用於產生服事表時過濾
           convertedConfig[posCode] = {
             positionName: posData.positionName || posCode,
+            allowDuplicate: posData.allowDuplicate || false,
             saturday: posData.saturday || [],
             sunday: posData.sunday || []
           }
         }
         
+        // 先設置 positionConfig，這樣 hasPositionConfig 才能正確工作
         positionConfig.value = convertedConfig
+        
+        // 初始化 initialSelectedPositions（用於新增服事表時的崗位選擇）
+        // 注意：如果 initialSelectedPositions 已經有值（例如用戶已經選擇了崗位），則保留現有值
+        const newInitialSelectedPositions = { ...initialSelectedPositions.value }
+        for (const posCode in convertedConfig) {
+          if (!newInitialSelectedPositions.hasOwnProperty(posCode)) {
+            // 檢查該崗位是否有配置人員
+            const hasConfig = hasPositionConfig(posCode)
+            newInitialSelectedPositions[posCode] = hasConfig
+          }
+        }
+        
+        // 確保所有崗位都在 initialSelectedPositions 中有對應的鍵（即使是 false）
+        for (const posCode in convertedConfig) {
+          if (!newInitialSelectedPositions.hasOwnProperty(posCode)) {
+            newInitialSelectedPositions[posCode] = false
+          }
+        }
+        initialSelectedPositions.value = newInitialSelectedPositions
+        
+        // 初始化 selectedPositions（用於編輯模式下的崗位選擇）
+        // 注意：如果 selectedPositions 已經有值（例如載入服事表時已設置），則保留現有值
+        const newSelectedPositions = { ...selectedPositions.value }
+        for (const posCode in convertedConfig) {
+          if (!newSelectedPositions.hasOwnProperty(posCode)) {
+            newSelectedPositions[posCode] = false
+          }
+        }
+        selectedPositions.value = newSelectedPositions
+        
         console.log('崗位配置載入成功：', positionConfig.value)
+        console.log('初始化後的 initialSelectedPositions:', initialSelectedPositions.value)
+        console.log('初始化後的 selectedPositions:', selectedPositions.value)
       } else {
         console.warn('崗位配置為空')
         positionConfig.value = {}
@@ -946,6 +1828,12 @@ onMounted(() => {
   margin: 0;
 }
 
+.header-buttons {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.btn-manage-persons,
 .btn-manage-positions {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
@@ -958,6 +1846,7 @@ onMounted(() => {
   transition: all 0.2s;
 }
 
+.btn-manage-persons:hover,
 .btn-manage-positions:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
@@ -1149,6 +2038,99 @@ onMounted(() => {
   color: #333;
 }
 
+.position-selection {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.position-selection-label {
+  display: block;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 0.75rem;
+}
+
+.position-checkboxes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.position-checkbox-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  justify-content: space-between;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  transition: background-color 0.2s;
+}
+
+.position-checkbox-wrapper:hover {
+  background-color: #f8f9fa;
+}
+
+.position-checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  user-select: none;
+  flex: 1;
+}
+
+.position-checkbox-item input[type="checkbox"] {
+  width: 1.25rem;
+  height: 1.25rem;
+  cursor: pointer;
+  accent-color: #667eea;
+}
+
+.position-checkbox-item:has(input:disabled) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.position-checkbox-item:has(input:disabled) input {
+  cursor: not-allowed;
+}
+
+.generate-button-wrapper {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.generate-hint {
+  color: #dc3545;
+  font-size: 0.875rem;
+}
+
+.btn-auto-assign {
+  padding: 0.375rem 0.75rem;
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-auto-assign:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}
+
+.btn-auto-assign:active {
+  transform: translateY(0);
+}
+
 .btn-primary {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
@@ -1173,8 +2155,69 @@ onMounted(() => {
 .schedule-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 1.5rem;
+  gap: 1rem;
+}
+
+.schedule-title-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.schedule-name-section {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.schedule-name-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  color: #333;
+}
+
+.schedule-name-input {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  min-width: 200px;
+}
+
+.schedule-name-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+.schedule-name-display {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.schedule-name-display strong {
+  color: #667eea;
+}
+
+.btn-edit-name {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.25rem;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.btn-edit-name:hover {
+  opacity: 1;
 }
 
 .schedule-actions {
@@ -1233,9 +2276,28 @@ onMounted(() => {
 
 .history-info {
   display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.history-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0.25rem;
+}
+
+.history-details {
+  display: flex;
   gap: 1rem;
   align-items: center;
-  flex: 1;
+  flex-wrap: wrap;
+}
+
+.history-time {
+  color: #999;
+  font-size: 0.85rem;
 }
 
 .history-date {
@@ -1261,14 +2323,18 @@ onMounted(() => {
   gap: 0.5rem;
 }
 
-.btn-load {
-  background: #28a745;
+.btn-view {
+  background: #17a2b8;
   color: white;
   padding: 0.5rem 1rem;
   border: none;
   border-radius: 5px;
   cursor: pointer;
   font-size: 0.85rem;
+}
+
+.btn-view:hover {
+  background: #138496;
 }
 
 .btn-edit {
@@ -1332,6 +2398,131 @@ onMounted(() => {
   background: #218838;
 }
 
+.btn-secondary {
+  background: white;
+  color: #475569;
+  padding: 0.625rem 1.25rem;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.875rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.pagination-info {
+  margin-bottom: 10px;
+  opacity: 0.8;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.pagination-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.pagination-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.page-size-select {
+  padding: 0.625rem 0.875rem;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 0.75rem;
+  background: white;
+  color: #1e293b;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 80px;
+}
+
+.page-size-select:hover {
+  border-color: #94a3b8;
+}
+
+.page-size-select:focus {
+  outline: none;
+  border-color: #818cf8;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+
+.page-size-select option {
+  background: white;
+  color: #1e293b;
+  padding: 8px;
+}
+
+.page-jump {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.page-input {
+  padding: 0.5rem 0.75rem;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 0.5rem;
+  background: white;
+  color: #1e293b;
+  font-size: 0.875rem;
+  font-weight: 600;
+  width: 60px;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.page-input:focus {
+  outline: none;
+  border-color: #818cf8;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+
+.pagination-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #475569;
+  white-space: nowrap;
+}
+
+.w-5 {
+  width: 1.25rem;
+}
+
+.h-5 {
+  height: 1.25rem;
+}
+
 .schedule-table {
   overflow-x: auto;
 }
@@ -1382,6 +2573,182 @@ th, td {
 
 th {
   font-weight: 600;
+}
+
+/* 日期欄位樣式 */
+.date-column {
+  width: 150px;
+  min-width: 150px;
+  vertical-align: top;
+}
+
+/* 崗位欄位橫向排列 */
+.positions-header {
+  padding: 0 !important;
+}
+
+.positions-cell {
+  padding: 0 !important;
+  vertical-align: top;
+}
+
+.positions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.5rem;
+  padding: 0.75rem;
+}
+
+.position-header-cell {
+  padding: 0.5rem;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.position-header-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.position-header-name {
+  flex: 1;
+}
+
+.btn-auto-assign-header {
+  background: rgba(102, 126, 234, 0.2);
+  border: 1px solid rgba(102, 126, 234, 0.4);
+  color: #667eea;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btn-auto-assign-header:hover {
+  background: rgba(102, 126, 234, 0.3);
+  border-color: rgba(102, 126, 234, 0.6);
+  transform: scale(1.05);
+}
+
+.btn-auto-assign-header:active {
+  transform: scale(0.95);
+}
+
+.position-cell {
+  padding: 0.5rem;
+  text-align: center;
+  border-right: 1px solid #e0e0e0;
+}
+
+.position-cell:last-child {
+  border-right: none;
+}
+
+/* 編輯模式下的崗位選擇區域 */
+.edit-position-selection {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.edit-position-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.edit-position-selection-label {
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+.random-assignment-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.9rem;
+  color: #555;
+  position: relative;
+}
+
+.toggle-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  background-color: #ccc;
+  border-radius: 24px;
+  transition: background-color 0.3s;
+  flex-shrink: 0;
+}
+
+.toggle-slider::before {
+  content: "";
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  left: 2px;
+  top: 2px;
+  background-color: white;
+  border-radius: 50%;
+  transition: transform 0.3s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.toggle-input:checked + .toggle-slider {
+  background-color: #667eea;
+}
+
+.toggle-input:checked + .toggle-slider::before {
+  transform: translateX(20px);
+}
+
+.toggle-input:focus + .toggle-slider {
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+}
+
+.toggle-label {
+  flex: 1;
+}
+
+.random-assignment-toggle:hover {
+  color: #333;
+}
+
+.random-assignment-toggle:hover .toggle-slider {
+  background-color: #bbb;
+}
+
+.random-assignment-toggle:hover .toggle-input:checked + .toggle-slider {
+  background-color: #5568d3;
+}
+
+.edit-position-selection .position-checkboxes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
 }
 
 tbody tr:hover {
