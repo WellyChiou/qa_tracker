@@ -80,20 +80,17 @@ public class DailyExpenseReminderScheduler {
      */
     private boolean hasRecordedExpenseToday(User user, LocalDate date) {
         try {
-            // 獲取用戶今日的所有費用記錄
-            List<Expense> todayExpenses = expenseService.getAllExpenses(
-                date.getYear(),
-                date.getMonthValue(),
-                user.getDisplayName() != null ? user.getDisplayName() : user.getUsername(),
-                null, null
-            );
-
+            // 使用 created_by_uid 來查詢，這樣更準確
+            // 因為 member 欄位可能與用戶的 displayName/username 不一致
+            List<Expense> userExpenses = expenseService.getExpensesByUserUid(user.getUid());
+            
             // 檢查是否有今日的記錄
-            return todayExpenses.stream()
+            return userExpenses.stream()
                 .anyMatch(expense -> expense.getDate().equals(date));
 
         } catch (Exception e) {
             System.err.println("❌ 檢查用戶今日費用記錄時發生錯誤: " + e.getMessage());
+            e.printStackTrace();
             return false; // 發生錯誤時假設沒有記錄，發送提醒
         }
     }

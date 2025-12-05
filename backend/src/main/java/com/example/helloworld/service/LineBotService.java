@@ -683,19 +683,15 @@ public class LineBotService {
      */
     private String getStatusMessage(User user) {
         try {
-            // 查詢今日費用
-            var todayExpenses = expenseService.getAllExpenses(
-                LocalDate.now().getYear(),
-                LocalDate.now().getMonthValue(),
-                user.getDisplayName(),
-                null, null
-            );
+            // 使用 created_by_uid 來查詢，這樣更準確
+            var allUserExpenses = expenseService.getExpensesByUserUid(user.getUid());
+            LocalDate today = LocalDate.now();
 
             BigDecimal totalIncome = BigDecimal.ZERO;
             BigDecimal totalExpense = BigDecimal.ZERO;
 
-            for (Expense expense : todayExpenses) {
-                if (expense.getDate().equals(LocalDate.now())) {
+            for (Expense expense : allUserExpenses) {
+                if (expense.getDate().equals(today)) {
                     if ("收入".equals(expense.getType())) {
                         totalIncome = totalIncome.add(expense.getAmount());
                     } else if ("支出".equals(expense.getType())) {
@@ -721,18 +717,15 @@ public class LineBotService {
      */
     private String getTodayExpensesMessage(User user) {
         try {
-            var todayExpenses = expenseService.getAllExpenses(
-                LocalDate.now().getYear(),
-                LocalDate.now().getMonthValue(),
-                user.getDisplayName(),
-                null, null
-            );
+            // 使用 created_by_uid 來查詢，這樣更準確
+            var allUserExpenses = expenseService.getExpensesByUserUid(user.getUid());
+            LocalDate today = LocalDate.now();
 
             StringBuilder message = new StringBuilder("📅 今日費用記錄：\n\n");
 
             boolean hasRecords = false;
-            for (Expense expense : todayExpenses) {
-                if (expense.getDate().equals(LocalDate.now())) {
+            for (Expense expense : allUserExpenses) {
+                if (expense.getDate().equals(today)) {
                     message.append(String.format("%s %s %.2f 元\n",
                         expense.getMainCategory(),
                         expense.getType(),

@@ -84,7 +84,7 @@
     :show="showAddPersonModal"
     :dayType="addingDayType"
     :positionId="position?.id"
-    :existingPersonIds="existingPersonIds"
+    :existingPersonIds="getExistingPersonIds(addingDayType)"
     @close="closeAddPersonModal"
     @added="handlePersonAdded"
   />
@@ -113,16 +113,11 @@ const sundayPersons = ref([])
 const showAddPersonModal = ref(false)
 const addingDayType = ref(null)
 
-const existingPersonIds = computed(() => {
-  const ids = new Set()
-  saturdayPersons.value.forEach(p => {
-    if (p.personId) ids.add(p.personId)
-  })
-  sundayPersons.value.forEach(p => {
-    if (p.personId) ids.add(p.personId)
-  })
-  return Array.from(ids)
-})
+// 根據 dayType 計算已存在的人員 ID（只包含當前要添加的 dayType）
+const getExistingPersonIds = (dayType) => {
+  const persons = dayType === 'saturday' ? saturdayPersons.value : sundayPersons.value
+  return persons.map(p => p.personId).filter(id => id != null)
+}
 
 const loadPositionPersons = async () => {
   if (!props.position?.id) return
