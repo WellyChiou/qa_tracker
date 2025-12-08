@@ -44,9 +44,10 @@ export function getApiBaseUrl() {
  * @param {string} url - API 端點（相對於 /api）
  * @param {RequestInit} options - Fetch 選項
  * @param {string} loadingMessage - Loading 顯示的文字（可選）
+ * @param {boolean} needsAuth - 是否需要認證（可選，預設自動判斷）
  * @returns {Promise<Response>}
  */
-export async function apiRequest(url, options = {}, loadingMessage = '載入中...') {
+export async function apiRequest(url, options = {}, loadingMessage = '載入中...', needsAuth = false) {
   const apiUrl = url.startsWith('http') ? url : `${getApiBaseUrl()}${url.startsWith('/') ? url : `/${url}`}`
   
   // 顯示 loading
@@ -55,13 +56,33 @@ export async function apiRequest(url, options = {}, loadingMessage = '載入中.
   }
   
   try {
+    // 判斷是否需要發送 credentials（用於設置和接收 session cookies）
+    // 登入 API 需要 credentials 來設置 session，但不需要認證
+    // 如果明確指定了 needsAuth 參數，使用該參數；否則自動判斷
+    let shouldSendCredentials = needsAuth
+    if (!shouldSendCredentials) {
+      // 登入相關 API 需要 credentials（設置 session cookie）
+      if (url.includes('/church/auth')) {
+        shouldSendCredentials = true
+      }
+      // 需要認證的後台 API 也需要 credentials
+      else if (url.includes('/church/menus/admin') ||
+               (url.includes('/church/menus') && !url.includes('/church/menus/frontend')) || // 菜單管理需要認證（除了前台菜單）
+               url.includes('/church/admin') ||
+               (url.includes('/church/service-schedules') && (options.method === 'POST' || options.method === 'PUT' || options.method === 'DELETE')) ||
+               (url.includes('/church/persons') && (options.method === 'POST' || options.method === 'PUT' || options.method === 'DELETE')) ||
+               (url.includes('/church/positions') && (options.method === 'POST' || options.method === 'PUT' || options.method === 'DELETE'))) {
+        shouldSendCredentials = true
+      }
+    }
+    
     const response = await fetch(apiUrl, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
         ...options.headers
       },
-      credentials: 'omit' // 不發送 cookies，避免認證相關的重定向
+      credentials: shouldSendCredentials ? 'include' : 'omit' // 需要認證或登入的請求發送 cookies
     })
     
     // 對於 401/403，不拋出異常，讓調用者處理

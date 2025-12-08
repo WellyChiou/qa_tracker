@@ -6,7 +6,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.authentication.ProviderManager;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -45,7 +46,13 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // ===== 公開的端點（所有人可訪問，無需認證）=====
                 // 注意：必須按照從具體到通用的順序排列
-                .requestMatchers("/api/church/**").permitAll() // 教會網站 API（公開訪問）- 放在最前面
+                .requestMatchers("/api/church/auth/**").permitAll() // 教會認證 API（公開訪問）
+                .requestMatchers("/api/church/menus/frontend").permitAll() // 教會前台菜單（公開訪問）
+                .requestMatchers("/api/church/service-schedules").permitAll() // 教會服事表查詢（公開訪問）
+                .requestMatchers("/api/church/persons").permitAll() // 教會人員查詢（公開訪問）
+                .requestMatchers("/api/church/positions").permitAll() // 教會崗位查詢（公開訪問）
+                .requestMatchers("/api/church/positions/config/**").permitAll() // 教會崗位配置（公開訪問）
+                .requestMatchers("/api/church/**").authenticated() // 其他教會 API 需要認證
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/public/**").permitAll()
                 .requestMatchers("/api/hello").permitAll()
@@ -142,8 +149,13 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-        return config.getAuthenticationManager();
+    @org.springframework.beans.factory.annotation.Qualifier("defaultAuthenticationManager")
+    public AuthenticationManager authenticationManager() {
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
+        authProvider.setUserDetailsService(userDetailsService);
+        authProvider.setPasswordEncoder(passwordEncoder());
+        
+        return new ProviderManager(Arrays.asList(authProvider));
     }
 
     @Bean

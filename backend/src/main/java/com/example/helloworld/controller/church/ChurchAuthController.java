@@ -1,9 +1,10 @@
-package com.example.helloworld.controller;
+package com.example.helloworld.controller.church;
 
-import com.example.helloworld.entity.User;
-import com.example.helloworld.repository.UserRepository;
-import com.example.helloworld.service.MenuService;
+import com.example.helloworld.entity.church.ChurchUser;
+import com.example.helloworld.repository.church.ChurchUserRepository;
+import com.example.helloworld.service.church.ChurchMenuService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -24,22 +25,22 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/api/church/auth")
 @CrossOrigin(origins = "*")
-public class AuthController {
+public class ChurchAuthController {
 
     @Autowired
-    @org.springframework.beans.factory.annotation.Qualifier("defaultAuthenticationManager")
-    private AuthenticationManager authenticationManager;
+    @Qualifier("churchAuthenticationManager")
+    private AuthenticationManager churchAuthenticationManager;
 
     @Autowired
-    private UserRepository userRepository;
+    private ChurchUserRepository churchUserRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
-    private MenuService menuService;
+    private ChurchMenuService churchMenuService;
 
     /**
      * 獲取當前登入用戶資訊
@@ -54,7 +55,7 @@ public class AuthController {
         }
 
         String username = authentication.getName();
-        User user = userRepository.findByUsername(username).orElse(null);
+        ChurchUser user = churchUserRepository.findByUsername(username).orElse(null);
         
         if (user == null) {
             return ResponseEntity.ok(Map.of("authenticated", false));
@@ -68,8 +69,8 @@ public class AuthController {
         userInfo.put("displayName", user.getDisplayName());
         userInfo.put("photoUrl", user.getPhotoUrl());
         
-        // 獲取用戶的菜單
-        userInfo.put("menus", menuService.getVisibleMenus());
+        // 獲取後台菜單
+        userInfo.put("menus", churchMenuService.getAdminMenus());
 
         return ResponseEntity.ok(userInfo);
     }
@@ -83,7 +84,7 @@ public class AuthController {
             String username = loginRequest.get("username");
             String password = loginRequest.get("password");
 
-            Authentication authentication = authenticationManager.authenticate(
+            Authentication authentication = churchAuthenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(username, password)
             );
 
@@ -97,10 +98,10 @@ public class AuthController {
             session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, securityContext);
 
             // 更新最後登入時間
-            User user = userRepository.findByUsername(username).orElse(null);
+            ChurchUser user = churchUserRepository.findByUsername(username).orElse(null);
             if (user != null) {
                 user.setLastLoginAt(LocalDateTime.now());
-                userRepository.save(user);
+                churchUserRepository.save(user);
             }
 
             Map<String, Object> response = new HashMap<>();
@@ -109,10 +110,22 @@ public class AuthController {
             response.put("username", username);
 
             return ResponseEntity.ok(response);
+        } catch (org.springframework.security.authentication.BadCredentialsException e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "登入失敗: 用戶名或密碼錯誤");
+            return ResponseEntity.badRequest().body(response);
+        } catch (org.springframework.security.core.userdetails.UsernameNotFoundException e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "登入失敗: 用戶不存在");
+            return ResponseEntity.badRequest().body(response);
         } catch (Exception e) {
             Map<String, Object> response = new HashMap<>();
             response.put("success", false);
             response.put("message", "登入失敗: " + e.getMessage());
+            response.put("errorType", e.getClass().getSimpleName());
+            e.printStackTrace(); // 輸出詳細錯誤到日誌
             return ResponseEntity.badRequest().body(response);
         }
     }
@@ -122,10 +135,8 @@ public class AuthController {
      */
     @PostMapping("/logout")
     public ResponseEntity<Map<String, Object>> logout(HttpServletRequest request) {
-        // 清除 SecurityContext
         SecurityContextHolder.clearContext();
         
-        // 使 session 無效
         HttpSession session = request.getSession(false);
         if (session != null) {
             session.invalidate();
@@ -135,58 +146,6 @@ public class AuthController {
         response.put("success", true);
         response.put("message", "登出成功");
         return ResponseEntity.ok(response);
-    }
-
-    /**
-     * 註冊新用戶（可選功能）
-     */
-    @PostMapping("/register")
-    public ResponseEntity<Map<String, Object>> register(@RequestBody Map<String, String> registerRequest) {
-        try {
-            String username = registerRequest.get("username");
-            String email = registerRequest.get("email");
-            String password = registerRequest.get("password");
-            String displayName = registerRequest.get("displayName");
-
-            // 檢查用戶名是否已存在
-            if (userRepository.findByUsername(username).isPresent()) {
-                Map<String, Object> response = new HashMap<>();
-                response.put("success", false);
-                response.put("message", "用戶名已存在");
-                return ResponseEntity.badRequest().body(response);
-            }
-
-            // 檢查郵箱是否已存在
-            if (userRepository.findByEmail(email).isPresent()) {
-                Map<String, Object> response = new HashMap<>();
-                response.put("success", false);
-                response.put("message", "郵箱已被註冊");
-                return ResponseEntity.badRequest().body(response);
-            }
-
-            // 創建新用戶
-            User user = new User();
-            user.setUid(UUID.randomUUID().toString());
-            user.setUsername(username);
-            user.setEmail(email);
-            user.setPassword(passwordEncoder.encode(password));
-            user.setDisplayName(displayName != null ? displayName : username);
-            user.setProviderId("local");
-            user.setIsEnabled(true);
-            user.setIsAccountNonLocked(true);
-
-            userRepository.save(user);
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "註冊成功");
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "註冊失敗: " + e.getMessage());
-            return ResponseEntity.badRequest().body(response);
-        }
     }
 }
 

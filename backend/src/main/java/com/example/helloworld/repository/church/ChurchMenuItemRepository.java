@@ -1,0 +1,25 @@
+package com.example.helloworld.repository.church;
+
+import com.example.helloworld.entity.church.ChurchMenuItem;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+public interface ChurchMenuItemRepository extends JpaRepository<ChurchMenuItem, Long> {
+    Optional<ChurchMenuItem> findByMenuCode(String menuCode);
+    
+    @Query("SELECT m FROM ChurchMenuItem m WHERE m.isActive = true AND m.parentId IS NULL AND m.menuType = :menuType ORDER BY m.orderIndex ASC")
+    List<ChurchMenuItem> findActiveRootMenusByType(@Param("menuType") String menuType);
+    
+    @Query("SELECT m FROM ChurchMenuItem m WHERE m.isActive = true AND m.parentId = :parentId ORDER BY m.orderIndex ASC")
+    List<ChurchMenuItem> findActiveChildMenus(@Param("parentId") Long parentId);
+    
+    @Query("SELECT m FROM ChurchMenuItem m WHERE m.parentId = :parentId ORDER BY m.orderIndex ASC")
+    List<ChurchMenuItem> findByParentIdOrderByOrderIndexAsc(@Param("parentId") Long parentId);
+}
+
