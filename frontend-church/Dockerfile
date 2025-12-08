@@ -19,6 +19,9 @@ RUN npm run build
 # 生產階段
 FROM nginx:alpine
 
+# 安裝 wget 用於健康檢查
+RUN apk add --no-cache wget
+
 # 複製構建結果到 nginx
 COPY --from=builder /app/dist /usr/share/nginx/html
 

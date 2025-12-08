@@ -180,13 +180,34 @@ echo [SUCCESS] Deployment completed!
 echo ==========================================
 echo.
 echo Service URLs:
-echo   - Frontend: http://%SERVER_IP%
-echo   - Backend API: http://%SERVER_IP%:8080/api/hello
+echo   - Frontend: http://wc-project.duckdns.org or http://%SERVER_IP%
+echo   - Backend API: http://wc-project.duckdns.org/api or http://%SERVER_IP%/api
+echo.
+echo HTTPS Setup:
+echo   If HTTPS is configured, use:
+echo   - Frontend: https://wc-project.duckdns.org
+echo   - Backend API: https://wc-project.duckdns.org/api
+echo   - LINE Bot Webhook: https://wc-project.duckdns.org/api/line/webhook
+echo.
+echo   To setup HTTPS, execute:
+echo     ssh %SERVER_USER%@%SERVER_IP%
+echo     cd %REMOTE_PATH%/%PROJECT_NAME%
+echo     ./setup-https-on-server.sh
 echo.
 echo Check service status:
 echo   ssh %SERVER_USER%@%SERVER_IP%
 echo   cd %REMOTE_PATH%/%PROJECT_NAME%
 echo   docker compose ps
+echo.
+echo [SUCCESS] Prevention mechanisms have been automatically configured:
+echo   - Frontend monitoring: Check every 5 minutes and auto-fix
+echo   - System monitoring: Check every hour for resource usage
+echo   - Auto cleanup: Clean Docker resources daily at 2 AM
+echo.
+echo View monitoring logs:
+echo   ssh %SERVER_USER%@%SERVER_IP%
+echo   tail -f /var/log/frontend-monitor.log
+echo   tail -f /var/log/system-monitor.log
 echo.
 
 pause
