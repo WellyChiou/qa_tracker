@@ -85,7 +85,12 @@ INSERT IGNORE INTO church_info (info_key, info_value, display_order) VALUES
 ('phone', '(02) 2809-0959', 2),
 ('email', 'contact@church.org', 3),
 ('service_hours_weekday', '週一至週五：上午 9:00 - 下午 5:00', 4),
-('service_hours_weekend', '週六：上午 9:00 - 中午 12:00', 5);
+('service_hours_weekend', '週六：上午 9:00 - 中午 12:00', 5),
+-- 首頁相關資訊
+('home_welcome_title', '歡迎來到極光教會-PLC', 10),
+('home_welcome_subtitle', '讓我們在基督的愛及聖經真理中成長茁壯', 11),
+('home_main_service_time', '主日崇拜：每週日上午 10:00', 12),
+('home_main_service_location', '榮耀堂', 13);
 
 -- 插入關於我們資訊
 INSERT IGNORE INTO about_info (section_key, title, content, display_order) VALUES
