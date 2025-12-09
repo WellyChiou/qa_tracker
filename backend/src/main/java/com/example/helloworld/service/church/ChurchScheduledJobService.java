@@ -141,37 +141,55 @@ public class ChurchScheduledJobService {
         new Thread(() -> {
             try {
                 // 重新載入執行記錄以確保是最新的
-                JobExecution currentExecution = jobExecutionRepository.findById(executionId)
-                    .orElseThrow(() -> new RuntimeException("Execution not found: " + executionId));
+                // 添加重試邏輯，因為新線程可能需要等待事務提交
+                JobExecution currentExecution = loadExecutionWithRetry(executionId, 5);
                 
-                // 更新狀態為執行中
-                currentExecution.setStatus("RUNNING");
-                currentExecution.setStartedAt(LocalDateTime.now());
-                jobExecutionRepository.save(currentExecution);
+                if (currentExecution == null) {
+                    // 如果仍然找不到，創建一個新的執行記錄作為 fallback
+                    System.err.println("⚠️ [Church] 無法載入執行記錄 ID " + executionId + "，創建新的執行記錄");
+                    currentExecution = new JobExecution();
+                    currentExecution.setId(executionId);
+                    currentExecution.setJobId(id);
+                    currentExecution.setStatus("RUNNING");
+                    currentExecution.setStartedAt(LocalDateTime.now());
+                    currentExecution = jobExecutionRepository.save(currentExecution);
+                } else {
+                    // 更新狀態為執行中
+                    currentExecution.setStatus("RUNNING");
+                    currentExecution.setStartedAt(LocalDateTime.now());
+                    currentExecution = jobExecutionRepository.save(currentExecution);
+                }
+                
                 runningExecutions.put(id, executionId);
 
                 System.out.println("🚀 [Church] 立即執行 Job: " + jobName + " (Execution ID: " + executionId + ")");
                 executor.run();
 
-                // 重新載入執行記錄
-                currentExecution = jobExecutionRepository.findById(executionId)
-                    .orElseThrow(() -> new RuntimeException("Execution not found: " + executionId));
+                // 重新載入執行記錄（添加重試邏輯）
+                currentExecution = loadExecutionWithRetry(executionId, 5);
                 
-                // 更新狀態為成功
-                currentExecution.setStatus("SUCCESS");
-                currentExecution.setCompletedAt(LocalDateTime.now());
-                currentExecution.setResultMessage("Job 執行成功");
-                jobExecutionRepository.save(currentExecution);
-                System.out.println("✅ [Church] Job 執行完成: " + jobName);
+                if (currentExecution != null) {
+                    // 更新狀態為成功
+                    currentExecution.setStatus("SUCCESS");
+                    currentExecution.setCompletedAt(LocalDateTime.now());
+                    currentExecution.setResultMessage("Job 執行成功");
+                    jobExecutionRepository.save(currentExecution);
+                    System.out.println("✅ [Church] Job 執行完成: " + jobName);
+                } else {
+                    System.err.println("⚠️ [Church] 無法更新執行記錄 ID " + executionId + " 的狀態為成功");
+                }
             } catch (Exception e) {
-                // 重新載入執行記錄
-                JobExecution currentExecution = jobExecutionRepository.findById(executionId).orElse(null);
+                // 重新載入執行記錄（添加重試邏輯）
+                JobExecution currentExecution = loadExecutionWithRetry(executionId, 5);
+                
                 if (currentExecution != null) {
                     // 更新狀態為失敗
                     currentExecution.setStatus("FAILED");
                     currentExecution.setCompletedAt(LocalDateTime.now());
                     currentExecution.setErrorMessage(e.getMessage() != null ? e.getMessage() : e.getClass().getName());
                     jobExecutionRepository.save(currentExecution);
+                } else {
+                    System.err.println("⚠️ [Church] 無法更新執行記錄 ID " + executionId + " 的狀態為失敗");
                 }
                 System.err.println("❌ [Church] Job 執行失敗: " + jobName + " - " + e.getMessage());
                 e.printStackTrace();
@@ -280,6 +298,39 @@ public class ChurchScheduledJobService {
             scheduleJob(job);
         }
         System.out.println("✅ [Church] 已初始化 " + enabledJobs.size() + " 個啟用的 Job");
+    }
+
+    /**
+     * 重試載入執行記錄（解決新線程中事務未提交的問題）
+     */
+    private JobExecution loadExecutionWithRetry(Long executionId, int maxRetries) {
+        JobExecution execution = null;
+        int retryCount = 0;
+        while (execution == null && retryCount < maxRetries) {
+            try {
+                execution = jobExecutionRepository.findById(executionId).orElse(null);
+                if (execution == null) {
+                    retryCount++;
+                    if (retryCount < maxRetries) {
+                        Thread.sleep(100); // 等待 100ms 後重試
+                    }
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            } catch (Exception e) {
+                retryCount++;
+                if (retryCount < maxRetries) {
+                    try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
+        }
+        return execution;
     }
 }
 

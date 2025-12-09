@@ -9,6 +9,7 @@ import com.example.helloworld.entity.church.Position;
 import com.example.helloworld.config.LineBotConfig;
 import com.example.helloworld.entity.personal.LineGroup;
 import com.example.helloworld.repository.personal.LineGroupRepository;
+import com.example.helloworld.repository.church.PositionPersonRepository;
 import com.example.helloworld.service.church.ServiceScheduleService;
 import com.example.helloworld.service.church.ChurchLineBotService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +20,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.Optional;
 
 /**
  * 教會服事人員通知排程器
@@ -38,6 +40,9 @@ public class ServiceScheduleNotificationScheduler {
 
     @Autowired
     private LineBotConfig lineBotConfig;
+
+    @Autowired
+    private PositionPersonRepository positionPersonRepository;
 
     /**
      * 週二服事人員通知任務
@@ -169,9 +174,28 @@ public class ServiceScheduleNotificationScheduler {
     /**
      * 獲取指定日期的服事人員
      * 包含所有有配置的崗位，即使未分配人員也會顯示
+     * 只處理週六和週日的服事安排
      */
     private List<Map<String, Object>> getServicePersons(ServiceScheduleDate date) {
         List<Map<String, Object>> persons = new ArrayList<>();
+        
+        // 檢查日期是否為週六或週日，如果不是則直接返回
+        Integer dayOfWeek = date.getDayOfWeek();
+        if (dayOfWeek == null) {
+            // 從 LocalDate 計算
+            java.time.DayOfWeek javaDayOfWeek = date.getDate().getDayOfWeek();
+            int javaValue = javaDayOfWeek.getValue(); // 1=MONDAY, 7=SUNDAY
+            dayOfWeek = (javaValue == 7) ? 1 : javaValue + 1; // 1=SUNDAY, 7=SATURDAY
+            System.out.println("  ⚠️ [教會排程] dayOfWeek 為 null，從 date 計算: " + javaDayOfWeek + " (javaValue=" + javaValue + ") -> " + dayOfWeek);
+        }
+        
+        // 只處理週六（7）和週日（1），其他日期直接返回空列表
+        if (dayOfWeek == null || (dayOfWeek != 1 && dayOfWeek != 7)) {
+            System.out.println("⚠️ [教會排程] 日期 " + date.getDate() + " 不是週六或週日（dayOfWeek=" + dayOfWeek + "），跳過處理");
+            return persons;
+        }
+        
+        // dayOfWeek 變數將在後續邏輯中使用
         
         List<ServiceSchedulePositionConfig> configs = date.getPositionConfigs();
         if (configs == null || configs.isEmpty()) {
@@ -200,10 +224,60 @@ public class ServiceScheduleNotificationScheduler {
                 
                 // 處理每個 assignment
                 boolean hasAssignedPerson = false;
+                // 判斷是週六還是週日（1=週日, 7=週六）
+                // dayOfWeek 已在方法開始時計算，這裡直接使用
+                String dayType = (dayOfWeek == 7) ? "saturday" : "sunday";
+                String dayOfWeekText = (dayOfWeek == 7) ? "週六" : "週日";
+                System.out.println("  📅 [教會排程] 日期 " + date.getDate() + " 是 " + dayOfWeekText + " (dayOfWeek=" + dayOfWeek + ", dayType=" + dayType + ")");
+                
                 for (ServiceScheduleAssignment assignment : assignments) {
                     Person person = assignment.getPerson();
                     if (person != null) {
-                        String personName = person.getDisplayName() != null ? person.getDisplayName() : person.getPersonName();
+                        // 獲取人員名稱，優先使用 displayName，如果為 null 則使用 personName
+                        String displayName = person.getDisplayName();
+                        String personNameValue = person.getPersonName();
+                        String personName = displayName != null && !displayName.trim().isEmpty() ? displayName : personNameValue;
+                        
+                        // 詳細的調試日誌：輸出 person 對象的完整信息
+                        System.out.println("  🔍 [教會排程] 檢查人員 - Person ID: " + person.getId() + 
+                                         ", displayName: " + (displayName != null ? "'" + displayName + "'" : "null") + 
+                                         ", personName: " + (personNameValue != null ? "'" + personNameValue + "'" : "null") + 
+                                         ", 最終 personName: " + (personName != null ? "'" + personName + "'" : "null") + 
+                                         ", 崗位: " + positionName + " (ID: " + position.getId() + "), dayType: " + dayType);
+                        
+                        // 檢查 personName 是否為 null 或空字符串
+                        if (personName == null || personName.trim().isEmpty()) {
+                            System.err.println("  ⚠️ [教會排程] 警告：崗位 " + positionName + " 的分配記錄 ID " + assignment.getId() + 
+                                             " 關聯的 Person ID " + person.getId() + " 的名稱為空！" +
+                                             " (displayName=" + (displayName != null ? "'" + displayName + "'" : "null") + 
+                                             ", personName=" + (personNameValue != null ? "'" + personNameValue + "'" : "null") + ")");
+                            // 跳過這個 assignment，因為沒有有效的人員名稱
+                            continue;
+                        }
+                        
+                        // 檢查該人員是否參與自動分配
+                        try {
+                            Optional<com.example.helloworld.entity.church.PositionPerson> positionPersonOpt = 
+                                positionPersonRepository.findByPositionIdAndPersonIdAndDayType(position.getId(), person.getId(), dayType);
+                            
+                            if (positionPersonOpt.isPresent()) {
+                                com.example.helloworld.entity.church.PositionPerson pp = positionPersonOpt.get();
+                                Boolean includeInAutoSchedule = pp.getIncludeInAutoSchedule();
+                                System.out.println("  📋 [教會排程] 找到 position_persons 記錄，includeInAutoSchedule=" + includeInAutoSchedule);
+                                
+                                if (includeInAutoSchedule != null && !includeInAutoSchedule) {
+                                    System.out.println("  ⚠️ [教會排程] 崗位 " + positionName + " 分配給: " + personName + "，但該人員不參與自動分配，跳過通知");
+                                    continue;
+                                }
+                            } else {
+                                System.out.println("  ℹ️ [教會排程] 未找到 position_persons 記錄，默認為參與自動分配");
+                            }
+                        } catch (Exception e) {
+                            System.err.println("  ❌ [教會排程] 查詢 position_persons 時發生錯誤: " + e.getMessage());
+                            e.printStackTrace();
+                            // 發生錯誤時，默認為參與自動分配，避免漏掉通知
+                        }
+                        
                         System.out.println("  ✅ [教會排程] 崗位 " + positionName + " 分配給: " + personName);
                         Map<String, Object> personInfo = new HashMap<>();
                         personInfo.put("position", positionName);

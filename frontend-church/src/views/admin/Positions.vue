@@ -68,6 +68,7 @@
                 <td>{{ position.allowDuplicate ? '是' : '否' }}</td>
                 <td>
                   <button @click="editPosition(position.id)" class="btn btn-edit">編輯</button>
+                  <button @click="managePositionPersons(position)" class="btn btn-manage">設定人員</button>
                   <button @click="deletePosition(position.id)" class="btn btn-delete">刪除</button>
                 </td>
               </tr>
@@ -125,6 +126,16 @@
         @close="closeEditModal"
         @updated="handleUpdated"
       />
+
+      <!-- 設定人員 Modal -->
+      <PositionEditModal
+        v-if="managingPosition"
+        :show="!!managingPosition"
+        :position="managingPosition"
+        :readonly="false"
+        @close="closeManageModal"
+        @updated="handlePersonUpdated"
+      />
     </div>
   </AdminLayout>
 </template>
@@ -134,11 +145,13 @@ import { ref, computed, onMounted, watch } from 'vue'
 import AdminLayout from '@/components/AdminLayout.vue'
 import PositionManagementModal from '@/components/PositionManagementModal.vue'
 import EditPositionModal from '@/components/EditPositionModal.vue'
+import PositionEditModal from '@/components/PositionEditModal.vue'
 import { apiRequest } from '@/utils/api'
 
 const positions = ref([])
 const showModal = ref(false)
 const editingPosition = ref(null)
+const managingPosition = ref(null)
 
 // 查詢條件
 const filters = ref({
@@ -254,6 +267,19 @@ const closeEditModal = () => {
 const handleUpdated = () => {
   loadPositions()
   closeEditModal()
+}
+
+const managePositionPersons = (position) => {
+  managingPosition.value = position
+}
+
+const closeManageModal = () => {
+  managingPosition.value = null
+}
+
+const handlePersonUpdated = () => {
+  // 人員更新後不需要重新載入崗位列表，因為只是更新人員關係
+  closeManageModal()
 }
 
 const closeModal = () => {
@@ -387,6 +413,17 @@ th {
 
 .btn-delete:hover {
   background: #dc2626;
+}
+
+.btn-manage {
+  background: #10b981;
+  color: white;
+  padding: 0.5rem 1rem;
+  margin-right: 0.5rem;
+}
+
+.btn-manage:hover {
+  background: #059669;
 }
 
 /* 查詢條件和分頁樣式 */
