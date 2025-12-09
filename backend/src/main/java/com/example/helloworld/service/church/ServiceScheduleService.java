@@ -11,6 +11,7 @@ import com.example.helloworld.repository.church.PositionRepository;
 import com.example.helloworld.repository.church.PersonRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.hibernate.Hibernate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -333,83 +334,64 @@ public class ServiceScheduleService {
         }
         
         // 第四步：在事務內強制初始化所有集合，確保資料正確載入
-        // 使用 Hibernate 的 Session 來確保關聯正確
+        // 使用 Hibernate.initialize() 和手動設置來確保關聯正確
         for (ServiceSchedule schedule : schedules) {
             if (schedule.getDates() != null) {
                 for (ServiceScheduleDate date : schedule.getDates()) {
                     Long dateId = date.getId();
                     
-                    // 強制初始化 positionConfigs 集合
-                    if (date.getPositionConfigs() != null) {
-                        date.getPositionConfigs().size(); // 觸發初始化
-                        
-                        // 確保 configs 已載入（如果尚未載入，手動設置）
-                        List<ServiceSchedulePositionConfig> dateConfigs = configsByDateId.get(dateId);
-                        if (dateConfigs != null && !dateConfigs.isEmpty()) {
-                            // 如果集合為空或未初始化，手動設置
-                            if (date.getPositionConfigs().isEmpty()) {
-                                date.setPositionConfigs(dateConfigs);
-                            }
+                    // 獲取批量載入的 configs
+                    List<ServiceSchedulePositionConfig> dateConfigs = configsByDateId.get(dateId);
+                    
+                    // 強制初始化並設置 positionConfigs 集合
+                    if (dateConfigs != null && !dateConfigs.isEmpty()) {
+                        // 如果 positionConfigs 為 null 或空，直接設置批量載入的數據
+                        if (date.getPositionConfigs() == null || date.getPositionConfigs().isEmpty()) {
+                            date.setPositionConfigs(dateConfigs);
+                        } else {
+                            // 如果已存在，使用 Hibernate.initialize() 確保已初始化
+                            Hibernate.initialize(date.getPositionConfigs());
                         }
                         
-                        // 為每個 config 初始化 assignments
-                        for (ServiceSchedulePositionConfig config : date.getPositionConfigs()) {
+                        // 為每個 config 強制設置 assignments
+                        for (ServiceSchedulePositionConfig config : dateConfigs) {
                             Long configId = config.getId();
                             
-                            // 強制初始化 assignments 集合
-                            if (config.getAssignments() != null) {
-                                config.getAssignments().size(); // 觸發初始化
-                            }
-                            
-                            // 確保 assignments 已載入（如果尚未載入，手動設置）
+                            // 獲取批量載入的 assignments
                             List<ServiceScheduleAssignment> configAssignments = assignmentsByConfigId.get(configId);
+                            
                             if (configAssignments != null && !configAssignments.isEmpty()) {
-                                // 如果集合為空或未初始化，手動設置
-                                if (config.getAssignments() == null || config.getAssignments().isEmpty()) {
-                                    config.setAssignments(configAssignments);
-                                }
+                                // 強制設置 assignments，避免後續訪問時觸發懶加載
+                                config.setAssignments(configAssignments);
                                 
-                                // 確保每個 assignment 的 person 已載入
+                                // 使用 Hibernate.initialize() 確保集合已初始化
+                                Hibernate.initialize(config.getAssignments());
+                                
+                                // 確保每個 assignment 的 person 已載入（已通過 JOIN FETCH 載入）
                                 for (ServiceScheduleAssignment assignment : configAssignments) {
-                                    // person 應該已經通過 JOIN FETCH 載入
                                     if (assignment.getPerson() != null) {
-                                        assignment.getPerson().getPersonName(); // 觸發初始化
+                                        Hibernate.initialize(assignment.getPerson());
                                     }
                                 }
                             } else {
-                                // 如果沒有 assignments，確保集合已初始化
+                                // 如果沒有 assignments，確保集合已初始化為空列表
                                 if (config.getAssignments() == null) {
                                     config.setAssignments(new ArrayList<>());
                                 }
+                                Hibernate.initialize(config.getAssignments());
+                            }
+                            
+                            // 確保 position 已初始化（已通過 JOIN FETCH 載入）
+                            if (config.getPosition() != null) {
+                                Hibernate.initialize(config.getPosition());
                             }
                         }
                     } else {
-                        // 如果 positionConfigs 為 null，手動設置
-                        List<ServiceSchedulePositionConfig> dateConfigs = configsByDateId.get(dateId);
-                        if (dateConfigs != null && !dateConfigs.isEmpty()) {
-                            date.setPositionConfigs(dateConfigs);
-                            
-                            // 為每個 config 設置 assignments
-                            for (ServiceSchedulePositionConfig config : dateConfigs) {
-                                Long configId = config.getId();
-                                List<ServiceScheduleAssignment> configAssignments = assignmentsByConfigId.get(configId);
-                                
-                                if (configAssignments != null && !configAssignments.isEmpty()) {
-                                    config.setAssignments(configAssignments);
-                                    
-                                    // 確保每個 assignment 的 person 已載入
-                                    for (ServiceScheduleAssignment assignment : configAssignments) {
-                                        if (assignment.getPerson() != null) {
-                                            assignment.getPerson().getPersonName();
-                                        }
-                                    }
-                                } else {
-                                    config.setAssignments(new ArrayList<>());
-                                }
-                            }
-                        } else {
+                        // 如果沒有 configs，確保集合已初始化為空列表
+                        if (date.getPositionConfigs() == null) {
                             date.setPositionConfigs(new ArrayList<>());
                         }
+                        Hibernate.initialize(date.getPositionConfigs());
                     }
                 }
             }

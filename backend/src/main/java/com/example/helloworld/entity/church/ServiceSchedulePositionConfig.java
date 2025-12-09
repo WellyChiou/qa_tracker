@@ -2,6 +2,7 @@ package com.example.helloworld.entity.church;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import org.hibernate.annotations.BatchSize;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -30,6 +31,7 @@ public class ServiceSchedulePositionConfig {
     private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "serviceSchedulePositionConfig", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @BatchSize(size = 50) // 批量載入，減少 N+1 查詢問題
     @JsonIgnore // 避免 JSON 序列化時觸發懶加載
     private List<ServiceScheduleAssignment> assignments;
 

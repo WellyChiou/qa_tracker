@@ -1,6 +1,7 @@
 package com.example.helloworld.entity.church;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.BatchSize;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -32,6 +33,7 @@ public class ServiceScheduleDate {
     private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "serviceScheduleDate", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 50) // 批量載入，減少 N+1 查詢問題
     private List<ServiceSchedulePositionConfig> positionConfigs;
 
     @PrePersist

@@ -14,6 +14,7 @@ import com.example.helloworld.service.church.ServiceScheduleService;
 import com.example.helloworld.service.church.ChurchLineBotService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -63,7 +64,9 @@ public class ServiceScheduleNotificationScheduler {
 
     /**
      * 發送週服事人員通知
+     * 使用 @Transactional 確保在事務內訪問數據，避免懶加載異常
      */
+    @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
     public void sendWeeklyServiceNotification() {
         try {
             System.out.println("📅 [教會排程] 開始查詢本周六日服事人員...");
