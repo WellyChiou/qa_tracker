@@ -5,25 +5,28 @@
         <h1 class="section-title">聯絡我們</h1>
         
         <div class="contact-grid">
-          <div class="card contact-info">
+          <div class="card contact-info" v-if="churchInfo">
             <h2>聯絡資訊</h2>
-            <div class="info-item">
+            <div class="info-item" v-if="churchInfo.address">
               <strong>地址：</strong>
-              <p>251新北市淡水區民族路31巷1號B1</p>
+              <p>{{ churchInfo.address }}</p>
             </div>
-            <div class="info-item">
+            <div class="info-item" v-if="churchInfo.phone">
               <strong>電話：</strong>
-              <p>(02) 2345-6789</p>
+              <p>{{ churchInfo.phone }}</p>
             </div>
-            <div class="info-item">
+            <div class="info-item" v-if="churchInfo.email">
               <strong>電子郵件：</strong>
-              <p>contact@church.org</p>
+              <p>{{ churchInfo.email }}</p>
             </div>
-            <div class="info-item">
+            <div class="info-item" v-if="churchInfo.service_hours_weekday || churchInfo.service_hours_weekend">
               <strong>服務時間：</strong>
-              <p>週一至週五：上午 9:00 - 下午 5:00</p>
-              <p>週六：上午 9:00 - 中午 12:00</p>
+              <p v-if="churchInfo.service_hours_weekday">{{ churchInfo.service_hours_weekday }}</p>
+              <p v-if="churchInfo.service_hours_weekend">{{ churchInfo.service_hours_weekend }}</p>
             </div>
+          </div>
+          <div v-else class="loading">
+            <p>載入中...</p>
           </div>
 
           <div class="card contact-form">
@@ -45,7 +48,9 @@
                 <label for="message">訊息 *</label>
                 <textarea id="message" v-model="form.message" rows="5" required></textarea>
               </div>
-              <button type="submit" class="btn">送出</button>
+              <button type="submit" class="btn" :disabled="isLoading">
+                {{ isLoading ? '提交中...' : '送出' }}
+              </button>
             </form>
             <div v-if="submitStatus" class="submit-message" :class="submitStatus">
               {{ submitMessage }}
@@ -58,8 +63,10 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { apiRequest } from '@/utils/api'
 
+const churchInfo = ref(null)
 const form = ref({
   name: '',
   email: '',
@@ -69,29 +76,72 @@ const form = ref({
 
 const submitStatus = ref('')
 const submitMessage = ref('')
+const isLoading = ref(false)
 
-const submitForm = () => {
-  // 這裡可以連接到後端 API
-  console.log('表單提交：', form.value)
-  
-  // 模擬提交成功
-  submitStatus.value = 'success'
-  submitMessage.value = '感謝您的留言！我們會盡快與您聯繫。'
-  
-  // 清空表單
-  form.value = {
-    name: '',
-    email: '',
-    phone: '',
-    message: ''
+const loadChurchInfo = async () => {
+  try {
+    const response = await apiRequest('/church/public/church-info', {
+      method: 'GET'
+    }, '載入聯絡資訊', false)
+    
+    if (response.ok) {
+      const data = await response.json()
+      if (data.success && data.data) {
+        churchInfo.value = data.data
+      }
+    }
+  } catch (error) {
+    console.error('載入教會資訊失敗:', error)
   }
-  
-  // 3秒後清除訊息
-  setTimeout(() => {
-    submitStatus.value = ''
-    submitMessage.value = ''
-  }, 3000)
 }
+
+const submitForm = async () => {
+  if (isLoading.value) return
+  
+  isLoading.value = true
+  submitStatus.value = ''
+  submitMessage.value = ''
+  
+  try {
+    const response = await apiRequest('/church/public/contact-submissions', {
+      method: 'POST',
+      body: JSON.stringify(form.value)
+    }, '提交中...', false)
+    
+    const data = await response.json()
+    
+    if (response.ok && data.success) {
+      submitStatus.value = 'success'
+      submitMessage.value = data.message || '感謝您的留言！我們會盡快與您聯繫。'
+      
+      // 清空表單
+      form.value = {
+        name: '',
+        email: '',
+        phone: '',
+        message: ''
+      }
+    } else {
+      submitStatus.value = 'error'
+      submitMessage.value = data.message || '提交失敗，請稍後再試。'
+    }
+  } catch (error) {
+    submitStatus.value = 'error'
+    submitMessage.value = '提交失敗：' + error.message
+  } finally {
+    isLoading.value = false
+    
+    // 3秒後清除訊息
+    setTimeout(() => {
+      submitStatus.value = ''
+      submitMessage.value = ''
+    }, 3000)
+  }
+}
+
+onMounted(() => {
+  loadChurchInfo()
+})
 </script>
 
 <style scoped>
@@ -162,6 +212,23 @@ const submitForm = () => {
   background: #d4edda;
   color: #155724;
   border: 1px solid #c3e6cb;
+}
+
+.submit-message.error {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.loading {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 </style>
 

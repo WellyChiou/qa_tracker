@@ -9,16 +9,13 @@
           <div class="card-header">
             <h2>崗位人員配置</h2>
             <div class="header-buttons">
-              <button @click="openPersonManagement" class="btn btn-manage-persons">
-                管理人員
-              </button>
             <button @click="openPositionManagement" class="btn btn-manage-positions">
-              管理崗位
+              檢視崗位
             </button>
             </div>
           </div>
           <div class="position-config-summary">
-            <p>點擊「管理崗位」按鈕來配置各崗位的人員（週六/週日）</p>
+            <p>點擊「顯示崗位」按鈕來查看各崗位的人員（週六/週日）</p>
             <div class="position-summary-list">
               <div v-for="(posData, posCode) in positionConfig" :key="posCode" class="position-summary-item">
                 <strong>{{ posData.positionName || posCode }}：</strong>
@@ -29,12 +26,6 @@
           </div>
         </div>
 
-        <!-- 人員管理 Modal -->
-        <PersonManagementModal
-          :show="showPersonManagement"
-          @close="closePersonManagement"
-        />
-
         <!-- 崗位管理 Modal -->
         <PositionManagementModal
           :show="showPositionManagement"
@@ -43,16 +34,6 @@
 
         <!-- 通知組件 -->
         <Notification ref="notificationRef" />
-
-        <!-- 新增按鈕 -->
-        <div class="card">
-          <div class="schedule-header">
-            <h2>服事表管理</h2>
-            <button @click="openAddModal" class="btn btn-primary">
-              + 新增服事表
-            </button>
-          </div>
-        </div>
 
         <!-- 歷史記錄 -->
         <div class="card">
@@ -70,9 +51,9 @@
                 <div class="history-info">
                   <div class="history-name">{{ item.name || '未命名' }}</div>
                   <div class="history-details">
-                  <span class="history-date">{{ formatDisplayDate(item.scheduleDate) }}</span>
                     <span class="history-version" v-if="item.version">第 {{ item.version }} 版</span>
                     <span class="history-range" v-if="item.startDate && item.endDate">{{ formatDisplayDate(item.startDate) }} ~ {{ formatDisplayDate(item.endDate) }}</span>
+                    <span v-else-if="item.scheduleDate" class="history-date">{{ formatDisplayDate(item.scheduleDate) }}</span>
                   </div>
                   <div class="history-time" v-if="item.createdAt">
                     <small>建立時間：{{ formatDateTime(item.createdAt) }}</small>
@@ -80,8 +61,6 @@
                 </div>
                 <div class="history-actions">
                   <button @click="openViewModal(item.id)" class="btn btn-view">檢視</button>
-                  <button @click="openEditModal(item.id)" class="btn btn-edit">修改</button>
-                  <button @click="deleteSchedule(item.id)" class="btn btn-delete">刪除</button>
                 </div>
               </div>
             </div>
@@ -139,16 +118,12 @@
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import DateRangePicker from '@/components/DateRangePicker.vue'
 import PositionManagementModal from '@/components/PositionManagementModal.vue'
-import PersonManagementModal from '@/components/PersonManagementModal.vue'
 import ServiceScheduleModal from '@/components/ServiceScheduleModal.vue'
 import Notification from '@/components/Notification.vue'
 import { apiRequest } from '@/utils/api'
 
 // 崗位人員配置（從新的 API 載入）
 const positionConfig = ref({})
-
-// 人員管理 Modal 顯示狀態
-const showPersonManagement = ref(false)
 
 // 崗位管理 Modal 顯示狀態
 const showPositionManagement = ref(false)
@@ -296,24 +271,6 @@ const getGenerateButtonTooltip = () => {
   return '可以產生服事表'
 }
 
-// 打開人員管理 Modal
-const openPersonManagement = () => {
-  showPersonManagement.value = true
-}
-
-// 打開服事表 Modal
-const openAddModal = () => {
-  scheduleModalMode.value = 'add'
-  currentScheduleId.value = null
-  showScheduleModal.value = true
-}
-
-const openEditModal = (id) => {
-  scheduleModalMode.value = 'edit'
-  currentScheduleId.value = id
-  showScheduleModal.value = true
-}
-
 const openViewModal = (id) => {
   scheduleModalMode.value = 'view'
   currentScheduleId.value = id
@@ -336,30 +293,6 @@ const handleScheduleUpdated = () => {
   closeScheduleModal()
   loadHistory()
   showNotification('服事表更新成功！', 'success', 3000)
-}
-
-// 關閉人員管理 Modal
-const closePersonManagement = async () => {
-  showPersonManagement.value = false
-  await loadPositionConfig() // 重新載入配置，確保下拉選單顯示最新的人員列表
-  
-  // 更新 initialSelectedPositions：如果崗位沒有配置人員，取消勾選
-  const newInitialSelectedPositions = { ...initialSelectedPositions.value }
-  for (const posCode in positionConfig.value) {
-    if (!hasPositionConfig(posCode)) {
-      newInitialSelectedPositions[posCode] = false
-    }
-  }
-  initialSelectedPositions.value = newInitialSelectedPositions
-  
-  // 更新 selectedPositions：如果崗位沒有配置人員，取消勾選（編輯模式下）
-  const newSelectedPositions = { ...selectedPositions.value }
-  for (const posCode in positionConfig.value) {
-    if (!hasPositionConfig(posCode)) {
-      newSelectedPositions[posCode] = false
-    }
-  }
-  selectedPositions.value = newSelectedPositions
 }
 
 // 打開崗位管理 Modal
@@ -1600,42 +1533,6 @@ const formatDateTime = (dateTime) => {
   return `${year}/${month}/${day} ${hours}:${minutes}`
 }
 
-// 刪除服事表
-const deleteSchedule = async (id) => {
-  if (!confirm('確定要刪除此服事表嗎？')) {
-    return
-  }
-
-  try {
-    const response = await apiRequest(`/church/service-schedules/${id}`, {
-      method: 'DELETE'
-    }, '刪除服事表中...')
-    
-    const result = await response.json()
-    
-    if (response.ok && result.success !== false) {
-      showNotification('刪除成功', 'success', 3000)
-      
-      // 如果刪除的是當前載入的服事表，清空顯示
-      if (currentScheduleId.value === id || editingScheduleId.value === id) {
-        schedule.value = []
-        scheduleName.value = ''
-        dateRange.value = []
-        currentScheduleId.value = null
-        editingScheduleId.value = null
-        isEditing.value = false
-        isLoadedFromHistory.value = false
-        originalSchedule.value = []
-      }
-      
-      await loadHistory() // 重新載入歷史記錄
-    } else {
-      showNotification('刪除失敗：' + (result.error || '未知錯誤'), 'error', 3000)
-    }
-  } catch (error) {
-    showNotification('刪除失敗：' + error.message, 'error', 3000)
-  }
-}
 
 // 安全地解析日期字符串
 const parseDate = (dateStr) => {

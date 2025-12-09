@@ -96,6 +96,7 @@
           ></textarea>
         </div>
         
+        <div class="form-row">
         <div class="form-group">
           <label>狀態</label>
           <div class="radio-group">
@@ -115,6 +116,21 @@
               />
               <span>停用</span>
             </label>
+            </div>
+          </div>
+          
+          <div class="form-group" v-if="formData.menuType === 'admin' && !formData.parentId">
+            <label>顯示在儀表板</label>
+            <div class="checkbox-group">
+              <label class="checkbox-label">
+                <input
+                  type="checkbox"
+                  v-model="formData.showInDashboard"
+                />
+                <span>在儀表板快速操作中顯示</span>
+              </label>
+              <small class="form-hint">僅根菜單（無父菜單）可顯示在儀表板</small>
+            </div>
           </div>
         </div>
         
@@ -160,7 +176,8 @@ const formData = ref({
   menuType: 'frontend',
   requiredPermission: '',
   description: '',
-  isActive: true
+  isActive: true,
+  showInDashboard: true
 })
 
 watch(() => props.show, (newVal) => {
@@ -177,7 +194,8 @@ watch(() => props.show, (newVal) => {
         menuType: props.menu.menuType || 'frontend',
         requiredPermission: props.menu.requiredPermission || '',
         description: props.menu.description || '',
-        isActive: props.menu.isActive !== false
+        isActive: props.menu.isActive !== false,
+        showInDashboard: props.menu.showInDashboard !== false
       }
     } else {
       isEdit.value = false
@@ -191,7 +209,8 @@ watch(() => props.show, (newVal) => {
         menuType: 'frontend',
         requiredPermission: '',
         description: '',
-        isActive: true
+        isActive: true,
+        showInDashboard: true
       }
     }
     error.value = ''
@@ -223,7 +242,10 @@ const handleSubmit = async () => {
       menuType: formData.value.menuType,
       requiredPermission: formData.value.requiredPermission || null,
       description: formData.value.description || null,
-      isActive: formData.value.isActive
+      isActive: formData.value.isActive,
+      showInDashboard: formData.value.menuType === 'admin' && !formData.value.parentId 
+        ? formData.value.showInDashboard 
+        : false
     }
     
     const response = await apiRequest(url, {
@@ -367,6 +389,32 @@ const handleSubmit = async () => {
 .radio-label input {
   width: auto;
   margin: 0;
+}
+
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-weight: normal;
+}
+
+.checkbox-label input {
+  width: auto;
+  margin: 0;
+}
+
+.form-hint {
+  display: block;
+  color: #666;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
 }
 
 .error-message {

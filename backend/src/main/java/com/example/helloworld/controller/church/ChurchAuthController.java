@@ -2,27 +2,23 @@ package com.example.helloworld.controller.church;
 
 import com.example.helloworld.entity.church.ChurchUser;
 import com.example.helloworld.repository.church.ChurchUserRepository;
+import com.example.helloworld.service.TokenBlacklistService;
 import com.example.helloworld.service.church.ChurchMenuService;
+import com.example.helloworld.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/church/auth")
@@ -41,6 +37,12 @@ public class ChurchAuthController {
 
     @Autowired
     private ChurchMenuService churchMenuService;
+
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    @Autowired
+    private TokenBlacklistService tokenBlacklistService;
 
     /**
      * 獲取當前登入用戶資訊
@@ -88,15 +90,6 @@ public class ChurchAuthController {
                 new UsernamePasswordAuthenticationToken(username, password)
             );
 
-            // 設置 SecurityContext 並保存到 session
-            SecurityContext securityContext = SecurityContextHolder.getContext();
-            securityContext.setAuthentication(authentication);
-            
-            // 確保 session 創建並保存 SecurityContext
-            HttpSession session = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes())
-                .getRequest().getSession(true);
-            session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, securityContext);
-
             // 更新最後登入時間
             ChurchUser user = churchUserRepository.findByUsername(username).orElse(null);
             if (user != null) {
@@ -104,10 +97,23 @@ public class ChurchAuthController {
                 churchUserRepository.save(user);
             }
 
+            // 生成 Access Token
+            String accessToken = jwtUtil.generateChurchAccessToken(username);
+            
+            // 生成 Refresh Token（如果啟用）
+            String refreshToken = jwtUtil.generateChurchRefreshToken(username);
+
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "登入成功");
             response.put("username", username);
+            response.put("accessToken", accessToken);
+            response.put("tokenType", "Bearer");
+            
+            // 只有當 Refresh Token 啟用時才返回
+            if (refreshToken != null) {
+                response.put("refreshToken", refreshToken);
+            }
 
             return ResponseEntity.ok(response);
         } catch (org.springframework.security.authentication.BadCredentialsException e) {
@@ -131,16 +137,69 @@ public class ChurchAuthController {
     }
 
     /**
-     * 登出
+     * 刷新 Access Token
+     */
+    @PostMapping("/refresh")
+    public ResponseEntity<Map<String, Object>> refreshToken(@RequestBody Map<String, String> request) {
+        try {
+            String refreshToken = request.get("refreshToken");
+            if (refreshToken == null || refreshToken.isEmpty()) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("success", false);
+                error.put("message", "Refresh Token 不能為空");
+                return ResponseEntity.badRequest().body(error);
+            }
+
+            // 驗證 Refresh Token
+            String username = jwtUtil.extractUsername(refreshToken);
+            String system = jwtUtil.extractSystem(refreshToken);
+            
+            if (!"church".equals(system)) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("success", false);
+                error.put("message", "無效的 Refresh Token");
+                return ResponseEntity.badRequest().body(error);
+            }
+
+            Boolean isValid = jwtUtil.validateChurchRefreshToken(refreshToken, username);
+            if (!isValid) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("success", false);
+                error.put("message", "Refresh Token 無效或已過期");
+                return ResponseEntity.badRequest().body(error);
+            }
+
+            // 生成新的 Access Token
+            String newAccessToken = jwtUtil.generateChurchAccessToken(username);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("accessToken", newAccessToken);
+            response.put("tokenType", "Bearer");
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("message", "刷新 Token 失敗: " + e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    /**
+     * 登出（將 Token 加入黑名單）
      */
     @PostMapping("/logout")
     public ResponseEntity<Map<String, Object>> logout(HttpServletRequest request) {
-        SecurityContextHolder.clearContext();
-        
-        HttpSession session = request.getSession(false);
-        if (session != null) {
-            session.invalidate();
+        // 從 Authorization header 提取 Token
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            // 將 Token 加入黑名單
+            tokenBlacklistService.addToBlacklist(token);
         }
+        
+        SecurityContextHolder.clearContext();
         
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);

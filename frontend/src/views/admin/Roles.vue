@@ -401,37 +401,37 @@ onMounted(async () => {
 }
 
 .btn-edit {
-  background: rgba(59, 130, 246, 0.25);
-  color: #93c5fd;
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  background: #3b82f6;
+  color: white;
+  border: 1px solid #2563eb;
 }
 
 .btn-edit:hover {
-  background: rgba(59, 130, 246, 0.35);
+  background: #2563eb;
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
 
 .btn-permissions {
-  background: rgba(139, 92, 246, 0.25);
-  color: #c4b5fd;
-  border: 1px solid rgba(139, 92, 246, 0.3);
+  background: #8b5cf6;
+  color: white;
+  border: 1px solid #7c3aed;
 }
 
 .btn-permissions:hover {
-  background: rgba(139, 92, 246, 0.35);
+  background: #7c3aed;
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
 
 .btn-delete {
-  background: rgba(239, 68, 68, 0.25);
-  color: #fca5a5;
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: #ef4444;
+  color: white;
+  border: 1px solid #dc2626;
 }
 
 .btn-delete:hover {
-  background: rgba(239, 68, 68, 0.35);
+  background: #dc2626;
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }

@@ -2,7 +2,7 @@
   <div v-if="show" class="modal-overlay" @click="closeModal">
     <div class="modal-panel" @click.stop>
       <div class="modal-header">
-        <h2 class="modal-title">編輯崗位：{{ position?.positionName }}</h2>
+        <h2 class="modal-title">{{ readonly ? '查看崗位：' : '編輯崗位：' }}{{ position?.positionName }}</h2>
         <button class="btn-close" @click="closeModal">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -20,7 +20,7 @@
               class="person-item"
             >
               <span class="person-name">{{ person.personName || person.displayName }}</span>
-              <div class="person-controls">
+              <div v-if="!readonly" class="person-controls">
                 <label class="auto-schedule-toggle">
                   <input 
                     type="checkbox" 
@@ -31,11 +31,11 @@
                   <span class="toggle-label">參與自動分配</span>
                 </label>
               </div>
-              <div class="person-actions">
+              <div v-if="!readonly" class="person-actions">
                 <button @click="removePerson('saturday', person)" class="btn-remove" title="移除">×</button>
               </div>
             </div>
-            <button @click="openAddPersonModal('saturday')" class="btn-add-person">
+            <button v-if="!readonly" @click="openAddPersonModal('saturday')" class="btn-add-person">
               + 添加人員
             </button>
           </div>
@@ -51,7 +51,7 @@
               class="person-item"
             >
               <span class="person-name">{{ person.personName || person.displayName }}</span>
-              <div class="person-controls">
+              <div v-if="!readonly" class="person-controls">
                 <label class="auto-schedule-toggle">
                   <input 
                     type="checkbox" 
@@ -62,11 +62,11 @@
                   <span class="toggle-label">參與自動分配</span>
                 </label>
               </div>
-              <div class="person-actions">
+              <div v-if="!readonly" class="person-actions">
                 <button @click="removePerson('sunday', person)" class="btn-remove" title="移除">×</button>
               </div>
             </div>
-            <button @click="openAddPersonModal('sunday')" class="btn-add-person">
+            <button v-if="!readonly" @click="openAddPersonModal('sunday')" class="btn-add-person">
               + 添加人員
             </button>
           </div>
@@ -101,6 +101,10 @@ const props = defineProps({
     required: true
   },
   show: {
+    type: Boolean,
+    default: false
+  },
+  readonly: {
     type: Boolean,
     default: false
   }

@@ -428,25 +428,25 @@ onMounted(loadMenus)
 }
 
 .btn-edit {
-  background: rgba(59, 130, 246, 0.25);
-  color: #93c5fd;
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  background: #3b82f6;
+  color: white;
+  border: 1px solid #2563eb;
 }
 
 .btn-edit:hover {
-  background: rgba(59, 130, 246, 0.35);
+  background: #2563eb;
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
 
 .btn-delete {
-  background: rgba(239, 68, 68, 0.25);
-  color: #fca5a5;
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: #ef4444;
+  color: white;
+  border: 1px solid #dc2626;
 }
 
 .btn-delete:hover {
-  background: rgba(239, 68, 68, 0.35);
+  background: #dc2626;
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }

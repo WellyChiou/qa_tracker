@@ -20,6 +20,79 @@ export function setLoadingCallbacks(show, hide) {
   loadingCallbacks.hide = hide
 }
 
+/**
+ * 獲取 Access Token（從 localStorage）
+ */
+function getAccessToken() {
+  return localStorage.getItem('personal_access_token')
+}
+
+/**
+ * 獲取 Refresh Token（從 localStorage）
+ */
+function getRefreshToken() {
+  return localStorage.getItem('personal_refresh_token')
+}
+
+/**
+ * 設置 Access Token 和 Refresh Token（保存到 localStorage）
+ */
+export function setTokens(accessToken, refreshToken) {
+  if (accessToken) {
+    localStorage.setItem('personal_access_token', accessToken)
+  } else {
+    localStorage.removeItem('personal_access_token')
+  }
+  if (refreshToken) {
+    localStorage.setItem('personal_refresh_token', refreshToken)
+  } else {
+    localStorage.removeItem('personal_refresh_token')
+  }
+}
+
+/**
+ * 清除所有 Token
+ */
+function clearTokens() {
+  localStorage.removeItem('personal_access_token')
+  localStorage.removeItem('personal_refresh_token')
+}
+
+/**
+ * 刷新 Access Token
+ */
+async function refreshAccessToken() {
+  const refreshToken = getRefreshToken()
+  if (!refreshToken) {
+    throw new Error('沒有 Refresh Token')
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ refreshToken }),
+      credentials: 'omit'
+    })
+
+    if (!response.ok) {
+      throw new Error('刷新 Token 失敗')
+    }
+
+    const data = await response.json()
+    if (data.accessToken) {
+      localStorage.setItem('personal_access_token', data.accessToken)
+      return data.accessToken
+    }
+    throw new Error('刷新 Token 響應無效')
+  } catch (error) {
+    clearTokens()
+    throw error
+  }
+}
+
 class ApiService {
   async request(url, options = {}) {
     const showLoader = options.showLoading !== false // 默認顯示 loading
@@ -29,14 +102,65 @@ class ApiService {
         loadingCallbacks.show(options.loadingMessage || '載入中...')
       }
       
-      const response = await fetch(`${API_BASE_URL}${url}`, {
-        credentials: 'include',
-        ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          ...options.headers
+      // 判斷是否需要 JWT Token
+      const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register')
+      const needsToken = !isAuthEndpoint
+      
+      // 準備 headers
+      const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers
+      }
+      
+      // 如果需要 Token，添加到 Authorization header
+      if (needsToken) {
+        const token = getAccessToken()
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`
         }
+      }
+      
+      let response = await fetch(`${API_BASE_URL}${url}`, {
+        ...options,
+        headers,
+        credentials: 'omit' // 不再使用 session cookies
       })
+      
+      // 處理 401 未授權錯誤（Token 無效或過期）
+      if (response.status === 401 && needsToken) {
+        // 嘗試使用 Refresh Token 刷新 Access Token（如果有 Refresh Token）
+        const refreshToken = getRefreshToken()
+        if (refreshToken) {
+          try {
+            const newAccessToken = await refreshAccessToken()
+            // 使用新的 Access Token 重試請求
+            headers['Authorization'] = `Bearer ${newAccessToken}`
+            response = await fetch(`${API_BASE_URL}${url}`, {
+              ...options,
+              headers,
+              credentials: 'omit'
+            })
+          } catch (error) {
+            // 刷新失敗，清除所有 Token
+            clearTokens()
+            // 如果是認證相關的請求，不拋出異常，讓調用者處理
+            if (url.includes('/auth/')) {
+              // 繼續處理原始響應
+            } else {
+              // 其他請求，拋出異常
+              throw new Error('認證已過期，請重新登入')
+            }
+          }
+        } else {
+          // 沒有 Refresh Token，清除 Access Token
+          clearTokens()
+        }
+      }
+      
+      // 檢查是否是重定向（3xx 狀態碼）
+      if (response.redirected) {
+        throw new Error('請求被重定向，可能是認證失敗')
+      }
       
       if (!response.ok) {
         const errorText = await response.text()
@@ -70,18 +194,30 @@ class ApiService {
 
   // Auth API
   async login(username, password) {
-    return this.request('/auth/login', {
+    const result = await this.request('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ username, password }),
       loadingMessage: '登入中...'
     })
+    
+    // 保存 Access Token 和 Refresh Token（如果有的話）
+    if (result && result.accessToken) {
+      setTokens(result.accessToken, result.refreshToken || null)
+    }
+    
+    return result
   }
 
   async logout() {
-    return this.request('/auth/logout', { 
-      method: 'POST',
-      loadingMessage: '登出中...'
-    })
+    try {
+      await this.request('/auth/logout', { 
+        method: 'POST',
+        loadingMessage: '登出中...'
+      })
+    } finally {
+      // 即使 API 調用失敗，也清除本地 Token
+      clearTokens()
+    }
   }
 
   async getCurrentUser() {
@@ -291,6 +427,13 @@ class ApiService {
     return this.request(`/users/${uid}/roles`, {
       method: 'PUT',
       body: JSON.stringify({ roleIds })
+    })
+  }
+
+  async updateUserPermissions(uid, permissionIds) {
+    return this.request(`/users/${uid}/permissions`, {
+      method: 'PUT',
+      body: JSON.stringify({ permissionIds })
     })
   }
 

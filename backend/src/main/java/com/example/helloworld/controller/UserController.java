@@ -190,6 +190,39 @@ public class UserController {
     }
 
     /**
+     * 更新用戶權限
+     */
+    @PutMapping("/{uid}/permissions")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, Object>> updateUserPermissions(@PathVariable String uid, @RequestBody Map<String, Object> request) {
+        try {
+            @SuppressWarnings("unchecked")
+            List<Object> permissionIdsObj = (List<Object>) request.get("permissionIds");
+            List<Long> permissionIds = new ArrayList<>();
+            if (permissionIdsObj != null) {
+                for (Object id : permissionIdsObj) {
+                    if (id instanceof Number) {
+                        permissionIds.add(((Number) id).longValue());
+                    } else if (id instanceof String) {
+                        permissionIds.add(Long.parseLong((String) id));
+                    }
+                }
+            }
+            User updated = userService.updateUserPermissions(uid, permissionIds);
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "用戶權限更新成功");
+            response.put("data", updated);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "更新失敗: " + e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    /**
      * 綁定用戶 LINE 帳號
      */
     @PostMapping("/{uid}/bind-line")

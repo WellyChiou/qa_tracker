@@ -1,5 +1,6 @@
 package com.example.helloworld.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -7,6 +8,7 @@ import java.util.Set;
 
 @Entity
 @Table(name = "users")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class User {
     @Id
     @Column(name = "uid", length = 128)
@@ -54,6 +56,7 @@ public class User {
         joinColumns = @JoinColumn(name = "user_uid"),
         inverseJoinColumns = @JoinColumn(name = "role_id")
     )
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "permissions", "users"})
     private Set<Role> roles = new HashSet<>();
 
     @ManyToMany(fetch = FetchType.LAZY)
@@ -62,6 +65,7 @@ public class User {
         joinColumns = @JoinColumn(name = "user_uid"),
         inverseJoinColumns = @JoinColumn(name = "permission_id")
     )
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "roles", "users"})
     private Set<Permission> permissions = new HashSet<>(); // 用戶直接分配的權限
 
     @PrePersist

@@ -81,11 +81,31 @@
             </div>
             <div class="form-group">
               <label class="form-label">所需角色</label>
-              <input v-model="form.requiredRole" class="form-input" placeholder="ROLE_ADMIN" />
+              <select v-model="form.requiredRole" class="form-input">
+                <option value="">無需特定角色</option>
+                <option 
+                  v-for="role in availableRoles" 
+                  :key="role.id" 
+                  :value="role.roleName"
+                >
+                  {{ role.roleName }} - {{ role.description || '' }}
+                </option>
+              </select>
+              <small class="form-hint">選擇對應的角色</small>
             </div>
             <div class="form-group">
               <label class="form-label">所需權限</label>
-              <input v-model="form.requiredPermission" class="form-input" placeholder="PERMISSION_CODE" />
+              <select v-model="form.requiredPermission" class="form-input">
+                <option value="">無需特定權限</option>
+                <option 
+                  v-for="perm in availablePermissions" 
+                  :key="perm.id" 
+                  :value="perm.permissionCode"
+                >
+                  {{ perm.permissionCode }} - {{ perm.permissionName }}
+                </option>
+              </select>
+              <small class="form-hint">選擇對應的權限代碼</small>
             </div>
             <div class="form-group checkbox-group">
               <label class="checkbox-label">
@@ -135,6 +155,8 @@ const permissions = ref([])
 const showAddModal = ref(false)
 const editingPermission = ref(null)
 const notification = ref({ show: false, message: '', type: 'success' })
+const availableRoles = ref([])
+const availablePermissions = ref([])
 
 const form = ref({
   urlPattern: '',
@@ -152,6 +174,22 @@ const loadPermissions = async () => {
     permissions.value = await apiService.getUrlPermissions()
   } catch (error) {
     showNotification('載入 URL 權限失敗', 'error')
+  }
+}
+
+const loadRoles = async () => {
+  try {
+    availableRoles.value = await apiService.getRoles()
+  } catch (error) {
+    console.error('載入角色列表失敗:', error)
+  }
+}
+
+const loadAvailablePermissions = async () => {
+  try {
+    availablePermissions.value = await apiService.getPermissions()
+  } catch (error) {
+    console.error('載入權限列表失敗:', error)
   }
 }
 
@@ -219,7 +257,11 @@ const showNotification = (message, type = 'success') => {
   setTimeout(() => { notification.value.show = false }, 3000)
 }
 
-onMounted(loadPermissions)
+onMounted(() => {
+  loadPermissions()
+  loadRoles()
+  loadAvailablePermissions()
+})
 </script>
 
 <style scoped>
@@ -415,25 +457,25 @@ onMounted(loadPermissions)
 }
 
 .btn-edit {
-  background: rgba(59, 130, 246, 0.25);
-  color: #93c5fd;
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  background: #3b82f6;
+  color: white;
+  border: 1px solid #2563eb;
 }
 
 .btn-edit:hover {
-  background: rgba(59, 130, 246, 0.35);
+  background: #2563eb;
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
 
 .btn-delete {
-  background: rgba(239, 68, 68, 0.25);
-  color: #fca5a5;
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: #ef4444;
+  color: white;
+  border: 1px solid #dc2626;
 }
 
 .btn-delete:hover {
-  background: rgba(239, 68, 68, 0.35);
+  background: #dc2626;
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
@@ -559,6 +601,13 @@ onMounted(loadPermissions)
 
 .form-input::placeholder {
   color: #9ca3af;
+}
+
+.form-hint {
+  display: block;
+  margin-top: 0.25rem;
+  color: #6b7280;
+  font-size: 0.875rem;
 }
 
 textarea.form-input {

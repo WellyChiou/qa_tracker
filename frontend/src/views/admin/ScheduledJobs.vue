@@ -514,19 +514,25 @@ onUnmounted(() => {
 .btn-edit {
   background: #3b82f6;
   color: white;
+  border: 1px solid #2563eb;
 }
 
 .btn-edit:hover {
   background: #2563eb;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 .btn-delete {
   background: #ef4444;
   color: white;
+  border: 1px solid #dc2626;
 }
 
 .btn-delete:hover {
   background: #dc2626;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 .btn-sm:disabled {

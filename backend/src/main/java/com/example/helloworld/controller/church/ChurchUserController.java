@@ -28,22 +28,7 @@ public class ChurchUserController {
     public ResponseEntity<Map<String, Object>> getAllUsers() {
         try {
             List<ChurchUser> users = churchUserService.getAllUsers();
-            // 確保在事務內初始化所有懶加載的關聯
-            for (ChurchUser user : users) {
-                // 觸發懶加載，確保在事務內完成
-                if (user.getRoles() != null) {
-                    user.getRoles().size();
-                    // 初始化角色的權限
-                    for (var role : user.getRoles()) {
-                        if (role.getPermissions() != null) {
-                            role.getPermissions().size();
-                        }
-                    }
-                }
-                if (user.getPermissions() != null) {
-                    user.getPermissions().size();
-                }
-            }
+            // Service 層已經使用 JOIN FETCH 主動加載所有關聯，無需在這裡手動初始化
             Map<String, Object> response = new HashMap<>();
             response.put("users", users);
             response.put("message", "獲取用戶列表成功");
@@ -157,6 +142,31 @@ public class ChurchUserController {
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "角色分配成功");
+            response.put("user", user);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "分配失敗: " + e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    /**
+     * 為用戶分配權限
+     */
+    @PostMapping("/{uid}/permissions")
+    @PreAuthorize("hasAuthority('PERM_CHURCH_ADMIN')")
+    public ResponseEntity<Map<String, Object>> assignPermissions(
+            @PathVariable String uid, 
+            @RequestBody Map<String, Object> request) {
+        try {
+            @SuppressWarnings("unchecked")
+            List<Long> permissionIds = (List<Long>) request.get("permissionIds");
+            ChurchUser user = churchUserService.assignPermissions(uid, permissionIds);
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "權限分配成功");
             response.put("user", user);
             return ResponseEntity.ok(response);
         } catch (Exception e) {

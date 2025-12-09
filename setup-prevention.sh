@@ -83,9 +83,10 @@ fi
 echo ""
 
 # 4. 設置定期 Docker 清理（每天凌晨 2 點）
+# 注意：只清理未使用的資源，不會刪除正在使用的映像和容器
 echo -e "${YELLOW}[4] 設置定期 Docker 清理（每天凌晨 2 點）...${NC}"
 
-CRON_CLEANUP="0 2 * * * cd $PROJECT_DIR && docker system prune -f && docker image prune -a -f"
+CRON_CLEANUP="0 2 * * * cd $PROJECT_DIR && docker system prune -f && docker image prune -f"
 
 # 檢查是否已存在
 if crontab -l 2>/dev/null | grep -q "docker system prune"; then

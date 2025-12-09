@@ -55,6 +55,7 @@ public class ChurchUser {
         joinColumns = @JoinColumn(name = "user_uid"),
         inverseJoinColumns = @JoinColumn(name = "role_id")
     )
+    @JsonIgnoreProperties("users") // 防止循環引用
     private Set<ChurchRole> roles = new HashSet<>();
 
     @ManyToMany(fetch = FetchType.LAZY)
@@ -63,6 +64,7 @@ public class ChurchUser {
         joinColumns = @JoinColumn(name = "user_uid"),
         inverseJoinColumns = @JoinColumn(name = "permission_id")
     )
+    @JsonIgnoreProperties("users") // 防止循環引用
     private Set<ChurchPermission> permissions = new HashSet<>();
 
     @PrePersist

@@ -1,5 +1,6 @@
 package com.example.helloworld.config;
 
+import com.example.helloworld.filter.JwtAuthenticationFilter;
 import com.example.helloworld.filter.UrlPermissionFilter;
 import com.example.helloworld.service.CustomUserDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,57 +35,42 @@ public class SecurityConfig {
     @Autowired(required = false)
     private UrlPermissionFilter urlPermissionFilter;
 
+    @Autowired(required = false)
+    private JwtAuthenticationFilter jwtAuthenticationFilter;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> 
-                session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED) // 使用 IF_REQUIRED 以支持 session 認證
-                    .sessionFixation().migrateSession() // 遷移 session，提高安全性
+                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS) // 使用 STATELESS 以支持 JWT Token 認證
             )
             .authorizeHttpRequests(auth -> auth
-                // ===== 公開的端點（所有人可訪問，無需認證）=====
-                // 注意：必須按照從具體到通用的順序排列
-                .requestMatchers("/api/church/auth/**").permitAll() // 教會認證 API（公開訪問）
-                .requestMatchers("/api/church/menus/frontend").permitAll() // 教會前台菜單（公開訪問）
-                .requestMatchers("/api/church/service-schedules").permitAll() // 教會服事表查詢（公開訪問）
-                .requestMatchers("/api/church/persons").permitAll() // 教會人員查詢（公開訪問）
-                .requestMatchers("/api/church/positions").permitAll() // 教會崗位查詢（公開訪問）
-                .requestMatchers("/api/church/positions/config/**").permitAll() // 教會崗位配置（公開訪問）
-                .requestMatchers("/api/church/**").authenticated() // 其他教會 API 需要認證
-                .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/api/public/**").permitAll()
-                .requestMatchers("/api/hello").permitAll()
+                // ===== 必須公開的端點（這些不應該由資料庫控制）=====
+                // 認證相關 API 必須公開，否則無法登入
+                .requestMatchers("/api/church/auth/**").permitAll() // 教會認證 API
+                .requestMatchers("/api/auth/**").permitAll() // 個人網站認證 API
+                .requestMatchers("/api/public/**").permitAll() // 明確標記為公開的 API
+                .requestMatchers("/api/hello").permitAll() // Hello API
                 .requestMatchers("/api/utils/**").permitAll() // 工具 API（生成密碼 hash 等）
                 .requestMatchers("/api/line/**").permitAll() // LINE Bot Webhook（LINE 平台會直接調用，無需認證）
-                // 靜態資源和前端入口
+                
+                // ===== 靜態資源和前端入口 =====
                 .requestMatchers("/*.css", "/*.js", "/api.js", "/style.css").permitAll()
                 .requestMatchers("/", "/index.html").permitAll() // Vue SPA 入口文件
+                
+                // ===== 管理頁面 =====
                 .requestMatchers("/admin/**").authenticated() // 管理頁面需要認證
                 
-                // ===== 管理端點（只有 ADMIN 可以訪問）=====
-                // 注意：這些規則必須放在通用規則之前，因為 Spring Security 按順序匹配
-                // 用戶管理端點：要求認證，具體權限檢查在 Controller 層面進行
-                // LINE 帳號綁定相關端點允許已認證的用戶訪問自己的帳號（通過 Controller 的 hasPermission 檢查）
-                // 其他用戶管理端點需要 ADMIN 角色（通過 @PreAuthorize 註解檢查）
-                .requestMatchers("/api/users/**").authenticated()
-                .requestMatchers("/api/roles/**").hasRole("ADMIN")
-                .requestMatchers("/api/permissions/**").hasRole("ADMIN")
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                
-                // ===== 需要認證的 API 端點 =====
-                // ADMIN 和 USER 都可以訪問這些端點
-                .requestMatchers("/api/menus/**").authenticated()
-                .requestMatchers("/api/records/**").authenticated()
-                .requestMatchers("/api/expenses/**").authenticated()
-                .requestMatchers("/api/assets/**").authenticated()
-                .requestMatchers("/api/exchange-rates/**").authenticated()
-                .requestMatchers("/api/config/**").authenticated()
-                
-                // ===== 所有其他 API 端點 =====
-                // 如果有新的 API 端點，這裡會匹配
-                // ADMIN 可以訪問所有 API（因為 ADMIN 角色包含所有權限）
+                // ===== 所有 API 端點（由 UrlPermissionFilter 動態控制）=====
+                // 包括 URL 權限管理 API 也可以由資料庫動態控制
+                // 建議在資料庫中預先配置這些端點的權限（例如：需要 ADMIN 角色）
+                // 如果資料庫中沒有配置，則使用預設規則（需要認證）
+                // 注意：這裡設定為 authenticated() 作為預設，但 UrlPermissionFilter 會：
+                // 1. 如果資料庫中配置了 is_public = 1，會設置認證狀態讓請求通過
+                // 2. 如果資料庫中配置了需要角色/權限，會進行檢查
+                // 3. 如果資料庫中沒有配置，則使用這個預設規則（需要認證）
                 .requestMatchers("/api/**").authenticated()
                 
                 // ===== 其他 HTML 頁面 =====
@@ -105,6 +91,14 @@ public class SecurityConfig {
                     String requestURI = request.getRequestURI();
                     // 如果是 API 請求（包括教會 API），返回 JSON 錯誤，不要重定向
                     if (requestURI.startsWith("/api/")) {
+                        // 設置 CORS headers，確保 401 響應也能通過 CORS 檢查
+                        String origin = request.getHeader("Origin");
+                        if (origin != null) {
+                            response.setHeader("Access-Control-Allow-Origin", origin);
+                            response.setHeader("Access-Control-Allow-Credentials", "true");
+                            response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH");
+                            response.setHeader("Access-Control-Allow-Headers", "*");
+                        }
                         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                         response.setContentType("application/json;charset=UTF-8");
                         response.getWriter().write("{\"error\":\"未授權\",\"authenticated\":false}");
@@ -123,6 +117,14 @@ public class SecurityConfig {
                     String requestURI = request.getRequestURI();
                     // 如果是 API 請求，返回 JSON 錯誤
                     if (requestURI.startsWith("/api/")) {
+                        // 設置 CORS headers，確保 403 響應也能通過 CORS 檢查
+                        String origin = request.getHeader("Origin");
+                        if (origin != null) {
+                            response.setHeader("Access-Control-Allow-Origin", origin);
+                            response.setHeader("Access-Control-Allow-Credentials", "true");
+                            response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH");
+                            response.setHeader("Access-Control-Allow-Headers", "*");
+                        }
                         response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                         response.setContentType("application/json;charset=UTF-8");
                         response.getWriter().write("{\"error\":\"禁止訪問\",\"authenticated\":true}");
@@ -134,7 +136,12 @@ public class SecurityConfig {
             )
             .userDetailsService(userDetailsService);
         
-        // 添加動態 URL 權限 Filter（在認證檢查之前）
+        // 添加 JWT Filter（在認證檢查之前）
+        if (jwtAuthenticationFilter != null) {
+            http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+        }
+        
+        // 添加動態 URL 權限 Filter（在 JWT Filter 之後）
         // 如果數據庫中有配置，使用數據庫配置；否則使用上面的靜態配置
         if (urlPermissionFilter != null) {
             http.addFilterBefore(urlPermissionFilter, UsernamePasswordAuthenticationFilter.class);

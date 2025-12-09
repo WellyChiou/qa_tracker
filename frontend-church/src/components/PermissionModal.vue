@@ -257,9 +257,29 @@ const handleSubmit = async () => {
 }
 
 .form-group input:focus,
+.form-group input:focus,
 .form-group textarea:focus {
   outline: none;
   border-color: #667eea;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: auto;
+  cursor: pointer;
+}
+
+.form-hint {
+  display: block;
+  margin-top: 0.25rem;
+  color: #666;
+  font-size: 0.875rem;
 }
 
 .error-message {

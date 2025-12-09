@@ -25,7 +25,14 @@ public class RoleService {
      */
     @Transactional(readOnly = true)
     public List<Role> getAllRoles() {
-        return roleRepository.findAll();
+        List<Role> roles = roleRepository.findAll();
+        // 觸發懶加載，確保在事務內加載 permissions
+        roles.forEach(role -> {
+            if (role.getPermissions() != null) {
+                role.getPermissions().size(); // 觸發懶加載
+            }
+        });
+        return roles;
     }
 
     /**

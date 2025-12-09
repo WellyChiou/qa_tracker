@@ -1,6 +1,7 @@
 <template>
   <div id="app">
-    <nav class="navbar">
+    <!-- 前台 navbar：只在非後台路由顯示 -->
+    <nav v-if="!isAdminRoute" class="navbar">
       <div class="nav-container">
         <div class="nav-logo">
           <router-link to="/" class="logo-link">
@@ -9,18 +10,8 @@
           </router-link>
         </div>
         <ul class="nav-menu">
-          <li v-for="menu in frontendMenus" :key="menu.id">
+          <li v-for="menu in displayMenus" :key="menu.id">
             <router-link :to="menu.url || '#'">{{ menu.menuName }}</router-link>
-          </li>
-          <li v-if="isAuthenticated">
-            <router-link to="/admin" class="admin-link">管理後台</router-link>
-          </li>
-          <li v-if="!isAuthenticated">
-            <router-link to="/login" class="login-link">登入</router-link>
-          </li>
-          <li v-else class="user-menu">
-            <span class="user-name">{{ currentUser?.displayName || currentUser?.username }}</span>
-            <button @click="handleLogout" class="logout-button">登出</button>
           </li>
         </ul>
       </div>
@@ -28,7 +19,8 @@
     <main class="main-content">
       <router-view />
     </main>
-    <footer class="footer">
+    <!-- 前台 footer：只在非後台路由顯示 -->
+    <footer v-if="!isAdminRoute" class="footer">
       <div class="footer-container">
         <p>&copy; 2026 極光教會網站. 版權所有.</p>
       </div>
@@ -38,55 +30,110 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useLoading } from '@/composables/useLoading'
-import { useAuth } from '@/composables/useAuth'
 import { apiRequest } from '@/utils/api'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
-const router = useRouter()
-const { currentUser, isAuthenticated, checkAuth, logout } = useAuth()
+const route = useRoute()
 const frontendMenus = ref([])
+
+// 計算要顯示的菜單（如果有子菜單，只顯示子菜單；否則顯示根菜單）
+const displayMenus = computed(() => {
+  const menus = []
+  for (const menu of frontendMenus.value) {
+    // 如果菜單有子菜單，只顯示子菜單（不顯示母菜單）
+    if (menu.children && menu.children.length > 0) {
+      menus.push(...menu.children)
+    } else if (menu.url && menu.url !== '#') {
+      // 如果沒有子菜單且 URL 不是 '#'，顯示根菜單本身
+      menus.push(menu)
+    }
+  }
+  return menus
+})
+
+// 判斷是否為後台路由或登入頁面（這些頁面不需要顯示前台的 navbar 和 footer）
+const isAdminRoute = computed(() => {
+  return route.path.startsWith('/admin') || route.path === '/login'
+})
 
 // 初始化 loading 系統（註冊回調到 API 服務）
 useLoading()
 
+// 預設菜單（僅在 API 請求失敗時使用）
+const defaultMenus = [
+  { id: 1, menuName: '首頁', url: '/' },
+  { id: 2, menuName: '關於我們', url: '/about' },
+  { id: 3, menuName: '活動', url: '/activities' },
+  { id: 4, menuName: '服事安排', url: '/service-schedule' },
+  { id: 5, menuName: '聯絡我們', url: '/contact' }
+]
+
 // 載入前台菜單
 const loadFrontendMenus = async () => {
+  // 如果是後台路由或登入頁面，不需要載入前台菜單
+  if (isAdminRoute.value) {
+    return
+  }
+  
   try {
     const response = await apiRequest('/church/menus/frontend', {
       method: 'GET'
     })
     
+    console.log('前台菜單 API 響應狀態:', response.status, response.ok)
+    
     if (response.ok) {
       const menus = await response.json()
-      frontendMenus.value = menus || []
+      console.log('前台菜單數據:', menus)
+      
+      // 如果後端返回了有效的菜單數據，使用後端的菜單
+      if (menus && Array.isArray(menus)) {
+        if (menus.length > 0) {
+          console.log('使用後端菜單，共', menus.length, '項')
+          frontendMenus.value = menus
+          return
+        } else {
+          console.warn('後端返回空數組，但資料庫可能有設定，檢查資料庫配置')
+          // 空數組不代表失敗，可能是資料庫中沒有前台菜單，不應該使用預設菜單
+          frontendMenus.value = []
+          return
+        }
+      } else {
+        console.warn('後端返回的數據格式不正確:', menus)
+      }
+    } else {
+      console.error('前台菜單 API 請求失敗，狀態碼:', response.status)
     }
+    
+    // 只有在 API 請求失敗（非 200 狀態）時才使用預設菜單
+    console.warn('API 請求失敗，使用預設前台菜單')
+    frontendMenus.value = defaultMenus
   } catch (error) {
-    console.error('載入前台菜單失敗:', error)
-    // 如果載入失敗，使用預設菜單
-    frontendMenus.value = [
-      { id: 1, menuName: '首頁', url: '/' },
-      { id: 2, menuName: '關於我們', url: '/about' },
-      { id: 3, menuName: '活動', url: '/activities' },
-      { id: 4, menuName: '服事安排', url: '/service-schedule' },
-      { id: 5, menuName: '聯絡我們', url: '/contact' }
-    ]
+    console.error('載入前台菜單時發生異常:', error)
+    // 只有在發生異常時才使用預設菜單
+    frontendMenus.value = defaultMenus
   }
 }
 
-// 檢查認證狀態
-onMounted(async () => {
-  await checkAuth()
-  await loadFrontendMenus()
-})
+// 監聽路由變化，只在非後台路由時載入前台菜單
+watch(() => route.path, (newPath) => {
+  if (!isAdminRoute.value) {
+    loadFrontendMenus()
+  } else {
+    // 進入後台路由時，清空前台菜單（節省記憶體）
+    frontendMenus.value = []
+  }
+}, { immediate: true })
 
-// 處理登出
-const handleLogout = async () => {
-  await logout()
-  router.push('/')
-}
+// 初始化時載入前台菜單（如果當前不是後台路由）
+onMounted(async () => {
+  if (!isAdminRoute.value) {
+    await loadFrontendMenus()
+  }
+})
 </script>
 
 <style scoped>
@@ -153,55 +200,6 @@ const handleLogout = async () => {
   text-decoration: underline;
 }
 
-.admin-link {
-  background: rgba(255, 255, 255, 0.2);
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  transition: background 0.3s;
-}
-
-.admin-link:hover {
-  background: rgba(255, 255, 255, 0.3);
-  text-decoration: none;
-}
-
-.login-link {
-  background: rgba(255, 255, 255, 0.2);
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  transition: background 0.3s;
-}
-
-.login-link:hover {
-  background: rgba(255, 255, 255, 0.3);
-  text-decoration: none;
-}
-
-.user-menu {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.user-name {
-  font-size: 0.9rem;
-  opacity: 0.9;
-}
-
-.logout-button {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: background 0.3s;
-}
-
-.logout-button:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
 
 .main-content {
   min-height: calc(100vh - 200px);

@@ -17,6 +17,7 @@
                 <th>崗位代碼</th>
                 <th>崗位名稱</th>
                 <th>是否啟用</th>
+                <th>允許重複</th>
                 <th>操作</th>
               </tr>
             </thead>
@@ -25,6 +26,7 @@
                 <td>{{ position.positionCode }}</td>
                 <td>{{ position.positionName }}</td>
                 <td>{{ position.isActive ? '是' : '否' }}</td>
+                <td>{{ position.allowDuplicate ? '是' : '否' }}</td>
                 <td>
                   <button @click="editPosition(position.id)" class="btn btn-edit">編輯</button>
                   <button @click="deletePosition(position.id)" class="btn btn-delete">刪除</button>

@@ -33,10 +33,10 @@ if [ "$DISK_USAGE" -ge "$DISK_CRITICAL_THRESHOLD" ]; then
     # 自動清理 Docker 資源
     cd "$(dirname "$0")" || exit 1
     if [ -f "./cleanup-docker.sh" ]; then
-        # 執行自動清理（選項 1：安全清理）
+        # 執行自動清理（只清理未使用的資源，不會刪除正在使用的映像）
         docker system prune -f >> "$LOG_FILE" 2>&1
-        docker image prune -a -f >> "$LOG_FILE" 2>&1
-        log "✅ Docker 資源清理完成"
+        docker image prune -f >> "$LOG_FILE" 2>&1
+        log "✅ Docker 資源清理完成（已保留正在使用的映像）"
     fi
     
     # 再次檢查磁盤空間

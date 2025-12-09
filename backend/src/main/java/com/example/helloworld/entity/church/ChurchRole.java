@@ -32,6 +32,7 @@ public class ChurchRole {
         joinColumns = @JoinColumn(name = "role_id"),
         inverseJoinColumns = @JoinColumn(name = "permission_id")
     )
+    @JsonIgnoreProperties("roles") // 防止循環引用
     private Set<ChurchPermission> permissions = new HashSet<>();
 
     @PrePersist

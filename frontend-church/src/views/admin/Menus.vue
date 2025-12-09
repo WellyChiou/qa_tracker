@@ -20,6 +20,7 @@
                 <th>URL</th>
                 <th>排序</th>
                 <th>狀態</th>
+                <th>儀表板</th>
                 <th>操作</th>
               </tr>
             </thead>
@@ -34,6 +35,13 @@
                   <span :class="menu.isActive ? 'status-active' : 'status-inactive'">
                     {{ menu.isActive ? '啟用' : '停用' }}
                   </span>
+                </td>
+                <td>
+                  <span v-if="menu.menuType === 'admin' && !menu.parentId" 
+                        :class="menu.showInDashboard ? 'status-active' : 'status-inactive'">
+                    {{ menu.showInDashboard ? '顯示' : '隱藏' }}
+                  </span>
+                  <span v-else class="status-inactive">-</span>
                 </td>
                 <td>
                   <button @click="editMenu(menu.id)" class="btn btn-edit">編輯</button>

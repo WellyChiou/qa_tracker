@@ -42,6 +42,7 @@
             <td class="actions">
               <button class="btn-sm btn-edit" @click="editUser(user)">編輯</button>
               <button class="btn-sm btn-roles" @click="editRoles(user)">角色</button>
+              <button class="btn-sm btn-permissions" @click="editPermissions(user)">權限</button>
               <button class="btn-sm btn-delete" @click="deleteUser(user.uid)">刪除</button>
             </td>
           </tr>
@@ -138,6 +139,40 @@
       </div>
     </div>
 
+    <!-- 權限分配模態框 -->
+    <div v-if="showPermissionsModal" class="modal-overlay" @click="closePermissionsModal">
+      <div class="modal-panel" @click.stop style="max-width: 700px;">
+        <div class="modal-header">
+          <h2 class="modal-title">分配權限: {{ selectedUser?.displayName || selectedUser?.username }}</h2>
+          <button class="btn-close" @click="closePermissionsModal">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="permissions-list">
+            <label v-for="permission in allPermissions" :key="permission.id" class="permission-item">
+              <input 
+                type="checkbox" 
+                :value="permission.id" 
+                v-model="selectedPermissionIds"
+                class="checkbox-input" />
+              <span>{{ permission.permissionName }} <code class="permission-code">({{ permission.permissionCode }})</code></span>
+            </label>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-primary" @click="savePermissions">
+              <i class="fas fa-save me-2"></i>儲存權限
+            </button>
+            <button type="button" class="btn btn-secondary" @click="closePermissionsModal">
+              <i class="fas fa-times me-2"></i>取消
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div v-if="notification.show" class="notification" :class="notification.type">
       {{ notification.message }}
     </div>
@@ -153,9 +188,12 @@ const users = ref([])
 const showAddModal = ref(false)
 const editingUser = ref(null)
 const showRolesModal = ref(false)
+const showPermissionsModal = ref(false)
 const selectedUser = ref(null)
 const allRoles = ref([])
+const allPermissions = ref([])
 const selectedRoleIds = ref([])
+const selectedPermissionIds = ref([])
 const notification = ref({ show: false, message: '', type: 'success' })
 
 const form = ref({
@@ -180,6 +218,14 @@ const loadRoles = async () => {
     allRoles.value = await apiService.getRoles()
   } catch (error) {
     showNotification('載入角色失敗', 'error')
+  }
+}
+
+const loadPermissions = async () => {
+  try {
+    allPermissions.value = await apiService.getPermissions()
+  } catch (error) {
+    showNotification('載入權限失敗', 'error')
   }
 }
 
@@ -268,6 +314,30 @@ const saveRoles = async () => {
   }
 }
 
+const editPermissions = async (user) => {
+  selectedUser.value = user
+  // 載入用戶當前的權限 ID
+  selectedPermissionIds.value = user.permissions ? user.permissions.map(p => p.id) : []
+  showPermissionsModal.value = true
+}
+
+const closePermissionsModal = () => {
+  showPermissionsModal.value = false
+  selectedUser.value = null
+  selectedPermissionIds.value = []
+}
+
+const savePermissions = async () => {
+  try {
+    await apiService.updateUserPermissions(selectedUser.value.uid, selectedPermissionIds.value)
+    showNotification('權限已更新', 'success')
+    closePermissionsModal()
+    await loadUsers()
+  } catch (error) {
+    showNotification(error.message || '更新失敗', 'error')
+  }
+}
+
 const closeModal = () => {
   showAddModal.value = false
   editingUser.value = null
@@ -289,6 +359,7 @@ const showNotification = (message, type = 'success') => {
 onMounted(() => {
   loadUsers()
   loadRoles()
+  loadPermissions()
 })
 </script>
 
@@ -504,25 +575,25 @@ onMounted(() => {
 }
 
 .btn-edit {
-  background: rgba(59, 130, 246, 0.25);
-  color: #93c5fd;
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  background: #3b82f6;
+  color: white;
+  border: 1px solid #2563eb;
 }
 
 .btn-edit:hover {
-  background: rgba(59, 130, 246, 0.35);
+  background: #2563eb;
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
 
 .btn-delete {
-  background: rgba(239, 68, 68, 0.25);
-  color: #fca5a5;
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: #ef4444;
+  color: white;
+  border: 1px solid #dc2626;
 }
 
 .btn-delete:hover {
-  background: rgba(239, 68, 68, 0.35);
+  background: #dc2626;
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
@@ -535,6 +606,18 @@ onMounted(() => {
 
 .btn-roles:hover {
   background: rgba(139, 92, 246, 0.35);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-permissions {
+  background: #8b5cf6;
+  color: white;
+  border: 1px solid #7c3aed;
+}
+
+.btn-permissions:hover {
+  background: #7c3aed;
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
@@ -763,6 +846,46 @@ onMounted(() => {
   color: #6b7280;
   font-weight: normal;
   margin-left: 0.5rem;
+}
+
+.permissions-list {
+  max-height: 400px;
+  overflow-y: auto;
+  margin-bottom: 1.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem;
+  background: #f9fafb;
+}
+
+.permission-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  border-radius: 0.375rem;
+  transition: all 0.2s;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.permission-item:hover {
+  background: #f3f4f6;
+  border-color: #e5e7eb;
+}
+
+.permission-item:last-child {
+  margin-bottom: 0;
+}
+
+.permission-code {
+  font-size: 0.75rem;
+  color: #6b7280;
+  background: #e5e7eb;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-family: 'Courier New', monospace;
 }
 
 .form-actions {

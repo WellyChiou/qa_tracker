@@ -33,7 +33,15 @@ public class ChurchRoleService {
      */
     @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
     public Optional<ChurchRole> getRoleById(Long id) {
-        return churchRoleRepository.findById(id);
+        Optional<ChurchRole> roleOpt = churchRoleRepository.findByIdWithPermissions(id);
+        if (roleOpt.isPresent()) {
+            ChurchRole role = roleOpt.get();
+            // 確保在事務內初始化懶加載的權限集合
+            if (role.getPermissions() != null) {
+                role.getPermissions().size();
+            }
+        }
+        return roleOpt;
     }
 
     /**
@@ -53,7 +61,15 @@ public class ChurchRoleService {
         if (churchRoleRepository.findByRoleName(role.getRoleName()).isPresent()) {
             throw new RuntimeException("角色名已存在: " + role.getRoleName());
         }
-        return churchRoleRepository.save(role);
+        
+        ChurchRole saved = churchRoleRepository.save(role);
+        
+        // 確保在事務內初始化懶加載的權限集合
+        if (saved.getPermissions() != null) {
+            saved.getPermissions().size();
+        }
+        
+        return saved;
     }
 
     /**
@@ -81,7 +97,14 @@ public class ChurchRoleService {
             existing.setPermissions(roleUpdate.getPermissions());
         }
 
-        return churchRoleRepository.save(existing);
+        ChurchRole saved = churchRoleRepository.save(existing);
+        
+        // 確保在事務內初始化懶加載的權限集合
+        if (saved.getPermissions() != null) {
+            saved.getPermissions().size();
+        }
+        
+        return saved;
     }
 
     /**
@@ -108,7 +131,14 @@ public class ChurchRoleService {
         }
 
         role.setPermissions(permissions);
-        return churchRoleRepository.save(role);
+        ChurchRole saved = churchRoleRepository.save(role);
+        
+        // 確保在事務內初始化懶加載的權限集合
+        if (saved.getPermissions() != null) {
+            saved.getPermissions().size();
+        }
+        
+        return saved;
     }
 }
 

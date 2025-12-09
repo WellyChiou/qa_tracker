@@ -33,20 +33,15 @@
     <div class="dashboard-actions">
       <h2>快速操作</h2>
       <div class="action-grid">
-        <router-link to="/admin/service-schedule" class="action-card">
-          <div class="action-icon">📋</div>
-          <div class="action-title">服事表管理</div>
-          <div class="action-desc">新增、編輯、刪除服事表</div>
-        </router-link>
-        <router-link to="/admin/persons" class="action-card">
-          <div class="action-icon">👥</div>
-          <div class="action-title">人員管理</div>
-          <div class="action-desc">管理教會人員資訊</div>
-        </router-link>
-        <router-link to="/admin/positions" class="action-card">
-          <div class="action-icon">🎯</div>
-          <div class="action-title">崗位管理</div>
-          <div class="action-desc">管理服事崗位配置</div>
+        <router-link 
+          v-for="action in quickActions" 
+          :key="action.id"
+          :to="action.url" 
+          class="action-card"
+        >
+          <div class="action-icon">{{ action.icon || '📋' }}</div>
+          <div class="action-title">{{ action.menuName }}</div>
+          <div class="action-desc">{{ action.description || '快速訪問' }}</div>
         </router-link>
       </div>
     </div>
@@ -62,6 +57,7 @@ import { apiRequest } from '@/utils/api'
 const scheduleCount = ref(0)
 const personCount = ref(0)
 const positionCount = ref(0)
+const quickActions = ref([])
 
 const loadStats = async () => {
   try {
@@ -96,8 +92,24 @@ const loadStats = async () => {
   }
 }
 
+const loadQuickActions = async () => {
+  try {
+    const response = await apiRequest('/church/menus/dashboard', {
+      method: 'GET',
+      credentials: 'include'
+    })
+    
+    if (response.ok) {
+      quickActions.value = await response.json()
+    }
+  } catch (error) {
+    console.error('載入快速操作失敗:', error)
+  }
+}
+
 onMounted(() => {
   loadStats()
+  loadQuickActions()
 })
 </script>
 

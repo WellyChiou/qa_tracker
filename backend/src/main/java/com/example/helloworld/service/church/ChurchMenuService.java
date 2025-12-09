@@ -38,6 +38,60 @@ public class ChurchMenuService {
     }
 
     /**
+     * 獲取儀表板快速操作菜單（根據權限過濾，只返回 show_in_dashboard = true 的菜單）
+     */
+    @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
+    public List<MenuItemDTO> getDashboardQuickActions() {
+        try {
+            // 獲取當前用戶的權限
+            Set<String> userPermissions = new java.util.HashSet<>();
+            
+            try {
+                org.springframework.security.core.Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+                if (authentication != null && authentication.isAuthenticated() && 
+                    !authentication.getPrincipal().equals("anonymousUser")) {
+                    Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
+                    if (authorities != null) {
+                        userPermissions = authorities.stream()
+                            .map(GrantedAuthority::getAuthority)
+                            .collect(Collectors.toSet());
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("獲取用戶權限失敗: " + e.getMessage());
+            }
+
+            // 獲取所有啟用的、顯示在儀表板的、後台類型的根菜單（不包含子菜單）
+            List<ChurchMenuItem> dashboardMenus = churchMenuItemRepository
+                .findByMenuTypeAndIsActiveAndShowInDashboardAndParentIdIsNullOrderByOrderIndexAsc(
+                    "admin", true, true);
+
+            if (dashboardMenus == null) {
+                return new ArrayList<>();
+            }
+            
+            List<MenuItemDTO> visibleMenus = new ArrayList<>();
+            
+            for (ChurchMenuItem menu : dashboardMenus) {
+                try {
+                    if (hasPermission(menu, userPermissions)) {
+                        MenuItemDTO menuDTO = convertToDTO(menu);
+                        visibleMenus.add(menuDTO);
+                    }
+                } catch (Exception e) {
+                    System.err.println("處理儀表板菜單時發生錯誤: " + e.getMessage());
+                }
+            }
+            
+            return visibleMenus;
+        } catch (Exception e) {
+            System.err.println("獲取儀表板快速操作時發生錯誤: " + e.getMessage());
+            e.printStackTrace();
+            return new ArrayList<>();
+        }
+    }
+
+    /**
      * 根據菜單類型獲取菜單
      */
     private List<MenuItemDTO> getMenusByType(String menuType) {
@@ -135,6 +189,7 @@ public class ChurchMenuService {
         dto.setUrl(menuItem.getUrl());
         dto.setOrderIndex(menuItem.getOrderIndex());
         dto.setMenuType(menuItem.getMenuType());
+        dto.setDescription(menuItem.getDescription());
         return dto;
     }
 
@@ -227,6 +282,9 @@ public class ChurchMenuService {
         if (menuItemUpdate.getDescription() != null) {
             existing.setDescription(menuItemUpdate.getDescription());
         }
+        if (menuItemUpdate.getShowInDashboard() != null) {
+            existing.setShowInDashboard(menuItemUpdate.getShowInDashboard());
+        }
 
         return churchMenuItemRepository.save(existing);
     }
@@ -252,6 +310,7 @@ public class ChurchMenuService {
         private String url;
         private Integer orderIndex;
         private String menuType;
+        private String description;
         private List<MenuItemDTO> children;
 
         // Getters and Setters
@@ -275,6 +334,9 @@ public class ChurchMenuService {
 
         public String getMenuType() { return menuType; }
         public void setMenuType(String menuType) { this.menuType = menuType; }
+
+        public String getDescription() { return description; }
+        public void setDescription(String description) { this.description = description; }
 
         public List<MenuItemDTO> getChildren() { return children; }
         public void setChildren(List<MenuItemDTO> children) { this.children = children; }

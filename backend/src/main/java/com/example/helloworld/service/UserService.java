@@ -2,8 +2,10 @@ package com.example.helloworld.service;
 
 import com.example.helloworld.entity.User;
 import com.example.helloworld.entity.Role;
+import com.example.helloworld.entity.Permission;
 import com.example.helloworld.repository.UserRepository;
 import com.example.helloworld.repository.RoleRepository;
+import com.example.helloworld.repository.PermissionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -23,6 +25,9 @@ public class UserService {
     private RoleRepository roleRepository;
 
     @Autowired
+    private PermissionRepository permissionRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     /**
@@ -30,7 +35,17 @@ public class UserService {
      */
     @Transactional(readOnly = true)
     public List<User> getAllUsers() {
-        return userRepository.findAll();
+        List<User> users = userRepository.findAll();
+        // 觸發懶加載，確保在事務內加載 roles 和 permissions
+        users.forEach(user -> {
+            if (user.getRoles() != null) {
+                user.getRoles().size(); // 觸發懶加載
+            }
+            if (user.getPermissions() != null) {
+                user.getPermissions().size(); // 觸發懶加載
+            }
+        });
+        return users;
     }
 
     /**
@@ -154,6 +169,24 @@ public class UserService {
             .collect(Collectors.toSet());
 
         user.setRoles(roles);
+        return userRepository.save(user);
+    }
+
+    /**
+     * 更新用戶權限
+     */
+    @Transactional
+    public User updateUserPermissions(String uid, List<Long> permissionIds) {
+        User user = userRepository.findById(uid)
+            .orElseThrow(() -> new RuntimeException("用戶不存在: " + uid));
+
+        Set<Permission> permissions = permissionIds.stream()
+            .map(permissionId -> permissionRepository.findById(permissionId))
+            .filter(Optional::isPresent)
+            .map(Optional::get)
+            .collect(Collectors.toSet());
+
+        user.setPermissions(permissions);
         return userRepository.save(user);
     }
 

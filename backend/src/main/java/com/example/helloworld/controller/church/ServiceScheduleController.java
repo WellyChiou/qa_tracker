@@ -57,11 +57,11 @@ public class ServiceScheduleController {
     }
 
     /**
-     * 獲取所有安排表
+     * 獲取所有安排表（包含日期範圍信息）
      */
     @GetMapping
-    public ResponseEntity<List<ServiceSchedule>> getAllSchedules() {
-        List<ServiceSchedule> schedules = service.getAllSchedules();
+    public ResponseEntity<List<Map<String, Object>>> getAllSchedules() {
+        List<Map<String, Object>> schedules = service.getAllSchedulesWithDateRange();
         return ResponseEntity.ok(schedules);
     }
 

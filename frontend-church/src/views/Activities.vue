@@ -4,8 +4,11 @@
       <div class="container">
         <h1 class="section-title">活動資訊</h1>
         
-        <div class="activities-grid">
-          <div class="card activity-card" v-for="activity in activities" :key="activity.id">
+        <div v-if="isLoading" class="loading">
+          <p>載入中...</p>
+        </div>
+        <div v-else-if="activitiesWithFormattedData.length > 0" class="activities-grid">
+          <div class="card activity-card" v-for="activity in activitiesWithFormattedData" :key="activity.id">
             <div class="activity-header">
               <h3>{{ activity.title }}</h3>
             </div>
@@ -18,52 +21,73 @@
             <span class="activity-date">{{ activity.date }}</span>
           </div>
         </div>
+        <div v-else class="no-activities">
+          <p>目前沒有活動資訊</p>
+        </div>
       </div>
     </section>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, computed } from 'vue'
+import { apiRequest } from '@/utils/api'
 
-const activities = ref([
-  {
-    id: 1,
-    title: '聯合受洗主日',
-    date: '2024-12-28',
-    time: '10:00am',
-    location: '榮耀堂',
-    description: '聯合受洗主日，歡迎弟兄姊妹一同參與這個重要的時刻。',
-    tags: ['主日', '受洗']
-  },
-  {
-    id: 2,
-    title: '極光元旦登高',
-    date: '2025-01-01',
-    time: '9:30am',
-    location: '觀音山遊客中心',
-    description: '新的一年，讓我們一起登高，迎接新的開始！',
-    tags: ['戶外', '運動']
-  },
-  {
-    id: 3,
-    title: '極光同工尾牙',
-    date: '2025-01-11',
-    time: '傍晚（時間待定）',
-    location: '地點待定',
-    description: '感謝同工們一年來的辛勞，讓我們一起歡聚慶祝！',
-    tags: ['同工', '聚餐']
-  },
-  {
-    id: 4,
-    title: '極光門徒退修會',
-    date: '2025-02-27 ~ 2025-02-28',
-    time: '兩天一夜',
-    location: '桃園復興鄉',
-    description: '門徒退修會，讓我們在安靜中親近神，重新得力。',
-    tags: ['退修會', '門徒']
+const activities = ref([])
+const isLoading = ref(false)
+
+const formatDate = (dateString) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  return date.toLocaleDateString('zh-TW', { 
+    year: 'numeric', 
+    month: '2-digit', 
+    day: '2-digit' 
+  })
+}
+
+const parseTags = (tagsJson) => {
+  if (!tagsJson) return []
+  try {
+    return JSON.parse(tagsJson)
+  } catch (e) {
+    return []
   }
-])
+}
+
+const activitiesWithFormattedData = computed(() => {
+  return activities.value.map(activity => ({
+    ...activity,
+    date: formatDate(activity.activityDate),
+    time: activity.activityTime || '',
+    location: activity.location || '',
+    tags: parseTags(activity.tags)
+  }))
+})
+
+const loadActivities = async () => {
+  isLoading.value = true
+  try {
+    const response = await apiRequest('/church/public/activities', {
+      method: 'GET'
+    }, '載入活動資訊', false)
+    
+    if (response.ok) {
+      const data = await response.json()
+      if (data.success && data.data) {
+        activities.value = data.data
+      }
+    }
+  } catch (error) {
+    console.error('載入活動資訊失敗:', error)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+onMounted(() => {
+  loadActivities()
+})
 </script>
 
 <style scoped>
@@ -132,6 +156,13 @@ const activities = ref([
   padding: 0.25rem 0.75rem;
   border-radius: 15px;
   font-size: 0.85rem;
+}
+
+.loading,
+.no-activities {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
 }
 </style>
 

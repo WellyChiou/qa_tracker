@@ -306,24 +306,6 @@ const resetState = () => {
   originalSchedule.value = []
 }
 
-// 當 mode 或 scheduleId 改變時，載入對應的資料
-watch([() => props.show, () => props.mode, () => props.scheduleId], async ([show, mode, scheduleId]) => {
-  if (show) {
-    resetState()
-    
-    if (mode === 'add') {
-      // 新增模式：初始化崗位選擇
-      initializePositionSelection()
-    } else if (mode === 'edit' && scheduleId) {
-      // 編輯模式：載入資料並進入編輯模式
-      await loadScheduleForEdit(scheduleId)
-    } else if (mode === 'view' && scheduleId) {
-      // 查看模式：只載入資料，不進入編輯模式
-      await loadScheduleForView(scheduleId)
-    }
-  }
-})
-
 const initializePositionSelection = () => {
   for (const posCode in props.positionConfig) {
     const hasConfig = hasPositionConfig(posCode)
@@ -421,7 +403,8 @@ const getPersonNameById = (personId, position, item) => {
 const loadScheduleForEdit = async (scheduleId) => {
   try {
     const response = await apiRequest(`/church/service-schedules/${scheduleId}`, {
-      method: 'GET'
+      method: 'GET',
+      credentials: 'include'
     }, '載入服事表中...')
     const data = await response.json()
     
@@ -573,6 +556,33 @@ const loadScheduleForView = async (scheduleId) => {
     showNotification('載入失敗：' + error.message, 'error', 3000)
   }
 }
+
+// 當 show、mode 或 scheduleId 改變時，載入對應的資料
+watch([() => props.show, () => props.mode, () => props.scheduleId], async ([show, mode, scheduleId]) => {
+  if (show) {
+    resetState()
+    
+    if (mode === 'add') {
+      // 新增模式：初始化崗位選擇
+      initializePositionSelection()
+    } else if (mode === 'edit' && scheduleId) {
+      // 編輯模式：載入資料並進入編輯模式
+      // 如果 positionConfig 為空，等待一下再載入（給父組件時間載入配置）
+      if (Object.keys(props.positionConfig).length === 0) {
+        // 等待 positionConfig 載入（最多等待 1 秒）
+        let retries = 0
+        while (Object.keys(props.positionConfig).length === 0 && retries < 10) {
+          await new Promise(resolve => setTimeout(resolve, 100))
+          retries++
+        }
+      }
+      await loadScheduleForEdit(scheduleId)
+    } else if (mode === 'view' && scheduleId) {
+      // 查看模式：只載入資料，不進入編輯模式
+      await loadScheduleForView(scheduleId)
+    }
+  }
+}, { immediate: true })
 
 // 分配人員到服事表
 const distributePersons = (dates) => {

@@ -2,7 +2,7 @@
   <div v-if="show" class="modal-overlay" @click="closeModal">
     <div class="modal-panel" @click.stop>
       <div class="modal-header">
-        <h2 class="modal-title">崗位管理</h2>
+        <h2 class="modal-title">顯示崗位</h2>
         <button class="btn-close" @click="closeModal">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -10,12 +10,6 @@
         </button>
       </div>
       <div class="modal-body">
-        <!-- 新增崗位按鈕 -->
-        <div class="action-bar">
-          <button @click="openCreatePositionModal" class="btn-add-position">
-            + 新增崗位
-          </button>
-        </div>
 
         <!-- 崗位列表 -->
         <div class="position-list">
@@ -34,16 +28,10 @@
               </div>
             </div>
             <div class="position-actions">
-              <button class="btn-edit-info" @click.stop="openEditPositionModal(position)" title="編輯崗位信息">
-                ✏️
-              </button>
-              <button class="btn-edit-position" @click.stop="openPositionEdit(position)" title="編輯人員">
+              <button class="btn-edit-position" @click.stop="openPositionEdit(position)" title="查看人員">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                 </svg>
-              </button>
-              <button class="btn-delete-position" @click.stop="deletePosition(position)" title="刪除崗位">
-                🗑️
               </button>
             </div>
           </div>
@@ -52,38 +40,20 @@
     </div>
   </div>
 
-  <!-- 崗位編輯 Modal（編輯人員） -->
+  <!-- 崗位查看 Modal（僅查看人員） -->
   <PositionEditModal 
     v-if="editingPosition"
     :position="editingPosition"
     :show="editingPosition !== null"
+    :readonly="true"
     @close="closePositionEdit"
     @updated="handlePositionUpdated"
-  />
-
-  <!-- 新增崗位 Modal -->
-  <CreatePositionModal
-    v-if="showCreatePositionModal"
-    :show="showCreatePositionModal"
-    @close="closeCreatePositionModal"
-    @created="handlePositionCreated"
-  />
-
-  <!-- 編輯崗位信息 Modal -->
-  <EditPositionModal
-    v-if="showEditPositionModal && editingPositionInfo"
-    :show="showEditPositionModal"
-    :position="editingPositionInfo"
-    @close="closeEditPositionModal"
-    @updated="handlePositionInfoUpdated"
   />
 </template>
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import PositionEditModal from './PositionEditModal.vue'
-import CreatePositionModal from './CreatePositionModal.vue'
-import EditPositionModal from './EditPositionModal.vue'
 import { apiRequest } from '@/utils/api'
 
 const props = defineProps({
@@ -96,10 +66,7 @@ const props = defineProps({
 const emit = defineEmits(['close'])
 
 const positions = ref([])
-const editingPosition = ref(null) // 用於編輯人員
-const editingPositionInfo = ref(null) // 用於編輯崗位信息
-const showCreatePositionModal = ref(false)
-const showEditPositionModal = ref(false)
+const editingPosition = ref(null) // 用於查看人員
 const positionPersonCounts = ref({}) // { positionId: { saturday: count, sunday: count } }
 
 const loadPositions = async () => {
@@ -167,61 +134,6 @@ const handlePositionUpdated = (positionId = null) => {
   // 如果傳入了 positionId，只更新該崗位的人數
   // 否則更新所有崗位（用於批量更新場景）
   loadPositionPersonCounts(positionId)
-}
-
-const openCreatePositionModal = () => {
-  showCreatePositionModal.value = true
-}
-
-const closeCreatePositionModal = () => {
-  showCreatePositionModal.value = false
-}
-
-const handlePositionCreated = async () => {
-  await loadPositions()
-  closeCreatePositionModal()
-}
-
-const openEditPositionModal = (position) => {
-  console.log('打開編輯崗位 Modal，position:', position)
-  // 深拷貝 position 對象，確保資料正確傳遞
-  editingPositionInfo.value = { ...position }
-  showEditPositionModal.value = true
-  console.log('editingPositionInfo.value:', editingPositionInfo.value)
-}
-
-const closeEditPositionModal = () => {
-  showEditPositionModal.value = false
-  editingPositionInfo.value = null
-}
-
-const handlePositionInfoUpdated = async () => {
-  await loadPositions()
-  closeEditPositionModal()
-}
-
-const deletePosition = async (position) => {
-  if (!confirm(`確定要刪除崗位「${position.positionName}」嗎？\n\n注意：刪除崗位會同時刪除該崗位的所有人員關聯。`)) {
-    return
-  }
-
-  try {
-    const response = await apiRequest(`/church/positions/${position.id}`, {
-      method: 'DELETE'
-    })
-
-    const result = await response.json()
-    
-    if (response.ok && result.success !== false) {
-      await loadPositions()
-    } else {
-      console.error('刪除失敗響應：', result)
-      alert('刪除失敗：' + (result.error || '未知錯誤'))
-    }
-  } catch (error) {
-    console.error('刪除崗位失敗：', error)
-    alert('刪除失敗：' + (error.message || '網絡錯誤'))
-  }
 }
 
 const closeModal = () => {
@@ -301,28 +213,6 @@ onMounted(() => {
   flex: 1;
 }
 
-.action-bar {
-  margin-bottom: 1.5rem;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.btn-add-position {
-  padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-  color: white;
-  border: none;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  font-size: 1rem;
-  font-weight: 500;
-  transition: all 0.2s;
-}
-
-.btn-add-position:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
-}
 
 .position-list {
   display: flex;

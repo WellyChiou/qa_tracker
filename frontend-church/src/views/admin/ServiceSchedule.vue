@@ -10,22 +10,36 @@
         <div v-if="schedules.length === 0" class="empty-state">
           <p>尚無服事表</p>
         </div>
-        <div v-else class="schedule-grid">
-          <div v-for="schedule in schedules" :key="schedule.id" class="schedule-card">
-            <div class="schedule-info">
-              <h3>{{ schedule.name || '未命名' }}</h3>
-              <p class="schedule-date" v-if="schedule.startDate && schedule.endDate">
+        <div v-else class="schedule-table-wrapper">
+          <table class="schedule-table">
+            <thead>
+              <tr>
+                <th>名稱</th>
+                <th>日期範圍</th>
+                <th>建立時間</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="schedule in schedules" :key="schedule.id">
+                <td>{{ schedule.name || '未命名' }}</td>
+                <td>
+                  <span v-if="schedule.startDate && schedule.endDate">
                 {{ formatDate(schedule.startDate) }} ~ {{ formatDate(schedule.endDate) }}
-              </p>
-              <p class="schedule-time" v-if="schedule.createdAt">
-                建立時間：{{ formatDateTime(schedule.createdAt) }}
-              </p>
-            </div>
-            <div class="schedule-actions">
+                  </span>
+                  <span v-else>-</span>
+                </td>
+                <td>
+                  <span v-if="schedule.createdAt">{{ formatDateTime(schedule.createdAt) }}</span>
+                  <span v-else>-</span>
+                </td>
+                <td>
               <button @click="editSchedule(schedule.id)" class="btn btn-edit">編輯</button>
               <button @click="deleteSchedule(schedule.id)" class="btn btn-delete">刪除</button>
-            </div>
-          </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -80,7 +94,8 @@ const loadPositionConfig = async () => {
     
     if (response.ok) {
       const data = await response.json()
-      positionConfig.value = data || {}
+      // 後端返回格式：{ "config": {...}, "message": "..." }
+      positionConfig.value = data.config || {}
     }
   } catch (error) {
     console.error('載入崗位配置失敗:', error)
@@ -206,49 +221,44 @@ onMounted(() => {
   color: #666;
 }
 
-.schedule-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.5rem;
+.schedule-table-wrapper {
+  overflow-x: auto;
 }
 
-.schedule-card {
-  background: #f9f9f9;
-  border-radius: 8px;
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+.schedule-table {
+  width: 100%;
+  border-collapse: collapse;
 }
 
-.schedule-info h3 {
-  margin: 0 0 0.5rem 0;
-  font-size: 1.2rem;
+thead {
+  background: #f5f5f5;
+}
+
+th, td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+th {
+  font-weight: 600;
   color: #333;
 }
 
-.schedule-date {
-  color: #666;
-  font-size: 0.9rem;
-  margin: 0.25rem 0;
-}
-
-.schedule-time {
-  color: #999;
-  font-size: 0.85rem;
-  margin: 0.25rem 0;
-}
-
-.schedule-actions {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: auto;
+tbody tr:hover {
+  background: #f9f9f9;
 }
 
 .btn-edit {
-  flex: 1;
   background: #667eea;
   color: white;
+  padding: 0.5rem 1rem;
+  margin-right: 0.5rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.2s;
 }
 
 .btn-edit:hover {
@@ -256,9 +266,14 @@ onMounted(() => {
 }
 
 .btn-delete {
-  flex: 1;
   background: #ef4444;
   color: white;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.2s;
 }
 
 .btn-delete:hover {

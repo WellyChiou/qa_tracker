@@ -39,6 +39,15 @@ public class ChurchMenuController {
     }
 
     /**
+     * 獲取儀表板快速操作菜單（需要登入）
+     */
+    @GetMapping("/dashboard")
+    public ResponseEntity<List<ChurchMenuService.MenuItemDTO>> getDashboardQuickActions() {
+        List<ChurchMenuService.MenuItemDTO> menus = churchMenuService.getDashboardQuickActions();
+        return ResponseEntity.ok(menus);
+    }
+
+    /**
      * 獲取所有菜單項（管理用，需要管理權限）
      */
     @GetMapping

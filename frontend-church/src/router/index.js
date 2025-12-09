@@ -79,6 +79,12 @@ const routes = [
     name: 'AdminMenus',
     component: () => import('@/views/admin/Menus.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/admin/url-permissions',
+    name: 'AdminUrlPermissions',
+    component: () => import('@/views/admin/UrlPermissions.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 

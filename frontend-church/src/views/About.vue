@@ -4,35 +4,19 @@
       <div class="container">
         <h1 class="section-title">關於我們</h1>
         
-        <div class="card">
-          <h2>歡迎加入PLC極光</h2>
-          <p>歡迎您加入PLC極光這個溫暖大家庭，讓我們在基督的愛及聖經真理中成長茁壯，邁向蒙福豐盛光明的人生！</p>
+        <div v-if="aboutInfoList && aboutInfoList.length > 0">
+          <div class="card" v-for="info in aboutInfoList" :key="info.id">
+            <h2>{{ info.title }}</h2>
+            <p v-if="info.sectionKey !== 'values'" class="content-text">{{ info.content }}</p>
+            <ul v-else class="values-list">
+              <li v-for="(line, index) in parseValuesContent(info.content)" :key="index">
+                <strong>{{ line.label }}：</strong>{{ line.value }}
+              </li>
+            </ul>
+          </div>
         </div>
-
-        <div class="card">
-          <h2>我們的使命</h2>
-          <p>我們致力於建立一個充滿愛、關懷與成長的信仰社群，透過敬拜、教導和團契，幫助每個人更認識神，並在信仰中成長。</p>
-        </div>
-
-        <div class="card">
-          <h2>我們的願景</h2>
-          <p>成為一個影響社區、傳播福音、培養門徒的教會，讓每個人都能在這裡找到歸屬感，並活出神所賜的豐盛生命。</p>
-        </div>
-
-        <div class="card">
-          <h2>我們的價值</h2>
-          <ul class="values-list">
-            <li><strong>愛：</strong>以基督的愛彼此相愛</li>
-            <li><strong>真理：</strong>持守聖經的教導</li>
-            <li><strong>合一：</strong>在基督裡彼此連結</li>
-            <li><strong>服務：</strong>關懷社區，服務他人</li>
-            <li><strong>成長：</strong>持續在信仰中成長</li>
-          </ul>
-        </div>
-
-        <div class="card">
-          <h2>歷史沿革</h2>
-          <p>我們的教會成立於多年前，從一個小小的聚會開始，逐漸成長為今天的規模。我們感謝神的恩典，也感謝每一位弟兄姊妹的參與和奉獻。</p>
+        <div v-else class="loading">
+          <p>載入中...</p>
         </div>
       </div>
     </section>
@@ -40,7 +24,45 @@
 </template>
 
 <script setup>
-// 關於我們頁面
+import { ref, onMounted } from 'vue'
+import { apiRequest } from '@/utils/api'
+
+const aboutInfoList = ref([])
+
+const parseValuesContent = (content) => {
+  if (!content) return []
+  // 將內容按行分割，每行格式為 "標籤：值"
+  return content.split('\n')
+    .filter(line => line.trim())
+    .map(line => {
+      const parts = line.split('：')
+      return {
+        label: parts[0] || '',
+        value: parts.slice(1).join('：') || ''
+      }
+    })
+}
+
+const loadAboutInfo = async () => {
+  try {
+    const response = await apiRequest('/church/public/about-info', {
+      method: 'GET'
+    }, '載入關於我們資訊', false)
+    
+    if (response.ok) {
+      const data = await response.json()
+      if (data.success && data.data) {
+        aboutInfoList.value = data.data
+      }
+    }
+  } catch (error) {
+    console.error('載入關於我們資訊失敗:', error)
+  }
+}
+
+onMounted(() => {
+  loadAboutInfo()
+})
 </script>
 
 <style scoped>
@@ -64,9 +86,17 @@
   font-size: 1.8rem;
 }
 
-.card p {
+.card p,
+.content-text {
   line-height: 1.8;
   margin-bottom: 1rem;
+  white-space: pre-line;
+}
+
+.loading {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
 }
 </style>
 

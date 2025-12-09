@@ -2,11 +2,10 @@
   <div class="admin-layout">
     <nav class="admin-navbar">
       <div class="navbar-container">
-        <div class="navbar-title">
-          <router-link to="/admin" class="title-link">
-            <h2>教會管理系統</h2>
-          </router-link>
-        </div>
+        <router-link to="/admin" class="title-link">
+          <img src="/images/logo.png" alt="極光教會 Logo" class="logo-image" />
+          <span class="logo-text">極光教會-PLC</span>
+        </router-link>
         <div class="navbar-menu">
           <template v-for="menu in adminMenus" :key="menu.id">
             <div v-if="menu.children && menu.children.length > 0" class="menu-item-wrapper">
@@ -73,8 +72,30 @@ const { currentUser, logout } = useAuth()
 const adminMenus = ref([])
 const expandedMenus = ref([])
 
+// 模組級變量：記錄被用戶手動關閉的子菜單 ID（永久記錄，直到用戶手動展開）
+// 使用 sessionStorage 確保在組件重新創建時不會丟失
+const getManuallyClosedMenus = () => {
+  try {
+    const stored = sessionStorage.getItem('manuallyClosedMenus')
+    return stored ? new Set(JSON.parse(stored)) : new Set()
+  } catch {
+    return new Set()
+  }
+}
+
+const saveManuallyClosedMenus = (set) => {
+  try {
+    sessionStorage.setItem('manuallyClosedMenus', JSON.stringify(Array.from(set)))
+  } catch (e) {
+    console.error('保存 manuallyClosedMenus 失敗:', e)
+  }
+}
+
+let manuallyClosedMenus = getManuallyClosedMenus()
+
 // 標記用戶是否正在手動操作子菜單
 let isUserClicking = false
+let justNavigatedFromSubmenu = false
 let clickTimeout = null
 
 const pageTitle = computed(() => {
@@ -92,13 +113,44 @@ const pageTitle = computed(() => {
   return menu ? menu.menuName : '管理系統'
 })
 
+// 檢查當前路由是否屬於某個菜單的子項
+const isChildOfMenu = (menu) => {
+  if (!menu || !menu.children || menu.children.length === 0) return false
+  const currentPath = route.path
+  return menu.children.some(child => {
+    if (!child || !child.url) return false
+    return child.url && currentPath === child.url
+  })
+}
+
 const toggleMenu = (menuId) => {
+  // 清除之前的超時
+  if (clickTimeout) {
+    clearTimeout(clickTimeout)
+  }
+  
+  // 標記這是用戶手動操作
+  isUserClicking = true
+  
   const index = expandedMenus.value.indexOf(menuId)
-  if (index > -1) {
+  const wasOpen = index > -1
+  
+  if (wasOpen) {
     expandedMenus.value.splice(index, 1)
+    // 記錄用戶手動關閉的子菜單
+    manuallyClosedMenus.add(menuId)
+    saveManuallyClosedMenus(manuallyClosedMenus)
   } else {
     expandedMenus.value.push(menuId)
+    // 當用戶手動展開子菜單時，從關閉記錄中移除，允許正常的自動展開邏輯
+    manuallyClosedMenus.delete(menuId)
+    saveManuallyClosedMenus(manuallyClosedMenus)
   }
+  
+  // 延遲重置標記
+  clickTimeout = setTimeout(() => {
+    isUserClicking = false
+  }, 1000)
 }
 
 const handleSubmenuClick = (menuId, event) => {
@@ -107,8 +159,13 @@ const handleSubmenuClick = (menuId, event) => {
     event.stopPropagation()
   }
   
+  // 記錄被手動關閉的子菜單（永久記錄，直到用戶手動展開）
+  manuallyClosedMenus.add(menuId)
+  saveManuallyClosedMenus(manuallyClosedMenus)
+  
   // 立即設置標記，在路由變化之前
   isUserClicking = true
+  justNavigatedFromSubmenu = true
   
   // 立即關閉父菜單
   const index = expandedMenus.value.indexOf(menuId)
@@ -122,10 +179,10 @@ const handleSubmenuClick = (menuId, event) => {
   }
   
   // 延遲重置標記，防止路由變化後自動重新展開
-  // 使用更長的時間，確保路由變化完成後也不自動展開
   clickTimeout = setTimeout(() => {
     isUserClicking = false
-  }, 3000) // 3秒後重置標記，確保路由導航完成
+    justNavigatedFromSubmenu = false
+  }, 3000) // 3秒後重置標記，給路由導航和頁面渲染足夠時間
 }
 
 const loadAdminMenus = async () => {
@@ -141,13 +198,45 @@ const loadAdminMenus = async () => {
       adminMenus.value = menus || []
       console.log('設置後的 adminMenus:', adminMenus.value)
       
-      // 自動展開包含當前路由的父菜單
-      const currentPath = route.path
+      // 從 sessionStorage 恢復 manuallyClosedMenus（防止組件重新創建時丟失）
+      manuallyClosedMenus = getManuallyClosedMenus()
+      
+      // 首先，無論什麼情況，都要確保被手動關閉的子菜單保持關閉狀態
+      // 強制關閉所有在 manuallyClosedMenus 中的子菜單
+      if (manuallyClosedMenus.size > 0) {
+        manuallyClosedMenus.forEach((menuId) => {
+          const index = expandedMenus.value.indexOf(menuId)
+          if (index > -1) {
+            expandedMenus.value.splice(index, 1)
+          }
+        })
+      }
+      
+      // 檢查當前路由是否屬於被手動關閉的子菜單
+      let isCurrentRouteInClosedSubmenu = false
       for (const menu of adminMenus.value) {
-        if (menu.children) {
-          const hasActiveChild = menu.children.some(c => c.url === currentPath)
-          if (hasActiveChild && !expandedMenus.value.includes(menu.id)) {
-            expandedMenus.value.push(menu.id)
+        if (manuallyClosedMenus.has(menu.id) && isChildOfMenu(menu)) {
+          isCurrentRouteInClosedSubmenu = true
+          break
+        }
+      }
+      
+      // 如果當前路由屬於被手動關閉的子菜單，絕對不自動展開
+      if (isCurrentRouteInClosedSubmenu) {
+        return
+      }
+      
+      // 加載菜單後，檢查是否需要自動展開（只有在不是用戶手動操作且不是剛剛從子菜單導航的情況下）
+      // 並且跳過被手動關閉的子菜單
+      if (!isUserClicking && !justNavigatedFromSubmenu) {
+        const currentPath = route.path
+        for (const menu of adminMenus.value) {
+          if (menu.children) {
+            const hasActiveChild = menu.children.some(c => c.url === currentPath)
+            // 只有在子菜單不在 manuallyClosedMenus 中時才自動展開
+            if (hasActiveChild && !manuallyClosedMenus.has(menu.id) && !expandedMenus.value.includes(menu.id)) {
+              expandedMenus.value.push(menu.id)
+            }
           }
         }
       }
@@ -164,18 +253,60 @@ const handleLogout = async () => {
 
 // 監聽路由變化，自動展開包含當前路由的父菜單
 watch(() => route.path, (newPath, oldPath) => {
-  // 如果用戶正在手動操作，不自動展開或關閉
-  if (isUserClicking) {
+  // 首先，無論什麼情況，都要確保被手動關閉的子菜單保持關閉狀態
+  manuallyClosedMenus.forEach((menuId) => {
+    const index = expandedMenus.value.indexOf(menuId)
+    if (index > -1) {
+      expandedMenus.value.splice(index, 1)
+    }
+  })
+  
+  // 檢查當前路由是否屬於被手動關閉的子菜單
+  let isCurrentRouteInClosedSubmenu = false
+  for (const menu of adminMenus.value) {
+    if (manuallyClosedMenus.has(menu.id) && isChildOfMenu(menu)) {
+      isCurrentRouteInClosedSubmenu = true
+      break
+    }
+  }
+  
+  // 如果當前路由屬於被手動關閉的子菜單，絕對不自動展開
+  if (isCurrentRouteInClosedSubmenu) {
     return
   }
   
-  // 只有在頁面首次加載時（oldPath 為 undefined）或非手動導航時才自動展開
-  // 自動展開包含當前路由的父菜單
+  // 如果用戶正在手動操作或剛剛從子菜單導航，不自動展開或關閉
+  if (isUserClicking || justNavigatedFromSubmenu) {
+    return
+  }
+  
+  // 如果 oldPath 存在且不是根路徑，說明這是導航操作，不自動展開
+  if (oldPath !== undefined && oldPath !== null && oldPath !== '/') {
+    return
+  }
+  
+  // 只有在頁面首次加載時（oldPath 為 undefined 或 null）才自動展開
+  // 自動展開包含當前路由的父菜單（僅在首次加載時），但跳過被手動關閉的子菜單
+  let foundActiveMenu = false
   for (const menu of adminMenus.value) {
     if (menu.children) {
       const hasActiveChild = menu.children.some(c => c.url === newPath)
-      if (hasActiveChild && !expandedMenus.value.includes(menu.id)) {
-        expandedMenus.value.push(menu.id)
+      // 只有在子菜單不在 manuallyClosedMenus 中時才自動展開
+      if (hasActiveChild && !manuallyClosedMenus.has(menu.id)) {
+        if (!expandedMenus.value.includes(menu.id)) {
+          expandedMenus.value.push(menu.id)
+        }
+        foundActiveMenu = true
+      }
+    }
+  }
+  
+  // 如果當前路由不屬於任何子菜單，關閉所有子菜單（但保留被手動關閉的記錄）
+  if (!foundActiveMenu) {
+    // 只有在子菜單當前打開時才關閉
+    for (const menu of adminMenus.value) {
+      if (menu.children && expandedMenus.value.includes(menu.id)) {
+        expandedMenus.value.splice(expandedMenus.value.indexOf(menu.id), 1)
       }
     }
   }
@@ -218,19 +349,25 @@ onUnmounted(() => {
   gap: 2rem;
 }
 
-.navbar-title {
-  flex-shrink: 0;
-}
-
 .title-link {
   text-decoration: none;
   color: white;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
-.title-link h2 {
-  margin: 0;
+.logo-image {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  border-radius: 50%;
+}
+
+.logo-text {
   font-size: 1.5rem;
   font-weight: 700;
+  color: white;
 }
 
 .navbar-menu {

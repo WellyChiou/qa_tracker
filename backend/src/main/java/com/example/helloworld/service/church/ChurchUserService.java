@@ -2,8 +2,10 @@ package com.example.helloworld.service.church;
 
 import com.example.helloworld.entity.church.ChurchUser;
 import com.example.helloworld.entity.church.ChurchRole;
+import com.example.helloworld.entity.church.ChurchPermission;
 import com.example.helloworld.repository.church.ChurchUserRepository;
 import com.example.helloworld.repository.church.ChurchRoleRepository;
+import com.example.helloworld.repository.church.ChurchPermissionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -19,6 +21,9 @@ public class ChurchUserService {
 
     @Autowired
     private ChurchRoleRepository churchRoleRepository;
+
+    @Autowired
+    private ChurchPermissionRepository churchPermissionRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -37,7 +42,24 @@ public class ChurchUserService {
      */
     @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
     public Optional<ChurchUser> getUserByUid(String uid) {
-        return churchUserRepository.findByUid(uid);
+        Optional<ChurchUser> userOpt = churchUserRepository.findByUidWithRolesAndPermissions(uid);
+        if (userOpt.isPresent()) {
+            ChurchUser user = userOpt.get();
+            // 確保在事務內初始化所有懶加載的關聯
+            if (user.getRoles() != null) {
+                user.getRoles().size();
+                // 初始化角色的權限
+                for (var role : user.getRoles()) {
+                    if (role.getPermissions() != null) {
+                        role.getPermissions().size();
+                    }
+                }
+            }
+            if (user.getPermissions() != null) {
+                user.getPermissions().size();
+            }
+        }
+        return userOpt;
     }
 
     /**
@@ -89,7 +111,23 @@ public class ChurchUserService {
             user.setUid(UUID.randomUUID().toString());
         }
 
-        return churchUserRepository.save(user);
+        ChurchUser saved = churchUserRepository.save(user);
+        
+        // 確保在事務內初始化所有懶加載的關聯
+        if (saved.getRoles() != null) {
+            saved.getRoles().size();
+            // 初始化角色的權限
+            for (var role : saved.getRoles()) {
+                if (role.getPermissions() != null) {
+                    role.getPermissions().size();
+                }
+            }
+        }
+        if (saved.getPermissions() != null) {
+            saved.getPermissions().size();
+        }
+        
+        return saved;
     }
 
     /**
@@ -141,7 +179,23 @@ public class ChurchUserService {
             existing.setPermissions(userUpdate.getPermissions());
         }
 
-        return churchUserRepository.save(existing);
+        ChurchUser saved = churchUserRepository.save(existing);
+        
+        // 確保在事務內初始化所有懶加載的關聯
+        if (saved.getRoles() != null) {
+            saved.getRoles().size();
+            // 初始化角色的權限
+            for (var role : saved.getRoles()) {
+                if (role.getPermissions() != null) {
+                    role.getPermissions().size();
+                }
+            }
+        }
+        if (saved.getPermissions() != null) {
+            saved.getPermissions().size();
+        }
+        
+        return saved;
     }
 
     /**
@@ -168,7 +222,57 @@ public class ChurchUserService {
         }
 
         user.setRoles(roles);
-        return churchUserRepository.save(user);
+        ChurchUser saved = churchUserRepository.save(user);
+        
+        // 確保在事務內初始化所有懶加載的關聯
+        if (saved.getRoles() != null) {
+            saved.getRoles().size();
+            // 初始化角色的權限
+            for (var role : saved.getRoles()) {
+                if (role.getPermissions() != null) {
+                    role.getPermissions().size();
+                }
+            }
+        }
+        if (saved.getPermissions() != null) {
+            saved.getPermissions().size();
+        }
+        
+        return saved;
+    }
+
+    /**
+     * 為用戶分配權限
+     */
+    @Transactional(transactionManager = "churchTransactionManager")
+    public ChurchUser assignPermissions(String uid, List<Long> permissionIds) {
+        ChurchUser user = churchUserRepository.findByUid(uid)
+            .orElseThrow(() -> new RuntimeException("用戶不存在: " + uid));
+
+        Set<ChurchPermission> permissions = new HashSet<>();
+        for (Long permissionId : permissionIds) {
+            ChurchPermission permission = churchPermissionRepository.findById(permissionId)
+                .orElseThrow(() -> new RuntimeException("權限不存在: " + permissionId));
+            permissions.add(permission);
+        }
+
+        user.setPermissions(permissions);
+        ChurchUser saved = churchUserRepository.save(user);
+        
+        // 確保在事務內初始化所有懶加載的關聯
+        if (saved.getRoles() != null) {
+            saved.getRoles().size();
+            for (var role : saved.getRoles()) {
+                if (role.getPermissions() != null) {
+                    role.getPermissions().size();
+                }
+            }
+        }
+        if (saved.getPermissions() != null) {
+            saved.getPermissions().size();
+        }
+        
+        return saved;
     }
 }
 

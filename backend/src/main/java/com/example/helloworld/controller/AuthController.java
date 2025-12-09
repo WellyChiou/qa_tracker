@@ -3,21 +3,18 @@ package com.example.helloworld.controller;
 import com.example.helloworld.entity.User;
 import com.example.helloworld.repository.UserRepository;
 import com.example.helloworld.service.MenuService;
+import com.example.helloworld.service.TokenBlacklistService;
+import com.example.helloworld.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -40,6 +37,12 @@ public class AuthController {
 
     @Autowired
     private MenuService menuService;
+
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    @Autowired
+    private TokenBlacklistService tokenBlacklistService;
 
     /**
      * 獲取當前登入用戶資訊
@@ -87,15 +90,6 @@ public class AuthController {
                 new UsernamePasswordAuthenticationToken(username, password)
             );
 
-            // 設置 SecurityContext 並保存到 session
-            SecurityContext securityContext = SecurityContextHolder.getContext();
-            securityContext.setAuthentication(authentication);
-            
-            // 確保 session 創建並保存 SecurityContext
-            HttpSession session = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes())
-                .getRequest().getSession(true);
-            session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, securityContext);
-
             // 更新最後登入時間
             User user = userRepository.findByUsername(username).orElse(null);
             if (user != null) {
@@ -103,10 +97,23 @@ public class AuthController {
                 userRepository.save(user);
             }
 
+            // 生成 Access Token
+            String accessToken = jwtUtil.generatePersonalAccessToken(username);
+            
+            // 生成 Refresh Token（如果啟用）
+            String refreshToken = jwtUtil.generatePersonalRefreshToken(username);
+
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "登入成功");
             response.put("username", username);
+            response.put("accessToken", accessToken);
+            response.put("tokenType", "Bearer");
+            
+            // 只有當 Refresh Token 啟用時才返回
+            if (refreshToken != null) {
+                response.put("refreshToken", refreshToken);
+            }
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -118,18 +125,70 @@ public class AuthController {
     }
 
     /**
-     * 登出
+     * 刷新 Access Token
+     */
+    @PostMapping("/refresh")
+    public ResponseEntity<Map<String, Object>> refreshToken(@RequestBody Map<String, String> request) {
+        try {
+            String refreshToken = request.get("refreshToken");
+            if (refreshToken == null || refreshToken.isEmpty()) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("success", false);
+                error.put("message", "Refresh Token 不能為空");
+                return ResponseEntity.badRequest().body(error);
+            }
+
+            // 驗證 Refresh Token
+            String username = jwtUtil.extractUsername(refreshToken);
+            String system = jwtUtil.extractSystem(refreshToken);
+            
+            if (!"personal".equals(system)) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("success", false);
+                error.put("message", "無效的 Refresh Token");
+                return ResponseEntity.badRequest().body(error);
+            }
+
+            Boolean isValid = jwtUtil.validatePersonalRefreshToken(refreshToken, username);
+            if (!isValid) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("success", false);
+                error.put("message", "Refresh Token 無效或已過期");
+                return ResponseEntity.badRequest().body(error);
+            }
+
+            // 生成新的 Access Token
+            String newAccessToken = jwtUtil.generatePersonalAccessToken(username);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("accessToken", newAccessToken);
+            response.put("tokenType", "Bearer");
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("message", "刷新 Token 失敗: " + e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    /**
+     * 登出（將 Token 加入黑名單）
      */
     @PostMapping("/logout")
     public ResponseEntity<Map<String, Object>> logout(HttpServletRequest request) {
+        // 從 Authorization header 提取 Token
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            // 將 Token 加入黑名單
+            tokenBlacklistService.addToBlacklist(token);
+        }
+        
         // 清除 SecurityContext
         SecurityContextHolder.clearContext();
-        
-        // 使 session 無效
-        HttpSession session = request.getSession(false);
-        if (session != null) {
-            session.invalidate();
-        }
         
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);

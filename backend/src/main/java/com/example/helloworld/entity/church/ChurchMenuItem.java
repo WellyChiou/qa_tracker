@@ -42,6 +42,9 @@ public class ChurchMenuItem {
     @Column(name = "description", length = 255)
     private String description;
 
+    @Column(name = "show_in_dashboard")
+    private Boolean showInDashboard = true; // 是否在儀表板快速訪問中顯示
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
@@ -92,6 +95,9 @@ public class ChurchMenuItem {
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+
+    public Boolean getShowInDashboard() { return showInDashboard; }
+    public void setShowInDashboard(Boolean showInDashboard) { this.showInDashboard = showInDashboard; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

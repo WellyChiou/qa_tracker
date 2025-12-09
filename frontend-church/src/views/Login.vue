@@ -106,10 +106,10 @@ const handleLogin = async () => {
     // 確保認證狀態已更新
     await new Promise(resolve => setTimeout(resolve, 100))
     
-    // 驗證認證狀態
+    // 驗證認證狀態（強制刷新，不使用緩存）
     let isAuthenticated = false
     for (let i = 0; i < 3; i++) {
-      isAuthenticated = await checkAuth()
+      isAuthenticated = await checkAuth(true) // 強制刷新
       if (isAuthenticated) {
         break
       }

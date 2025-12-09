@@ -18,9 +18,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class ServiceScheduleService {
@@ -49,10 +51,30 @@ public class ServiceScheduleService {
 
         // 2. 如果有服事表數據，保存到關聯表
         if (scheduleData != null && !scheduleData.isEmpty()) {
-            // 2.1 預先載入所有需要的 Position 和 Person（減少資料庫查詢）
-            String[] positionCodes = {"computer", "sound", "light", "live"};
+            // 2.1 動態提取所有崗位代碼（從 scheduleData 中）
+            Set<String> positionCodeSet = new HashSet<>();
+            for (Map<String, Object> item : scheduleData) {
+                for (String key : item.keySet()) {
+                    if (key.endsWith("Id") && !key.equals("date")) {
+                        String positionCode = key.substring(0, key.length() - 2);
+                        positionCodeSet.add(positionCode);
+                    } else if (!key.equals("date") && !key.equals("formattedDate") && !key.equals("dayOfWeek")) {
+                        // 檢查是否為崗位名稱（不是以 Id 結尾，也不是日期相關欄位）
+                        // 如果該 key 對應的值是字符串（人員名稱），則可能是崗位代碼
+                        Object value = item.get(key);
+                        if (value instanceof String && !value.toString().trim().isEmpty()) {
+                            // 檢查是否有對應的 Id 欄位，如果沒有，則可能是崗位代碼
+                            if (!item.containsKey(key + "Id")) {
+                                positionCodeSet.add(key);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // 2.2 預先載入所有需要的 Position 和 Person（減少資料庫查詢）
             Map<String, Position> positionMap = new HashMap<>();
-            for (String positionCode : positionCodes) {
+            for (String positionCode : positionCodeSet) {
                 positionRepository.findByPositionCode(positionCode)
                     .ifPresent(position -> positionMap.put(positionCode, position));
             }
@@ -71,7 +93,7 @@ public class ServiceScheduleService {
                 }
             }
 
-            // 2.2 批量創建所有實體
+            // 2.3 批量創建所有實體
             List<ServiceScheduleDate> datesToSave = new ArrayList<>();
             List<ServiceSchedulePositionConfig> configsToSave = new ArrayList<>();
             List<ServiceScheduleAssignment> assignmentsToSave = new ArrayList<>();
@@ -86,7 +108,7 @@ public class ServiceScheduleService {
                     datesToSave.add(scheduleDate);
 
                     // 保存崗位配置和人員分配
-                    for (String positionCode : positionCodes) {
+                    for (String positionCode : positionCodeSet) {
                         // 優先使用 ID，如果沒有 ID 則使用名稱（向後兼容）
                         Long personId = null;
                         Object personIdObj = item.get(positionCode + "Id");
@@ -224,8 +246,51 @@ public class ServiceScheduleService {
     /**
      * 獲取所有安排
      */
+    @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
     public List<ServiceSchedule> getAllSchedules() {
         return repository.findAllByOrderByCreatedAtDesc();
+    }
+    
+    /**
+     * 獲取所有安排（包含日期範圍信息）
+     */
+    @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
+    public List<Map<String, Object>> getAllSchedulesWithDateRange() {
+        List<ServiceSchedule> schedules = repository.findAllByOrderByCreatedAtDesc();
+        List<Map<String, Object>> result = new ArrayList<>();
+        
+        for (ServiceSchedule schedule : schedules) {
+            Map<String, Object> scheduleMap = new HashMap<>();
+            scheduleMap.put("id", schedule.getId());
+            scheduleMap.put("name", schedule.getName());
+            scheduleMap.put("createdAt", schedule.getCreatedAt());
+            scheduleMap.put("updatedAt", schedule.getUpdatedAt());
+            
+            // 計算日期範圍（在事務中訪問 LAZY 加載的 dates）
+            List<ServiceScheduleDate> dates = schedule.getDates();
+            if (dates != null && !dates.isEmpty()) {
+                LocalDate minDate = null;
+                LocalDate maxDate = null;
+                
+                for (ServiceScheduleDate date : dates) {
+                    if (minDate == null || date.getDate().isBefore(minDate)) {
+                        minDate = date.getDate();
+                    }
+                    if (maxDate == null || date.getDate().isAfter(maxDate)) {
+                        maxDate = date.getDate();
+                    }
+                }
+                
+                if (minDate != null && maxDate != null) {
+                    scheduleMap.put("startDate", minDate.toString());
+                    scheduleMap.put("endDate", maxDate.toString());
+                }
+            }
+            
+            result.add(scheduleMap);
+        }
+        
+        return result;
     }
 
     /**
@@ -249,10 +314,30 @@ public class ServiceScheduleService {
 
         // 4. 保存新的 dates 和人員分配（使用優化後的批量操作）
         if (scheduleData != null && !scheduleData.isEmpty()) {
-            // 4.1 預先載入所有需要的 Position 和 Person（減少資料庫查詢）
-            String[] positionCodes = {"computer", "sound", "light", "live"};
+            // 4.1 動態提取所有崗位代碼（從 scheduleData 中）
+            Set<String> positionCodeSet = new HashSet<>();
+            for (Map<String, Object> item : scheduleData) {
+                for (String key : item.keySet()) {
+                    if (key.endsWith("Id") && !key.equals("date")) {
+                        String positionCode = key.substring(0, key.length() - 2);
+                        positionCodeSet.add(positionCode);
+                    } else if (!key.equals("date") && !key.equals("formattedDate") && !key.equals("dayOfWeek")) {
+                        // 檢查是否為崗位名稱（不是以 Id 結尾，也不是日期相關欄位）
+                        // 如果該 key 對應的值是字符串（人員名稱），則可能是崗位代碼
+                        Object value = item.get(key);
+                        if (value instanceof String && !value.toString().trim().isEmpty()) {
+                            // 檢查是否有對應的 Id 欄位，如果沒有，則可能是崗位代碼
+                            if (!item.containsKey(key + "Id")) {
+                                positionCodeSet.add(key);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // 4.2 預先載入所有需要的 Position 和 Person（減少資料庫查詢）
             Map<String, Position> positionMap = new HashMap<>();
-            for (String positionCode : positionCodes) {
+            for (String positionCode : positionCodeSet) {
                 positionRepository.findByPositionCode(positionCode)
                     .ifPresent(position -> positionMap.put(positionCode, position));
             }
@@ -286,7 +371,7 @@ public class ServiceScheduleService {
                     datesToSave.add(scheduleDate);
 
                     // 保存崗位配置和人員分配
-                    for (String positionCode : positionCodes) {
+                    for (String positionCode : positionCodeSet) {
                         // 優先使用 ID，如果沒有 ID 則使用名稱（向後兼容）
                         Long personId = null;
                         Object personIdObj = item.get(positionCode + "Id");

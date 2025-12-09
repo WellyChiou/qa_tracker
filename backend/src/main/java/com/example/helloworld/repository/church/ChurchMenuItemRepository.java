@@ -21,5 +21,12 @@ public interface ChurchMenuItemRepository extends JpaRepository<ChurchMenuItem, 
     
     @Query("SELECT m FROM ChurchMenuItem m WHERE m.parentId = :parentId ORDER BY m.orderIndex ASC")
     List<ChurchMenuItem> findByParentIdOrderByOrderIndexAsc(@Param("parentId") Long parentId);
+    
+    @Query("SELECT m FROM ChurchMenuItem m WHERE m.menuType = :menuType AND m.isActive = :isActive AND m.showInDashboard = :showInDashboard AND m.parentId IS NULL ORDER BY m.orderIndex ASC")
+    List<ChurchMenuItem> findByMenuTypeAndIsActiveAndShowInDashboardAndParentIdIsNullOrderByOrderIndexAsc(
+        @Param("menuType") String menuType,
+        @Param("isActive") Boolean isActive,
+        @Param("showInDashboard") Boolean showInDashboard
+    );
 }
 
