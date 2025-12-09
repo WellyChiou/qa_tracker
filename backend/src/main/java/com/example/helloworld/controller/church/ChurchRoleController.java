@@ -4,7 +4,6 @@ import com.example.helloworld.entity.church.ChurchRole;
 import com.example.helloworld.service.church.ChurchRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -24,7 +23,6 @@ public class ChurchRoleController {
      * 獲取所有角色
      */
     @GetMapping
-    @PreAuthorize("hasAuthority('PERM_CHURCH_ADMIN')")
     public ResponseEntity<Map<String, Object>> getAllRoles() {
         try {
             List<ChurchRole> roles = churchRoleService.getAllRoles();
@@ -43,7 +41,6 @@ public class ChurchRoleController {
      * 根據 ID 獲取角色
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('PERM_CHURCH_ADMIN')")
     public ResponseEntity<Map<String, Object>> getRoleById(@PathVariable Long id) {
         try {
             Optional<ChurchRole> role = churchRoleService.getRoleById(id);
@@ -66,7 +63,6 @@ public class ChurchRoleController {
      * 創建角色
      */
     @PostMapping
-    @PreAuthorize("hasAuthority('PERM_CHURCH_ADMIN')")
     public ResponseEntity<Map<String, Object>> createRole(@RequestBody ChurchRole role) {
         try {
             ChurchRole created = churchRoleService.createRole(role);
@@ -87,7 +83,6 @@ public class ChurchRoleController {
      * 更新角色
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('PERM_CHURCH_ADMIN')")
     public ResponseEntity<Map<String, Object>> updateRole(@PathVariable Long id, @RequestBody ChurchRole role) {
         try {
             ChurchRole updated = churchRoleService.updateRole(id, role);
@@ -108,7 +103,6 @@ public class ChurchRoleController {
      * 刪除角色
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('PERM_CHURCH_ADMIN')")
     public ResponseEntity<Map<String, Object>> deleteRole(@PathVariable Long id) {
         try {
             churchRoleService.deleteRole(id);
@@ -128,13 +122,26 @@ public class ChurchRoleController {
      * 為角色分配權限
      */
     @PostMapping("/{id}/permissions")
-    @PreAuthorize("hasAuthority('PERM_CHURCH_ADMIN')")
     public ResponseEntity<Map<String, Object>> assignPermissions(
             @PathVariable Long id, 
             @RequestBody Map<String, Object> request) {
         try {
             @SuppressWarnings("unchecked")
-            List<Long> permissionIds = (List<Long>) request.get("permissionIds");
+            List<?> permissionIdsRaw = (List<?>) request.get("permissionIds");
+            // 將 Integer 或 Long 轉換為 Long，處理 JSON 解析後的類型問題
+            List<Long> permissionIds = permissionIdsRaw.stream()
+                .map(idValue -> {
+                    if (idValue instanceof Long) {
+                        return (Long) idValue;
+                    } else if (idValue instanceof Integer) {
+                        return ((Integer) idValue).longValue();
+                    } else if (idValue instanceof Number) {
+                        return ((Number) idValue).longValue();
+                    } else {
+                        throw new IllegalArgumentException("無效的權限 ID 類型: " + idValue.getClass().getName());
+                    }
+                })
+                .collect(java.util.stream.Collectors.toList());
             ChurchRole role = churchRoleService.assignPermissions(id, permissionIds);
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);

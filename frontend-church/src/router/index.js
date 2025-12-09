@@ -28,8 +28,8 @@ const routes = [
     component: () => import('@/views/ServiceSchedule.vue')
   },
   {
-    path: '/login',
-    name: 'Login',
+    path: '/admin/login',
+    name: 'AdminLogin',
     component: () => import('@/views/Login.vue')
   },
   {
@@ -85,6 +85,36 @@ const routes = [
     name: 'AdminUrlPermissions',
     component: () => import('@/views/admin/UrlPermissions.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/admin/church-info',
+    name: 'AdminChurchInfo',
+    component: () => import('@/views/admin/ChurchInfo.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/admin/about-info',
+    name: 'AdminAboutInfo',
+    component: () => import('@/views/admin/AboutInfo.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/admin/activities',
+    name: 'AdminActivities',
+    component: () => import('@/views/admin/Activities.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/admin/contact-submissions',
+    name: 'AdminContactSubmissions',
+    component: () => import('@/views/admin/ContactSubmissions.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/admin/scheduled-jobs',
+    name: 'AdminScheduledJobs',
+    component: () => import('@/views/admin/ScheduledJobs.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 
@@ -102,7 +132,7 @@ router.beforeEach(async (to, from, next) => {
     const isAuthenticated = await checkAuth()
     if (!isAuthenticated) {
       // 未登入，導向登入頁面
-      next({ path: '/login', query: { redirect: to.fullPath } })
+      next({ path: '/admin/login', query: { redirect: to.fullPath } })
     } else {
       next()
     }

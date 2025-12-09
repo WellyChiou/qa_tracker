@@ -45,7 +45,9 @@ services:
       LINE_BOT_WEBHOOK_URL: https://wc-project.duckdns.org/api/line/webhook
       LINE_BOT_DAILY_REMINDER_ENABLED: true
       LINE_BOT_DAILY_REMINDER_TIME: 20:00
-      LINE_BOT_ADMIN_USER_ID: 
+      LINE_BOT_ADMIN_USER_ID:
+      # 教會 LINE 群組 ID（用於發送服事人員通知）
+      LINE_BOT_CHURCH_GROUP_ID: C071b4e00e51f0ad1907abffb497c2795 
       # JWT 配置
       JWT_SECRET: F/cPluFKK3/44X5iX9GdY6P7Ye+BIDdBTw6uljBTl9o=
       JWT_ACCESS_TOKEN_EXPIRATION: 900000

@@ -4,7 +4,6 @@ import com.example.helloworld.entity.church.ChurchMenuItem;
 import com.example.helloworld.service.church.ChurchMenuService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -51,7 +50,6 @@ public class ChurchMenuController {
      * 獲取所有菜單項（管理用，需要管理權限）
      */
     @GetMapping
-    @PreAuthorize("hasAuthority('PERM_CHURCH_ADMIN')")
     public ResponseEntity<List<ChurchMenuItem>> getAllMenuItems() {
         List<ChurchMenuItem> menus = churchMenuService.getAllMenuItems();
         return ResponseEntity.ok(menus);
@@ -61,7 +59,6 @@ public class ChurchMenuController {
      * 根據 ID 獲取菜單項
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('PERM_CHURCH_ADMIN')")
     public ResponseEntity<ChurchMenuItem> getMenuItemById(@PathVariable Long id) {
         return churchMenuService.getMenuItemById(id)
             .map(ResponseEntity::ok)
@@ -72,7 +69,6 @@ public class ChurchMenuController {
      * 創建菜單項
      */
     @PostMapping
-    @PreAuthorize("hasAuthority('PERM_CHURCH_ADMIN')")
     public ResponseEntity<Map<String, Object>> createMenuItem(@RequestBody ChurchMenuItem menuItem) {
         try {
             ChurchMenuItem created = churchMenuService.createMenuItem(menuItem);
@@ -93,7 +89,6 @@ public class ChurchMenuController {
      * 更新菜單項
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('PERM_CHURCH_ADMIN')")
     public ResponseEntity<Map<String, Object>> updateMenuItem(@PathVariable Long id, @RequestBody ChurchMenuItem menuItem) {
         try {
             ChurchMenuItem updated = churchMenuService.updateMenuItem(id, menuItem);
@@ -114,7 +109,6 @@ public class ChurchMenuController {
      * 刪除菜單項
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('PERM_CHURCH_ADMIN')")
     public ResponseEntity<Map<String, Object>> deleteMenuItem(@PathVariable Long id) {
         try {
             churchMenuService.deleteMenuItem(id);

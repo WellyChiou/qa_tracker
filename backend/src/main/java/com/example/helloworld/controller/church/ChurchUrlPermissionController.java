@@ -4,7 +4,6 @@ import com.example.helloworld.entity.church.ChurchUrlPermission;
 import com.example.helloworld.service.church.ChurchUrlPermissionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -24,7 +23,6 @@ public class ChurchUrlPermissionController {
      * 獲取所有 URL 權限配置
      */
     @GetMapping
-    @PreAuthorize("hasAuthority('PERM_CHURCH_ADMIN')")
     public ResponseEntity<Map<String, Object>> getAllPermissions() {
         try {
             List<ChurchUrlPermission> permissions = churchUrlPermissionService.getAllPermissions();
@@ -43,7 +41,6 @@ public class ChurchUrlPermissionController {
      * 根據 ID 獲取 URL 權限配置
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('PERM_CHURCH_ADMIN')")
     public ResponseEntity<Map<String, Object>> getPermissionById(@PathVariable Long id) {
         try {
             Optional<ChurchUrlPermission> permission = churchUrlPermissionService.getPermissionById(id);
@@ -66,7 +63,6 @@ public class ChurchUrlPermissionController {
      * 創建 URL 權限配置
      */
     @PostMapping
-    @PreAuthorize("hasAuthority('PERM_CHURCH_ADMIN')")
     public ResponseEntity<Map<String, Object>> createPermission(@RequestBody ChurchUrlPermission permission) {
         try {
             ChurchUrlPermission created = churchUrlPermissionService.createPermission(permission);
@@ -87,7 +83,6 @@ public class ChurchUrlPermissionController {
      * 更新 URL 權限配置
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('PERM_CHURCH_ADMIN')")
     public ResponseEntity<Map<String, Object>> updatePermission(@PathVariable Long id, @RequestBody ChurchUrlPermission permission) {
         try {
             ChurchUrlPermission updated = churchUrlPermissionService.updatePermission(id, permission);
@@ -108,7 +103,6 @@ public class ChurchUrlPermissionController {
      * 刪除 URL 權限配置
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('PERM_CHURCH_ADMIN')")
     public ResponseEntity<Map<String, Object>> deletePermission(@PathVariable Long id) {
         try {
             churchUrlPermissionService.deletePermission(id);

@@ -2,7 +2,7 @@ package com.example.helloworld.controller.church;
 
 import com.example.helloworld.entity.church.ChurchUser;
 import com.example.helloworld.repository.church.ChurchUserRepository;
-import com.example.helloworld.service.TokenBlacklistService;
+import com.example.helloworld.service.personal.TokenBlacklistService;
 import com.example.helloworld.service.church.ChurchMenuService;
 import com.example.helloworld.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -56,7 +56,7 @@ const displayMenus = computed(() => {
 
 // 判斷是否為後台路由或登入頁面（這些頁面不需要顯示前台的 navbar 和 footer）
 const isAdminRoute = computed(() => {
-  return route.path.startsWith('/admin') || route.path === '/login'
+  return route.path.startsWith('/admin')
 })
 
 // 初始化 loading 系統（註冊回調到 API 服務）

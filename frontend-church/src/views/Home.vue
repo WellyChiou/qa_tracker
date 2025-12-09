@@ -8,13 +8,22 @@
       </div>
     </section>
 
-    <!-- 主日崇拜資訊 -->
+    <!-- 聚會時間資訊 -->
     <section class="section" v-if="churchInfo">
       <div class="container">
-        <div class="card">
-          <h2>主日崇拜</h2>
-          <p><strong>時間：</strong>{{ churchInfo.home_main_service_time || '每週日上午 10:00' }}</p>
-          <p><strong>地點：</strong>{{ churchInfo.home_main_service_location || '榮耀堂' }}</p>
+        <div class="services-grid">
+          <!-- 禮拜六晚崇聚會 -->
+          <div class="card" v-if="churchInfo.home_saturday_service_time || churchInfo.home_saturday_service_location">
+            <h2>晚崇聚會</h2>
+            <p v-if="churchInfo.home_saturday_service_time"><strong>時間：</strong>{{ churchInfo.home_saturday_service_time }}</p>
+            <p v-if="churchInfo.home_saturday_service_location"><strong>地點：</strong>{{ churchInfo.home_saturday_service_location }}</p>
+          </div>
+          <!-- 主日崇拜 -->
+          <div class="card">
+            <h2>主日崇拜</h2>
+            <p><strong>時間：</strong>{{ churchInfo.home_main_service_time || '每週日上午 10:00' }}</p>
+            <p><strong>地點：</strong>{{ churchInfo.home_main_service_location || '榮耀堂' }}</p>
+          </div>
         </div>
       </div>
     </section>
@@ -206,6 +215,12 @@ onMounted(() => {
 .card p {
   margin-bottom: 0.5rem;
   line-height: 1.6;
+}
+
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
 }
 
 .activities-grid {

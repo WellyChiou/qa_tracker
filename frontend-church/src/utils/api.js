@@ -199,3 +199,113 @@ export async function apiRequest(url, options = {}, loadingMessage = '載入中.
   }
 }
 
+/**
+ * 教會排程管理 API
+ */
+export async function getChurchScheduledJobs() {
+  const response = await apiRequest('/church/scheduled-jobs', {
+    method: 'GET'
+  }, '載入任務中...', true)
+  if (!response.ok) {
+    throw new Error('載入任務失敗')
+  }
+  return await response.json()
+}
+
+export async function getChurchScheduledJobById(id) {
+  const response = await apiRequest(`/church/scheduled-jobs/${id}`, {
+    method: 'GET'
+  }, '', true)
+  if (!response.ok) {
+    throw new Error('載入任務失敗')
+  }
+  return await response.json()
+}
+
+export async function createChurchScheduledJob(job) {
+  const response = await apiRequest('/church/scheduled-jobs', {
+    method: 'POST',
+    body: JSON.stringify(job)
+  }, '建立中...', true)
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(errorText || '建立任務失敗')
+  }
+  return await response.json()
+}
+
+export async function updateChurchScheduledJob(id, job) {
+  const response = await apiRequest(`/church/scheduled-jobs/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(job)
+  }, '更新中...', true)
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(errorText || '更新任務失敗')
+  }
+  return await response.json()
+}
+
+export async function deleteChurchScheduledJob(id) {
+  const response = await apiRequest(`/church/scheduled-jobs/${id}`, {
+    method: 'DELETE'
+  }, '刪除中...', true)
+  if (!response.ok) {
+    throw new Error('刪除任務失敗')
+  }
+}
+
+export async function executeChurchScheduledJob(id) {
+  const response = await apiRequest(`/church/scheduled-jobs/${id}/execute`, {
+    method: 'POST'
+  }, '執行中...', true)
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(errorText || '執行任務失敗')
+  }
+  return await response.json()
+}
+
+export async function toggleChurchScheduledJob(id, enabled) {
+  const response = await apiRequest(`/church/scheduled-jobs/${id}/toggle?enabled=${enabled}`, {
+    method: 'PUT'
+  }, '更新中...', true)
+  if (!response.ok) {
+    throw new Error('切換狀態失敗')
+  }
+  return await response.json()
+}
+
+export async function getChurchJobExecutions(jobId) {
+  const response = await apiRequest(`/church/scheduled-jobs/${jobId}/executions`, {
+    method: 'GET'
+  }, '載入記錄中...', true)
+  if (!response.ok) {
+    throw new Error('載入執行記錄失敗')
+  }
+  return await response.json()
+}
+
+export async function getChurchLatestJobExecution(jobId) {
+  const response = await apiRequest(`/church/scheduled-jobs/${jobId}/executions/latest`, {
+    method: 'GET'
+  }, '', true)
+  if (response.status === 404) {
+    return null
+  }
+  if (!response.ok) {
+    throw new Error('載入執行狀態失敗')
+  }
+  return await response.json()
+}
+
+export async function getChurchJobExecutionById(executionId) {
+  const response = await apiRequest(`/church/scheduled-jobs/executions/${executionId}`, {
+    method: 'GET'
+  }, '', true)
+  if (!response.ok) {
+    throw new Error('載入執行記錄失敗')
+  }
+  return await response.json()
+}
+

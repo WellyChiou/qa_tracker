@@ -24,6 +24,9 @@ public class LineBotConfig {
     @Value("${line.bot.admin-user-id:}")
     private String adminUserId;
 
+    @Value("${line.bot.church-group-id:}")
+    private String churchGroupId;
+
     // Getters for configuration values
     public String getChannelToken() {
         return channelToken;
@@ -47,6 +50,10 @@ public class LineBotConfig {
 
     public String getAdminUserId() {
         return adminUserId;
+    }
+
+    public String getChurchGroupId() {
+        return churchGroupId;
     }
 
     /**

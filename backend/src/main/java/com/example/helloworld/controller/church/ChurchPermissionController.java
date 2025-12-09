@@ -4,7 +4,6 @@ import com.example.helloworld.entity.church.ChurchPermission;
 import com.example.helloworld.service.church.ChurchPermissionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -24,7 +23,6 @@ public class ChurchPermissionController {
      * 獲取所有權限
      */
     @GetMapping
-    @PreAuthorize("hasAuthority('PERM_CHURCH_ADMIN')")
     public ResponseEntity<Map<String, Object>> getAllPermissions() {
         try {
             List<ChurchPermission> permissions = churchPermissionService.getAllPermissions();
@@ -43,7 +41,6 @@ public class ChurchPermissionController {
      * 根據 ID 獲取權限
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('PERM_CHURCH_ADMIN')")
     public ResponseEntity<Map<String, Object>> getPermissionById(@PathVariable Long id) {
         try {
             Optional<ChurchPermission> permission = churchPermissionService.getPermissionById(id);
@@ -66,7 +63,6 @@ public class ChurchPermissionController {
      * 根據資源獲取權限
      */
     @GetMapping("/resource/{resource}")
-    @PreAuthorize("hasAuthority('PERM_CHURCH_ADMIN')")
     public ResponseEntity<Map<String, Object>> getPermissionsByResource(@PathVariable String resource) {
         try {
             List<ChurchPermission> permissions = churchPermissionService.getPermissionsByResource(resource);
@@ -85,7 +81,6 @@ public class ChurchPermissionController {
      * 創建權限
      */
     @PostMapping
-    @PreAuthorize("hasAuthority('PERM_CHURCH_ADMIN')")
     public ResponseEntity<Map<String, Object>> createPermission(@RequestBody ChurchPermission permission) {
         try {
             ChurchPermission created = churchPermissionService.createPermission(permission);
@@ -106,7 +101,6 @@ public class ChurchPermissionController {
      * 更新權限
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('PERM_CHURCH_ADMIN')")
     public ResponseEntity<Map<String, Object>> updatePermission(@PathVariable Long id, @RequestBody ChurchPermission permission) {
         try {
             ChurchPermission updated = churchPermissionService.updatePermission(id, permission);
@@ -127,7 +121,6 @@ public class ChurchPermissionController {
      * 刪除權限
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('PERM_CHURCH_ADMIN')")
     public ResponseEntity<Map<String, Object>> deletePermission(@PathVariable Long id) {
         try {
             churchPermissionService.deletePermission(id);

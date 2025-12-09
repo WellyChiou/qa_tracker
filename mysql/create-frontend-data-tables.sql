@@ -90,7 +90,10 @@ INSERT IGNORE INTO church_info (info_key, info_value, display_order) VALUES
 ('home_welcome_title', '歡迎來到極光教會-PLC', 10),
 ('home_welcome_subtitle', '讓我們在基督的愛及聖經真理中成長茁壯', 11),
 ('home_main_service_time', '主日崇拜：每週日上午 10:00', 12),
-('home_main_service_location', '榮耀堂', 13);
+('home_main_service_location', '榮耀堂', 13),
+-- 禮拜六晚崇聚會資訊
+('home_saturday_service_time', '晚崇聚會：每週六晚上 7:00', 14),
+('home_saturday_service_location', '教會大堂', 15);
 
 -- 插入關於我們資訊
 INSERT IGNORE INTO about_info (section_key, title, content, display_order) VALUES

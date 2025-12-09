@@ -11,5 +11,6 @@ import java.util.Optional;
 public interface ChurchInfoRepository extends JpaRepository<ChurchInfo, Long> {
     Optional<ChurchInfo> findByInfoKey(String infoKey);
     List<ChurchInfo> findByIsActiveTrueOrderByDisplayOrderAsc();
+    List<ChurchInfo> findAllByOrderByDisplayOrderAsc();
 }
 

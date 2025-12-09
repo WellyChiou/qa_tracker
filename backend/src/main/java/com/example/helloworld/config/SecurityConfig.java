@@ -2,7 +2,7 @@ package com.example.helloworld.config;
 
 import com.example.helloworld.filter.JwtAuthenticationFilter;
 import com.example.helloworld.filter.UrlPermissionFilter;
-import com.example.helloworld.service.CustomUserDetailsService;
+import com.example.helloworld.service.personal.CustomUserDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

@@ -11,5 +11,6 @@ import java.util.List;
 public interface ActivityRepository extends JpaRepository<Activity, Long> {
     List<Activity> findByIsActiveTrueOrderByActivityDateAsc();
     List<Activity> findByActivityDateGreaterThanEqualAndIsActiveTrueOrderByActivityDateAsc(LocalDate date);
+    List<Activity> findAllByOrderByActivityDateAsc();
 }
 

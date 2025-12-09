@@ -1,9 +1,10 @@
 package com.example.helloworld.filter;
 
-import com.example.helloworld.entity.UrlPermission;
+import com.example.helloworld.entity.personal.UrlPermission;
 import com.example.helloworld.entity.church.ChurchUrlPermission;
-import com.example.helloworld.service.UrlPermissionService;
+import com.example.helloworld.service.personal.UrlPermissionService;
 import com.example.helloworld.service.church.ChurchUrlPermissionService;
+import com.example.helloworld.service.church.ChurchPermissionService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -32,6 +33,9 @@ public class UrlPermissionFilter extends OncePerRequestFilter {
 
     @Autowired(required = false)
     private ChurchUrlPermissionService churchUrlPermissionService;
+
+    @Autowired(required = false)
+    private ChurchPermissionService churchPermissionService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -118,9 +122,17 @@ public class UrlPermissionFilter extends OncePerRequestFilter {
                             // 檢查權限（如果需要）
                             if (cp.getRequiredPermission() != null && !cp.getRequiredPermission().isEmpty()) {
                                 Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
-                                String permissionCode = "PERM_" + cp.getRequiredPermission();
+                                
+                                // required_permission 存儲的是權限代碼（CODE），需要加上 PERM_ 前綴
+                                String permissionCode = cp.getRequiredPermission();
+                                // 如果已經有 PERM_ 前綴，移除它（避免重複）
+                                if (permissionCode.startsWith("PERM_")) {
+                                    permissionCode = permissionCode.substring(5);
+                                }
+                                final String permissionCodeToCheck = "PERM_" + permissionCode;
+                                
                                 boolean hasPermission = authorities.stream()
-                                    .anyMatch(auth -> auth.getAuthority().equals(permissionCode));
+                                    .anyMatch(auth -> auth.getAuthority().equals(permissionCodeToCheck));
                                 
                                 if (!hasPermission) {
                                     sendForbiddenResponse(request, response);

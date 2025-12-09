@@ -1,7 +1,7 @@
 package com.example.helloworld.filter;
 
-import com.example.helloworld.service.CustomUserDetailsService;
-import com.example.helloworld.service.TokenBlacklistService;
+import com.example.helloworld.service.personal.CustomUserDetailsService;
+import com.example.helloworld.service.personal.TokenBlacklistService;
 import com.example.helloworld.service.church.ChurchUserDetailsService;
 import com.example.helloworld.util.JwtUtil;
 import jakarta.servlet.FilterChain;

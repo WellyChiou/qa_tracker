@@ -18,6 +18,14 @@ public class ChurchInfoService {
     private ChurchInfoRepository churchInfoRepository;
 
     /**
+     * 獲取所有教會資訊（管理用，包含未啟用的）
+     */
+    @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
+    public List<ChurchInfo> getAllInfo() {
+        return churchInfoRepository.findAllByOrderByDisplayOrderAsc();
+    }
+
+    /**
      * 獲取所有啟用的教會資訊（以 Map 形式返回，key 為 infoKey）
      */
     @Transactional(readOnly = true, transactionManager = "churchTransactionManager")

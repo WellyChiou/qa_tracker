@@ -15,11 +15,28 @@ public class AboutInfoService {
     private AboutInfoRepository aboutInfoRepository;
 
     /**
+     * 獲取所有關於我們資訊（管理用，包含未啟用的）
+     */
+    @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
+    public List<AboutInfo> getAllInfo() {
+        return aboutInfoRepository.findAllByOrderByDisplayOrderAsc();
+    }
+
+    /**
      * 獲取所有啟用的關於我們資訊
      */
     @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
     public List<AboutInfo> getAllActiveInfo() {
         return aboutInfoRepository.findByIsActiveTrueOrderByDisplayOrderAsc();
+    }
+
+    /**
+     * 根據 ID 獲取關於我們資訊
+     */
+    @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
+    public AboutInfo getInfoById(Long id) {
+        return aboutInfoRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("關於我們資訊不存在: " + id));
     }
 
     /**

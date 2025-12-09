@@ -6,11 +6,58 @@
         <button @click="openAddModal" class="btn btn-primary">+ 新增菜單</button>
       </div>
 
+      <!-- 查詢條件 -->
+      <section class="filters">
+        <h3>查詢條件</h3>
+        <div class="filter-grid">
+          <div class="filter-group">
+            <label>菜單代碼</label>
+            <input
+              type="text"
+              v-model="filters.menuCode"
+              placeholder="輸入菜單代碼"
+              class="form-input"
+            />
+          </div>
+          <div class="filter-group">
+            <label>菜單名稱</label>
+            <input
+              type="text"
+              v-model="filters.menuName"
+              placeholder="輸入菜單名稱"
+              class="form-input"
+            />
+          </div>
+          <div class="filter-group">
+            <label>類型</label>
+            <select v-model="filters.menuType">
+              <option value="">全部</option>
+              <option value="frontend">前台</option>
+              <option value="admin">後台</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>狀態</label>
+            <select v-model="filters.isActive">
+              <option value="">全部</option>
+              <option :value="true">啟用</option>
+              <option :value="false">停用</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <button @click="resetFilters" class="btn btn-secondary">清除條件</button>
+          </div>
+        </div>
+      </section>
+
       <div class="menus-list">
-        <div v-if="menus.length === 0" class="empty-state">
-          <p>尚無菜單資料</p>
+        <div v-if="filteredList.length === 0" class="empty-state">
+          <p>{{ menus.length === 0 ? '尚無菜單資料' : '沒有符合條件的資料' }}</p>
         </div>
         <div v-else class="menus-table">
+          <div class="table-header">
+            <h3>菜單列表 (共 {{ filteredList.length }} 筆)</h3>
+          </div>
           <table>
             <thead>
               <tr>
@@ -25,7 +72,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="menu in menus" :key="menu.id">
+              <tr v-for="menu in paginatedList" :key="menu.id">
                 <td>{{ menu.menuCode }}</td>
                 <td>{{ menu.menuName }}</td>
                 <td>{{ menu.menuType === 'frontend' ? '前台' : '後台' }}</td>
@@ -50,6 +97,39 @@
               </tr>
             </tbody>
           </table>
+          
+          <!-- 分頁 -->
+          <div class="pagination">
+            <div class="pagination-left">
+              <label for="pageSize" class="pagination-label">顯示筆數：</label>
+              <select id="pageSize" v-model.number="recordsPerPage" class="page-size-select">
+                <option :value="10">10</option>
+                <option :value="20">20</option>
+                <option :value="50">50</option>
+                <option :value="100">100</option>
+              </select>
+              <span class="pagination-info">共 {{ filteredList.length }} 筆 (第 {{ currentPage }}/{{ totalPages }} 頁)</span>
+            </div>
+            <div class="pagination-right">
+              <button class="btn-secondary" @click="currentPage--" :disabled="currentPage === 1">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                </svg>
+                上一頁
+              </button>
+              <div class="page-jump">
+                <span class="pagination-label">到第</span>
+                <input type="number" v-model.number="jumpPage" min="1" :max="totalPages" class="page-input" @keyup.enter="jumpToPage" />
+                <span class="pagination-label">頁</span>
+              </div>
+              <button class="btn-secondary" @click="currentPage++" :disabled="currentPage === totalPages">
+                下一頁
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -65,7 +145,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import AdminLayout from '@/components/AdminLayout.vue'
 import MenuModal from '@/components/MenuModal.vue'
 import { apiRequest } from '@/utils/api'
@@ -73,6 +153,90 @@ import { apiRequest } from '@/utils/api'
 const menus = ref([])
 const showModal = ref(false)
 const selectedMenu = ref(null)
+
+// 查詢條件
+const filters = ref({
+  menuCode: '',
+  menuName: '',
+  menuType: '',
+  isActive: ''
+})
+
+// 分頁
+const currentPage = ref(1)
+const recordsPerPage = ref(20)
+const jumpPage = ref(1)
+
+// 過濾後的列表
+const filteredList = computed(() => {
+  let filtered = [...menus.value]
+  
+  if (filters.value.menuCode) {
+    filtered = filtered.filter(menu => 
+      menu.menuCode?.toLowerCase().includes(filters.value.menuCode.toLowerCase())
+    )
+  }
+  
+  if (filters.value.menuName) {
+    filtered = filtered.filter(menu => 
+      menu.menuName?.toLowerCase().includes(filters.value.menuName.toLowerCase())
+    )
+  }
+  
+  if (filters.value.menuType) {
+    filtered = filtered.filter(menu => menu.menuType === filters.value.menuType)
+  }
+  
+  if (filters.value.isActive !== '') {
+    filtered = filtered.filter(menu => menu.isActive === filters.value.isActive)
+  }
+  
+  return filtered.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0))
+})
+
+// 分頁後的列表
+const paginatedList = computed(() => {
+  const start = (currentPage.value - 1) * recordsPerPage.value
+  return filteredList.value.slice(start, start + recordsPerPage.value)
+})
+
+// 總頁數
+const totalPages = computed(() => {
+  return Math.max(1, Math.ceil(filteredList.value.length / recordsPerPage.value))
+})
+
+// 跳轉到指定頁
+const jumpToPage = () => {
+  if (jumpPage.value >= 1 && jumpPage.value <= totalPages.value) {
+    currentPage.value = jumpPage.value
+  } else {
+    jumpPage.value = currentPage.value
+  }
+}
+
+// 重置查詢條件
+const resetFilters = () => {
+  filters.value = {
+    menuCode: '',
+    menuName: '',
+    menuType: '',
+    isActive: ''
+  }
+  currentPage.value = 1
+  jumpPage.value = 1
+}
+
+// 監聽查詢條件變化，重置到第一頁
+watch(() => [filters.value.menuCode, filters.value.menuName, filters.value.menuType, filters.value.isActive], () => {
+  currentPage.value = 1
+  jumpPage.value = 1
+})
+
+// 監聽每頁筆數變化，重置到第一頁
+watch(recordsPerPage, () => {
+  currentPage.value = 1
+  jumpPage.value = 1
+})
 
 const loadMenus = async () => {
   try {
@@ -255,6 +419,153 @@ th {
 
 .btn-delete:hover {
   background: #dc2626;
+}
+
+/* 查詢條件樣式 */
+.filters {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.filters h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  align-items: end;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.filter-group label {
+  font-weight: 600;
+  color: #4a5568;
+  font-size: 0.9rem;
+}
+
+.filter-group select,
+.filter-group input {
+  padding: 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+
+.filter-group select:focus,
+.filter-group input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.table-header {
+  padding: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.table-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #4a5568;
+}
+
+/* 分頁樣式 */
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-top: 1px solid #e2e8f0;
+  background: #f7fafc;
+}
+
+.pagination-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.pagination-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.pagination-label {
+  font-size: 0.9rem;
+  color: #4a5568;
+}
+
+.page-size-select {
+  padding: 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.pagination-info {
+  font-size: 0.9rem;
+  color: #718096;
+}
+
+.page-jump {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.page-input {
+  width: 60px;
+  padding: 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.page-input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.btn-secondary {
+  background: #e2e8f0;
+  color: #4a5568;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #cbd5e0;
+}
+
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.w-5 {
+  width: 1.25rem;
+  height: 1.25rem;
 }
 </style>
 

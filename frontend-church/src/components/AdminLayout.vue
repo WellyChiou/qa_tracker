@@ -248,7 +248,7 @@ const loadAdminMenus = async () => {
 
 const handleLogout = async () => {
   await logout()
-  router.push('/login')
+  router.push('/admin/login')
 }
 
 // 監聽路由變化，自動展開包含當前路由的父菜單

@@ -17,6 +17,14 @@ public class ActivityService {
     private ActivityRepository activityRepository;
 
     /**
+     * 獲取所有活動（管理用，包含未啟用的）
+     */
+    @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
+    public List<Activity> getAllActivities() {
+        return activityRepository.findAllByOrderByActivityDateAsc();
+    }
+
+    /**
      * 獲取所有啟用的活動
      */
     @Transactional(readOnly = true, transactionManager = "churchTransactionManager")

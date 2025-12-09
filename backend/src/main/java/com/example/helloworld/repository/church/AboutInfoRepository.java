@@ -10,5 +10,6 @@ import java.util.List;
 public interface AboutInfoRepository extends JpaRepository<AboutInfo, Long> {
     List<AboutInfo> findByIsActiveTrueOrderByDisplayOrderAsc();
     List<AboutInfo> findBySectionKeyAndIsActiveTrue(String sectionKey);
+    List<AboutInfo> findAllByOrderByDisplayOrderAsc();
 }
 

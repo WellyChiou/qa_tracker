@@ -7,7 +7,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -28,7 +27,6 @@ public class ContactSubmissionAdminController {
      * 獲取所有聯絡表單提交記錄（管理用，需要管理權限）
      */
     @GetMapping
-    @PreAuthorize("hasAuthority('PERM_CHURCH_ADMIN')")
     public ResponseEntity<Map<String, Object>> getAllSubmissions(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -62,7 +60,6 @@ public class ContactSubmissionAdminController {
      * 根據 ID 獲取聯絡表單提交記錄（管理用）
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('PERM_CHURCH_ADMIN')")
     public ResponseEntity<Map<String, Object>> getSubmissionById(@PathVariable Long id) {
         Optional<ContactSubmission> submission = contactSubmissionService.getSubmissionById(id);
         if (submission.isPresent()) {
@@ -82,7 +79,6 @@ public class ContactSubmissionAdminController {
      * 標記聯絡表單提交記錄為已讀（管理用）
      */
     @PutMapping("/{id}/read")
-    @PreAuthorize("hasAuthority('PERM_CHURCH_ADMIN')")
     public ResponseEntity<Map<String, Object>> markAsRead(@PathVariable Long id) {
         try {
             // 獲取當前登入用戶
@@ -107,7 +103,6 @@ public class ContactSubmissionAdminController {
      * 刪除聯絡表單提交記錄（管理用）
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('PERM_CHURCH_ADMIN')")
     public ResponseEntity<Map<String, Object>> deleteSubmission(@PathVariable Long id) {
         try {
             contactSubmissionService.deleteSubmission(id);
@@ -127,7 +122,6 @@ public class ContactSubmissionAdminController {
      * 獲取統計資訊（管理用）
      */
     @GetMapping("/stats")
-    @PreAuthorize("hasAuthority('PERM_CHURCH_ADMIN')")
     public ResponseEntity<Map<String, Object>> getStats() {
         try {
             Map<String, Object> stats = new HashMap<>();
