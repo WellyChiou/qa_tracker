@@ -829,7 +829,8 @@ onUnmounted(() => {
 }
 
 .execution-modal-content {
-  max-width: 1200px;
+  max-width: 95%;
+  width: 1600px;
 }
 
 .execution-table-container {
