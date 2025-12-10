@@ -18,9 +18,9 @@
             <p v-if="churchInfo.home_saturday_service_time"><strong>時間：</strong>{{ churchInfo.home_saturday_service_time }}</p>
             <p v-if="churchInfo.home_saturday_service_location"><strong>地點：</strong>{{ churchInfo.home_saturday_service_location }}</p>
           </div>
-          <!-- 主日崇拜 -->
+          <!-- 早崇聚會 -->
           <div class="card">
-            <h2>主日崇拜</h2>
+            <h2>早崇聚會</h2>
             <p><strong>時間：</strong>{{ churchInfo.home_main_service_time || '每週日上午 10:00' }}</p>
             <p><strong>地點：</strong>{{ churchInfo.home_main_service_location || '榮耀堂' }}</p>
           </div>

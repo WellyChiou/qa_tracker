@@ -30,7 +30,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useLoading } from '@/composables/useLoading'
 import { apiRequest } from '@/utils/api'
@@ -119,6 +119,7 @@ const loadFrontendMenus = async () => {
 }
 
 // 監聽路由變化，只在非後台路由時載入前台菜單
+// immediate: true 會在組件掛載時立即執行一次，不需要在 onMounted 中重複調用
 watch(() => route.path, (newPath) => {
   if (!isAdminRoute.value) {
     loadFrontendMenus()
@@ -127,13 +128,6 @@ watch(() => route.path, (newPath) => {
     frontendMenus.value = []
   }
 }, { immediate: true })
-
-// 初始化時載入前台菜單（如果當前不是後台路由）
-onMounted(async () => {
-  if (!isAdminRoute.value) {
-    await loadFrontendMenus()
-  }
-})
 </script>
 
 <style scoped>
