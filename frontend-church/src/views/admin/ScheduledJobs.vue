@@ -829,8 +829,9 @@ onUnmounted(() => {
 }
 
 .execution-modal-content {
-  max-width: 95%;
-  width: 1600px;
+  width: 90% !important;
+  max-width: 1800px !important;
+  min-width: 1200px !important;
 }
 
 .execution-table-container {
@@ -847,7 +848,7 @@ onUnmounted(() => {
 
 .execution-table th,
 .execution-table td {
-  padding: 0.75rem;
+  padding: 1rem;
   text-align: left;
   border-bottom: 1px solid #e2e8f0;
   vertical-align: top;
@@ -868,26 +869,26 @@ onUnmounted(() => {
 
 /* 欄位寬度分配 */
 .execution-time-col {
-  width: 15%;
+  width: 12%;
 }
 
 .execution-status-col {
-  width: 10%;
+  width: 8%;
 }
 
 .execution-result-col {
-  width: 45%;
+  width: 56%;
 }
 
 /* 結果訊息樣式 */
 .result-message {
   color: #059669;
-  font-size: 0.875rem;
+  font-size: 1rem;
   white-space: pre-wrap;
   word-wrap: break-word;
-  line-height: 1.6;
+  line-height: 1.8;
   background: #ecfdf5;
-  padding: 0.75rem;
+  padding: 1rem;
   border-radius: 0.5rem;
   border-left: 3px solid #10b981;
   font-family: 'Courier New', monospace;
@@ -895,12 +896,12 @@ onUnmounted(() => {
 
 .error-message {
   color: #dc2626;
-  font-size: 0.875rem;
+  font-size: 1rem;
   white-space: pre-wrap;
   word-wrap: break-word;
-  line-height: 1.6;
+  line-height: 1.8;
   background: #fef2f2;
-  padding: 0.75rem;
+  padding: 1rem;
   border-radius: 0.5rem;
   border-left: 3px solid #ef4444;
   font-family: 'Courier New', monospace;

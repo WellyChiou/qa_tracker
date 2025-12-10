@@ -19,7 +19,7 @@ public class JwtUtil {
     @Value("${jwt.secret:church-system-secret-key-for-jwt-token-generation-please-change-in-production}")
     private String secret;
 
-    @Value("${jwt.access-token-expiration:900000}") // 預設 15 分鐘（900000 毫秒）
+    @Value("${jwt.access-token-expiration:3600000}") // 預設 1 小時（3600000 毫秒）
     private Long accessTokenExpiration;
 
     @Value("${jwt.refresh-token-expiration:604800000}") // 預設 7 天（604800000 毫秒）
