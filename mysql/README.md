@@ -95,14 +95,16 @@
 ### 定時任務相關（功能擴展，保留）
 - ✅ `add-scheduled-jobs-url-permissions.sql` - 添加定時任務 URL 權限
 
-### 根目錄的檢查文件（保留）
-- ✅ `check-frontend-menus.sql` - 檢查前台菜單
-- ✅ `check_config.sql` - 檢查配置
-- ✅ `check_members.sql` - 檢查成員
-- ✅ `check_old_jobs.sql` - 檢查舊任務
-- ✅ `diagnose_scheduled_jobs.sql` - 診斷定時任務
-- ✅ `cleanup_orphaned_executions.sql` - 清理孤立執行記錄
-- ✅ `remove_old_jobs.sql` - 移除舊任務
+### 診斷和檢查文件（已整合到 diagnostics 目錄）
+- ✅ `diagnostics/check-frontend-menus.sql` - 檢查前台菜單
+- ✅ `diagnostics/check_config.sql` - 檢查配置
+- ✅ `diagnostics/check_members.sql` - 檢查成員
+- ✅ `diagnostics/check_old_jobs.sql` - 檢查舊任務
+- ✅ `diagnostics/diagnose_scheduled_jobs.sql` - 診斷定時任務
+- ✅ `diagnostics/cleanup_orphaned_executions.sql` - 清理孤立執行記錄
+- ✅ `diagnostics/remove_old_jobs.sql` - 移除舊任務
+- ✅ `diagnostics/run-all-checks.sql` - 整合所有診斷檢查
+- ✅ `diagnostics/README.md` - 診斷腳本說明文檔
 
 ## 🚀 使用指南
 
