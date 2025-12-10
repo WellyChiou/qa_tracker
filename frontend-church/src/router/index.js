@@ -115,6 +115,17 @@ const routes = [
     name: 'AdminScheduledJobs',
     component: () => import('@/views/admin/ScheduledJobs.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/sunday-messages',
+    name: 'SundayMessages',
+    component: () => import('@/views/SundayMessages.vue')
+  },
+  {
+    path: '/admin/sunday-messages',
+    name: 'AdminSundayMessages',
+    component: () => import('@/views/admin/SundayMessages.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 

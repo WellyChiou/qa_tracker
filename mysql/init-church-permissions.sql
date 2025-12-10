@@ -57,6 +57,12 @@ INSERT IGNORE INTO permissions (permission_code, permission_name, resource, acti
 ('ACTIVITY_EDIT', '編輯活動', 'activity', 'edit', '可以新增、修改、刪除活動資訊'),
 
 -- ============================================
+-- 主日信息管理權限
+-- ============================================
+('SUNDAY_MESSAGE_READ', '查看主日信息', 'sunday_message', 'read', '可以查看主日信息'),
+('SUNDAY_MESSAGE_EDIT', '編輯主日信息', 'sunday_message', 'edit', '可以新增、修改、刪除主日信息'),
+
+-- ============================================
 -- 聯絡表單管理權限
 -- ============================================
 ('CONTACT_SUBMISSION_READ', '查看聯絡表單', 'contact_submission', 'read', '可以查看聯絡表單提交記錄'),
@@ -123,7 +129,8 @@ ORDER BY
         WHEN resource = 'church_info' THEN 5
         WHEN resource = 'about_info' THEN 6
         WHEN resource = 'activity' THEN 7
-        WHEN resource = 'contact_submission' THEN 8
+        WHEN resource = 'sunday_message' THEN 8
+        WHEN resource = 'contact_submission' THEN 9
         WHEN resource = 'user' THEN 9
         WHEN resource = 'role' THEN 10
         WHEN resource = 'permission' THEN 11

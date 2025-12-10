@@ -1,9 +1,9 @@
 <template>
   <AdminLayout>
-    <div class="admin-activities">
+    <div class="admin-sunday-messages">
       <div class="page-header">
-        <h2>活動管理</h2>
-        <button @click="openAddModal" class="btn btn-primary">+ 新增活動</button>
+        <h2>主日信息管理</h2>
+        <button @click="openAddModal" class="btn btn-primary">+ 新增主日信息</button>
       </div>
 
       <!-- 查詢條件 -->
@@ -36,6 +36,14 @@
             />
           </div>
           <div class="filter-group">
+            <label>聚會時間</label>
+            <select v-model="filters.serviceType">
+              <option value="">全部</option>
+              <option value="SATURDAY">週六晚崇</option>
+              <option value="SUNDAY">週日早崇</option>
+            </select>
+          </div>
+          <div class="filter-group">
             <label>啟用狀態</label>
             <select v-model="filters.isActive">
               <option value="">全部</option>
@@ -49,39 +57,39 @@
         </div>
       </section>
 
-      <div class="activities-list">
+      <div class="messages-list">
         <div v-if="filteredList.length === 0" class="empty-state">
-          <p>{{ activitiesList.length === 0 ? '尚無活動資料' : '沒有符合條件的資料' }}</p>
+          <p>{{ messagesList.length === 0 ? '尚無主日信息資料' : '沒有符合條件的資料' }}</p>
         </div>
         <div v-else class="info-table">
           <div class="table-header">
-            <h3>活動列表 (共 {{ filteredList.length }} 筆)</h3>
+            <h3>主日信息列表 (共 {{ filteredList.length }} 筆)</h3>
           </div>
           <table>
             <thead>
               <tr>
-                <th>標題</th>
                 <th>日期</th>
-                <th>時間</th>
-                <th>地點</th>
+                <th>聚會時間</th>
+                <th>標題</th>
+                <th>講員</th>
                 <th>啟用狀態</th>
                 <th>操作</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="activity in paginatedList" :key="activity.id">
-                <td>{{ activity.title }}</td>
-                <td>{{ formatDate(activity.activityDate) }}</td>
-                <td>{{ activity.activityTime || '-' }}</td>
-                <td>{{ activity.location || '-' }}</td>
+              <tr v-for="message in paginatedList" :key="message.id">
+                <td>{{ formatDate(message.serviceDate) }}</td>
+                <td>{{ message.serviceType === 'SATURDAY' ? '週六晚崇' : '週日早崇' }}</td>
+                <td>{{ message.title || '-' }}</td>
+                <td>{{ message.speaker || '-' }}</td>
                 <td>
-                  <span :class="activity.isActive ? 'status-active' : 'status-inactive'">
-                    {{ activity.isActive ? '啟用' : '停用' }}
+                  <span :class="message.isActive ? 'status-active' : 'status-inactive'">
+                    {{ message.isActive ? '啟用' : '停用' }}
                   </span>
                 </td>
                 <td>
-                  <button @click="editActivity(activity)" class="btn btn-edit">編輯</button>
-                  <button @click="deleteActivity(activity.id)" class="btn btn-delete">刪除</button>
+                  <button @click="editMessage(message)" class="btn btn-edit">編輯</button>
+                  <button @click="deleteMessage(message.id)" class="btn btn-delete">刪除</button>
                 </td>
               </tr>
             </tbody>
@@ -126,7 +134,7 @@
       <div v-if="showModal" class="modal-overlay" @click="closeModal">
         <div class="modal-panel" @click.stop>
           <div class="modal-header">
-            <h2 class="modal-title">{{ editingActivity ? '編輯活動' : '新增活動' }}</h2>
+            <h2 class="modal-title">{{ editingMessage ? '編輯主日信息' : '新增主日信息' }}</h2>
             <button class="btn-close" @click="closeModal">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -134,36 +142,41 @@
             </button>
           </div>
           <div class="modal-body">
-            <form @submit.prevent="saveActivity">
+            <form @submit.prevent="saveMessage">
               <!-- 基本資訊區塊 -->
               <div class="form-section">
                 <h3 class="section-title">基本資訊</h3>
-                <div class="form-group">
-                  <label>標題 <span class="required">*</span></label>
-                  <input type="text" v-model="formData.title" required class="form-input" />
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>主日日期 <span class="required">*</span></label>
+                    <input type="date" v-model="formData.serviceDate" required class="form-input" />
+                  </div>
+                  <div class="form-group">
+                    <label>聚會時間 <span class="required">*</span></label>
+                    <select v-model="formData.serviceType" required class="form-input">
+                      <option value="SUNDAY">週日早崇</option>
+                      <option value="SATURDAY">週六晚崇</option>
+                    </select>
+                  </div>
                 </div>
                 <div class="form-group">
-                  <label>描述</label>
-                  <textarea v-model="formData.description" rows="6" placeholder="活動詳細描述..." class="form-input form-textarea"></textarea>
+                  <label>標題/講題</label>
+                  <input type="text" v-model="formData.title" placeholder="例如：在光中的奇蹟" class="form-input" />
                 </div>
               </div>
 
-              <!-- 時間地點資訊區塊 -->
+              <!-- 講道資訊區塊 -->
               <div class="form-section">
-                <h3 class="section-title">時間地點</h3>
+                <h3 class="section-title">講道資訊</h3>
                 <div class="form-row">
                   <div class="form-group">
-                    <label>活動日期 <span class="required">*</span></label>
-                    <input type="date" v-model="formData.activityDate" required class="form-input" />
+                    <label>經文</label>
+                    <input type="text" v-model="formData.scripture" placeholder="例如：約翰福音 1:1-18" class="form-input" />
                   </div>
                   <div class="form-group">
-                    <label>活動時間</label>
-                    <input type="text" v-model="formData.activityTime" placeholder="例如：10:00am" class="form-input" />
+                    <label>講員</label>
+                    <input type="text" v-model="formData.speaker" placeholder="講員姓名" class="form-input" />
                   </div>
-                </div>
-                <div class="form-group">
-                  <label>地點</label>
-                  <input type="text" v-model="formData.location" placeholder="活動地點" class="form-input" />
                 </div>
               </div>
 
@@ -171,22 +184,25 @@
               <div class="form-section">
                 <h3 class="section-title">內容資訊</h3>
                 <div class="form-group">
-                  <label>活動圖片</label>
+                  <label>DM圖片</label>
                   <div class="image-upload-section">
                     <button type="button" @click="triggerFileUpload" class="btn btn-upload">
                       選擇圖片
                     </button>
                     <input type="file" ref="fileInput" @change="handleFileUpload" accept="image/*" style="display: none;" />
-                    <small class="form-hint">點擊「選擇圖片」上傳活動圖片（支援 JPG、PNG、GIF、WebP，最大 5MB）</small>
+                    <small class="form-hint">點擊「選擇圖片」上傳DM圖片（支援 JPG、PNG、GIF、WebP，最大 5MB）</small>
                   </div>
-                  <!-- 圖片預覽 -->
                   <div v-if="previewImageUrl || formData.imageUrl" class="image-preview-container">
-                    <img v-show="!imageError" :src="previewImageUrl || formData.imageUrl" alt="預覽圖片" @error="imageError = true" class="image-preview" />
+                    <img v-show="!imageError" :src="previewImageUrl || formData.imageUrl" @error="imageError = true" class="image-preview" alt="DM圖片預覽" />
                     <p v-if="imageError" class="image-error-message">圖片載入失敗或無效</p>
                     <div v-if="(previewImageUrl || formData.imageUrl) && !imageError" class="image-preview-actions">
                       <button type="button" @click="removeImage" class="btn btn-remove-image">移除圖片</button>
                     </div>
                   </div>
+                </div>
+                <div class="form-group">
+                  <label>內容/解析文字</label>
+                  <textarea v-model="formData.content" rows="10" placeholder="從DM圖片解析出的文字資訊..." class="form-input form-textarea"></textarea>
                 </div>
               </div>
 
@@ -196,7 +212,7 @@
                 <div class="form-group">
                   <label class="checkbox-label">
                     <input type="checkbox" v-model="formData.isActive" class="checkbox-input" />
-                    <span>啟用此活動</span>
+                    <span>啟用此主日信息</span>
                   </label>
                 </div>
               </div>
@@ -218,21 +234,22 @@ import { ref, computed, onMounted, watch } from 'vue'
 import AdminLayout from '@/components/AdminLayout.vue'
 import { apiRequest } from '@/utils/api'
 
-const activitiesList = ref([])
+const messagesList = ref([])
 const showModal = ref(false)
-const editingActivity = ref(null)
+const editingMessage = ref(null)
 const fileInput = ref(null)
 const uploading = ref(false)
 const imageError = ref(false)
 const selectedFile = ref(null)
 const previewImageUrl = ref(null)
 const formData = ref({
-  title: '',
-  description: '',
-  activityDate: '',
-  activityTime: '',
-  location: '',
+  serviceDate: '',
+  serviceType: 'SUNDAY',
   imageUrl: '',
+  title: '',
+  scripture: '',
+  speaker: '',
+  content: '',
   isActive: true
 })
 
@@ -241,6 +258,7 @@ const filters = ref({
   title: '',
   startDate: '',
   endDate: '',
+  serviceType: '',
   isActive: ''
 })
 
@@ -251,37 +269,41 @@ const jumpPage = ref(1)
 
 // 過濾後的列表
 const filteredList = computed(() => {
-  let filtered = [...activitiesList.value]
+  let filtered = [...messagesList.value]
   
   if (filters.value.title) {
-    filtered = filtered.filter(activity => 
-      activity.title?.toLowerCase().includes(filters.value.title.toLowerCase())
+    filtered = filtered.filter(message => 
+      message.title?.toLowerCase().includes(filters.value.title.toLowerCase())
     )
   }
   
   if (filters.value.startDate) {
-    filtered = filtered.filter(activity => {
-      if (!activity.activityDate) return false
-      return new Date(activity.activityDate) >= new Date(filters.value.startDate)
+    filtered = filtered.filter(message => {
+      if (!message.serviceDate) return false
+      return new Date(message.serviceDate) >= new Date(filters.value.startDate)
     })
   }
   
   if (filters.value.endDate) {
-    filtered = filtered.filter(activity => {
-      if (!activity.activityDate) return false
-      return new Date(activity.activityDate) <= new Date(filters.value.endDate)
+    filtered = filtered.filter(message => {
+      if (!message.serviceDate) return false
+      return new Date(message.serviceDate) <= new Date(filters.value.endDate)
     })
   }
   
+  if (filters.value.serviceType) {
+    filtered = filtered.filter(message => message.serviceType === filters.value.serviceType)
+  }
+  
   if (filters.value.isActive !== '') {
-    filtered = filtered.filter(activity => activity.isActive === filters.value.isActive)
+    filtered = filtered.filter(message => message.isActive === filters.value.isActive)
   }
   
   return filtered.sort((a, b) => {
-    if (!a.activityDate && !b.activityDate) return 0
-    if (!a.activityDate) return 1
-    if (!b.activityDate) return -1
-    return new Date(b.activityDate) - new Date(a.activityDate)
+    if (!a.serviceDate && !b.serviceDate) return 0
+    if (!a.serviceDate) return 1
+    if (!b.serviceDate) return -1
+    return new Date(b.serviceDate) - new Date(a.serviceDate)
   })
 })
 
@@ -311,6 +333,7 @@ const resetFilters = () => {
     title: '',
     startDate: '',
     endDate: '',
+    serviceType: '',
     isActive: ''
   }
   currentPage.value = 1
@@ -318,7 +341,7 @@ const resetFilters = () => {
 }
 
 // 監聽查詢條件變化，重置到第一頁
-watch(() => [filters.value.title, filters.value.startDate, filters.value.endDate, filters.value.isActive], () => {
+watch(() => [filters.value.title, filters.value.startDate, filters.value.endDate, filters.value.serviceType, filters.value.isActive], () => {
   currentPage.value = 1
   jumpPage.value = 1
 })
@@ -334,9 +357,9 @@ const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString('zh-TW')
 }
 
-const loadActivities = async () => {
+const loadMessages = async () => {
   try {
-    const response = await apiRequest('/church/admin/activities', {
+    const response = await apiRequest('/church/admin/sunday-messages', {
       method: 'GET',
       credentials: 'include'
     })
@@ -344,17 +367,17 @@ const loadActivities = async () => {
     if (response.ok) {
       const data = await response.json()
       if (data.success && data.data) {
-        activitiesList.value = data.data
+        messagesList.value = data.data
       }
     }
   } catch (error) {
-    console.error('載入活動失敗:', error)
-    alert('載入活動失敗: ' + error.message)
+    console.error('載入主日信息失敗:', error)
+    alert('載入主日信息失敗: ' + error.message)
   }
 }
 
 const openAddModal = () => {
-  editingActivity.value = null
+  editingMessage.value = null
   imageError.value = false
   selectedFile.value = null
   if (previewImageUrl.value) {
@@ -362,19 +385,20 @@ const openAddModal = () => {
   }
   previewImageUrl.value = null
   formData.value = {
-    title: '',
-    description: '',
-    activityDate: '',
-    activityTime: '',
-    location: '',
+    serviceDate: '',
+    serviceType: 'SUNDAY',
     imageUrl: '',
+    title: '',
+    scripture: '',
+    speaker: '',
+    content: '',
     isActive: true
   }
   showModal.value = true
 }
 
-const editActivity = (activity) => {
-  editingActivity.value = activity
+const editMessage = (message) => {
+  editingMessage.value = message
   imageError.value = false
   selectedFile.value = null
   if (previewImageUrl.value) {
@@ -382,20 +406,21 @@ const editActivity = (activity) => {
   }
   previewImageUrl.value = null
   formData.value = {
-    title: activity.title || '',
-    description: activity.description || '',
-    activityDate: activity.activityDate || '',
-    activityTime: activity.activityTime || '',
-    location: activity.location || '',
-    imageUrl: activity.imageUrl || '',
-    isActive: activity.isActive !== undefined ? activity.isActive : true
+    serviceDate: message.serviceDate || '',
+    serviceType: message.serviceType || 'SUNDAY',
+    imageUrl: message.imageUrl || '',
+    title: message.title || '',
+    scripture: message.scripture || '',
+    speaker: message.speaker || '',
+    content: message.content || '',
+    isActive: message.isActive !== undefined ? message.isActive : true
   }
   showModal.value = true
 }
 
 const closeModal = () => {
   showModal.value = false
-  editingActivity.value = null
+  editingMessage.value = null
   imageError.value = false
   selectedFile.value = null
   if (previewImageUrl.value) {
@@ -404,100 +429,6 @@ const closeModal = () => {
   previewImageUrl.value = null
   if (fileInput.value) {
     fileInput.value.value = ''
-  }
-}
-
-const saveActivity = async () => {
-  try {
-    // 如果有新選中的文件，先上傳圖片
-    if (selectedFile.value) {
-      uploading.value = true
-      try {
-        const uploadFormData = new FormData()
-        uploadFormData.append('file', selectedFile.value)
-        uploadFormData.append('type', 'activities')
-
-        const uploadResponse = await apiRequest('/church/admin/upload/image', {
-          method: 'POST',
-          body: uploadFormData
-        })
-
-        if (uploadResponse.ok) {
-          const uploadData = await uploadResponse.json()
-          if (uploadData.success && uploadData.url) {
-            formData.value.imageUrl = uploadData.url
-          } else {
-            throw new Error(uploadData.message || '圖片上傳失敗')
-          }
-        } else {
-          const errorData = await uploadResponse.json().catch(() => ({ message: '圖片上傳失敗' }))
-          throw new Error(errorData.message || '圖片上傳失敗')
-        }
-      } catch (error) {
-        console.error('圖片上傳失敗:', error)
-        alert('圖片上傳失敗: ' + (error.message || '未知錯誤'))
-        uploading.value = false
-        return
-      } finally {
-        uploading.value = false
-      }
-
-      // 清理臨時狀態
-      if (previewImageUrl.value) {
-        URL.revokeObjectURL(previewImageUrl.value)
-      }
-      selectedFile.value = null
-      previewImageUrl.value = null
-    }
-
-    // 儲存活動數據
-    const url = editingActivity.value 
-      ? `/church/admin/activities/${editingActivity.value.id}`
-      : '/church/admin/activities'
-    const method = editingActivity.value ? 'PUT' : 'POST'
-    
-    const response = await apiRequest(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(formData.value)
-    })
-    
-    if (response.ok) {
-      const data = await response.json()
-      if (data.success) {
-        alert('儲存成功')
-        closeModal()
-        loadActivities()
-      } else {
-        alert('儲存失敗: ' + (data.message || '未知錯誤'))
-      }
-    }
-  } catch (error) {
-    console.error('儲存活動失敗:', error)
-    alert('儲存活動失敗: ' + error.message)
-  }
-}
-
-const deleteActivity = async (id) => {
-  if (!confirm('確定要刪除這個活動嗎？')) return
-  
-  try {
-    const response = await apiRequest(`/church/admin/activities/${id}`, {
-      method: 'DELETE',
-      credentials: 'include'
-    })
-    
-    if (response.ok) {
-      const data = await response.json()
-      if (data.success) {
-        alert('刪除成功')
-        loadActivities()
-      }
-    }
-  } catch (error) {
-    console.error('刪除活動失敗:', error)
-    alert('刪除活動失敗: ' + error.message)
   }
 }
 
@@ -549,13 +480,108 @@ const removeImage = () => {
   imageError.value = false
 }
 
+const saveMessage = async () => {
+  try {
+    // 如果有新選中的文件，先上傳圖片
+    if (selectedFile.value) {
+      uploading.value = true
+      try {
+        const uploadFormData = new FormData()
+        uploadFormData.append('file', selectedFile.value)
+        uploadFormData.append('type', 'sunday-messages')
+
+        const uploadResponse = await apiRequest('/church/admin/upload/image', {
+          method: 'POST',
+          body: uploadFormData
+        })
+
+        if (uploadResponse.ok) {
+          const uploadData = await uploadResponse.json()
+          if (uploadData.success && uploadData.url) {
+            formData.value.imageUrl = uploadData.url
+          } else {
+            throw new Error(uploadData.message || '圖片上傳失敗')
+          }
+        } else {
+          const errorData = await uploadResponse.json().catch(() => ({ message: '圖片上傳失敗' }))
+          throw new Error(errorData.message || '圖片上傳失敗')
+        }
+      } catch (error) {
+        console.error('圖片上傳失敗:', error)
+        alert('圖片上傳失敗: ' + (error.message || '未知錯誤'))
+        uploading.value = false
+        return
+      } finally {
+        uploading.value = false
+      }
+
+      // 清理臨時狀態
+      if (previewImageUrl.value) {
+        URL.revokeObjectURL(previewImageUrl.value)
+      }
+      selectedFile.value = null
+      previewImageUrl.value = null
+    }
+
+    // 儲存主日信息數據
+    const url = editingMessage.value 
+      ? `/church/admin/sunday-messages/${editingMessage.value.id}`
+      : '/church/admin/sunday-messages'
+    const method = editingMessage.value ? 'PUT' : 'POST'
+    
+    const response = await apiRequest(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(formData.value)
+    })
+    
+    if (response.ok) {
+      const data = await response.json()
+      if (data.success) {
+        alert('儲存成功')
+        closeModal()
+        loadMessages()
+      } else {
+        alert('儲存失敗: ' + (data.message || '未知錯誤'))
+      }
+    }
+  } catch (error) {
+    console.error('儲存主日信息失敗:', error)
+    alert('儲存主日信息失敗: ' + error.message)
+  }
+}
+
+const deleteMessage = async (id) => {
+  if (!confirm('確定要刪除這個主日信息嗎？')) return
+  
+  try {
+    const response = await apiRequest(`/church/admin/sunday-messages/${id}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    })
+    
+    if (response.ok) {
+      const data = await response.json()
+      if (data.success) {
+        alert('刪除成功')
+        loadMessages()
+      }
+    }
+  } catch (error) {
+    console.error('刪除主日信息失敗:', error)
+    alert('刪除主日信息失敗: ' + error.message)
+  }
+}
+
+
 onMounted(() => {
-  loadActivities()
+  loadMessages()
 })
 </script>
 
 <style scoped>
-.admin-activities {
+.admin-sunday-messages {
   max-width: 1400px;
   margin: 0 auto;
 }
@@ -824,7 +850,7 @@ th {
 
 .form-textarea {
   resize: vertical;
-  min-height: 150px;
+  min-height: 200px;
   font-family: inherit;
   line-height: 1.6;
 }
@@ -1090,3 +1116,4 @@ th {
   height: 1.25rem;
 }
 </style>
+

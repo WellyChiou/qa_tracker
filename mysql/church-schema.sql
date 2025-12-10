@@ -27,6 +27,25 @@ CREATE TABLE IF NOT EXISTS service_schedules (
     INDEX idx_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='服事安排表';
 
+-- 主日信息表
+CREATE TABLE IF NOT EXISTS sunday_messages (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主鍵 ID',
+    service_date DATE NOT NULL COMMENT '主日日期',
+    service_type VARCHAR(20) NOT NULL DEFAULT 'SUNDAY' COMMENT '服務類型：SATURDAY（週六晚崇）或 SUNDAY（主日）',
+    image_url VARCHAR(500) COMMENT 'DM圖片URL',
+    title VARCHAR(200) COMMENT '標題/講題',
+    scripture VARCHAR(500) COMMENT '經文',
+    speaker VARCHAR(100) COMMENT '講員',
+    content TEXT COMMENT '內容/解析文字',
+    is_active BOOLEAN NOT NULL DEFAULT TRUE COMMENT '是否啟用',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '建立時間',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新時間',
+    INDEX idx_service_date (service_date),
+    INDEX idx_service_type (service_type),
+    INDEX idx_is_active (is_active),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='主日信息表';
+
 -- 注意：position_config 表已移除，崗位配置現在使用 positions, persons, position_persons 表管理
 -- 詳見 mysql/church-positions-schema.sql
 

@@ -29,7 +29,7 @@ public class Activity {
     @Column(name = "tags", columnDefinition = "JSON")
     private String tags; // JSON 格式的標籤陣列
 
-    @Column(name = "image_url", length = 500)
+    @Column(name = "image_url", columnDefinition = "TEXT")
     private String imageUrl;
 
     @Column(name = "is_active", nullable = false)

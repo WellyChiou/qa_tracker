@@ -163,6 +163,10 @@ public class ChurchScheduledJobService {
                 runningExecutions.put(id, executionId);
 
                 System.out.println("🚀 [Church] 立即執行 Job: " + jobName + " (Execution ID: " + executionId + ")");
+                
+                // 清除之前的結果
+                com.example.helloworld.scheduler.church.JobResultHolder.clear();
+                
                 executor.run();
 
                 // 重新載入執行記錄（添加重試邏輯）
@@ -172,7 +176,18 @@ public class ChurchScheduledJobService {
                     // 更新狀態為成功
                     currentExecution.setStatus("SUCCESS");
                     currentExecution.setCompletedAt(LocalDateTime.now());
-                    currentExecution.setResultMessage("Job 執行成功");
+                    
+                    // 從 ThreadLocal 獲取詳細結果
+                    String detailedResult = com.example.helloworld.scheduler.church.JobResultHolder.getResult();
+                    if (detailedResult != null && !detailedResult.isEmpty()) {
+                        currentExecution.setResultMessage(detailedResult);
+                    } else {
+                        currentExecution.setResultMessage("Job 執行成功");
+                    }
+                    
+                    // 清除 ThreadLocal
+                    com.example.helloworld.scheduler.church.JobResultHolder.clear();
+                    
                     jobExecutionRepository.save(currentExecution);
                     System.out.println("✅ [Church] Job 執行完成: " + jobName);
                 } else {
@@ -260,11 +275,56 @@ public class ChurchScheduledJobService {
             ZoneId taiwanZone = ZoneId.of("Asia/Taipei");
             CronTrigger trigger = new CronTrigger(job.getCronExpression(), taiwanZone);
             ScheduledFuture<?> future = taskScheduler.schedule(() -> {
+                // 創建執行記錄
+                JobExecution execution = new JobExecution();
+                execution.setJobId(job.getId());
+                execution.setStatus("RUNNING");
+                execution.setStartedAt(LocalDateTime.now());
+                execution = jobExecutionRepository.save(execution);
+                final Long executionId = execution.getId();
+                
                 try {
-                    System.out.println("🔄 [Church] 執行定時任務: " + job.getJobName());
+                    System.out.println("🔄 [Church] 執行定時任務: " + job.getJobName() + " (Execution ID: " + executionId + ")");
+                    
+                    // 清除之前的結果
+                    com.example.helloworld.scheduler.church.JobResultHolder.clear();
+                    
                     executor.run();
+                    
+                    // 重新載入執行記錄
+                    JobExecution currentExecution = jobExecutionRepository.findById(executionId).orElse(null);
+                    if (currentExecution != null) {
+                        currentExecution.setStatus("SUCCESS");
+                        currentExecution.setCompletedAt(LocalDateTime.now());
+                        
+                        // 從 ThreadLocal 獲取詳細結果
+                        String detailedResult = com.example.helloworld.scheduler.church.JobResultHolder.getResult();
+                        if (detailedResult != null && !detailedResult.isEmpty()) {
+                            currentExecution.setResultMessage(detailedResult);
+                        } else {
+                            currentExecution.setResultMessage("定時任務執行成功");
+                        }
+                        
+                        // 清除 ThreadLocal
+                        com.example.helloworld.scheduler.church.JobResultHolder.clear();
+                        
+                        jobExecutionRepository.save(currentExecution);
+                    }
+                    
                     System.out.println("✅ [Church] 定時任務完成: " + job.getJobName());
                 } catch (Exception e) {
+                    // 更新執行記錄為失敗
+                    JobExecution currentExecution = jobExecutionRepository.findById(executionId).orElse(null);
+                    if (currentExecution != null) {
+                        currentExecution.setStatus("FAILED");
+                        currentExecution.setCompletedAt(LocalDateTime.now());
+                        currentExecution.setErrorMessage(e.getMessage() != null ? e.getMessage() : e.getClass().getName());
+                        jobExecutionRepository.save(currentExecution);
+                    }
+                    
+                    // 清除 ThreadLocal
+                    com.example.helloworld.scheduler.church.JobResultHolder.clear();
+                    
                     System.err.println("❌ [Church] 定時任務執行失敗: " + job.getJobName() + " - " + e.getMessage());
                     e.printStackTrace();
                 }

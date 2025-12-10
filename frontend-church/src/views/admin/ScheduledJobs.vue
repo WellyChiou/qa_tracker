@@ -14,7 +14,6 @@
             <tr>
               <th>ID</th>
               <th>任務名稱</th>
-              <th>任務類別</th>
               <th>Cron 表達式</th>
               <th>描述</th>
               <th>啟用狀態</th>
@@ -24,21 +23,25 @@
           </thead>
           <tbody>
             <tr v-if="loading">
-              <td colspan="8" style="text-align: center; padding: 20px;">載入中...</td>
+              <td colspan="7" style="text-align: center; padding: 20px;">載入中...</td>
             </tr>
             <tr v-else-if="jobs.length === 0">
-              <td colspan="8" style="text-align: center; padding: 20px;">尚無任務</td>
+              <td colspan="7" style="text-align: center; padding: 20px;">尚無任務</td>
             </tr>
             <tr v-for="job in jobs" :key="job.id">
               <td>{{ job.id }}</td>
               <td>{{ job.jobName }}</td>
               <td>
-                <code style="font-size: 0.85em;">{{ job.jobClass }}</code>
+                <div style="font-weight: 500; color: #1e293b; margin-bottom: 0.25rem;">
+                  {{ formatCronExpression(job.cronExpression) }}
+                </div>
+                <code style="font-size: 0.75em; color: #94a3b8; background: #f1f5f9; padding: 0.125rem 0.375rem; border-radius: 0.25rem;">
+                  {{ job.cronExpression }}
+                </code>
               </td>
-              <td>
-                <code style="font-size: 0.9em; color: #667eea;">{{ job.cronExpression }}</code>
+              <td :title="job.description || '-'">
+                {{ job.description || '-' }}
               </td>
-              <td>{{ job.description || '-' }}</td>
               <td>
                 <span :class="job.enabled ? 'status-active' : 'status-inactive'">
                   {{ job.enabled ? '啟用' : '停用' }}
@@ -76,20 +79,20 @@
 
       <!-- 執行記錄模態框 -->
       <div v-if="showExecutionModal" class="modal-overlay" @click="showExecutionModal = false">
-        <div class="modal-content" @click.stop style="max-width: 800px;">
+        <div class="modal-content execution-modal-content" @click.stop>
           <h2>執行記錄 - {{ selectedJobName }}</h2>
           <div v-if="executionHistory.length === 0" style="text-align: center; padding: 2rem; color: #94a3b8;">
             尚無執行記錄
           </div>
-          <div v-else style="max-height: 500px; overflow-y: auto;">
+          <div v-else class="execution-table-container">
             <table class="execution-table">
               <thead>
                 <tr>
-                  <th>執行時間</th>
-                  <th>狀態</th>
-                  <th>開始時間</th>
-                  <th>完成時間</th>
-                  <th>結果/錯誤</th>
+                  <th class="execution-time-col">執行時間</th>
+                  <th class="execution-status-col">狀態</th>
+                  <th class="execution-time-col">開始時間</th>
+                  <th class="execution-time-col">完成時間</th>
+                  <th class="execution-result-col">結果/錯誤</th>
                 </tr>
               </thead>
               <tbody>
@@ -103,10 +106,10 @@
                   <td>{{ execution.startedAt ? formatDateTime(execution.startedAt) : '-' }}</td>
                   <td>{{ execution.completedAt ? formatDateTime(execution.completedAt) : '-' }}</td>
                   <td>
-                    <div v-if="execution.resultMessage" style="color: #10b981; font-size: 0.875rem;">
+                    <div v-if="execution.resultMessage" class="result-message">
                       {{ execution.resultMessage }}
                     </div>
-                    <div v-if="execution.errorMessage" style="color: #ef4444; font-size: 0.875rem;">
+                    <div v-if="execution.errorMessage" class="error-message">
                       {{ execution.errorMessage }}
                     </div>
                     <span v-if="!execution.resultMessage && !execution.errorMessage" style="color: #94a3b8;">-</span>
@@ -475,6 +478,141 @@ const formatDateTime = (dateTime) => {
   })
 }
 
+const formatCronExpression = (cronExpr) => {
+  if (!cronExpr) return '-'
+  
+  // 移除多餘的空格並分割
+  const parts = cronExpr.trim().split(/\s+/)
+  if (parts.length < 6) {
+    return cronExpr // 如果格式不對，直接返回原值
+  }
+  
+  const [second, minute, hour, day, month, weekday] = parts
+  
+  // 星期映射
+  const weekdayMap = {
+    'SUN': '週日',
+    'MON': '週一',
+    'TUE': '週二',
+    'WED': '週三',
+    'THU': '週四',
+    'FRI': '週五',
+    'SAT': '週六',
+    '0': '週日',
+    '1': '週一',
+    '2': '週二',
+    '3': '週三',
+    '4': '週四',
+    '5': '週五',
+    '6': '週六',
+    '7': '週日'
+  }
+  
+  // 月份映射
+  const monthMap = {
+    'JAN': '1月',
+    'FEB': '2月',
+    'MAR': '3月',
+    'APR': '4月',
+    'MAY': '5月',
+    'JUN': '6月',
+    'JUL': '7月',
+    'AUG': '8月',
+    'SEP': '9月',
+    'OCT': '10月',
+    'NOV': '11月',
+    'DEC': '12月'
+  }
+  
+  // 解析時間
+  const timeStr = `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`
+  
+  // 解析星期
+  let weekdayStr = ''
+  if (weekday === '?' || weekday === '*') {
+    weekdayStr = ''
+  } else if (weekday.includes(',')) {
+    const weekdays = weekday.split(',').map(w => weekdayMap[w.trim()] || w.trim()).join('、')
+    weekdayStr = weekdays
+  } else if (weekday.includes('-')) {
+    const [start, end] = weekday.split('-')
+    weekdayStr = `${weekdayMap[start.trim()] || start.trim()}到${weekdayMap[end.trim()] || end.trim()}`
+  } else {
+    weekdayStr = weekdayMap[weekday] || weekday
+  }
+  
+  // 解析日期
+  let dayStr = ''
+  if (day === '?' || day === '*') {
+    dayStr = ''
+  } else if (day.includes(',')) {
+    dayStr = `每月${day.split(',').join('、')}日`
+  } else if (day.includes('-')) {
+    const [start, end] = day.split('-')
+    dayStr = `每月${start}日到${end}日`
+  } else if (day === 'L') {
+    dayStr = '每月最後一天'
+  } else if (day.startsWith('L-')) {
+    const dayNum = day.substring(2)
+    dayStr = `每月倒數第${dayNum}天`
+  } else {
+    dayStr = `每月${day}日`
+  }
+  
+  // 解析月份
+  let monthStr = ''
+  if (month === '*') {
+    monthStr = ''
+  } else if (month.includes(',')) {
+    const months = month.split(',').map(m => monthMap[m.trim()] || m.trim()).join('、')
+    monthStr = months
+  } else if (month.includes('-')) {
+    const [start, end] = month.split('-')
+    monthStr = `${monthMap[start.trim()] || start.trim()}到${monthMap[end.trim()] || end.trim()}`
+  } else {
+    monthStr = monthMap[month] || month
+  }
+  
+  // 組合描述
+  let description = ''
+  
+  // 每天特定時間
+  if (day === '*' && month === '*' && (weekday === '*' || weekday === '?')) {
+    if (second === '0' && minute === '0') {
+      description = `每天 ${timeStr}`
+    } else {
+      description = `每天 ${timeStr}:${second.padStart(2, '0')}`
+    }
+  }
+  // 每週特定時間
+  else if (day === '?' && month === '*' && weekday !== '*' && weekday !== '?') {
+    if (weekdayStr.includes('、')) {
+      description = `每${weekdayStr} ${timeStr}`
+    } else {
+      description = `${weekdayStr} ${timeStr}`
+    }
+  }
+  // 每月特定日期和時間
+  else if (day !== '*' && day !== '?' && month === '*' && (weekday === '*' || weekday === '?')) {
+    description = `${dayStr} ${timeStr}`
+  }
+  // 特定月份
+  else if (month !== '*') {
+    description = `${monthStr}${dayStr ? ' ' + dayStr : ''}${weekdayStr ? ' ' + weekdayStr : ''} ${timeStr}`
+  }
+  // 其他複雜情況
+  else {
+    const parts = []
+    if (monthStr) parts.push(monthStr)
+    if (dayStr) parts.push(dayStr)
+    if (weekdayStr) parts.push(weekdayStr)
+    parts.push(timeStr)
+    description = parts.join(' ')
+  }
+  
+  return description || cronExpr
+}
+
 onMounted(() => {
   loadJobs()
 })
@@ -520,6 +658,7 @@ onUnmounted(() => {
   border-radius: 0.75rem;
   overflow: hidden;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  table-layout: fixed;
 }
 
 .data-table thead {
@@ -534,9 +673,41 @@ onUnmounted(() => {
   border-bottom: 2px solid #e2e8f0;
 }
 
+.data-table th:nth-child(1) { width: 5%; }   /* ID */
+.data-table th:nth-child(2) { width: 20%; }  /* 任務名稱 */
+.data-table th:nth-child(3) { width: 20%; }  /* Cron 表達式 */
+.data-table th:nth-child(4) { width: 20%; }  /* 描述 */
+.data-table th:nth-child(5) { width: 8%; }    /* 啟用狀態 */
+.data-table th:nth-child(6) { width: 12%; }   /* 執行狀態 */
+.data-table th:nth-child(7) { width: 15%; }  /* 操作 */
+
 .data-table td {
   padding: 1rem;
   border-bottom: 1px solid #e2e8f0;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.data-table td:nth-child(4) {
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  position: relative;
+  cursor: help;
+}
+
+.data-table td:nth-child(4):hover {
+  white-space: normal;
+  overflow: visible;
+  z-index: 10;
+  background: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  max-width: 400px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .data-table tbody tr:hover {
@@ -657,10 +828,20 @@ onUnmounted(() => {
   background: #2563eb;
 }
 
+.execution-modal-content {
+  max-width: 1200px;
+}
+
+.execution-table-container {
+  max-height: 500px;
+  overflow-y: auto;
+  margin-top: 1rem;
+}
+
 .execution-table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 1rem;
+  table-layout: fixed;
 }
 
 .execution-table th,
@@ -668,16 +849,60 @@ onUnmounted(() => {
   padding: 0.75rem;
   text-align: left;
   border-bottom: 1px solid #e2e8f0;
+  vertical-align: top;
 }
 
 .execution-table th {
   background: #f8fafc;
   font-weight: 600;
   color: #475569;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .execution-table tbody tr:hover {
   background: #f8fafc;
+}
+
+/* 欄位寬度分配 */
+.execution-time-col {
+  width: 15%;
+}
+
+.execution-status-col {
+  width: 10%;
+}
+
+.execution-result-col {
+  width: 45%;
+}
+
+/* 結果訊息樣式 */
+.result-message {
+  color: #059669;
+  font-size: 0.875rem;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  line-height: 1.6;
+  background: #ecfdf5;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  border-left: 3px solid #10b981;
+  font-family: 'Courier New', monospace;
+}
+
+.error-message {
+  color: #dc2626;
+  font-size: 0.875rem;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  line-height: 1.6;
+  background: #fef2f2;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  border-left: 3px solid #ef4444;
+  font-family: 'Courier New', monospace;
 }
 
 .modal-overlay {

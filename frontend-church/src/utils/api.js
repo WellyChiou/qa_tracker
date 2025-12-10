@@ -134,9 +134,18 @@ export async function apiRequest(url, options = {}, loadingMessage = '載入中.
     const needsToken = !isAuthEndpoint && (needsAuth || url.includes('/church/'))
     
     // 準備 headers
-    const headers = {
-      'Content-Type': 'application/json',
-      ...options.headers
+    // 如果是 FormData，不要設置 Content-Type，讓瀏覽器自動設置（包含 boundary）
+    const isFormData = options.body instanceof FormData
+    const headers = {}
+    
+    // 只有非 FormData 請求才設置 Content-Type
+    if (!isFormData) {
+      headers['Content-Type'] = 'application/json'
+    }
+    
+    // 合併用戶提供的 headers
+    if (options.headers) {
+      Object.assign(headers, options.headers)
     }
     
     // 如果需要 Token，添加到 Authorization header

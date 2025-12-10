@@ -93,7 +93,7 @@ INSERT IGNORE INTO menu_items (menu_code, menu_name, icon, url, parent_id, order
 ('HOME', '首頁', '🏠', '/', NULL, 1, 'frontend', NULL, 1),
 ('ABOUT', '關於我們', 'ℹ️', '/about', NULL, 2, 'frontend', NULL, 1),
 ('ACTIVITIES', '活動', '📅', '/activities', NULL, 3, 'frontend', NULL, 1),
-('SERVICE_SCHEDULE', '服事安排', '📋', '/service-schedule', NULL, 4, 'frontend', NULL, 1),
+('SERVICE_SCHEDULE', '服事表', '📋', '/service-schedule', NULL, 4, 'frontend', NULL, 1),
 ('CONTACT', '聯絡我們', '📧', '/contact', NULL, 5, 'frontend', NULL, 1);
 */
 

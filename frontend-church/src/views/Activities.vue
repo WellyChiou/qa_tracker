@@ -9,6 +9,9 @@
         </div>
         <div v-else-if="activitiesWithFormattedData.length > 0" class="activities-grid">
           <div class="card activity-card" v-for="activity in activitiesWithFormattedData" :key="activity.id">
+            <div v-if="activity.imageUrl" class="activity-image">
+              <img :src="activity.imageUrl" :alt="activity.title" />
+            </div>
             <div class="activity-header">
               <h3>{{ activity.title }}</h3>
             </div>
@@ -39,11 +42,12 @@ const isLoading = ref(false)
 const formatDate = (dateString) => {
   if (!dateString) return ''
   const date = new Date(dateString)
-  return date.toLocaleDateString('zh-TW', { 
-    year: 'numeric', 
-    month: '2-digit', 
-    day: '2-digit' 
-  })
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const dayOfWeek = date.getDay()
+  const weekdays = ['日', '一', '二', '三', '四', '五', '六']
+  return `${year}/${month}/${day}(${weekdays[dayOfWeek]})`
 }
 
 const parseTags = (tagsJson) => {
@@ -101,11 +105,32 @@ onMounted(() => {
   position: relative;
   transition: transform 0.3s, box-shadow 0.3s;
   padding-bottom: 3.5rem; /* 為日期預留空間 */
+  overflow: hidden;
 }
 
 .activity-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
+.activity-image {
+  width: calc(100% + 4rem);
+  height: 200px;
+  overflow: hidden;
+  margin: -2rem -2rem 1rem -2rem;
+  border-radius: 10px 10px 0 0;
+}
+
+.activity-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s;
+  display: block;
+}
+
+.activity-card:hover .activity-image img {
+  transform: scale(1.05);
 }
 
 .activity-header {

@@ -6,6 +6,9 @@ import com.example.helloworld.repository.personal.ScheduledJobRepository;
 import com.example.helloworld.scheduler.personal.DailyExpenseReminderScheduler;
 import com.example.helloworld.scheduler.personal.ExchangeRateScheduler;
 import com.example.helloworld.scheduler.church.ServiceScheduleNotificationScheduler;
+import com.example.helloworld.scheduler.church.ActivityExpirationScheduler;
+import com.example.helloworld.scheduler.church.SundayMessageExpirationScheduler;
+import com.example.helloworld.scheduler.church.ImageCleanupScheduler;
 import com.example.helloworld.service.personal.ScheduledJobService;
 import com.example.helloworld.service.church.ChurchScheduledJobService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +45,15 @@ public class HelloWorldApplication implements CommandLineRunner {
     @Autowired
     private ServiceScheduleNotificationScheduler serviceScheduleNotificationScheduler;
 
+    @Autowired
+    private ActivityExpirationScheduler activityExpirationScheduler;
+
+    @Autowired
+    private SundayMessageExpirationScheduler sundayMessageExpirationScheduler;
+
+    @Autowired
+    private ImageCleanupScheduler imageCleanupScheduler;
+
     public static void main(String[] args) {
         SpringApplication.run(HelloWorldApplication.class, args);
     }
@@ -73,6 +85,24 @@ public class HelloWorldApplication implements CommandLineRunner {
         churchScheduledJobService.registerJobExecutor(
             "com.example.helloworld.scheduler.church.ServiceScheduleNotificationScheduler$WeeklyServiceNotificationJob",
             serviceScheduleNotificationScheduler.getWeeklyServiceNotificationJob()
+        );
+
+        // 註冊活動過期檢查任務執行器
+        churchScheduledJobService.registerJobExecutor(
+            "com.example.helloworld.scheduler.church.ActivityExpirationScheduler$ActivityExpirationJob",
+            activityExpirationScheduler.getActivityExpirationJob()
+        );
+
+        // 註冊主日信息過期檢查任務執行器
+        churchScheduledJobService.registerJobExecutor(
+            "com.example.helloworld.scheduler.church.SundayMessageExpirationScheduler$SundayMessageExpirationJob",
+            sundayMessageExpirationScheduler.getSundayMessageExpirationJob()
+        );
+
+        // 註冊圖片清理任務執行器
+        churchScheduledJobService.registerJobExecutor(
+            "com.example.helloworld.scheduler.church.ImageCleanupScheduler$ImageCleanupJob",
+            imageCleanupScheduler.getImageCleanupJob()
         );
 
         // 初始化所有啟用的教會 Job

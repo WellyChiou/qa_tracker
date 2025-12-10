@@ -34,6 +34,9 @@
         <h2 class="section-title">最新活動</h2>
         <div class="activities-grid">
           <div class="card activity-card" v-for="activity in upcomingActivities.slice(0, 3)" :key="activity.id">
+            <div v-if="activity.imageUrl" class="activity-image">
+              <img :src="activity.imageUrl" :alt="activity.title" />
+            </div>
             <div class="activity-header">
               <h3>{{ activity.title }}</h3>
             </div>
@@ -233,11 +236,32 @@ onMounted(() => {
   position: relative;
   transition: transform 0.3s, box-shadow 0.3s;
   padding-bottom: 3.5rem;
+  overflow: hidden;
 }
 
 .activity-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
+.activity-image {
+  width: calc(100% + 4rem);
+  height: 200px;
+  overflow: hidden;
+  margin: -2rem -2rem 1rem -2rem;
+  border-radius: 10px 10px 0 0;
+}
+
+.activity-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s;
+  display: block;
+}
+
+.activity-card:hover .activity-image img {
+  transform: scale(1.05);
 }
 
 .activity-header {

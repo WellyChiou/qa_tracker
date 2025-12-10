@@ -27,6 +27,9 @@ public class FrontendDataController {
     @Autowired
     private ActivityService activityService;
 
+    @Autowired
+    private com.example.helloworld.service.church.SundayMessageService sundayMessageService;
+
     /**
      * 獲取教會基本資訊（公開訪問）
      */
@@ -80,6 +83,25 @@ public class FrontendDataController {
             Map<String, Object> response = new HashMap<>();
             response.put("success", false);
             response.put("message", "獲取活動資訊失敗: " + e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    /**
+     * 獲取主日信息（公開訪問）
+     */
+    @GetMapping("/sunday-messages")
+    public ResponseEntity<Map<String, Object>> getSundayMessages() {
+        try {
+            List<com.example.helloworld.entity.church.SundayMessage> messages = sundayMessageService.getAllActiveMessages();
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", messages);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "獲取主日信息失敗: " + e.getMessage());
             return ResponseEntity.badRequest().body(response);
         }
     }

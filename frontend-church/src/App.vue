@@ -67,7 +67,7 @@ const defaultMenus = [
   { id: 1, menuName: '首頁', url: '/' },
   { id: 2, menuName: '關於我們', url: '/about' },
   { id: 3, menuName: '活動', url: '/activities' },
-  { id: 4, menuName: '服事安排', url: '/service-schedule' },
+  { id: 4, menuName: '服事表', url: '/service-schedule' },
   { id: 5, menuName: '聯絡我們', url: '/contact' }
 ]
 
