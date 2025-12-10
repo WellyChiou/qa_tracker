@@ -270,7 +270,7 @@ public class PositionService {
     @Transactional(transactionManager = "churchTransactionManager")
     public Map<String, Object> getFullPositionConfig() {
         List<Position> positions = positionRepository.findByIsActiveTrueOrderBySortOrderAsc();
-        Map<String, Object> config = new HashMap<>();
+        Map<String, Object> config = new LinkedHashMap<>();
         
         for (Position position : positions) {
             Map<String, List<Map<String, Object>>> personsByDay = getPositionPersonsByDayType(position.getId());
@@ -279,6 +279,7 @@ public class PositionService {
             positionData.put("id", position.getId());
             positionData.put("positionCode", position.getPositionCode());
             positionData.put("positionName", position.getPositionName());
+            positionData.put("sortOrder", position.getSortOrder() != null ? position.getSortOrder() : 0);
             positionData.put("allowDuplicate", position.getAllowDuplicate() != null ? position.getAllowDuplicate() : false);
             positionData.put("saturday", personsByDay.get("saturday"));
             positionData.put("sunday", personsByDay.get("sunday"));

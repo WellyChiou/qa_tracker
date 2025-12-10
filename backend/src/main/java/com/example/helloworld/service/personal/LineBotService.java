@@ -98,6 +98,12 @@ public class LineBotService {
             return processExpenseMessage(matcher, user);
         }
 
+        // 檢查是否為群組 ID（LINE 群組 ID 通常以 C 開頭，長度約 33 個字符）
+        String trimmedMessage = messageText.trim();
+        if (trimmedMessage.startsWith("C") && trimmedMessage.length() >= 30 && trimmedMessage.length() <= 40) {
+            return getGroupInfo(trimmedMessage);
+        }
+
         // 處理其他命令
         switch (messageText.toLowerCase()) {
             case "help":
@@ -500,7 +506,16 @@ public class LineBotService {
                 System.out.println("✅ [群組訊息] 群組已存在: " + groupId);
             }
 
-            // 群組中不回應任何訊息，只記錄群組資訊（用於發送通知）
+            // 檢查是否為群組 ID 查詢（LINE 群組 ID 通常以 C 開頭，長度約 33 個字符）
+            if (messageText.startsWith("C") && messageText.length() >= 30 && messageText.length() <= 40) {
+                // 用戶輸入群組 ID，查詢並返回群組資訊
+                String groupInfo = getGroupInfo(messageText);
+                sendReplyMessage(replyToken, groupInfo);
+                System.out.println("✅ [群組訊息] 已回應群組 ID 查詢");
+                return;
+            }
+
+            // 其他群組訊息不回應，只記錄群組資訊（用於發送通知）
             // 如需使用 Bot 功能，請在個人對話中使用
             System.out.println("ℹ️ [群組訊息] 群組訊息已記錄，但不回應（避免群組訊息干擾）");
             System.out.println("💡 [群組訊息] 提示：如需使用 Bot 功能，請在個人對話中與 Bot 一對一聊天");
@@ -675,6 +690,44 @@ public class LineBotService {
     /**
      * 獲取今日所有費用訊息
      */
+    /**
+     * 獲取群組資訊
+     */
+    private String getGroupInfo(String groupId) {
+        try {
+            Optional<LineGroup> groupOpt = lineGroupRepository.findByGroupId(groupId);
+            
+            if (groupOpt.isPresent()) {
+                LineGroup group = groupOpt.get();
+                String groupName = group.getGroupName() != null && !group.getGroupName().trim().isEmpty() 
+                    ? group.getGroupName() 
+                    : "未命名群組";
+                String status = group.getIsActive() ? "✅ 啟用" : "❌ 停用";
+                
+                return String.format(
+                    "📋 群組資訊：\n\n" +
+                    "群組 ID：\n%s\n\n" +
+                    "群組名稱：%s\n\n" +
+                    "狀態：%s",
+                    groupId,
+                    groupName,
+                    status
+                );
+            } else {
+                return String.format(
+                    "❓ 找不到群組資訊\n\n" +
+                    "群組 ID：%s\n\n" +
+                    "💡 提示：請確認 Bot 已經加入該群組，或該群組 ID 是否正確。",
+                    groupId
+                );
+            }
+        } catch (Exception e) {
+            System.err.println("❌ 查詢群組資訊時發生錯誤: " + e.getMessage());
+            e.printStackTrace();
+            return "❌ 查詢群組資訊時發生錯誤，請稍後再試。";
+        }
+    }
+
     private String getTodayExpensesMessage(User user) {
         try {
             // 使用 created_by_uid 來查詢，這樣更準確

@@ -1,26 +1,26 @@
 package com.example.helloworld.entity.church;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Entity
-@Table(name = "service_schedules")
-public class ServiceSchedule {
+@Table(name = "church_line_groups")
+public class ChurchLineGroup {
     @Id
-    @Column(name = "year", nullable = false)
-    private Integer year; // 年度（例如：2024），作為主鍵
+    @Column(name = "group_id", length = 100)
+    private String groupId; // LINE 群組 ID
+
+    @Column(name = "group_name", length = 255)
+    private String groupName; // 群組名稱（可選）
+
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive = true; // 是否啟用通知
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
-
-    @OneToMany(mappedBy = "serviceSchedule", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @JsonIgnore // 避免 JSON 序列化時觸發懶加載
-    private List<ServiceScheduleDate> dates;
 
     @PrePersist
     protected void onCreate() {
@@ -34,12 +34,28 @@ public class ServiceSchedule {
     }
 
     // Getters and Setters
-    public Integer getYear() {
-        return year;
+    public String getGroupId() {
+        return groupId;
     }
 
-    public void setYear(Integer year) {
-        this.year = year;
+    public void setGroupId(String groupId) {
+        this.groupId = groupId;
+    }
+
+    public String getGroupName() {
+        return groupName;
+    }
+
+    public void setGroupName(String groupName) {
+        this.groupName = groupName;
+    }
+
+    public Boolean getIsActive() {
+        return isActive;
+    }
+
+    public void setIsActive(Boolean isActive) {
+        this.isActive = isActive;
     }
 
     public LocalDateTime getCreatedAt() {
@@ -56,14 +72,6 @@ public class ServiceSchedule {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
-    }
-
-    public List<ServiceScheduleDate> getDates() {
-        return dates;
-    }
-
-    public void setDates(List<ServiceScheduleDate> dates) {
-        this.dates = dates;
     }
 }
 

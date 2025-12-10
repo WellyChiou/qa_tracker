@@ -7,7 +7,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface ServiceScheduleRepository extends JpaRepository<ServiceSchedule, Long> {
+public interface ServiceScheduleRepository extends JpaRepository<ServiceSchedule, Integer> {
     // 查找所有安排，按建立時間排序
     List<ServiceSchedule> findAllByOrderByCreatedAtDesc();
 }
