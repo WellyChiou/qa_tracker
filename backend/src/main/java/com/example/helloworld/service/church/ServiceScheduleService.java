@@ -44,10 +44,22 @@ public class ServiceScheduleService {
      * 保存服事安排表（優化版本：減少資料庫查詢，使用批量操作）
      */
     @Transactional(transactionManager = "churchTransactionManager")
-    public ServiceSchedule saveSchedule(String name, List<Map<String, Object>> scheduleData) {
+    public ServiceSchedule saveSchedule(List<Map<String, Object>> scheduleData) {
+        // 0. 計算年度
+        Integer year = calculateYearFromScheduleData(scheduleData);
+        if (year == null) {
+            // 如果無法計算年度，使用當前年份
+            year = LocalDate.now().getYear();
+        }
+        
+        // 檢查該年度是否已存在服事表（主鍵會自動處理，但我們提供更友好的錯誤訊息）
+        if (repository.existsById(year)) {
+            throw new RuntimeException("該年度（" + year + "年）已存在服事表，每個年度只能有一個版本");
+        }
+        
         // 1. 創建主表記錄
         ServiceSchedule schedule = new ServiceSchedule();
-        schedule.setName(name);
+        schedule.setYear(year);
         schedule = repository.save(schedule);
 
         // 2. 如果有服事表數據，保存到關聯表
@@ -108,53 +120,75 @@ public class ServiceScheduleService {
                     scheduleDate.setDate(date);
                     datesToSave.add(scheduleDate);
 
-                    // 保存崗位配置和人員分配
+                    // 保存崗位配置和人員分配（支援多人）
                     for (String positionCode : positionCodeSet) {
-                        // 優先使用 ID，如果沒有 ID 則使用名稱（向後兼容）
-                        Long personId = null;
-                        Object personIdObj = item.get(positionCode + "Id");
-                        if (personIdObj != null) {
-                            if (personIdObj instanceof Number) {
-                                personId = ((Number) personIdObj).longValue();
-                            } else if (personIdObj instanceof String && !((String) personIdObj).trim().isEmpty()) {
-                                try {
-                                    personId = Long.parseLong((String) personIdObj);
-                                } catch (NumberFormatException e) {
-                                    // 忽略
+                        Position position = positionMap.get(positionCode);
+                        if (position == null) {
+                            continue;
+                        }
+                        
+                        // 使用 IDs 陣列（多人）
+                        List<Long> personIds = new ArrayList<>();
+                        Object personIdsObj = item.get(positionCode + "Ids");
+                        if (personIdsObj instanceof List) {
+                            // 處理 ID 陣列
+                            @SuppressWarnings("unchecked")
+                            List<Object> idsList = (List<Object>) personIdsObj;
+                            for (Object idObj : idsList) {
+                                if (idObj instanceof Number) {
+                                    personIds.add(((Number) idObj).longValue());
+                                } else if (idObj instanceof String && !((String) idObj).trim().isEmpty()) {
+                                    try {
+                                        personIds.add(Long.parseLong((String) idObj));
+                                    } catch (NumberFormatException e) {
+                                        // 忽略
+                                    }
                                 }
                             }
                         }
                         
-                        Person person = null;
-                        if (personId != null) {
-                            person = personMapById.get(personId);
-                        }
-                        
                         // 如果通過 ID 找不到，嘗試使用名稱（向後兼容）
-                        if (person == null) {
+                        if (personIds.isEmpty()) {
                             String personName = (String) item.get(positionCode);
                             if (personName != null && !personName.trim().isEmpty()) {
-                                person = personMapByName.get(personName);
+                                // 如果名稱包含 "/"，嘗試分割
+                                if (personName.contains("/")) {
+                                    String[] names = personName.split("/");
+                                    for (String name : names) {
+                                        Person person = personMapByName.get(name.trim());
+                                        if (person != null) {
+                                            personIds.add(person.getId());
+                                        }
+                                    }
+                                } else {
+                                    Person person = personMapByName.get(personName);
+                                    if (person != null) {
+                                        personIds.add(person.getId());
+                                    }
+                                }
                             }
                         }
                         
-                        if (person != null) {
-                            Position position = positionMap.get(positionCode);
-                            if (position != null) {
-                                // 創建崗位配置
-                                ServiceSchedulePositionConfig config = new ServiceSchedulePositionConfig();
-                                config.setServiceScheduleDate(scheduleDate);
-                                config.setPosition(position);
-                                config.setPersonCount(1);
-                                configsToSave.add(config);
+                        if (!personIds.isEmpty()) {
+                            // 創建崗位配置
+                            ServiceSchedulePositionConfig config = new ServiceSchedulePositionConfig();
+                            config.setServiceScheduleDate(scheduleDate);
+                            config.setPosition(position);
+                            config.setPersonCount(personIds.size());
+                            configsToSave.add(config);
 
-                                // 創建人員分配
-                                ServiceScheduleAssignment assignment = new ServiceScheduleAssignment();
-                                assignment.setServiceSchedulePositionConfig(config);
-                                assignment.setPerson(person);
-                                assignment.setSortOrder(0);
-                                assignmentsToSave.add(assignment);
-            }
+                            // 為每個人員創建分配記錄
+                            for (int i = 0; i < personIds.size(); i++) {
+                                Long personId = personIds.get(i);
+                                Person person = personMapById.get(personId);
+                                if (person != null) {
+                                    ServiceScheduleAssignment assignment = new ServiceScheduleAssignment();
+                                    assignment.setServiceSchedulePositionConfig(config);
+                                    assignment.setPerson(person);
+                                    assignment.setSortOrder(i); // 使用索引作為 sortOrder
+                                    assignmentsToSave.add(assignment);
+                                }
+                            }
                         }
                     }
                 }
@@ -192,18 +226,18 @@ public class ServiceScheduleService {
     }
 
     /**
-     * 根據 ID 獲取安排表（包含 dates 關聯數據）
+     * 根據年度獲取安排表（包含 dates 關聯數據）
      * 注意：不能同時 FETCH 多個 List 集合，需要分步載入
      */
     @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
-    public Optional<ServiceSchedule> getScheduleById(Long id) {
+    public Optional<ServiceSchedule> getScheduleByYear(Integer year) {
         // 第一步：載入 ServiceSchedule 和 dates
         String jpql1 = "SELECT DISTINCT s FROM ServiceSchedule s " +
                       "LEFT JOIN FETCH s.dates d " +
-                      "WHERE s.id = :id";
+                      "WHERE s.year = :year";
         
         List<ServiceSchedule> results = entityManager.createQuery(jpql1, ServiceSchedule.class)
-            .setParameter("id", id)
+            .setParameter("year", year)
             .getResultList();
         
         if (results.isEmpty()) {
@@ -410,8 +444,7 @@ public class ServiceScheduleService {
         
         for (ServiceSchedule schedule : schedules) {
             Map<String, Object> scheduleMap = new HashMap<>();
-            scheduleMap.put("id", schedule.getId());
-            scheduleMap.put("name", schedule.getName());
+            scheduleMap.put("year", schedule.getYear());
             scheduleMap.put("createdAt", schedule.getCreatedAt());
             scheduleMap.put("updatedAt", schedule.getUpdatedAt());
             
@@ -446,13 +479,41 @@ public class ServiceScheduleService {
      * 更新安排表
      */
     @Transactional(transactionManager = "churchTransactionManager")
-    public ServiceSchedule updateSchedule(Long id, String name, List<Map<String, Object>> scheduleData) {
+    public ServiceSchedule updateSchedule(Integer year, List<Map<String, Object>> scheduleData) {
         // 1. 載入現有的服事表
-        ServiceSchedule schedule = repository.findById(id)
-            .orElseThrow(() -> new RuntimeException("找不到指定的安排表"));
+        ServiceSchedule schedule = repository.findById(year)
+            .orElseThrow(() -> new RuntimeException("找不到指定年度（" + year + "年）的安排表"));
 
-        // 2. 更新名稱
-        schedule.setName(name);
+        // 2. 計算新的年度並檢查
+        Integer newYear = calculateYearFromScheduleData(scheduleData);
+        if (newYear == null) {
+            // 如果無法計算年度，保持原年度不變
+            newYear = schedule.getYear();
+        }
+        
+        // 如果年度改變了，需要處理主鍵變更
+        if (!newYear.equals(schedule.getYear())) {
+            // 檢查新年度是否已有服事表
+            if (repository.existsById(newYear)) {
+                throw new RuntimeException("該年度（" + newYear + "年）已存在服事表，每個年度只能有一個版本");
+            }
+            
+            // 由於主鍵變更，需要先刪除舊記錄再創建新記錄
+            // 保存關聯資料的引用
+            List<ServiceScheduleDate> datesToMove = schedule.getDates();
+            
+            // 刪除舊記錄（會級聯刪除 dates）
+            repository.delete(schedule);
+            entityManager.flush();
+            
+            // 創建新記錄
+            ServiceSchedule newSchedule = new ServiceSchedule();
+            newSchedule.setYear(newYear);
+            newSchedule = repository.save(newSchedule);
+            
+            // 重新關聯 dates（如果有的話，但通常會被級聯刪除，所以需要重新創建）
+            schedule = newSchedule;
+        }
 
         // 3. 刪除現有的 dates（會級聯刪除 positionConfigs 和 assignments）
         if (schedule.getDates() != null) {
@@ -519,52 +580,74 @@ public class ServiceScheduleService {
                     scheduleDate.setDate(date);
                     datesToSave.add(scheduleDate);
 
-                    // 保存崗位配置和人員分配
+                    // 保存崗位配置和人員分配（支援多人）
                     for (String positionCode : positionCodeSet) {
-                        // 優先使用 ID，如果沒有 ID 則使用名稱（向後兼容）
-                        Long personId = null;
-                        Object personIdObj = item.get(positionCode + "Id");
-                        if (personIdObj != null) {
-                            if (personIdObj instanceof Number) {
-                                personId = ((Number) personIdObj).longValue();
-                            } else if (personIdObj instanceof String && !((String) personIdObj).trim().isEmpty()) {
-                                try {
-                                    personId = Long.parseLong((String) personIdObj);
-                                } catch (NumberFormatException e) {
-                                    // 忽略
+                        Position position = positionMap.get(positionCode);
+                        if (position == null) {
+                            continue;
+                        }
+                        
+                        // 使用 IDs 陣列（多人）
+                        List<Long> personIds = new ArrayList<>();
+                        Object personIdsObj = item.get(positionCode + "Ids");
+                        if (personIdsObj instanceof List) {
+                            // 處理 ID 陣列
+                            @SuppressWarnings("unchecked")
+                            List<Object> idsList = (List<Object>) personIdsObj;
+                            for (Object idObj : idsList) {
+                                if (idObj instanceof Number) {
+                                    personIds.add(((Number) idObj).longValue());
+                                } else if (idObj instanceof String && !((String) idObj).trim().isEmpty()) {
+                                    try {
+                                        personIds.add(Long.parseLong((String) idObj));
+                                    } catch (NumberFormatException e) {
+                                        // 忽略
+                                    }
                                 }
                             }
                         }
                         
-                        Person person = null;
-                        if (personId != null) {
-                            person = personMapById.get(personId);
-                        }
-                        
                         // 如果通過 ID 找不到，嘗試使用名稱（向後兼容）
-                        if (person == null) {
+                        if (personIds.isEmpty()) {
                             String personName = (String) item.get(positionCode);
                             if (personName != null && !personName.trim().isEmpty()) {
-                                person = personMapByName.get(personName);
+                                // 如果名稱包含 "/"，嘗試分割
+                                if (personName.contains("/")) {
+                                    String[] names = personName.split("/");
+                                    for (String name : names) {
+                                        Person person = personMapByName.get(name.trim());
+                                        if (person != null) {
+                                            personIds.add(person.getId());
+                                        }
+                                    }
+                                } else {
+                                    Person person = personMapByName.get(personName);
+                                    if (person != null) {
+                                        personIds.add(person.getId());
+                                    }
+                                }
                             }
                         }
                         
-                        if (person != null) {
-                            Position position = positionMap.get(positionCode);
-                            if (position != null) {
-                                // 創建崗位配置
-                                ServiceSchedulePositionConfig config = new ServiceSchedulePositionConfig();
-                                config.setServiceScheduleDate(scheduleDate);
-                                config.setPosition(position);
-                                config.setPersonCount(1);
-                                configsToSave.add(config);
+                        if (!personIds.isEmpty()) {
+                            // 創建崗位配置
+                            ServiceSchedulePositionConfig config = new ServiceSchedulePositionConfig();
+                            config.setServiceScheduleDate(scheduleDate);
+                            config.setPosition(position);
+                            config.setPersonCount(personIds.size());
+                            configsToSave.add(config);
 
-                                // 創建人員分配
-                                ServiceScheduleAssignment assignment = new ServiceScheduleAssignment();
-                                assignment.setServiceSchedulePositionConfig(config);
-                                assignment.setPerson(person);
-                                assignment.setSortOrder(0);
-                                assignmentsToSave.add(assignment);
+                            // 為每個人員創建分配記錄
+                            for (int i = 0; i < personIds.size(); i++) {
+                                Long personId = personIds.get(i);
+                                Person person = personMapById.get(personId);
+                                if (person != null) {
+                                    ServiceScheduleAssignment assignment = new ServiceScheduleAssignment();
+                                    assignment.setServiceSchedulePositionConfig(config);
+                                    assignment.setPerson(person);
+                                    assignment.setSortOrder(i); // 使用索引作為 sortOrder
+                                    assignmentsToSave.add(assignment);
+                                }
                             }
                         }
                     }
@@ -606,8 +689,35 @@ public class ServiceScheduleService {
      * 刪除安排表
      */
     @Transactional(transactionManager = "churchTransactionManager")
-    public void deleteSchedule(Long id) {
-        repository.deleteById(id);
+    public void deleteSchedule(Integer year) {
+        repository.deleteById(year);
+    }
+
+    /**
+     * 從 scheduleData 中計算年度
+     * 使用最早的日期作為年度依據
+     */
+    private Integer calculateYearFromScheduleData(List<Map<String, Object>> scheduleData) {
+        if (scheduleData == null || scheduleData.isEmpty()) {
+            return null;
+        }
+        
+        LocalDate earliestDate = null;
+        for (Map<String, Object> item : scheduleData) {
+            String dateStr = (String) item.get("date");
+            if (dateStr != null && !dateStr.isEmpty()) {
+                try {
+                    LocalDate date = LocalDate.parse(dateStr);
+                    if (earliestDate == null || date.isBefore(earliestDate)) {
+                        earliestDate = date;
+                    }
+                } catch (Exception e) {
+                    // 忽略解析錯誤
+                }
+            }
+        }
+        
+        return earliestDate != null ? earliestDate.getYear() : null;
     }
 }
 

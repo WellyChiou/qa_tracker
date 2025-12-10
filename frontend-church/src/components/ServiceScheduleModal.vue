@@ -10,16 +10,17 @@
         </button>
       </div>
       <div class="modal-body">
-        <!-- 日期範圍選擇（僅在新增模式顯示） -->
+        <!-- 年份選擇和崗位選擇（僅在新增模式顯示） -->
         <div v-if="mode === 'add'" class="card">
-          <h3>日期範圍設定</h3>
-          <div class="date-range-group">
-            <div class="date-range-input-wrapper">
-              <label>日期範圍：</label>
-              <DateRangePicker 
-                v-model="localDateRange" 
-                placeholder="選擇日期範圍"
-              />
+          <h3>建立年度服事表</h3>
+          <div class="year-selection-group">
+            <div class="year-input-wrapper">
+              <label>選擇年份：</label>
+              <select v-model="selectedYear" class="form-input year-select">
+                <option value="">請選擇年份</option>
+                <option v-for="year in availableYearsForCreate" :key="year" :value="year">{{ year }}年</option>
+              </select>
+              <span v-if="yearWarning" class="year-warning">⚠️ 該年度已存在服事表</span>
             </div>
           </div>
           
@@ -49,7 +50,7 @@
           
           <div class="generate-button-wrapper">
             <button @click="generateSchedule" class="btn btn-primary" :disabled="!canGenerate" :title="getGenerateButtonTooltip()">
-              產生服事表
+              產生年度服事表
             </button>
             <div v-if="!canGenerate" class="generate-hint">
               <small>{{ getGenerateButtonTooltip() }}</small>
@@ -62,21 +63,10 @@
           <div class="schedule-header">
             <div class="schedule-title-section">
               <h3>服事表 <span v-if="isEditing" class="editing-badge">編輯模式</span></h3>
-              <!-- 名稱輸入/顯示 -->
-              <div class="schedule-name-section">
-                <label v-if="mode !== 'view'" class="schedule-name-label">
-                  名稱：
-                  <input 
-                    v-model="localScheduleName" 
-                    type="text" 
-                    class="schedule-name-input" 
-                    placeholder="請輸入服事表名稱"
-                    :disabled="saving"
-                  />
-                </label>
-                <div v-else class="schedule-name-display">
-                  <strong>名稱：</strong>{{ localScheduleName || '未命名' }}
-                </div>
+              <!-- 年度顯示 -->
+              <div v-if="calculatedYear || localScheduleYear" class="schedule-year-section">
+                <span class="year-badge">{{ calculatedYear || localScheduleYear }}年</span>
+                <span v-if="yearWarning" class="year-warning">⚠️ 該年度已存在服事表</span>
               </div>
               <!-- 編輯模式下的崗位選擇（用於新增崗位） -->
               <div v-if="isEditing" class="edit-position-selection">
@@ -115,9 +105,9 @@
             </div>
             <div class="schedule-actions">
               <button v-if="isEditing" @click="cancelEdit" class="btn btn-cancel">取消</button>
-              <!-- 編輯模式：如果有 editingScheduleId，顯示「更新」按鈕；否則顯示「新增」按鈕 -->
-              <button v-if="isEditing && editingScheduleId" @click="updateSchedule" class="btn btn-save" :disabled="saving">更新</button>
-              <button v-else-if="isEditing && !editingScheduleId && mode === 'add'" @click="saveSchedule" class="btn btn-save" :disabled="saving || !localScheduleName.trim()">新增</button>
+              <!-- 編輯模式：如果有 editingScheduleYear，顯示「更新」按鈕；否則顯示「新增」按鈕 -->
+              <button v-if="isEditing && editingScheduleYear" @click="updateSchedule" class="btn btn-save" :disabled="saving">更新</button>
+              <button v-else-if="isEditing && !editingScheduleYear && mode === 'add'" @click="saveSchedule" class="btn btn-save" :disabled="saving">新增</button>
               <button @click="exportSchedule" class="btn btn-export">匯出服事表</button>
             </div>
           </div>
@@ -126,9 +116,7 @@
               <thead>
                 <tr>
                   <th class="date-column">日期</th>
-                  <th class="positions-header" colspan="100%">
-                    <div class="positions-grid">
-                      <div 
+                  <th 
                         v-for="posCode in selectedPositionsList" 
                         :key="posCode"
                         class="position-header-cell"
@@ -143,31 +131,48 @@
                           >
                             🔄
                           </button>
-                        </div>
-                      </div>
                     </div>
                   </th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="(item, index) in localSchedule" :key="index">
-                  <td class="date-column">{{ item.formattedDate || formatDisplayDate(item.date, item.dayOfWeek) || item.date }}</td>
-                  <td class="positions-cell">
-                    <div class="positions-grid">
-                      <div 
+                  <td class="date-column">
+                    <div class="date-cell-content">
+                      <span>{{ item.formattedDate || formatDisplayDate(item.date, item.dayOfWeek) || item.date }}</span>
+                      <button 
+                        v-if="isEditing" 
+                        @click="clearDayPersons(index)" 
+                        class="btn-clear-day"
+                        title="清空當天所有人員"
+                      >
+                        清空
+                      </button>
+                    </div>
+                  </td>
+                  <td 
                         v-for="posCode in selectedPositionsList" 
                         :key="posCode"
                         class="position-cell"
                       >
-                        <select v-if="isEditing" v-model="item[posCode + 'Id']" class="edit-select">
-                          <option value="">-- 請選擇 --</option>
+                    <div v-if="isEditing" class="person-multi-select">
+                        <select 
+                          v-model="item[posCode + 'Ids']" 
+                          @change="handlePersonChange(item, posCode)" 
+                          class="edit-select"
+                          multiple
+                          :size="Math.min(getAvailablePersons(item, posCode).length + 1, 5)"
+                        >
                           <option v-for="person in getAvailablePersons(item, posCode)" :key="person.id" :value="person.id">
                             {{ person.name }}
                           </option>
                         </select>
-                        <span v-else>{{ item[posCode] || '-' }}</span>
+                        <div v-if="item[posCode + 'Ids'] && item[posCode + 'Ids'].length > 0" class="selected-persons">
+                          <span class="selected-label">已選：</span>
+                          <span class="selected-names">{{ item[posCode] || '-' }}</span>
+                        </div>
                       </div>
-                    </div>
+                      <span v-else>{{ item[posCode] || '-' }}</span>
                   </td>
                 </tr>
               </tbody>
@@ -183,7 +188,6 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
-import DateRangePicker from '@/components/DateRangePicker.vue'
 import { apiRequest } from '@/utils/api'
 import Notification from '@/components/Notification.vue'
 
@@ -197,7 +201,7 @@ const props = defineProps({
     default: 'add', // 'add' | 'edit' | 'view'
     validator: (value) => ['add', 'edit', 'view'].includes(value)
   },
-  scheduleId: {
+  scheduleYear: {
     type: Number,
     default: null
   },
@@ -211,15 +215,18 @@ const emit = defineEmits(['close', 'saved', 'updated'])
 
 // 本地狀態
 const localSchedule = ref([])
-const localScheduleName = ref('')
+const localScheduleYear = ref(null)
 const localDateRange = ref([])
 const localSelectedPositions = ref({})
 const localInitialSelectedPositions = ref({})
 const localUseRandomAssignment = ref(false)
-const editingScheduleId = ref(null)
+const editingScheduleYear = ref(null)
 const isEditing = ref(false)
 const saving = ref(false)
 const originalSchedule = ref([])
+const yearWarning = ref(false)
+const selectedYear = ref('')
+const existingYears = ref([]) // 已存在的年份列表
 
 // 計算屬性
 const modalTitle = computed(() => {
@@ -241,7 +248,103 @@ const selectedPositionsList = computed(() => {
   )
 })
 
+// 計算年度（從日期範圍的開始日期）
+const calculatedYear = computed(() => {
+  if (!localDateRange.value || localDateRange.value.length !== 2) {
+    return null
+  }
+  const startDate = new Date(localDateRange.value[0])
+  return startDate.getFullYear()
+})
+
+// 檢查該年度是否已有服事表
+const checkYearExists = async (year) => {
+  try {
+    const response = await apiRequest(`/church/service-schedules/year/${year}`, {
+      method: 'GET'
+    })
+    return response.ok
+  } catch (error) {
+    return false
+  }
+}
+
+// 計算可用的年份列表（用於新增）- 只能選擇當年度以及下一年度
+const availableYearsForCreate = computed(() => {
+  const currentYear = new Date().getFullYear()
+  const nextYear = currentYear + 1
+  const years = []
+  
+  // 只包含當年度和下一年度，且未存在的年份
+  if (!existingYears.value.includes(currentYear)) {
+    years.push(currentYear)
+  }
+  if (!existingYears.value.includes(nextYear)) {
+    years.push(nextYear)
+  }
+  
+  return years.sort((a, b) => b - a) // 降序排列
+})
+
+// 載入已存在的年份列表
+const loadExistingYears = async () => {
+  try {
+    const response = await apiRequest('/church/service-schedules', {
+      method: 'GET'
+    })
+    if (response.ok) {
+      const schedules = await response.json()
+      existingYears.value = schedules.map(s => s.year).filter(y => y != null)
+    }
+  } catch (error) {
+    console.error('載入已存在年份失敗:', error)
+  }
+}
+
+// 監聽選中年份變化，檢查是否已存在
+watch(selectedYear, async (newYear) => {
+  if (newYear && props.mode === 'add') {
+    const exists = await checkYearExists(parseInt(newYear))
+    yearWarning.value = exists
+    if (exists) {
+      selectedYear.value = '' // 如果已存在，清空選擇
+    }
+  } else {
+    yearWarning.value = false
+  }
+})
+
+// 監聽年度變化，檢查是否已存在（用於編輯模式）
+watch(calculatedYear, async (newYear) => {
+  if (newYear && props.mode === 'add' && !editingScheduleYear.value) {
+    const exists = await checkYearExists(newYear)
+    yearWarning.value = exists
+  } else {
+    yearWarning.value = false
+  }
+})
+
 const canGenerate = computed(() => {
+  // 新增模式：檢查年份和崗位
+  if (props.mode === 'add') {
+    if (!selectedYear.value) {
+      return false
+    }
+    
+    const selectedPositionsList = Object.keys(localInitialSelectedPositions.value).filter(
+      posCode => localInitialSelectedPositions.value[posCode] === true
+    )
+    
+    if (selectedPositionsList.length === 0) {
+      return false
+    }
+    
+    const allSelectedHaveConfig = selectedPositionsList.every(posCode => hasPositionConfig(posCode))
+    
+    return allSelectedHaveConfig && !yearWarning.value
+  }
+  
+  // 編輯模式：檢查日期範圍和崗位
   if (!localDateRange.value || localDateRange.value.length !== 2) {
     return false
   }
@@ -296,14 +399,15 @@ const closeModal = () => {
 
 const resetState = () => {
   localSchedule.value = []
-  localScheduleName.value = ''
+  localScheduleYear.value = null
   localDateRange.value = []
   localSelectedPositions.value = {}
   localInitialSelectedPositions.value = {}
   localUseRandomAssignment.value = false
-  editingScheduleId.value = null
+  editingScheduleYear.value = null
   isEditing.value = false
   originalSchedule.value = []
+  yearWarning.value = false
 }
 
 const initializePositionSelection = () => {
@@ -400,17 +504,35 @@ const getPersonNameById = (personId, position, item) => {
   return person && typeof person === 'object' ? (person.displayName || person.personName || '') : ''
 }
 
-const loadScheduleForEdit = async (scheduleId) => {
+// 根據人員名稱查找 ID（用於載入時）
+const getPersonIdByName = (personName, posCode, item) => {
+  if (!personName) return null
+  const dayOfWeek = item.dayOfWeek || (item.date ? (parseDate(item.date)?.getDay() === 6 ? '六' : '日') : '六')
+  const dayKey = dayOfWeek === '六' ? 'saturday' : 'sunday'
+  const posData = props.positionConfig[posCode]
+  const persons = (posData && posData[dayKey]) ? posData[dayKey] : []
+  const person = persons.find(p => {
+    if (typeof p === 'object') {
+      const displayName = p.displayName || ''
+      const pName = p.personName || ''
+      return displayName === personName || pName === personName
+    }
+    return false
+  })
+  return person && typeof person === 'object' ? (person.personId || person.id || null) : null
+}
+
+const loadScheduleForEdit = async (scheduleYear) => {
   try {
-    const response = await apiRequest(`/church/service-schedules/${scheduleId}`, {
+    const response = await apiRequest(`/church/service-schedules/${scheduleYear}`, {
       method: 'GET',
       credentials: 'include'
     }, '載入服事表中...')
     const data = await response.json()
     
     if (response.ok) {
-      localScheduleName.value = data.name || ''
-      editingScheduleId.value = scheduleId
+      localScheduleYear.value = data.year
+      editingScheduleYear.value = scheduleYear
       
       if (data.startDate && data.endDate) {
         localDateRange.value = [data.startDate, data.endDate]
@@ -433,12 +555,44 @@ const loadScheduleForEdit = async (scheduleId) => {
             }
           }
           
+          // 處理多人情況：優先使用後端返回的名稱（已用 "/" 串接）和 IDs 陣列
           Object.keys(props.positionConfig).forEach(posCode => {
-            if (scheduleItem[posCode + 'Id'] && !scheduleItem[posCode]) {
-              const personId = scheduleItem[posCode + 'Id']
-              const personName = getPersonNameById(personId, posCode, scheduleItem)
-              if (personName) {
-                scheduleItem[posCode] = personName
+            // 如果後端返回了 IDs 陣列，使用它
+            if (scheduleItem[posCode + 'Ids'] && Array.isArray(scheduleItem[posCode + 'Ids'])) {
+              // 確保名稱欄位存在（後端應該已經返回，但如果沒有則從 ID 查找）
+              if (!scheduleItem[posCode] || scheduleItem[posCode].trim() === '') {
+                const personNames = []
+                for (const personId of scheduleItem[posCode + 'Ids']) {
+                  const personName = getPersonNameById(personId, posCode, scheduleItem)
+                  if (personName) {
+                    personNames.push(personName)
+                  }
+                }
+                if (personNames.length > 0) {
+                  scheduleItem[posCode] = personNames.join('/')
+                }
+              }
+            } else if (scheduleItem[posCode] && !scheduleItem[posCode + 'Ids']) {
+              // 如果只有名稱（可能包含 "/"），嘗試從名稱查找 ID
+              const personNameStr = scheduleItem[posCode]
+              if (personNameStr.includes('/')) {
+                const names = personNameStr.split('/')
+                const ids = []
+                for (const name of names) {
+                  const personId = getPersonIdByName(name.trim(), posCode, scheduleItem)
+                  if (personId) {
+                    ids.push(personId)
+                  }
+                }
+                if (ids.length > 0) {
+                  scheduleItem[posCode + 'Ids'] = ids
+                }
+              } else {
+                // 單個人員
+                const personId = getPersonIdByName(personNameStr, posCode, scheduleItem)
+                if (personId) {
+                  scheduleItem[posCode + 'Ids'] = [personId]
+                }
               }
             }
           })
@@ -484,15 +638,15 @@ const loadScheduleForEdit = async (scheduleId) => {
   }
 }
 
-const loadScheduleForView = async (scheduleId) => {
+const loadScheduleForView = async (scheduleYear) => {
   try {
-    const response = await apiRequest(`/church/service-schedules/${scheduleId}`, {
+    const response = await apiRequest(`/church/service-schedules/${scheduleYear}`, {
       method: 'GET'
     }, '載入服事表中...')
     const data = await response.json()
     
     if (response.ok) {
-      localScheduleName.value = data.name || ''
+      localScheduleYear.value = data.year
       
       if (data.scheduleData && Array.isArray(data.scheduleData) && data.scheduleData.length > 0) {
         localSchedule.value = data.scheduleData.map(item => {
@@ -509,12 +663,44 @@ const loadScheduleForView = async (scheduleId) => {
             }
           }
           
+          // 處理多人情況：優先使用後端返回的名稱（已用 "/" 串接）和 IDs 陣列
           Object.keys(props.positionConfig).forEach(posCode => {
-            if (scheduleItem[posCode + 'Id'] && !scheduleItem[posCode]) {
-              const personId = scheduleItem[posCode + 'Id']
-              const personName = getPersonNameById(personId, posCode, scheduleItem)
-              if (personName) {
-                scheduleItem[posCode] = personName
+            // 如果後端返回了 IDs 陣列，使用它
+            if (scheduleItem[posCode + 'Ids'] && Array.isArray(scheduleItem[posCode + 'Ids'])) {
+              // 確保名稱欄位存在（後端應該已經返回，但如果沒有則從 ID 查找）
+              if (!scheduleItem[posCode] || scheduleItem[posCode].trim() === '') {
+                const personNames = []
+                for (const personId of scheduleItem[posCode + 'Ids']) {
+                  const personName = getPersonNameById(personId, posCode, scheduleItem)
+                  if (personName) {
+                    personNames.push(personName)
+                  }
+                }
+                if (personNames.length > 0) {
+                  scheduleItem[posCode] = personNames.join('/')
+                }
+              }
+            } else if (scheduleItem[posCode] && !scheduleItem[posCode + 'Ids']) {
+              // 如果只有名稱（可能包含 "/"），嘗試從名稱查找 ID
+              const personNameStr = scheduleItem[posCode]
+              if (personNameStr.includes('/')) {
+                const names = personNameStr.split('/')
+                const ids = []
+                for (const name of names) {
+                  const personId = getPersonIdByName(name.trim(), posCode, scheduleItem)
+                  if (personId) {
+                    ids.push(personId)
+                  }
+                }
+                if (ids.length > 0) {
+                  scheduleItem[posCode + 'Ids'] = ids
+                }
+              } else {
+                // 單個人員
+                const personId = getPersonIdByName(personNameStr, posCode, scheduleItem)
+                if (personId) {
+                  scheduleItem[posCode + 'Ids'] = [personId]
+                }
               }
             }
           })
@@ -557,15 +743,16 @@ const loadScheduleForView = async (scheduleId) => {
   }
 }
 
-// 當 show、mode 或 scheduleId 改變時，載入對應的資料
-watch([() => props.show, () => props.mode, () => props.scheduleId], async ([show, mode, scheduleId]) => {
+// 當 show、mode 或 scheduleYear 改變時，載入對應的資料
+watch([() => props.show, () => props.mode, () => props.scheduleYear], async ([show, mode, scheduleYear]) => {
   if (show) {
     resetState()
     
     if (mode === 'add') {
-      // 新增模式：初始化崗位選擇
+      // 新增模式：初始化崗位選擇並載入已存在的年份
       initializePositionSelection()
-    } else if (mode === 'edit' && scheduleId) {
+      await loadExistingYears()
+    } else if (mode === 'edit' && scheduleYear) {
       // 編輯模式：載入資料並進入編輯模式
       // 如果 positionConfig 為空，等待一下再載入（給父組件時間載入配置）
       if (Object.keys(props.positionConfig).length === 0) {
@@ -576,10 +763,10 @@ watch([() => props.show, () => props.mode, () => props.scheduleId], async ([show
           retries++
         }
       }
-      await loadScheduleForEdit(scheduleId)
-    } else if (mode === 'view' && scheduleId) {
+      await loadScheduleForEdit(scheduleYear)
+    } else if (mode === 'view' && scheduleYear) {
       // 查看模式：只載入資料，不進入編輯模式
-      await loadScheduleForView(scheduleId)
+      await loadScheduleForView(scheduleYear)
     }
   }
 }, { immediate: true })
@@ -633,7 +820,7 @@ const distributePersons = (dates) => {
     
     selectedPositionsList.forEach(posCode => {
       assignment[posCode] = ''
-      assignment[posCode + 'Id'] = null
+      assignment[posCode + 'Ids'] = []
     })
     
     const positionsWithDuplicateCheck = []
@@ -681,7 +868,7 @@ const distributePersons = (dates) => {
           return totalA - totalB
         })
         assignment[posCode] = availablePersons[0].name
-        assignment[posCode + 'Id'] = availablePersons[0].id
+        assignment[posCode + 'Ids'] = [availablePersons[0].id]
         usedPersons.add(availablePersons[0].name)
         
         if (assignment[posCode] && serviceCount[assignment[posCode]]) {
@@ -721,7 +908,7 @@ const distributePersons = (dates) => {
           return totalA - totalB
         })
         assignment[posCode] = availablePersons[0].name
-        assignment[posCode + 'Id'] = availablePersons[0].id
+        assignment[posCode + 'Ids'] = [availablePersons[0].id]
         
         if (assignment[posCode] && serviceCount[assignment[posCode]]) {
           if (!serviceCount[assignment[posCode]][posCode]) {
@@ -739,15 +926,61 @@ const distributePersons = (dates) => {
   return schedule
 }
 
+// 獲取整年度的週六和週日
+const getYearWeekendDates = (year) => {
+  const dates = []
+  const startDate = new Date(year, 0, 1) // 1月1日
+  const endDate = new Date(year, 11, 31) // 12月31日
+  
+  const currentDate = new Date(startDate)
+  while (currentDate <= endDate) {
+    const dayOfWeek = currentDate.getDay()
+    // 0 = 週日, 6 = 週六
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      dates.push({
+        date: new Date(currentDate),
+        dayOfWeek: dayOfWeek === 0 ? '日' : '六',
+        isSaturday: dayOfWeek === 6
+      })
+    }
+    currentDate.setDate(currentDate.getDate() + 1)
+  }
+  
+  return dates
+}
+
 // 產生服事表
 const generateSchedule = () => {
   if (!canGenerate.value) {
+    if (props.mode === 'add') {
+      showNotification('請選擇年份並確保每個崗位至少配置一位人員', 'warning', 4000)
+    } else {
     showNotification('請確保每個崗位至少配置一位人員，並選擇日期範圍', 'warning', 4000)
+    }
     return
   }
   
+  let weekendDates = []
+  
+  // 新增模式：根據選中的年份生成整年度的週六和週日
+  if (props.mode === 'add' && selectedYear.value) {
+    const year = parseInt(selectedYear.value)
+    weekendDates = getYearWeekendDates(year)
+    
+    // 設置日期範圍（用於後續保存）
+    if (weekendDates.length > 0) {
+      const firstDate = weekendDates[0].date
+      const lastDate = weekendDates[weekendDates.length - 1].date
+      localDateRange.value = [
+        `${firstDate.getFullYear()}-${String(firstDate.getMonth() + 1).padStart(2, '0')}-${String(firstDate.getDate()).padStart(2, '0')}`,
+        `${lastDate.getFullYear()}-${String(lastDate.getMonth() + 1).padStart(2, '0')}-${String(lastDate.getDate()).padStart(2, '0')}`
+      ]
+    }
+  } else {
+    // 編輯模式：使用日期範圍
   const [startDate, endDate] = localDateRange.value
-  const weekendDates = getWeekendDates(startDate, endDate)
+    weekendDates = getWeekendDates(startDate, endDate)
+  }
   
   if (weekendDates.length === 0) {
     showNotification('選擇的日期範圍內沒有週六或週日', 'warning', 3000)
@@ -780,6 +1013,56 @@ const generateSchedule = () => {
   showNotification('服事表已產生，您可以直接編輯調整', 'success', 3000)
 }
 
+// 處理人員選擇變更：支援多選
+const handlePersonChange = (item, posCode) => {
+  // 確保 Ids 陣列存在
+  if (!item[posCode + 'Ids']) {
+    item[posCode + 'Ids'] = []
+  }
+  
+  const personIds = item[posCode + 'Ids']
+  
+  if (!personIds || personIds.length === 0) {
+    // 如果沒有選擇人員，清空該崗位的人員
+    item[posCode] = ''
+    item[posCode + 'Ids'] = []
+  } else {
+    // 如果有選擇人員，更新人員名稱（用 "/" 串接）
+    const availablePersons = getAvailablePersons(item, posCode)
+    const selectedNames = []
+    
+    for (const personId of personIds) {
+      const person = availablePersons.find(p => {
+        // 處理 ID 類型匹配（可能是字符串或數字）
+        const pId = p.id
+        return pId != null && (pId === personId || String(pId) === String(personId) || Number(pId) === Number(personId))
+      })
+      
+      if (person) {
+        selectedNames.push(person.name || '')
+      }
+    }
+    
+    // 用 "/" 串接多人名稱
+    item[posCode] = selectedNames.join('/')
+    
+    // 為了向後兼容，也保留單個 ID（取第一個）
+  }
+}
+
+// 清空當天所有人員
+const clearDayPersons = (index) => {
+  const item = localSchedule.value[index]
+  if (!item) return
+  
+  selectedPositionsList.value.forEach(posCode => {
+    item[posCode] = ''
+    item[posCode + 'Ids'] = []
+  })
+  
+  showNotification('已清空當天所有人員', 'success', 2000)
+}
+
 const handlePositionSelectionChange = (posCode) => {
   if (!isEditing.value) return
   
@@ -790,7 +1073,7 @@ const handlePositionSelectionChange = (posCode) => {
     const hasOriginalData = originalSchedule.value.length > 0 && 
       originalSchedule.value.some(item => 
         (item[posCode] && item[posCode] !== '') || 
-        (item[posCode + 'Id'] && item[posCode + 'Id'] !== null)
+        (item[posCode + 'Ids'] && item[posCode + 'Ids'].length > 0)
       )
     
     if (hasOriginalData) {
@@ -798,18 +1081,18 @@ const handlePositionSelectionChange = (posCode) => {
       localSchedule.value.forEach((item, index) => {
         const originalItem = originalSchedule.value[index]
         if (originalItem) {
-          if (originalItem[posCode] || originalItem[posCode + 'Id']) {
+          if (originalItem[posCode] || (originalItem[posCode + 'Ids'] && originalItem[posCode + 'Ids'].length > 0)) {
             item[posCode] = originalItem[posCode] || ''
-            item[posCode + 'Id'] = originalItem[posCode + 'Id'] || null
+            item[posCode + 'Ids'] = originalItem[posCode + 'Ids'] || []
           } else {
             // 如果原始資料中該日期沒有該崗位資料，則初始化為空
             item[posCode] = ''
-            item[posCode + 'Id'] = null
+            item[posCode + 'Ids'] = []
           }
         } else {
           // 如果沒有對應的原始資料，初始化為空
           item[posCode] = ''
-          item[posCode + 'Id'] = null
+          item[posCode + 'Ids'] = []
         }
       })
     } else {
@@ -817,7 +1100,7 @@ const handlePositionSelectionChange = (posCode) => {
       localSchedule.value.forEach(item => {
         if (!item.hasOwnProperty(posCode)) {
           item[posCode] = ''
-          item[posCode + 'Id'] = null
+          item[posCode + 'Ids'] = []
         }
       })
       
@@ -830,7 +1113,7 @@ const handlePositionSelectionChange = (posCode) => {
     // 取消勾選時，清空該崗位的資料
     localSchedule.value.forEach(item => {
       item[posCode] = ''
-      item[posCode + 'Id'] = null
+      item[posCode + 'Ids'] = []
     })
   }
 }
@@ -842,9 +1125,10 @@ const autoAssignPositionForNewSelection = (posCode) => {
   
   const serviceCount = {}
   localSchedule.value.forEach(item => {
-    const personId = item[posCode + 'Id']
+    const personIds = item[posCode + 'Ids'] || []
     const personName = item[posCode]
-    if (personId && personName) {
+    if (personIds.length > 0 && personName) {
+      const personId = personIds[0]
       if (!serviceCount[personName]) {
         serviceCount[personName] = { count: 0, id: personId }
       }
@@ -855,7 +1139,9 @@ const autoAssignPositionForNewSelection = (posCode) => {
   const allowDuplicate = posData.allowDuplicate === true
   
   localSchedule.value.forEach(item => {
-    if (item[posCode + 'Id']) return
+    // 優先使用 Ids 陣列檢查
+    const personIds = item[posCode + 'Ids'] || []
+    if (personIds.length > 0) return
     
     const dayOfWeek = item.dayOfWeek || (item.date ? (parseDate(item.date)?.getDay() === 6 ? '六' : '日') : '六')
     const dayType = dayOfWeek === '六' ? 'saturday' : 'sunday'
@@ -881,10 +1167,9 @@ const autoAssignPositionForNewSelection = (posCode) => {
       const usedPersonIds = new Set()
       Object.keys(localSelectedPositions.value).forEach(otherPosCode => {
         if (localSelectedPositions.value[otherPosCode] && otherPosCode !== posCode) {
-          const otherPersonId = item[otherPosCode + 'Id']
-          if (otherPersonId) {
-            usedPersonIds.add(otherPersonId)
-          }
+          // 優先使用 Ids 陣列，向後兼容 Id
+          const otherPersonIds = item[otherPosCode + 'Ids'] || []
+          otherPersonIds.forEach(id => usedPersonIds.add(id))
         }
       })
       filteredPersons = availablePersons.filter(p => !usedPersonIds.has(p.id))
@@ -919,7 +1204,7 @@ const autoAssignPositionForNewSelection = (posCode) => {
     
     if (selectedPerson) {
       item[posCode] = selectedPerson.name
-      item[posCode + 'Id'] = selectedPerson.id
+      item[posCode + 'Ids'] = [selectedPerson.id]
       
       if (!serviceCount[selectedPerson.name]) {
         serviceCount[selectedPerson.name] = { count: 0, id: selectedPerson.id }
@@ -951,14 +1236,15 @@ const autoAssignPosition = (posCode) => {
   
   localSchedule.value.forEach(item => {
     item[posCode] = ''
-    item[posCode + 'Id'] = null
+    item[posCode + 'Ids'] = []
   })
   
   const serviceCount = {}
   localSchedule.value.forEach(item => {
-    const personId = item[posCode + 'Id']
+    const personIds = item[posCode + 'Ids'] || []
     const personName = item[posCode]
-    if (personId && personName) {
+    if (personIds.length > 0 && personName) {
+      const personId = personIds[0]
       if (!serviceCount[personName]) {
         serviceCount[personName] = { count: 0, id: personId }
       }
@@ -993,10 +1279,9 @@ const autoAssignPosition = (posCode) => {
       const usedPersonIds = new Set()
       Object.keys(localSelectedPositions.value).forEach(otherPosCode => {
         if (localSelectedPositions.value[otherPosCode] && otherPosCode !== posCode) {
-          const otherPersonId = item[otherPosCode + 'Id']
-          if (otherPersonId) {
-            usedPersonIds.add(otherPersonId)
-          }
+          // 優先使用 Ids 陣列，向後兼容 Id
+          const otherPersonIds = item[otherPosCode + 'Ids'] || []
+          otherPersonIds.forEach(id => usedPersonIds.add(id))
         }
       })
       filteredPersons = availablePersons.filter(p => !usedPersonIds.has(p.id))
@@ -1031,7 +1316,7 @@ const autoAssignPosition = (posCode) => {
     
     if (selectedPerson) {
       item[posCode] = selectedPerson.name
-      item[posCode + 'Id'] = selectedPerson.id
+      item[posCode + 'Ids'] = [selectedPerson.id]
       
       if (!serviceCount[selectedPerson.name]) {
         serviceCount[selectedPerson.name] = { count: 0, id: selectedPerson.id }
@@ -1063,7 +1348,9 @@ const validateSchedule = () => {
     const positionsWithoutDuplicateCheck = []
     
     Object.keys(localSelectedPositions.value).forEach(posCode => {
-      if (localSelectedPositions.value[posCode] && item[posCode + 'Id']) {
+      // 優先使用 Ids 陣列，向後兼容 Id
+      const personIds = item[posCode + 'Ids'] || []
+      if (localSelectedPositions.value[posCode] && personIds.length > 0) {
         const posData = props.positionConfig[posCode]
         if (posData && !posData.allowDuplicate) {
           positionsWithDuplicateCheck.push(posCode)
@@ -1075,20 +1362,30 @@ const validateSchedule = () => {
     
     const usedPersonIds = new Set()
     positionsWithDuplicateCheck.forEach(posCode => {
-      const personId = item[posCode + 'Id']
-      if (personId) {
-        if (usedPersonIds.has(personId)) {
-          const dateStr = item.formattedDate || item.date || `第 ${index + 1} 行`
-          const personName = item[posCode] || '未知人員'
-          const positionName = props.positionConfig[posCode]?.positionName || posCode
-          const otherPositions = positionsWithDuplicateCheck
-            .filter(p => p !== posCode && item[p + 'Id'] === personId)
-            .map(p => props.positionConfig[p]?.positionName || p)
-            .join('、')
-          errors.push(`${dateStr}：${personName} 同時擔任多個崗位（${positionName} 與 ${otherPositions} 之間不能重複）`)
+      // 優先使用 Ids 陣列，向後兼容 Id
+      const personIds = item[posCode + 'Ids'] || []
+      personIds.forEach(personId => {
+        if (personId) {
+          if (usedPersonIds.has(personId)) {
+            const dateStr = item.formattedDate || item.date || `第 ${index + 1} 行`
+            const personName = item[posCode] || '未知人員'
+            const positionName = props.positionConfig[posCode]?.positionName || posCode
+            // 檢查其他崗位是否也使用了相同的人員 ID
+            const otherPositions = positionsWithDuplicateCheck
+              .filter(p => {
+                if (p === posCode) return false
+                const otherPersonIds = item[p + 'Ids'] || []
+                return otherPersonIds.includes(personId)
+              })
+              .map(p => props.positionConfig[p]?.positionName || p)
+              .join('、')
+            if (otherPositions) {
+              errors.push(`${dateStr}：${personName} 同時擔任多個崗位（${positionName} 與 ${otherPositions} 之間不能重複）`)
+            }
+          }
+          usedPersonIds.add(personId)
         }
-        usedPersonIds.add(personId)
-      }
+      })
     })
   })
   
@@ -1102,8 +1399,16 @@ const saveSchedule = async () => {
     return
   }
 
-  if (!localScheduleName.value || !localScheduleName.value.trim()) {
-    showNotification('請輸入服事表名稱', 'warning', 3000)
+  // 檢查年度是否已存在
+  const year = calculatedYear.value
+  if (!year) {
+    showNotification('無法計算年度，請檢查日期範圍', 'warning', 3000)
+    return
+  }
+  
+  const yearExists = await checkYearExists(year)
+  if (yearExists) {
+    showNotification(`該年度（${year}年）已存在服事表，每個年度只能有一個版本。請先刪除或更新現有的服事表。`, 'error', 5000)
     return
   }
 
@@ -1120,8 +1425,11 @@ const saveSchedule = async () => {
       
       Object.keys(localSelectedPositions.value).forEach(posCode => {
         if (localSelectedPositions.value[posCode]) {
-          result[posCode] = item[posCode] || (item[posCode + 'Id'] ? getPersonNameById(item[posCode + 'Id'], posCode, item) : '')
-          result[posCode + 'Id'] = item[posCode + 'Id'] ? Number(item[posCode + 'Id']) : null
+          // 優先使用 IDs 陣列（多人）
+          if (item[posCode + 'Ids'] && Array.isArray(item[posCode + 'Ids']) && item[posCode + 'Ids'].length > 0) {
+            result[posCode] = item[posCode] || ''
+            result[posCode + 'Ids'] = item[posCode + 'Ids'].map(id => Number(id))
+          }
         }
       })
       
@@ -1131,7 +1439,6 @@ const saveSchedule = async () => {
     const response = await apiRequest('/church/service-schedules', {
       method: 'POST',
       body: JSON.stringify({
-        name: localScheduleName.value.trim(),
         scheduleData: scheduleDataForBackend,
         dateRange: localDateRange.value
       })
@@ -1141,17 +1448,24 @@ const saveSchedule = async () => {
     
     if (response.ok && result.success !== false) {
       showNotification('服事表保存成功！', 'success', 3000)
-      editingScheduleId.value = result.id
-      emit('saved', result.id)
+      editingScheduleYear.value = result.year
+      localScheduleYear.value = result.year
+      emit('saved', result.year)
       // 延遲關閉視窗，讓用戶看到成功訊息
       setTimeout(() => {
         closeModal()
       }, 1500)
     } else {
-      showNotification('保存失敗：' + (result.error || '未知錯誤'), 'error', 4000)
+      const errorMsg = result.error || '未知錯誤'
+      showNotification('保存失敗：' + errorMsg, 'error', 5000)
     }
   } catch (error) {
-    showNotification('保存失敗：' + error.message, 'error', 4000)
+    const errorMsg = error.message || '未知錯誤'
+    if (errorMsg.includes('年度') || errorMsg.includes('year')) {
+      showNotification(errorMsg, 'error', 5000)
+    } else {
+      showNotification('保存失敗：' + errorMsg, 'error', 4000)
+    }
   } finally {
     saving.value = false
   }
@@ -1159,13 +1473,8 @@ const saveSchedule = async () => {
 
 // 更新服事表
 const updateSchedule = async () => {
-  if (!editingScheduleId.value) {
+  if (!editingScheduleYear.value) {
     showNotification('請先載入要編輯的服事表', 'warning', 3000)
-    return
-  }
-
-  if (!localScheduleName.value || !localScheduleName.value.trim()) {
-    showNotification('請輸入服事表名稱', 'warning', 3000)
     return
   }
 
@@ -1179,7 +1488,9 @@ const updateSchedule = async () => {
     const hasEmpty = localSchedule.value.some(item => {
       return Object.keys(localSelectedPositions.value).some(posCode => {
         if (localSelectedPositions.value[posCode]) {
-          return !item[posCode + 'Id']
+          // 優先使用 Ids 陣列，向後兼容 Id
+          const personIds = item[posCode + 'Ids'] || []
+          return personIds.length === 0
         }
         return false
       })
@@ -1198,18 +1509,20 @@ const updateSchedule = async () => {
       
       Object.keys(localSelectedPositions.value).forEach(posCode => {
         if (localSelectedPositions.value[posCode]) {
-          result[posCode] = item[posCode] || (item[posCode + 'Id'] ? getPersonNameById(item[posCode + 'Id'], posCode, item) : '')
-          result[posCode + 'Id'] = item[posCode + 'Id'] ? Number(item[posCode + 'Id']) : null
+          // 優先使用 IDs 陣列（多人）
+          if (item[posCode + 'Ids'] && Array.isArray(item[posCode + 'Ids']) && item[posCode + 'Ids'].length > 0) {
+            result[posCode] = item[posCode] || ''
+            result[posCode + 'Ids'] = item[posCode + 'Ids'].map(id => Number(id))
+          }
         }
       })
       
       return result
     })
 
-    const response = await apiRequest(`/church/service-schedules/${editingScheduleId.value}`, {
+    const response = await apiRequest(`/church/service-schedules/${editingScheduleYear.value}`, {
       method: 'PUT',
       body: JSON.stringify({
-        name: localScheduleName.value.trim(),
         scheduleData: scheduleDataForBackend,
         dateRange: localDateRange.value
       })
@@ -1219,6 +1532,11 @@ const updateSchedule = async () => {
     
     if (response.ok) {
       showNotification('服事表更新成功！', 'success', 3000)
+      // 如果年度改變了，更新當前年度
+      if (result.year && result.year !== editingScheduleYear.value) {
+        localScheduleYear.value = result.year
+        editingScheduleYear.value = result.year
+      }
       isEditing.value = false
       originalSchedule.value = []
       emit('updated')
@@ -1262,7 +1580,7 @@ const exportSchedule = () => {
   const link = document.createElement('a')
   const url = URL.createObjectURL(blob)
   link.setAttribute('href', url)
-  link.setAttribute('download', `${localScheduleName.value || '服事表'}_${new Date().toISOString().split('T')[0]}.csv`)
+  link.setAttribute('download', `服事表_${localScheduleYear.value || calculatedYear.value || '未知年度'}_${new Date().toISOString().split('T')[0]}.csv`)
   link.style.visibility = 'hidden'
   document.body.appendChild(link)
   link.click()
@@ -1290,6 +1608,7 @@ const formatDisplayDate = (date, dayOfWeek) => {
 }
 
 const getAvailablePersons = (item, posCode) => {
+  // 保留日期判斷邏輯
   let dayOfWeek = item.dayOfWeek
   
   if (!dayOfWeek && item.date) {
@@ -1308,6 +1627,7 @@ const getAvailablePersons = (item, posCode) => {
   const posData = props.positionConfig[posCode]
   let availablePersons = (posData && posData[dayKey]) ? posData[dayKey] : []
   
+  // 格式化人員資料
   availablePersons = availablePersons.map(p => {
     if (typeof p === 'string') {
       return { id: null, name: p }
@@ -1318,23 +1638,8 @@ const getAvailablePersons = (item, posCode) => {
     }
   }).filter(p => p.id && p.name)
   
-  const allowDuplicate = posData && posData.allowDuplicate
-  
-  if (!allowDuplicate) {
-    const usedPersonIds = new Set()
-    Object.keys(localSelectedPositions.value).forEach(otherPosCode => {
-      if (localSelectedPositions.value[otherPosCode] && otherPosCode !== posCode) {
-        const otherPosData = props.positionConfig[otherPosCode]
-        if (otherPosData && !otherPosData.allowDuplicate) {
-          const otherPersonId = item[otherPosCode + 'Id']
-          if (otherPersonId) {
-            usedPersonIds.add(otherPersonId)
-          }
-        }
-      }
-    })
-    availablePersons = availablePersons.filter(p => !usedPersonIds.has(p.id))
-  }
+  // 移除 allowDuplicate 檢查邏輯
+  // 直接返回該日期對應的人員列表
   
   return availablePersons
 }
@@ -1522,6 +1827,28 @@ onMounted(() => {
   color: #333;
 }
 
+.schedule-year-section {
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.year-badge {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  color: white;
+  padding: 0.375rem 0.75rem;
+  border-radius: 15px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.year-warning {
+  color: #dc3545;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
 .editing-badge {
   background: #667eea;
   color: white;
@@ -1638,28 +1965,45 @@ onMounted(() => {
 
 .schedule-table {
   overflow-x: auto;
+  overflow-y: auto;
+  max-height: 70vh;
+  position: relative;
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: auto;
+}
+
+thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 th, td {
   padding: 0.75rem;
   text-align: left;
   border-bottom: 1px solid #e0e0e0;
+  border-right: 1px solid #e0e0e0;
+}
+
+th:last-child, td:last-child {
+  border-right: none;
 }
 
 th {
   background: #f8f9fa;
   font-weight: 600;
   color: #333;
+  box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
 }
 
 .date-column {
   min-width: 120px;
   font-weight: 600;
+  vertical-align: top;
 }
 
 .positions-header {
@@ -1671,19 +2015,13 @@ th {
   vertical-align: top;
 }
 
-.positions-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 0.5rem;
-  padding: 0.75rem;
-}
-
 .position-header-cell {
-  padding: 0.5rem;
+  padding: 0.75rem;
   text-align: center;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
+  background: #f5f5f5;
   font-weight: 600;
+  min-width: 120px;
+  white-space: nowrap;
 }
 
 .position-header-content {
@@ -1721,13 +2059,10 @@ th {
 }
 
 .position-cell {
-  padding: 0.5rem;
+  padding: 0.75rem;
   text-align: center;
-  border-right: 1px solid #e0e0e0;
-}
-
-.position-cell:last-child {
-  border-right: none;
+  min-width: 120px;
+  white-space: nowrap;
 }
 
 .edit-select {
@@ -1736,6 +2071,35 @@ th {
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 0.9rem;
+}
+
+.person-multi-select {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.person-multi-select select[multiple] {
+  min-height: 80px;
+  max-height: 150px;
+}
+
+.selected-persons {
+  padding: 0.5rem;
+  background: #f0f7ff;
+  border: 1px solid #b3d9ff;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.selected-label {
+  font-weight: 600;
+  color: #0066cc;
+  margin-right: 0.5rem;
+}
+
+.selected-names {
+  color: #333;
 }
 
 .btn {
@@ -1795,6 +2159,66 @@ th {
 .btn-export:hover {
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgba(245, 87, 108, 0.3);
+}
+
+/* 年份選擇樣式 */
+.year-selection-group {
+  margin-bottom: 1.5rem;
+}
+
+.year-input-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.year-input-wrapper label {
+  font-weight: 600;
+  color: #4a5568;
+  font-size: 0.9rem;
+}
+
+.year-select {
+  padding: 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  min-width: 200px;
+}
+
+.year-select:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+/* 日期欄位樣式 */
+.date-cell-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.btn-clear-day {
+  background: #ef4444;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-clear-day:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+}
+
+.btn-clear-day:active {
+  transform: translateY(0);
 }
 </style>
 

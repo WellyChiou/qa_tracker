@@ -152,3 +152,4 @@ mysql -u root -p church < mysql/check-and-update-users-table.sql
 3. **遷移腳本**：`church-migrations.sql` 可以安全地多次執行
 4. **數據腳本**：使用 `ON DUPLICATE KEY UPDATE`，不會重複插入數據
 
+

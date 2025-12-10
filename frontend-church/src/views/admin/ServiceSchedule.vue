@@ -11,32 +11,11 @@
         <h3>查詢條件</h3>
         <div class="filter-grid">
           <div class="filter-group">
-            <label>名稱</label>
-            <input
-              type="text"
-              v-model="filters.name"
-              placeholder="輸入名稱"
-              class="form-input"
-            />
-          </div>
-          <div class="filter-group">
-            <label>開始日期</label>
-            <input
-              type="date"
-              v-model="filters.startDate"
-              class="form-input"
-            />
-          </div>
-          <div class="filter-group">
-            <label>結束日期</label>
-            <input
-              type="date"
-              v-model="filters.endDate"
-              class="form-input"
-            />
-          </div>
-          <div class="filter-group">
-            <button @click="resetFilters" class="btn btn-secondary">清除條件</button>
+            <label>年份</label>
+            <select v-model="filters.year" class="form-input">
+              <option value="">全部</option>
+              <option v-for="year in availableYears" :key="year" :value="year">{{ year }}年</option>
+            </select>
           </div>
         </div>
       </section>
@@ -52,15 +31,15 @@
           <table class="schedule-table">
             <thead>
               <tr>
-                <th>名稱</th>
+                <th>年度</th>
                 <th>日期範圍</th>
                 <th>建立時間</th>
                 <th>操作</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="schedule in paginatedList" :key="schedule.id">
-                <td>{{ schedule.name || '未命名' }}</td>
+              <tr v-for="schedule in paginatedList" :key="schedule.year">
+                <td>{{ schedule.year }}年</td>
                 <td>
                   <span v-if="schedule.startDate && schedule.endDate">
                 {{ formatDate(schedule.startDate) }} ~ {{ formatDate(schedule.endDate) }}
@@ -72,8 +51,8 @@
                   <span v-else>-</span>
                 </td>
                 <td>
-              <button @click="editSchedule(schedule.id)" class="btn btn-edit">編輯</button>
-              <button @click="deleteSchedule(schedule.id)" class="btn btn-delete">刪除</button>
+              <button @click="editSchedule(schedule.year)" class="btn btn-edit">編輯</button>
+              <button @click="deleteSchedule(schedule.year)" class="btn btn-delete">刪除</button>
                 </td>
               </tr>
             </tbody>
@@ -119,7 +98,7 @@
         v-if="showModal"
         :show="showModal"
         :mode="modalMode"
-        :schedule-id="currentScheduleId"
+        :schedule-year="currentScheduleYear"
         :position-config="positionConfig"
         @close="closeModal"
         @saved="handleSaved"
@@ -138,14 +117,23 @@ import { apiRequest } from '@/utils/api'
 const schedules = ref([])
 const showModal = ref(false)
 const modalMode = ref('add')
-const currentScheduleId = ref(null)
+const currentScheduleYear = ref(null)
 const positionConfig = ref({})
 
 // 查詢條件
 const filters = ref({
-  name: '',
-  startDate: '',
-  endDate: ''
+  year: ''
+})
+
+// 計算可用的年份列表
+const availableYears = computed(() => {
+  const years = new Set()
+  schedules.value.forEach(schedule => {
+    if (schedule.year) {
+      years.add(schedule.year)
+    }
+  })
+  return Array.from(years).sort((a, b) => b - a) // 降序排列
 })
 
 // 分頁
@@ -157,31 +145,19 @@ const jumpPage = ref(1)
 const filteredList = computed(() => {
   let filtered = [...schedules.value]
   
-  if (filters.value.name) {
-    filtered = filtered.filter(schedule => 
-      (schedule.name || '').toLowerCase().includes(filters.value.name.toLowerCase())
-    )
-  }
-  
-  if (filters.value.startDate) {
-    filtered = filtered.filter(schedule => {
-      if (!schedule.startDate) return false
-      return new Date(schedule.startDate) >= new Date(filters.value.startDate)
-    })
-  }
-  
-  if (filters.value.endDate) {
-    filtered = filtered.filter(schedule => {
-      if (!schedule.endDate) return false
-      return new Date(schedule.endDate) <= new Date(filters.value.endDate)
-    })
+  if (filters.value.year) {
+    filtered = filtered.filter(schedule => schedule.year === parseInt(filters.value.year))
   }
   
   return filtered.sort((a, b) => {
-    if (!a.createdAt && !b.createdAt) return 0
-    if (!a.createdAt) return 1
-    if (!b.createdAt) return -1
-    return new Date(b.createdAt) - new Date(a.createdAt)
+    // 按年度降序排列
+    if (a.year && b.year) {
+      return b.year - a.year
+    }
+    if (!a.year && !b.year) return 0
+    if (!a.year) return 1
+    if (!b.year) return -1
+    return 0
   })
 })
 
@@ -205,19 +181,9 @@ const jumpToPage = () => {
   }
 }
 
-// 重置查詢條件
-const resetFilters = () => {
-  filters.value = {
-    name: '',
-    startDate: '',
-    endDate: ''
-  }
-  currentPage.value = 1
-  jumpPage.value = 1
-}
 
 // 監聽查詢條件變化，重置到第一頁
-watch(() => [filters.value.name, filters.value.startDate, filters.value.endDate], () => {
+watch(() => filters.value.year, () => {
   currentPage.value = 1
   jumpPage.value = 1
 })
@@ -253,7 +219,21 @@ const loadPositionConfig = async () => {
     if (response.ok) {
       const data = await response.json()
       // 後端返回格式：{ "config": {...}, "message": "..." }
-      positionConfig.value = data.config || {}
+      const config = data.config || {}
+      
+      // 按 sortOrder 排序崗位配置
+      const sortedConfig = {}
+      const sortedEntries = Object.entries(config).sort((a, b) => {
+        const sortOrderA = a[1].sortOrder || 0
+        const sortOrderB = b[1].sortOrder || 0
+        return sortOrderA - sortOrderB
+      })
+      
+      for (const [posCode, posData] of sortedEntries) {
+        sortedConfig[posCode] = posData
+      }
+      
+      positionConfig.value = sortedConfig
     }
   } catch (error) {
     console.error('載入崗位配置失敗:', error)
@@ -262,19 +242,19 @@ const loadPositionConfig = async () => {
 
 const openAddModal = () => {
   modalMode.value = 'add'
-  currentScheduleId.value = null
+  currentScheduleYear.value = null
   showModal.value = true
 }
 
-const editSchedule = (id) => {
+const editSchedule = (year) => {
   modalMode.value = 'edit'
-  currentScheduleId.value = id
+  currentScheduleYear.value = year
   showModal.value = true
 }
 
 const closeModal = () => {
   showModal.value = false
-  currentScheduleId.value = null
+  currentScheduleYear.value = null
 }
 
 const handleSaved = () => {
@@ -287,13 +267,13 @@ const handleUpdated = () => {
   closeModal()
 }
 
-const deleteSchedule = async (id) => {
-  if (!confirm('確定要刪除此服事表嗎？')) {
+const deleteSchedule = async (year) => {
+  if (!confirm(`確定要刪除 ${year} 年的服事表嗎？`)) {
     return
   }
   
   try {
-    const response = await apiRequest(`/church/service-schedules/${id}`, {
+    const response = await apiRequest(`/church/service-schedules/${year}`, {
       method: 'DELETE',
       credentials: 'include'
     })
@@ -381,6 +361,9 @@ onMounted(() => {
 
 .schedule-table-wrapper {
   overflow-x: auto;
+  overflow-y: auto;
+  max-height: 70vh;
+  position: relative;
 }
 
 .schedule-table {
@@ -389,6 +372,9 @@ onMounted(() => {
 }
 
 thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   background: #f5f5f5;
 }
 
@@ -401,6 +387,7 @@ th, td {
 th {
   font-weight: 600;
   color: #333;
+  box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
 }
 
 tbody tr:hover {

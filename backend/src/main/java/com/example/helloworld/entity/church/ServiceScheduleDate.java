@@ -14,7 +14,7 @@ public class ServiceScheduleDate {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "service_schedule_id", nullable = false)
+    @JoinColumn(name = "service_schedule_year", nullable = false)
     private ServiceSchedule serviceSchedule;
 
     @Column(name = "date", nullable = false)

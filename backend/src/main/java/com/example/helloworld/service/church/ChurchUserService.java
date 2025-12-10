@@ -101,10 +101,14 @@ public class ChurchUserService {
             throw new RuntimeException("郵箱已存在: " + user.getEmail());
         }
 
-        // 如果提供了密碼，進行加密
-        if (user.getPassword() != null && !user.getPassword().isEmpty()) {
-            user.setPassword(passwordEncoder.encode(user.getPassword()));
+        // 驗證密碼必須提供且不為空
+        String password = user.getPassword();
+        if (password == null || password.trim().isEmpty()) {
+            throw new RuntimeException("新增用戶時密碼不能為空");
         }
+
+        // 加密密碼
+        user.setPassword(passwordEncoder.encode(password.trim()));
 
         // 生成 UID（如果沒有提供）
         if (user.getUid() == null || user.getUid().isEmpty()) {
@@ -164,10 +168,14 @@ public class ChurchUserService {
             existing.setIsAccountNonLocked(userUpdate.getIsAccountNonLocked());
         }
 
-        // 更新密碼（如果提供）
-        if (userUpdate.getPassword() != null && !userUpdate.getPassword().isEmpty()) {
-            existing.setPassword(passwordEncoder.encode(userUpdate.getPassword()));
+        // 更新密碼（如果提供且不為空）
+        // 注意：如果前端傳送空字串，表示不更新密碼，保持原密碼不變
+        String newPassword = userUpdate.getPassword();
+        if (newPassword != null && !newPassword.trim().isEmpty()) {
+            // 只有當密碼不為空時才進行加密和更新
+            existing.setPassword(passwordEncoder.encode(newPassword.trim()));
         }
+        // 如果 newPassword 為 null 或空字串，則跳過密碼更新，保持原密碼
 
         // 更新角色
         if (userUpdate.getRoles() != null) {

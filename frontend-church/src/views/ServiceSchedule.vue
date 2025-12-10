@@ -35,35 +35,87 @@
         <!-- 通知組件 -->
         <Notification ref="notificationRef" />
 
-        <!-- 歷史記錄 -->
+        <!-- 本週服事人員 -->
         <div class="card">
           <div class="schedule-header">
-            <h2>歷史記錄</h2>
-            <button @click="loadHistory" class="btn btn-refresh">重新載入</button>
+            <h2>本週服事人員</h2>
           </div>
-          <div v-if="historyList.length > 0">
-            <div class="pagination-info">
-              顯示第 {{ (currentPage - 1) * recordsPerPage + 1 }} - 
-              {{ Math.min(currentPage * recordsPerPage, historyList.length) }} 筆，共 {{ historyList.length }} 筆
-            </div>
-            <div class="history-list">
-              <div class="history-item" v-for="item in paginatedHistoryList" :key="item.id">
-                <div class="history-info">
-                  <div class="history-name">{{ item.name || '未命名' }}</div>
-                  <div class="history-details">
-                    <span class="history-version" v-if="item.version">第 {{ item.version }} 版</span>
-                    <span class="history-range" v-if="item.startDate && item.endDate">{{ formatDisplayDate(item.startDate) }} ~ {{ formatDisplayDate(item.endDate) }}</span>
-                    <span v-else-if="item.scheduleDate" class="history-date">{{ formatDisplayDate(item.scheduleDate) }}</span>
+          <div v-if="loadingCurrentWeek" class="loading-state">
+            <p>載入中...</p>
+          </div>
+          <div v-else-if="currentWeekSchedule.saturday || currentWeekSchedule.sunday" class="current-week-schedule">
+            <!-- 週六 -->
+            <div v-if="currentWeekSchedule.saturday" class="weekday-schedule">
+              <h3 class="weekday-title">週六 {{ formatWeekDate(currentWeekSchedule.saturday.date) }}</h3>
+              <div class="positions-grid-week">
+                <div v-for="(posData, posCode) in positionConfig" :key="`sat-${posCode}`" class="position-item-week">
+                  <div class="position-name-week">{{ posData.positionName || posCode }}</div>
+                  <div class="position-person-week">
+                    {{ getCurrentWeekPerson(currentWeekSchedule.saturday, posCode) || '-' }}
                   </div>
-                  <div class="history-time" v-if="item.createdAt">
-                    <small>建立時間：{{ formatDateTime(item.createdAt) }}</small>
-                  </div>
-                </div>
-                <div class="history-actions">
-                  <button @click="openViewModal(item.id)" class="btn btn-view">檢視</button>
                 </div>
               </div>
             </div>
+            <!-- 週日 -->
+            <div v-if="currentWeekSchedule.sunday" class="weekday-schedule">
+              <h3 class="weekday-title">週日 {{ formatWeekDate(currentWeekSchedule.sunday.date) }}</h3>
+              <div class="positions-grid-week">
+                <div v-for="(posData, posCode) in positionConfig" :key="`sun-${posCode}`" class="position-item-week">
+                  <div class="position-name-week">{{ posData.positionName || posCode }}</div>
+                  <div class="position-person-week">
+                    {{ getCurrentWeekPerson(currentWeekSchedule.sunday, posCode) || '-' }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div v-else class="empty-state">
+            <p>本週尚無服事安排</p>
+          </div>
+        </div>
+
+        <!-- 服事表 -->
+        <div class="card">
+          <div class="schedule-header">
+            <h2>服事表</h2>
+          </div>
+
+          <!-- 查詢條件 -->
+          <section class="filters">
+            <h3>查詢條件</h3>
+            <div class="filter-grid">
+              <div class="filter-group">
+                <label>年份</label>
+                <select v-model="filterYear" class="form-input">
+                  <option value="">全部</option>
+                  <option v-for="year in availableYears" :key="year" :value="year">{{ year }}年</option>
+                </select>
+            </div>
+                  </div>
+          </section>
+
+          <div v-if="filteredHistoryList.length > 0" class="schedule-list">
+            <div class="table-header">
+              <h3>服事表列表 (共 {{ filteredHistoryList.length }} 筆)</h3>
+                  </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>年度</th>
+                  <th>建立時間</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in paginatedHistoryList" :key="item.year">
+                  <td>{{ item.year }}年</td>
+                  <td>{{ formatDateTime(item.createdAt) }}</td>
+                  <td>
+                    <button @click="openViewModal(item.year)" class="btn btn-view">檢視</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
             <div class="pagination">
               <div class="pagination-left">
                 <label for="pageSize" class="pagination-label">顯示筆數：</label>
@@ -73,7 +125,7 @@
                   <option :value="50">50</option>
                   <option :value="100">100</option>
                 </select>
-                <span class="pagination-info">共 {{ historyList.length }} 筆 (第 {{ currentPage }}/{{ totalPages }} 頁)</span>
+                <span class="pagination-info">共 {{ filteredHistoryList.length }} 筆 (第 {{ currentPage }}/{{ totalPages }} 頁)</span>
               </div>
               <div class="pagination-right">
                 <button class="btn btn-secondary" @click="currentPage--" :disabled="currentPage === 1">
@@ -96,14 +148,16 @@
               </div>
             </div>
           </div>
-          <p v-else class="empty-message">尚無歷史記錄</p>
+          <div v-else class="empty-state">
+            <p>{{ historyList.length === 0 ? '尚無服事表資料' : '沒有符合條件的資料' }}</p>
+          </div>
         </div>
 
         <!-- 服事表 Modal -->
         <ServiceScheduleModal
           :show="showScheduleModal"
           :mode="scheduleModalMode"
-          :schedule-id="currentScheduleId"
+          :schedule-year="currentScheduleYear"
           :position-config="positionConfig"
           @close="closeScheduleModal"
           @saved="handleScheduleSaved"
@@ -145,6 +199,32 @@ const schedule = ref([])
 // 歷史記錄列表
 const historyList = ref([])
 
+// 本週服事人員
+const currentWeekSchedule = ref({ saturday: null, sunday: null })
+const loadingCurrentWeek = ref(false)
+
+// 篩選條件
+const filterYear = ref('')
+
+// 計算可用的年份列表
+const availableYears = computed(() => {
+  const years = new Set()
+  historyList.value.forEach(item => {
+    if (item.year) {
+      years.add(item.year)
+    }
+  })
+  return Array.from(years).sort((a, b) => b - a) // 降序排列
+})
+
+// 篩選後的歷史記錄列表
+const filteredHistoryList = computed(() => {
+  if (!filterYear.value) {
+    return historyList.value
+  }
+  return historyList.value.filter(item => item.year === parseInt(filterYear.value))
+})
+
 // 分頁相關
 const currentPage = ref(1)
 const recordsPerPage = ref(10)
@@ -154,13 +234,20 @@ const jumpPage = ref(1)
 const paginatedHistoryList = computed(() => {
   const start = (currentPage.value - 1) * recordsPerPage.value
   const end = start + recordsPerPage.value
-  return historyList.value.slice(start, end)
+  return filteredHistoryList.value.slice(start, end)
 })
 
 // 計算總頁數
 const totalPages = computed(() => {
-  return Math.ceil(historyList.value.length / recordsPerPage.value)
+  return Math.ceil(filteredHistoryList.value.length / recordsPerPage.value)
 })
+
+// 清除篩選條件
+const resetFilters = () => {
+  filterYear.value = ''
+  currentPage.value = 1
+  jumpPage.value = 1
+}
 
 // 跳轉到指定頁面
 const jumpToPage = () => {
@@ -182,19 +269,24 @@ watch(() => recordsPerPage.value, () => {
   jumpPage.value = 1
 })
 
+// 監聽篩選條件變化，重置到第一頁
+watch(() => filterYear.value, () => {
+  currentPage.value = 1
+  jumpPage.value = 1
+})
+
 // 保存狀態
 const saving = ref(false)
 
 // 編輯狀態
 const isEditing = ref(false)
-const editingScheduleId = ref(null)
+const editingScheduleYear = ref(null)
 const originalSchedule = ref([]) // 保存原始數據，用於取消編輯
 const isLoadedFromHistory = ref(false) // 標記是否從歷史記錄載入（載入的不應該顯示「保存服事表」按鈕）
 const useRandomAssignment = ref(false) // 是否使用完全隨機分配（不考慮服務次數）
 
-// 服事表名稱
-const scheduleName = ref('')
-const currentScheduleId = ref(null) // 當前載入的服事表 ID
+// 當前載入的服事表年度
+const currentScheduleYear = ref(null)
 
 // 通知組件引用
 const notificationRef = ref(null)
@@ -271,16 +363,16 @@ const getGenerateButtonTooltip = () => {
   return '可以產生服事表'
 }
 
-const openViewModal = (id) => {
+const openViewModal = (year) => {
   scheduleModalMode.value = 'view'
-  currentScheduleId.value = id
+  currentScheduleYear.value = year
   showScheduleModal.value = true
 }
 
 const closeScheduleModal = () => {
   showScheduleModal.value = false
   scheduleModalMode.value = 'add'
-  currentScheduleId.value = null
+  currentScheduleYear.value = null
 }
 
 const handleScheduleSaved = () => {
@@ -429,7 +521,7 @@ const distributePersons = (dates) => {
     // 為每個選中的崗位初始化欄位
     selectedPositionsList.forEach(posCode => {
       assignment[posCode] = ''
-      assignment[posCode + 'Id'] = null
+      assignment[posCode + 'Ids'] = []
     })
     
     // 根據 allowDuplicate 分類崗位
@@ -488,10 +580,10 @@ const distributePersons = (dates) => {
           return totalA - totalB
         })
         assignment[posCode] = availablePersons[0].name
-        assignment[posCode + 'Id'] = availablePersons[0].id
+        assignment[posCode + 'Ids'] = [availablePersons[0].id]
         usedPersons.add(availablePersons[0].name)
-      
-      // 更新服務次數
+        
+        // 更新服務次數
         if (assignment[posCode] && serviceCount[assignment[posCode]]) {
           if (!serviceCount[assignment[posCode]][posCode]) {
             serviceCount[assignment[posCode]][posCode] = 0
@@ -533,24 +625,24 @@ const distributePersons = (dates) => {
         availablePersons.sort((a, b) => {
           const countA = serviceCount[a.name] ? (serviceCount[a.name][posCode] || 0) : 0
           const countB = serviceCount[b.name] ? (serviceCount[b.name][posCode] || 0) : 0
-        if (countA !== countB) return countA - countB
-        // 如果次數相同，選擇總服務次數最少的
+          if (countA !== countB) return countA - countB
+          // 如果次數相同，選擇總服務次數最少的
           const totalA = serviceCount[a.name] ? serviceCount[a.name].total : 0
           const totalB = serviceCount[b.name] ? serviceCount[b.name].total : 0
-        return totalA - totalB
-      })
+          return totalA - totalB
+        })
         assignment[posCode] = availablePersons[0].name
-        assignment[posCode + 'Id'] = availablePersons[0].id
-      
-      // 更新服務次數
+        assignment[posCode + 'Ids'] = [availablePersons[0].id]
+        
+        // 更新服務次數
         if (assignment[posCode] && serviceCount[assignment[posCode]]) {
           if (!serviceCount[assignment[posCode]][posCode]) {
             serviceCount[assignment[posCode]][posCode] = 0
           }
           serviceCount[assignment[posCode]][posCode]++
           serviceCount[assignment[posCode]].total++
+        }
       }
-    }
     })
     
     schedule.push(assignment)
@@ -575,10 +667,9 @@ const generateSchedule = () => {
   }
   
   // 重置狀態
-  editingScheduleId.value = null
+  editingScheduleYear.value = null
   isLoadedFromHistory.value = false
-  currentScheduleId.value = null
-  scheduleName.value = '' // 重置名稱
+  currentScheduleYear.value = null
   
   // 將 initialSelectedPositions 複製到 selectedPositions（用於生成服事表）
   selectedPositions.value = JSON.parse(JSON.stringify(initialSelectedPositions.value))
@@ -630,7 +721,7 @@ const validateSchedule = () => {
     
     // 遍歷所有選中的崗位
     Object.keys(selectedPositions.value).forEach(posCode => {
-      if (selectedPositions.value[posCode] && item[posCode + 'Id']) {
+      if (selectedPositions.value[posCode] && item[posCode + 'Ids'] && item[posCode + 'Ids'].length > 0) {
         const posData = positionConfig.value[posCode]
         if (posData && !posData.allowDuplicate) {
           positionsWithDuplicateCheck.push(posCode)
@@ -643,24 +734,54 @@ const validateSchedule = () => {
     // 檢查需要檢查重複的崗位之間是否有重複（使用 ID 比較）
     const usedPersonIds = new Set()
     positionsWithDuplicateCheck.forEach(posCode => {
-      const personId = item[posCode + 'Id']
-      if (personId) {
-        if (usedPersonIds.has(personId)) {
-          const dateStr = item.formattedDate || item.date || `第 ${index + 1} 行`
-          const personName = item[posCode] || '未知人員'
-          const positionName = positionConfig.value[posCode]?.positionName || posCode
-          const otherPositions = positionsWithDuplicateCheck
-            .filter(p => p !== posCode && item[p + 'Id'] === personId)
-            .map(p => positionConfig.value[p]?.positionName || p)
-            .join('、')
-          errors.push(`${dateStr}：${personName} 同時擔任多個崗位（${positionName} 與 ${otherPositions} 之間不能重複）`)
+      const personIds = item[posCode + 'Ids'] || []
+      personIds.forEach(personId => {
+        if (personId) {
+          if (usedPersonIds.has(personId)) {
+            const dateStr = item.formattedDate || item.date || `第 ${index + 1} 行`
+            const personName = item[posCode] || '未知人員'
+            const positionName = positionConfig.value[posCode]?.positionName || posCode
+            const otherPositions = positionsWithDuplicateCheck
+              .filter(p => {
+                if (p === posCode) return false
+                const otherPersonIds = item[p + 'Ids'] || []
+                return otherPersonIds.includes(personId)
+              })
+              .map(p => positionConfig.value[p]?.positionName || p)
+              .join('、')
+            if (otherPositions) {
+              errors.push(`${dateStr}：${personName} 同時擔任多個崗位（${positionName} 與 ${otherPositions} 之間不能重複）`)
+            }
+          }
+          usedPersonIds.add(personId)
         }
-        usedPersonIds.add(personId)
-      }
+      })
     })
   })
   
   return errors
+}
+
+// 計算年度（從日期範圍的開始日期）
+const calculateYear = () => {
+  if (!dateRange.value || dateRange.value.length !== 2) {
+    return null
+  }
+  const startDate = new Date(dateRange.value[0])
+  return startDate.getFullYear()
+}
+
+// 檢查該年度是否已有服事表
+const checkYearExists = async (year) => {
+  try {
+    const response = await apiRequest(`/church/service-schedules/year/${year}`, {
+      method: 'GET'
+    })
+    return response.ok
+  } catch (error) {
+    // 如果查詢失敗（例如 404），表示該年度沒有服事表
+    return false
+  }
 }
 
 // 保存服事表
@@ -670,9 +791,16 @@ const saveSchedule = async () => {
     return
   }
 
-  // 驗證名稱
-  if (!scheduleName.value || !scheduleName.value.trim()) {
-    showNotification('請輸入服事表名稱', 'warning', 3000)
+  // 計算年度並檢查是否已存在
+  const year = calculateYear()
+  if (!year) {
+    showNotification('無法計算年度，請檢查日期範圍', 'warning', 3000)
+    return
+  }
+  
+  const yearExists = await checkYearExists(year)
+  if (yearExists) {
+    showNotification(`該年度（${year}年）已存在服事表，每個年度只能有一個版本。請先刪除或更新現有的服事表。`, 'error', 5000)
     return
   }
 
@@ -695,8 +823,8 @@ const saveSchedule = async () => {
       // 動態保存所有選中的崗位
       Object.keys(selectedPositions.value).forEach(posCode => {
         if (selectedPositions.value[posCode]) {
-          result[posCode] = item[posCode] || (item[posCode + 'Id'] ? getPersonNameById(item[posCode + 'Id'], posCode, item) : '')
-          result[posCode + 'Id'] = item[posCode + 'Id'] ? Number(item[posCode + 'Id']) : null
+          result[posCode] = item[posCode] || ''
+          result[posCode + 'Ids'] = item[posCode + 'Ids'] || []
         }
       })
       
@@ -706,7 +834,6 @@ const saveSchedule = async () => {
     const response = await apiRequest('/church/service-schedules', {
       method: 'POST',
       body: JSON.stringify({
-        name: scheduleName.value.trim(),
         scheduleData: scheduleDataForBackend,
         dateRange: dateRange.value
       })
@@ -716,18 +843,25 @@ const saveSchedule = async () => {
     
     if (response.ok && result.success !== false) {
       showNotification('服事表保存成功！', 'success', 3000)
-      currentScheduleId.value = result.id
-      editingScheduleId.value = result.id // 設置編輯 ID，這樣下次就可以使用「更新」按鈕
+      currentScheduleYear.value = result.year
+      editingScheduleYear.value = result.year // 設置編輯年度，這樣下次就可以使用「更新」按鈕
       // 標記為已保存
       isLoadedFromHistory.value = true
       // 保持編輯模式，讓用戶可以繼續調整
       // isEditing.value = false // 不退出編輯模式，讓用戶可以繼續調整
       await loadHistory() // 重新載入歷史記錄
     } else {
-      showNotification('保存失敗：' + (result.error || '未知錯誤'), 'error', 4000)
+      const errorMsg = result.error || '未知錯誤'
+      showNotification('保存失敗：' + errorMsg, 'error', 5000)
     }
   } catch (error) {
-    showNotification('保存失敗：' + error.message, 'error', 4000)
+    const errorMsg = error.message || '未知錯誤'
+    // 檢查是否為年度衝突錯誤
+    if (errorMsg.includes('年度') || errorMsg.includes('year')) {
+      showNotification(errorMsg, 'error', 5000)
+    } else {
+      showNotification('保存失敗：' + errorMsg, 'error', 4000)
+    }
   } finally {
     saving.value = false
   }
@@ -748,17 +882,16 @@ const loadHistory = async () => {
 }
 
 // 載入指定的服事表
-const loadSchedule = async (id) => {
+const loadSchedule = async (year) => {
   try {
-    const response = await apiRequest(`/church/service-schedules/${id}`, {
+    const response = await apiRequest(`/church/service-schedules/${year}`, {
       method: 'GET'
     }, '載入服事表中...')
     const data = await response.json()
     
     if (response.ok) {
-      // 載入名稱
-      scheduleName.value = data.name || ''
-      currentScheduleId.value = data.id
+      // 載入年度
+      currentScheduleYear.value = data.year
       
       // 載入日期範圍（如果有）
       if (data.startDate && data.endDate) {
@@ -805,14 +938,20 @@ const loadSchedule = async (id) => {
             }
           }
           
-          // 確保崗位名稱欄位存在（如果只有 ID 沒有名稱，從 positionConfig 查找）
+          // 確保崗位名稱欄位存在（如果只有 Ids 沒有名稱，從 positionConfig 查找）
           Object.keys(positionConfig.value).forEach(posCode => {
-            if (scheduleItem[posCode + 'Id'] && !scheduleItem[posCode]) {
-              // 如果有 ID 但沒有名稱，嘗試從 positionConfig 查找
-              const personId = scheduleItem[posCode + 'Id']
-              const personName = getPersonNameByIdLocal(personId, posCode, dayOfWeek)
-              if (personName) {
-                scheduleItem[posCode] = personName
+            const personIds = scheduleItem[posCode + 'Ids'] || []
+            if (personIds.length > 0 && !scheduleItem[posCode]) {
+              // 如果有 Ids 但沒有名稱，嘗試從 positionConfig 查找
+              const personNames = []
+              for (const personId of personIds) {
+                const personName = getPersonNameByIdLocal(personId, posCode, dayOfWeek)
+                if (personName) {
+                  personNames.push(personName)
+                }
+              }
+              if (personNames.length > 0) {
+                scheduleItem[posCode] = personNames.join('/')
               }
             }
           })
@@ -862,7 +1001,7 @@ const loadSchedule = async (id) => {
       
       // 退出編輯模式
       isEditing.value = false
-      editingScheduleId.value = null
+      editingScheduleYear.value = null
       isLoadedFromHistory.value = true // 標記為從歷史記錄載入
       
       showNotification('服事表載入成功！', 'success', 3000)
@@ -875,17 +1014,16 @@ const loadSchedule = async (id) => {
 }
 
 // 編輯指定的服事表
-const editSchedule = async (id) => {
+const editSchedule = async (year) => {
   try {
-    const response = await apiRequest(`/church/service-schedules/${id}`, {
+    const response = await apiRequest(`/church/service-schedules/${year}`, {
       method: 'GET'
     }, '載入服事表中...')
     const data = await response.json()
     
     if (response.ok) {
-      // 載入名稱
-      scheduleName.value = data.name || ''
-      currentScheduleId.value = data.id
+      // 載入年度
+      currentScheduleYear.value = data.year
       
       // 載入日期範圍（如果有）
       if (data.startDate && data.endDate) {
@@ -977,8 +1115,8 @@ const editSchedule = async (id) => {
       
       // 進入編輯模式
       isEditing.value = true
-      editingScheduleId.value = id
-      currentScheduleId.value = id
+      editingScheduleYear.value = year
+      currentScheduleYear.value = year
       isLoadedFromHistory.value = true // 標記為從歷史記錄載入（編輯模式）
       useRandomAssignment.value = false // 重置隨機分配選項
       
@@ -1002,22 +1140,21 @@ const cancelEdit = () => {
       schedule.value = JSON.parse(JSON.stringify(originalSchedule.value))
     }
     
-    // 如果從歷史記錄載入，恢復原始名稱
-    if (currentScheduleId.value) {
-      // 重新載入以獲取原始名稱
-      loadSchedule(currentScheduleId.value).then(() => {
+    // 如果從歷史記錄載入，重新載入
+    if (currentScheduleYear.value) {
+      // 重新載入以獲取原始資料
+      loadSchedule(currentScheduleYear.value).then(() => {
         isEditing.value = false
-        editingScheduleId.value = null
+        editingScheduleYear.value = null
         originalSchedule.value = []
       })
     } else {
     // 清空所有資料
     schedule.value = []
     dateRange.value = []
-      scheduleName.value = ''
-      currentScheduleId.value = null
+      currentScheduleYear.value = null
     isEditing.value = false
-    editingScheduleId.value = null
+    editingScheduleYear.value = null
     originalSchedule.value = []
     isLoadedFromHistory.value = false
     useRandomAssignment.value = false
@@ -1072,7 +1209,7 @@ const handlePositionSelectionChange = (posCode) => {
     schedule.value.forEach(item => {
       if (!item.hasOwnProperty(posCode)) {
         item[posCode] = ''
-        item[posCode + 'Id'] = null
+        item[posCode + 'Ids'] = []
       }
     })
     
@@ -1085,7 +1222,7 @@ const handlePositionSelectionChange = (posCode) => {
     // 如果取消勾選崗位，移除該崗位的資料（但保留欄位，只是清空）
     schedule.value.forEach(item => {
       item[posCode] = ''
-      item[posCode + 'Id'] = null
+      item[posCode + 'Ids'] = []
     })
   }
 }
@@ -1100,9 +1237,10 @@ const autoAssignPositionForNewSelection = (posCode) => {
   // 統計該崗位在現有服事表中的服務次數（只統計已有分配的部分）
   const serviceCount = {}
   schedule.value.forEach(item => {
-    const personId = item[posCode + 'Id']
+    const personIds = item[posCode + 'Ids'] || []
     const personName = item[posCode]
-    if (personId && personName) {
+    if (personIds.length > 0 && personName) {
+      const personId = personIds[0]
       if (!serviceCount[personName]) {
         serviceCount[personName] = { count: 0, id: personId }
       }
@@ -1116,7 +1254,7 @@ const autoAssignPositionForNewSelection = (posCode) => {
   // 為每個日期分配人員（只處理空欄位）
   schedule.value.forEach(item => {
     // 如果該日期已經有人員，跳過
-    if (item[posCode + 'Id']) {
+    if (item[posCode + 'Ids'] && item[posCode + 'Ids'].length > 0) {
       return
     }
     
@@ -1155,10 +1293,12 @@ const autoAssignPositionForNewSelection = (posCode) => {
       const usedPersonIds = new Set()
       Object.keys(selectedPositions.value).forEach(otherPosCode => {
         if (selectedPositions.value[otherPosCode] && otherPosCode !== posCode) {
-          const otherPersonId = item[otherPosCode + 'Id']
-          if (otherPersonId) {
-            usedPersonIds.add(otherPersonId)
-          }
+          const otherPersonIds = item[otherPosCode + 'Ids'] || []
+          otherPersonIds.forEach(id => {
+            if (id) {
+              usedPersonIds.add(id)
+            }
+          })
         }
       })
       filteredPersons = availablePersons.filter(p => !usedPersonIds.has(p.id))
@@ -1199,7 +1339,7 @@ const autoAssignPositionForNewSelection = (posCode) => {
     
     if (selectedPerson) {
       item[posCode] = selectedPerson.name
-      item[posCode + 'Id'] = selectedPerson.id
+      item[posCode + 'Ids'] = [selectedPerson.id]
       
       // 更新服務次數統計（即使使用完全隨機，也更新統計以便後續使用）
       if (!serviceCount[selectedPerson.name]) {
@@ -1234,16 +1374,17 @@ const autoAssignPosition = (posCode) => {
   // 先清除該崗位在所有日期的現有人員（以便重新分配）
   schedule.value.forEach(item => {
     item[posCode] = ''
-    item[posCode + 'Id'] = null
+    item[posCode + 'Ids'] = []
   })
   
   // 統計該崗位在現有服事表中的服務次數（重新分配後，該崗位的服務次數應該為 0）
   // 但我們需要統計其他崗位的服務次數，以便在重新分配時避免重複（如果不允許重複）
   const serviceCount = {}
   schedule.value.forEach(item => {
-    const personId = item[posCode + 'Id']
+    const personIds = item[posCode + 'Ids'] || []
     const personName = item[posCode]
-    if (personId && personName) {
+    if (personIds.length > 0 && personName) {
+      const personId = personIds[0]
       if (!serviceCount[personName]) {
         serviceCount[personName] = { count: 0, id: personId }
       }
@@ -1292,10 +1433,12 @@ const autoAssignPosition = (posCode) => {
       const usedPersonIds = new Set()
       Object.keys(selectedPositions.value).forEach(otherPosCode => {
         if (selectedPositions.value[otherPosCode] && otherPosCode !== posCode) {
-          const otherPersonId = item[otherPosCode + 'Id']
-          if (otherPersonId) {
-            usedPersonIds.add(otherPersonId)
-          }
+          const otherPersonIds = item[otherPosCode + 'Ids'] || []
+          otherPersonIds.forEach(id => {
+            if (id) {
+              usedPersonIds.add(id)
+            }
+          })
         }
       })
       filteredPersons = availablePersons.filter(p => !usedPersonIds.has(p.id))
@@ -1336,7 +1479,7 @@ const autoAssignPosition = (posCode) => {
     
     if (selectedPerson) {
       item[posCode] = selectedPerson.name
-      item[posCode + 'Id'] = selectedPerson.id
+      item[posCode + 'Ids'] = [selectedPerson.id]
       
       // 更新服務次數統計（即使使用完全隨機，也更新統計以便後續使用）
       if (!serviceCount[selectedPerson.name]) {
@@ -1406,10 +1549,13 @@ const getAvailablePersons = (item, position) => {
       if (selectedPositions.value[posCode] && posCode !== position) {
         const otherPosData = positionConfig.value[posCode]
         if (otherPosData && !otherPosData.allowDuplicate) {
-          const idKey = posCode + 'Id'
-          if (item[idKey]) {
-            usedPersonIds.add(item[idKey])
-          }
+          const idsKey = posCode + 'Ids'
+          const personIds = item[idsKey] || []
+          personIds.forEach(id => {
+            if (id) {
+              usedPersonIds.add(id)
+            }
+          })
         }
       }
     })
@@ -1422,15 +1568,25 @@ const getAvailablePersons = (item, position) => {
 
 // 更新服事表
 const updateSchedule = async () => {
-  if (!editingScheduleId.value) {
+  if (!editingScheduleYear.value) {
     showNotification('請先載入要編輯的服事表', 'warning', 3000)
     return
   }
 
-  // 驗證名稱
-  if (!scheduleName.value || !scheduleName.value.trim()) {
-    showNotification('請輸入服事表名稱', 'warning', 3000)
+  // 計算新的年度並檢查（如果年度改變了）
+  const newYear = calculateYear()
+  if (!newYear) {
+    showNotification('無法計算年度，請檢查日期範圍', 'warning', 3000)
     return
+  }
+  
+  if (newYear !== editingScheduleYear.value) {
+    // 如果年度改變了，檢查新年度是否已有服事表
+    const yearExists = await checkYearExists(newYear)
+    if (yearExists) {
+      showNotification(`該年度（${newYear}年）已存在服事表，每個年度只能有一個版本。請先刪除或更新現有的服事表。`, 'error', 5000)
+      return
+    }
   }
 
   // 如果有服事表數據，驗證主要崗位之間是否有重複
@@ -1446,7 +1602,7 @@ const updateSchedule = async () => {
     // 檢查所有選中的崗位是否有空值
     return Object.keys(selectedPositions.value).some(posCode => {
       if (selectedPositions.value[posCode]) {
-        return !item[posCode + 'Id']
+        return !(item[posCode + 'Ids'] && item[posCode + 'Ids'].length > 0)
       }
       return false
     })
@@ -1470,18 +1626,17 @@ const updateSchedule = async () => {
       // 動態保存所有選中的崗位
       Object.keys(selectedPositions.value).forEach(posCode => {
         if (selectedPositions.value[posCode]) {
-          result[posCode] = item[posCode] || (item[posCode + 'Id'] ? getPersonNameById(item[posCode + 'Id'], posCode, item) : '')
-          result[posCode + 'Id'] = item[posCode + 'Id'] ? Number(item[posCode + 'Id']) : null
+          result[posCode] = item[posCode] || ''
+          result[posCode + 'Ids'] = item[posCode + 'Ids'] || []
         }
       })
       
       return result
     })
 
-    const response = await apiRequest(`/church/service-schedules/${editingScheduleId.value}`, {
+    const response = await apiRequest(`/church/service-schedules/${editingScheduleYear.value}`, {
       method: 'PUT',
       body: JSON.stringify({
-        name: scheduleName.value.trim(),
         scheduleData: scheduleDataForBackend,
         dateRange: dateRange.value
       })
@@ -1491,16 +1646,28 @@ const updateSchedule = async () => {
     
     if (response.ok) {
       showNotification('服事表更新成功！', 'success', 3000)
+      // 如果年度改變了，更新當前年度
+      if (result.year && result.year !== editingScheduleYear.value) {
+        currentScheduleYear.value = result.year
+        editingScheduleYear.value = result.year
+      }
       isEditing.value = false
-      editingScheduleId.value = null
+      editingScheduleYear.value = null
       originalSchedule.value = []
       isLoadedFromHistory.value = true // 更新後仍然是從歷史記錄載入的狀態
       await loadHistory() // 重新載入歷史記錄
     } else {
-      showNotification('更新失敗：' + (result.error || '未知錯誤'), 'error', 4000)
+      const errorMsg = result.error || '未知錯誤'
+      showNotification('更新失敗：' + errorMsg, 'error', 5000)
     }
   } catch (error) {
-    showNotification('更新失敗：' + error.message, 'error', 4000)
+    const errorMsg = error.message || '未知錯誤'
+    // 檢查是否為年度衝突錯誤
+    if (errorMsg.includes('年度') || errorMsg.includes('year')) {
+      showNotification(errorMsg, 'error', 5000)
+    } else {
+      showNotification('更新失敗：' + errorMsg, 'error', 4000)
+    }
   } finally {
     saving.value = false
   }
@@ -1514,8 +1681,8 @@ const enableNameEdit = () => {
 
 // 啟用編輯模式（從載入的服事表）
 const enableEdit = () => {
-  if (currentScheduleId.value) {
-    editingScheduleId.value = currentScheduleId.value
+  if (currentScheduleYear.value) {
+    editingScheduleYear.value = currentScheduleYear.value
     isEditing.value = true
     useRandomAssignment.value = false // 重置隨機分配選項
   }
@@ -1639,7 +1806,14 @@ const loadPositionConfig = async () => {
         const config = result.config
         const convertedConfig = {}
         
-        for (const [posCode, posData] of Object.entries(config)) {
+        // 先將崗位按 sortOrder 排序
+        const sortedEntries = Object.entries(config).sort((a, b) => {
+          const sortOrderA = a[1].sortOrder || 0
+          const sortOrderB = b[1].sortOrder || 0
+          return sortOrderA - sortOrderB
+        })
+        
+        for (const [posCode, posData] of sortedEntries) {
           // 保留完整對象信息（包括 includeInAutoSchedule, allowDuplicate），用於產生服事表時過濾
           convertedConfig[posCode] = {
             positionName: posData.positionName || posCode,
@@ -1698,10 +1872,179 @@ const loadPositionConfig = async () => {
   }
 }
 
+// 計算本週六、週日的日期
+const getCurrentWeekDates = () => {
+  const today = new Date()
+  const currentDay = today.getDay() // 0 = 週日, 6 = 週六
+  
+  // 計算本週六的日期
+  // 如果今天是週日，本週六是昨天（上週六）
+  // 如果今天是週六，本週六是今天
+  // 如果今天是週一到週五，本週六是本週的週六
+  let daysUntilSaturday
+  if (currentDay === 0) {
+    // 今天是週日，本週六是昨天
+    daysUntilSaturday = -1
+  } else {
+    // 今天是週一到週六，計算到本週六的天數
+    daysUntilSaturday = 6 - currentDay
+  }
+  const saturdayDate = new Date(today)
+  saturdayDate.setDate(today.getDate() + daysUntilSaturday)
+  
+  // 計算本週日的日期
+  // 如果今天是週日，本週日是今天
+  // 如果今天是週六，本週日是明天
+  // 如果今天是週一到週五，本週日是本週的週日
+  let daysUntilSunday
+  if (currentDay === 0) {
+    // 今天是週日，本週日是今天
+    daysUntilSunday = 0
+  } else {
+    // 今天是週一到週六，計算到本週日的天數
+    daysUntilSunday = 7 - currentDay
+  }
+  const sundayDate = new Date(today)
+  sundayDate.setDate(today.getDate() + daysUntilSunday)
+  
+  return {
+    saturday: formatDateISO(saturdayDate),
+    sunday: formatDateISO(sundayDate)
+  }
+}
+
+// 格式化週日期顯示
+const formatWeekDate = (dateStr) => {
+  if (!dateStr) return ''
+  const date = parseDate(dateStr)
+  if (!date) return dateStr
+  const month = date.getMonth() + 1
+  const day = date.getDate()
+  return `${month}/${day}`
+}
+
+// 獲取本週某日期的某崗位人員
+const getCurrentWeekPerson = (scheduleItem, posCode) => {
+  if (!scheduleItem) return null
+  // 直接從 scheduleItem 中讀取崗位人員
+  // 後端返回的資料結構中，崗位代碼就是 key
+  // 檢查所有可能的 key 格式（包括大小寫變化）
+  const personName = scheduleItem[posCode] || 
+                     scheduleItem[posCode.toLowerCase()] || 
+                     scheduleItem[posCode.toUpperCase()]
+  
+  // 如果沒有找到名稱，嘗試檢查是否有 Ids 陣列（表示有分配但名稱可能為空）
+  const personIds = scheduleItem[posCode + 'Ids'] || 
+                    scheduleItem[posCode.toLowerCase() + 'Ids'] || 
+                    scheduleItem[posCode.toUpperCase() + 'Ids']
+  
+  // 檢查後端返回的名稱是否完整（通過比較名稱數量與 ID 數量）
+  const nameCount = personName && typeof personName === 'string' && personName.trim() !== '' 
+    ? personName.split('/').filter(n => n.trim() !== '').length 
+    : 0
+  const idCount = personIds && Array.isArray(personIds) ? personIds.length : 0
+  
+  // 如果名稱完整且與 ID 數量一致，直接返回
+  if (personName && typeof personName === 'string' && personName.trim() !== '' && nameCount === idCount) {
+    return personName
+  }
+  
+  // 如果有 Ids 陣列但名稱不完整或不存在，嘗試從 positionConfig 中查找
+  if (personIds && Array.isArray(personIds) && personIds.length > 0) {
+    const dayOfWeek = scheduleItem.dayOfWeek || (scheduleItem.date ? (parseDate(scheduleItem.date)?.getDay() === 6 ? '六' : '日') : '六')
+    const dayKey = dayOfWeek === '六' ? 'saturday' : 'sunday'
+    const posData = positionConfig.value[posCode]
+    if (posData && posData[dayKey]) {
+      const personNames = []
+      for (const personId of personIds) {
+        const person = posData[dayKey].find(p => {
+          if (typeof p === 'object') {
+            const pId = p.personId || p.id
+            // 使用寬鬆比較，處理數字和字符串類型的 ID
+            return pId != null && (
+              pId === personId || 
+              String(pId) === String(personId) || 
+              Number(pId) === Number(personId)
+            )
+          }
+          return false
+        })
+        if (person && typeof person === 'object') {
+          const name = person.displayName || person.personName || ''
+          if (name) {
+            personNames.push(name)
+          }
+        }
+      }
+      if (personNames.length > 0) {
+        return personNames.join('/')
+      }
+    }
+  }
+  
+  return null
+}
+
+// 載入本週服事人員資料
+const loadCurrentWeekSchedule = async () => {
+  loadingCurrentWeek.value = true
+  try {
+    // 重置
+    currentWeekSchedule.value = { saturday: null, sunday: null }
+    
+    // 獲取本週六、週日的日期
+    const weekDates = getCurrentWeekDates()
+    
+    // 獲取當前年份
+    const currentYear = new Date().getFullYear()
+    
+    // 載入當年的服事表
+    try {
+      const response = await apiRequest(`/church/service-schedules/${currentYear}`, {
+        method: 'GET'
+      }, '載入本週服事人員中...')
+      
+      if (response.ok) {
+        const data = await response.json()
+        
+        if (data.scheduleData && Array.isArray(data.scheduleData)) {
+          // 找出本週六、週日的資料
+          const saturdayData = data.scheduleData.find(item => item.date === weekDates.saturday)
+          const sundayData = data.scheduleData.find(item => item.date === weekDates.sunday)
+          
+          // 調試信息：檢查找到的資料
+          if (saturdayData) {
+            console.log('找到週六資料：', saturdayData)
+            console.log('週六資料的 keys：', Object.keys(saturdayData))
+          }
+          if (sundayData) {
+            console.log('找到週日資料：', sundayData)
+            console.log('週日資料的 keys：', Object.keys(sundayData))
+          }
+          
+          currentWeekSchedule.value = {
+            saturday: saturdayData || null,
+            sunday: sundayData || null
+          }
+        }
+      }
+    } catch (error) {
+      // 如果當年沒有服事表，currentWeekSchedule 保持為空
+      console.log('本週無服事表資料或載入失敗：', error.message)
+    }
+  } catch (error) {
+    console.error('載入本週服事人員失敗：', error)
+  } finally {
+    loadingCurrentWeek.value = false
+  }
+}
+
 // 組件掛載時載入配置和歷史記錄
-onMounted(() => {
-  loadPositionConfig()
+onMounted(async () => {
+  await loadPositionConfig()
   loadHistory()
+  // 確保崗位配置載入完成後再載入本週服事人員
+  loadCurrentWeekSchedule()
 })
 </script>
 
@@ -2202,6 +2545,16 @@ onMounted(() => {
   color: #667eea;
 }
 
+.history-year {
+  background: #28a745;
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 15px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-right: 0.5rem;
+}
+
 .history-version {
   background: #667eea;
   color: white;
@@ -2656,6 +3009,174 @@ tbody tr:last-child td {
   border-bottom: none;
 }
 
+/* 查詢條件樣式 */
+.filters {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.filters h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  align-items: end;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.filter-group label {
+  font-weight: 600;
+  color: #4a5568;
+  font-size: 0.9rem;
+}
+
+.filter-group select,
+.filter-group input {
+  padding: 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+
+.filter-group select:focus,
+.filter-group input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.form-input {
+  padding: 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+
+/* 列表樣式 */
+.schedule-list {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.table-header {
+  padding: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.table-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #4a5568;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: #666;
+}
+
+.loading-state {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+}
+
+.current-week-schedule {
+  padding: 1.5rem;
+}
+
+.weekday-schedule {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: #f8fafc;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+}
+
+.weekday-schedule:last-child {
+  margin-bottom: 0;
+}
+
+.weekday-title {
+  margin: 0 0 1rem 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #667eea;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #667eea;
+}
+
+.positions-grid-week {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1rem;
+}
+
+.position-item-week {
+  background: white;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s;
+}
+
+.position-item-week:hover {
+  border-color: #667eea;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+}
+
+.position-name-week {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 0.5rem;
+}
+
+.position-person-week {
+  font-size: 1rem;
+  color: #1e293b;
+  font-weight: 500;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+th {
+  background: #f5f5f5;
+  font-weight: 600;
+  color: #333;
+}
+
+tbody tr:hover {
+  background: #f9f9f9;
+}
+
+.text-muted {
+  color: #999;
+}
+
 @media (max-width: 768px) {
   .date-range-group {
     flex-direction: column;
@@ -2673,6 +3194,10 @@ tbody tr:last-child td {
   
   table {
     font-size: 0.9rem;
+  }
+  
+  .filter-grid {
+    grid-template-columns: 1fr;
   }
   
   th, td {

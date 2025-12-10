@@ -192,5 +192,15 @@ CREATE TABLE IF NOT EXISTS line_groups (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '建立時間',
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新時間',
     INDEX idx_is_active (is_active)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='LINE 群組表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='LINE 群組表（個人網站用）';
+
+-- 教會後台 LINE 群組表（與個人網站獨立）
+CREATE TABLE IF NOT EXISTS church_line_groups (
+    group_id VARCHAR(100) PRIMARY KEY COMMENT 'LINE 群組 ID',
+    group_name VARCHAR(255) COMMENT '群組名稱',
+    is_active BOOLEAN NOT NULL DEFAULT TRUE COMMENT '是否啟用通知',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '建立時間',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新時間',
+    INDEX idx_is_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='LINE 群組表（教會後台用）';
 

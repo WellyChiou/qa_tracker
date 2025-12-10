@@ -36,7 +36,6 @@
               </span>
             </div>
             <div class="person-actions">
-              <button @click.stop="openEditPersonModal(person)" class="btn-edit" title="編輯">✏️</button>
               <button @click.stop="selectPerson(person)" class="btn-select">選擇</button>
             </div>
           </div>
@@ -63,20 +62,11 @@
     @created="handlePersonCreated"
   />
 
-  <!-- 編輯人員 Modal -->
-  <EditPersonModal
-    v-if="showEditPersonModal && editingPerson"
-    :show="showEditPersonModal"
-    :person="editingPerson"
-    @close="closeEditPersonModal"
-    @updated="handlePersonUpdated"
-  />
 </template>
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import CreatePersonModal from './CreatePersonModal.vue'
-import EditPersonModal from './EditPersonModal.vue'
 import { apiRequest } from '@/utils/api'
 
 const props = defineProps({
@@ -103,8 +93,6 @@ const emit = defineEmits(['close', 'added'])
 const persons = ref([])
 const searchKeyword = ref('')
 const showCreatePersonModal = ref(false)
-const showEditPersonModal = ref(false)
-const editingPerson = ref(null)
 
 const filteredPersons = computed(() => {
   let filtered = persons.value.filter(p => 
@@ -173,22 +161,6 @@ const closeCreatePersonModal = () => {
 const handlePersonCreated = async () => {
   await loadPersons()
   closeCreatePersonModal()
-}
-
-const openEditPersonModal = (person) => {
-  editingPerson.value = person
-  showEditPersonModal.value = true
-}
-
-const closeEditPersonModal = () => {
-  showEditPersonModal.value = false
-  editingPerson.value = null
-  loadPersons() // 重新載入人員列表
-}
-
-const handlePersonUpdated = async () => {
-  await loadPersons()
-  closeEditPersonModal()
 }
 
 const closeModal = () => {
@@ -327,21 +299,6 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-}
-
-.btn-edit {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0.375rem;
-  border-radius: 0.375rem;
-  transition: all 0.2s;
-  font-size: 1rem;
-  color: #007bff;
-}
-
-.btn-edit:hover {
-  background: #e7f3ff;
 }
 
 .person-name {

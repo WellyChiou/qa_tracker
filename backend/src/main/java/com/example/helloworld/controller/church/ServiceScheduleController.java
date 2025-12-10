@@ -28,26 +28,23 @@ public class ServiceScheduleController {
     @PostMapping
     public ResponseEntity<Map<String, Object>> saveSchedule(@RequestBody Map<String, Object> request) {
         try {
-            String name = (String) request.get("name");
-            if (name == null || name.trim().isEmpty()) {
-                Map<String, Object> error = new HashMap<>();
-                error.put("error", "名稱不能為空");
-                return ResponseEntity.badRequest().body(error);
-            }
-
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> scheduleData = (List<Map<String, Object>>) request.get("scheduleData");
 
-            ServiceSchedule schedule = service.saveSchedule(name, scheduleData);
+            ServiceSchedule schedule = service.saveSchedule(scheduleData);
 
             Map<String, Object> response = new HashMap<>();
-            response.put("id", schedule.getId());
-            response.put("name", schedule.getName());
+            response.put("year", schedule.getYear());
             response.put("createdAt", schedule.getCreatedAt());
             response.put("updatedAt", schedule.getUpdatedAt());
             response.put("message", "安排表保存成功");
 
             return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            // 處理年度衝突等業務邏輯錯誤
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
         } catch (Exception e) {
             Map<String, Object> error = new HashMap<>();
             error.put("error", "保存失敗：" + e.getMessage());
@@ -66,15 +63,14 @@ public class ServiceScheduleController {
     }
 
     /**
-     * 根據 ID 獲取安排表（包含 dates 數據）
+     * 根據年度獲取安排表（包含 dates 數據）
      */
-    @GetMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> getScheduleById(@PathVariable Long id) {
-        return service.getScheduleById(id)
+    @GetMapping("/{year}")
+    public ResponseEntity<Map<String, Object>> getScheduleByYear(@PathVariable Integer year) {
+        return service.getScheduleByYear(year)
             .map(schedule -> {
                     Map<String, Object> response = new HashMap<>();
-                    response.put("id", schedule.getId());
-                response.put("name", schedule.getName());
+                response.put("year", schedule.getYear());
                 response.put("createdAt", schedule.getCreatedAt());
                 response.put("updatedAt", schedule.getUpdatedAt());
                 
@@ -98,19 +94,31 @@ public class ServiceScheduleController {
                             for (ServiceSchedulePositionConfig config : date.getPositionConfigs()) {
                                 String positionCode = config.getPosition().getPositionCode();
                                 
-                                // 獲取該崗位的人員分配
+                                // 獲取該崗位的人員分配（支援多人）
                                 if (config.getAssignments() != null && !config.getAssignments().isEmpty()) {
-                                    ServiceScheduleAssignment firstAssignment = config.getAssignments().stream()
+                                    // 獲取所有人員，按 sortOrder 排序
+                                    List<ServiceScheduleAssignment> sortedAssignments = config.getAssignments().stream()
                                         .sorted(Comparator.comparing(ServiceScheduleAssignment::getSortOrder))
-                                        .findFirst()
-                                        .orElse(null);
+                                        .filter(assignment -> assignment.getPerson() != null)
+                                        .collect(Collectors.toList());
                                     
-                                    if (firstAssignment != null && firstAssignment.getPerson() != null) {
-                                        Person person = firstAssignment.getPerson();
-                                        // 同時返回 ID 和名稱
-                                        dateItem.put(positionCode, person.getDisplayName() != null ? 
-                                            person.getDisplayName() : person.getPersonName());
-                                        dateItem.put(positionCode + "Id", person.getId());
+                                    if (!sortedAssignments.isEmpty()) {
+                                        // 收集所有人員名稱和 ID
+                                        List<String> personNames = new ArrayList<>();
+                                        List<Long> personIds = new ArrayList<>();
+                                        
+                                        for (ServiceScheduleAssignment assignment : sortedAssignments) {
+                                            Person person = assignment.getPerson();
+                                            String displayName = person.getDisplayName() != null ? 
+                                                person.getDisplayName() : person.getPersonName();
+                                            personNames.add(displayName);
+                                            personIds.add(person.getId());
+                                        }
+                                        
+                                        // 用 "/" 串接多人名稱
+                                        String personsString = String.join("/", personNames);
+                                        dateItem.put(positionCode, personsString);
+                                        dateItem.put(positionCode + "Ids", personIds);
                                     }
                                 }
                             }
@@ -161,29 +169,26 @@ public class ServiceScheduleController {
     /**
      * 更新安排表
      */
-    @PutMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> updateSchedule(@PathVariable Long id, @RequestBody Map<String, Object> request) {
+    @PutMapping("/{year}")
+    public ResponseEntity<Map<String, Object>> updateSchedule(@PathVariable Integer year, @RequestBody Map<String, Object> request) {
         try {
-            String name = (String) request.get("name");
-            if (name == null || name.trim().isEmpty()) {
-                Map<String, Object> error = new HashMap<>();
-                error.put("error", "名稱不能為空");
-                return ResponseEntity.badRequest().body(error);
-            }
-
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> scheduleData = (List<Map<String, Object>>) request.get("scheduleData");
 
-            ServiceSchedule schedule = service.updateSchedule(id, name, scheduleData);
+            ServiceSchedule schedule = service.updateSchedule(year, scheduleData);
 
             Map<String, Object> response = new HashMap<>();
-            response.put("id", schedule.getId());
-            response.put("name", schedule.getName());
+            response.put("year", schedule.getYear());
             response.put("createdAt", schedule.getCreatedAt());
             response.put("updatedAt", schedule.getUpdatedAt());
             response.put("message", "安排表更新成功");
 
             return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            // 處理年度衝突等業務邏輯錯誤
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
         } catch (Exception e) {
             Map<String, Object> error = new HashMap<>();
             error.put("error", "更新失敗：" + e.getMessage());
@@ -195,9 +200,9 @@ public class ServiceScheduleController {
     /**
      * 刪除安排表
      */
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Map<String, String>> deleteSchedule(@PathVariable Long id) {
-        service.deleteSchedule(id);
+    @DeleteMapping("/{year}")
+    public ResponseEntity<Map<String, String>> deleteSchedule(@PathVariable Integer year) {
+        service.deleteSchedule(year);
         Map<String, String> response = new HashMap<>();
         response.put("message", "安排表刪除成功");
         return ResponseEntity.ok(response);

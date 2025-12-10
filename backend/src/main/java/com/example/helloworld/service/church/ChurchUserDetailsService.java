@@ -33,15 +33,25 @@ public class ChurchUserDetailsService implements UserDetailsService {
             ChurchUser user = churchUserRepository.findByUsernameWithRolesAndPermissions(username)
                 .orElseThrow(() -> new UsernameNotFoundException("用戶不存在: " + username));
 
+            // 如果密碼為 null 或空，拋出異常（沒有密碼的用戶無法登入）
+            String password = user.getPassword();
+            if (password == null || password.trim().isEmpty()) {
+                throw new UsernameNotFoundException("用戶密碼未設定: " + username);
+            }
+
+            // 直接使用資料庫中的密碼（應該是 BCrypt 加密格式）
+            // Spring Security 會自動使用配置的 PasswordEncoder 進行驗證
             return org.springframework.security.core.userdetails.User.builder()
                 .username(user.getUsername())
-                .password(user.getPassword() != null ? user.getPassword() : "{noop}")
+                .password(password)
                 .authorities(getAuthorities(user))
                 .accountExpired(false)
                 .accountLocked(!user.getIsAccountNonLocked())
                 .credentialsExpired(false)
                 .disabled(!user.getIsEnabled())
                 .build();
+        } catch (UsernameNotFoundException e) {
+            throw e;
         } catch (Exception e) {
             throw new UsernameNotFoundException("載入用戶失敗: " + e.getMessage(), e);
         }
