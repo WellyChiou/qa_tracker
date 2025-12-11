@@ -3,6 +3,8 @@ package com.example.helloworld.scheduler.personal;
 import com.example.helloworld.service.personal.ExchangeRateService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Component
 public class ExchangeRateScheduler {
@@ -14,6 +16,7 @@ public class ExchangeRateScheduler {
      * 自動補足匯率任務執行器
      */
     public static class AutoFillExchangeRatesJob implements Runnable {
+        private static final Logger log = LoggerFactory.getLogger(AutoFillExchangeRatesJob.class);
         private final ExchangeRateService exchangeRateService;
 
         public AutoFillExchangeRatesJob(ExchangeRateService exchangeRateService) {
