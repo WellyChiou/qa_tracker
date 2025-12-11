@@ -70,14 +70,21 @@ fi
 echo "正在打包專案..."
 # 使用 --format=ustar 確保 Linux 兼容性，並確保目錄結構正確
 cd ..
+# 先打包所有 .sh 檔案
 tar --format=ustar -czf "${ARCHIVE_NAME}" \
+    --exclude-vcs \
     --exclude="${PROJECT_NAME}/.git" \
     --exclude="${PROJECT_NAME}/node_modules" \
     --exclude="${PROJECT_NAME}/target" \
     --exclude="${PROJECT_NAME}/.DS_Store" \
     --exclude="${PROJECT_NAME}/*.log" \
     --exclude="${PROJECT_NAME}/frontend/dist" \
-    "${PROJECT_NAME}/"
+    --exclude="${PROJECT_NAME}/frontend-personal/dist" \
+    --no-wildcards-match-slash \
+    --wildcards \
+    --no-anchored \
+    "${PROJECT_NAME}/" \
+    "${PROJECT_NAME}/"*.sh
 cd "${PROJECT_NAME}"
 
 if [ ! -f "../${ARCHIVE_NAME}" ]; then
