@@ -1,13 +1,19 @@
--- 建立個人系統預設管理員帳號（簡化版）
--- 預設帳號：admin
--- 預設密碼：admin123
--- 
--- 此腳本使用預先生成的 BCrypt hash（與教會系統相同）
--- 密碼 "admin123" 的 BCrypt hash: $2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy
+-- ============================================
+-- 個人系統管理員帳號設定
+-- ============================================
+-- 此腳本包含所有個人系統（qa_tracker）管理員相關的設定
+-- 執行此腳本前，請先執行 schema.sql
+-- ============================================
 
 USE qa_tracker;
 
--- 檢查並建立管理員帳號（如果不存在）
+-- ============================================
+-- 建立預設管理員帳號
+-- ============================================
+-- 預設帳號：admin
+-- 預設密碼：admin123（請在首次登入後立即修改）
+-- 使用 BCrypt 加密（cost factor 10）
+
 INSERT INTO users (
     uid,
     username,
@@ -50,7 +56,9 @@ WHERE u.username = 'admin'
     WHERE ur.user_uid = u.uid AND ur.role_id = r.id
   );
 
+-- ============================================
 -- 顯示建立結果
+-- ============================================
 SELECT 
     u.uid,
     u.username,
@@ -58,14 +66,18 @@ SELECT
     u.display_name,
     u.is_enabled,
     u.is_account_non_locked,
-    GROUP_CONCAT(r.role_name) AS roles
+    GROUP_CONCAT(r.role_name) AS roles,
+    u.created_at,
+    u.updated_at
 FROM users u
 LEFT JOIN user_roles ur ON u.uid = ur.user_uid
 LEFT JOIN roles r ON ur.role_id = r.id
 WHERE u.username = 'admin'
-GROUP BY u.uid, u.username, u.email, u.display_name, u.is_enabled, u.is_account_non_locked;
+GROUP BY u.uid, u.username, u.email, u.display_name, u.is_enabled, u.is_account_non_locked, u.created_at, u.updated_at;
 
--- 使用說明：
+-- ============================================
+-- 使用說明
+-- ============================================
 -- 1. 預設帳號：admin
 -- 2. 預設密碼：admin123
 -- 3. 請在首次登入後立即修改密碼

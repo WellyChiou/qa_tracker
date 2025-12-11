@@ -34,10 +34,8 @@
 
 ### 👤 用戶管理文件
 
-- **`create-church-admin.sql`** - 創建教會管理員帳號
-- **`update-church-admin-password.sql`** - 更新教會管理員密碼
-- **`create-default-admin-simple.sql`** - 創建簡單管理員（個人系統）
-- **`create-default-admin-v2.sql`** - 創建管理員 v2（個人系統）
+- **`church-admin-setup.sql`** - 教會系統管理員帳號設定（整合版）
+- **`personal-admin-setup.sql`** - 個人系統管理員帳號設定（整合版）
 
 ### 🔍 檢查和診斷文件
 
@@ -46,11 +44,10 @@
 
 ### 📝 文檔文件
 
-- **`README_CHURCH_SQL.md`** - 教會 SQL 文件詳細說明
-- **`README_POSITION_CONFIG.md`** - 崗位配置說明
-- **`MIGRATION_GUIDE.md`** - 遷移指南
-- **`UPDATE_MENU_URLS.md`** - 菜單 URL 更新說明
-- **`CHECK_AND_CREATE.md`** - 檢查和創建指南
+- **`README.md`** - 本文件，包含所有 SQL 文件的說明和使用指南
+- **`CHECK_AND_CREATE.md`** - 檢查和創建資料庫的詳細指南
+- **`MIGRATION_GUIDE.md`** - 服事表資料遷移指南
+- **`diagnostics/README.md`** - 診斷腳本說明文檔
 
 ## 🗑️ 已整合/可移除的文件
 
@@ -127,7 +124,7 @@ mysql -u root -p church < mysql/church-init.sql
 mysql -u root -p church < mysql/church-data.sql
 
 # 6. 創建管理員帳號
-mysql -u root -p church < mysql/create-church-admin.sql
+mysql -u root -p church < mysql/church-admin-setup.sql
 ```
 
 ### 更新現有系統
