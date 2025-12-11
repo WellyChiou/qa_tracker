@@ -11,6 +11,8 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 教會後台 LINE Bot 服務
@@ -20,6 +22,7 @@ import java.util.Map;
  */
 @Service
 public class ChurchLineBotService {
+    private static final Logger log = LoggerFactory.getLogger(ChurchLineBotService.class);
 
     private final RestTemplate restTemplate = new RestTemplate();
 

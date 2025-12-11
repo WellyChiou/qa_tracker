@@ -149,7 +149,7 @@ public class DatabaseBackupScheduler {
             if (exitCode == 0) {
                 String message = "備份執行成功\n" + fullOutput.toString();
                 JobResultHolder.setResult(message);
-                log.info("✅ [資料庫備份] 完成，備份檔案: {}", backupFile);
+                log.info("✅ [資料庫備份] 完成，備份目錄: {}", backupDir);
             } else {
                 String message = "備份執行失敗，退出碼: " + exitCode + "\n" + fullOutput.toString();
                 JobResultHolder.setResult(message);
