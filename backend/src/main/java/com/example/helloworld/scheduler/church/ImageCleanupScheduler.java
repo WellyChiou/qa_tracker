@@ -4,6 +4,8 @@ import com.example.helloworld.service.church.ImageCleanupService;
 import com.example.helloworld.service.church.CleanupResult;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 圖片清理定時任務
@@ -11,6 +13,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class ImageCleanupScheduler {
+    private static final Logger log = LoggerFactory.getLogger(ImageCleanupScheduler.class);
 
     @Autowired
     private ImageCleanupService imageCleanupService;
@@ -36,17 +39,16 @@ public class ImageCleanupScheduler {
      */
     public void cleanupUnusedImages() {
         try {
-            System.out.println("🧹 [圖片清理] 開始清理未使用的圖片...");
+            log.info("🧹 [圖片清理] 開始清理未使用的圖片...");
             CleanupResult result = imageCleanupService.cleanupUnusedImages();
             
             // 格式化結果消息
             String resultMessage = formatResult(result);
             JobResultHolder.setResult(resultMessage);
             
-            System.out.println("✅ [圖片清理] 完成，共刪除 " + result.getCount() + " 個未使用的圖片文件");
+            log.info("✅ [圖片清理] 完成，共刪除 {} 個未使用的圖片文件", result.getCount());
         } catch (Exception e) {
-            System.err.println("❌ [圖片清理] 執行失敗: " + e.getMessage());
-            e.printStackTrace();
+            log.error("❌ [圖片清理] 執行失敗: {}", e.getMessage(), e);
             JobResultHolder.clear();
             throw e;
         }

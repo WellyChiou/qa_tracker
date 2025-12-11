@@ -5,6 +5,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,6 +15,8 @@ import java.util.Map;
 @RequestMapping("/api/line")
 @CrossOrigin(origins = "*")
 public class LineBotController {
+    
+    private static final Logger log = LoggerFactory.getLogger(LineBotController.class);
 
     @Autowired
     private LineBotService lineBotService;
@@ -24,14 +28,14 @@ public class LineBotController {
     @PostMapping("/webhook")
     public ResponseEntity<String> handleWebhook(@RequestBody Map<String, Object> webhookRequest) {
         try {
-            System.out.println("📨 收到 LINE webhook 請求");
+            log.info("📨 收到 LINE webhook 請求");
 
             // 處理事件列表
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> events = (List<Map<String, Object>>) webhookRequest.get("events");
 
             if (events != null) {
-                System.out.println("事件數量: " + events.size());
+                log.info("事件數量: {}", events.size());
 
                 for (Map<String, Object> event : events) {
                     handleEvent(event);
@@ -41,8 +45,7 @@ public class LineBotController {
             return ResponseEntity.ok("OK");
 
         } catch (Exception e) {
-            System.err.println("❌ 處理 LINE webhook 時發生錯誤: " + e.getMessage());
-            e.printStackTrace();
+            log.error("❌ 處理 LINE webhook 時發生錯誤: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body("ERROR");
         }
     }
@@ -53,17 +56,17 @@ public class LineBotController {
     private void handleEvent(Map<String, Object> event) {
         try {
             if (event == null) {
-                System.err.println("⚠️ 收到空事件，跳過處理");
+                log.warn("⚠️ 收到空事件，跳過處理");
                 return;
             }
 
             String type = (String) event.get("type");
             if (type == null) {
-                System.err.println("⚠️ 事件缺少 type 欄位，跳過處理");
+                log.warn("⚠️ 事件缺少 type 欄位，跳過處理");
                 return;
             }
 
-            System.out.println("🎯 處理事件類型: " + type);
+            log.info("🎯 處理事件類型: {}", type);
 
             @SuppressWarnings("unchecked")
             Map<String, Object> source = (Map<String, Object>) event.get("source");
@@ -72,7 +75,7 @@ public class LineBotController {
             // 處理群組加入事件
             if ("join".equals(type)) {
                 if (source == null) {
-                    System.err.println("⚠️ join 事件缺少 source 欄位");
+                    log.warn("⚠️ join 事件缺少 source 欄位");
                     return;
                 }
                 if ("group".equals(sourceType)) {
@@ -80,20 +83,20 @@ public class LineBotController {
                     if (groupId != null && !groupId.trim().isEmpty()) {
                         lineBotService.handleGroupJoinEvent(groupId);
                     } else {
-                        System.err.println("⚠️ 群組 join 事件缺少 groupId");
+                        log.warn("⚠️ 群組 join 事件缺少 groupId");
                     }
                 } else if ("room".equals(sourceType)) {
                     String roomId = (String) source.get("roomId");
-                    System.out.println("📥 Bot 被加入到聊天室: " + roomId);
+                    log.info("📥 Bot 被加入到聊天室: {}", roomId);
                     // 聊天室功能可以後續擴展
                 } else {
-                    System.out.println("⚠️ 未知的 join 事件來源類型: " + sourceType);
+                    log.warn("⚠️ 未知的 join 事件來源類型: {}", sourceType);
                 }
             }
             // 處理群組離開事件
             else if ("leave".equals(type)) {
                 if (source == null) {
-                    System.err.println("⚠️ leave 事件缺少 source 欄位");
+                    log.warn("⚠️ leave 事件缺少 source 欄位");
                     return;
                 }
                 if ("group".equals(sourceType)) {
@@ -101,10 +104,10 @@ public class LineBotController {
                     if (groupId != null && !groupId.trim().isEmpty()) {
                         lineBotService.handleGroupLeaveEvent(groupId);
                     } else {
-                        System.err.println("⚠️ 群組 leave 事件缺少 groupId");
+                        log.warn("⚠️ 群組 leave 事件缺少 groupId");
                     }
                 } else {
-                    System.out.println("⚠️ 未知的 leave 事件來源類型: " + sourceType);
+                    log.warn("⚠️ 未知的 leave 事件來源類型: {}", sourceType);
                 }
             }
             // 處理文字訊息事件
@@ -117,7 +120,7 @@ public class LineBotController {
                     String text = (String) message.get("text");
 
                     if (source == null) {
-                        System.err.println("⚠️ message 事件缺少 source 欄位");
+                        log.warn("⚠️ message 事件缺少 source 欄位");
                         return;
                     }
 
@@ -125,37 +128,35 @@ public class LineBotController {
                     if ("group".equals(sourceType)) {
                         String groupId = (String) source.get("groupId");
                         String userId = (String) source.get("userId");
-                            System.out.println("📨 [Webhook] 收到群組訊息事件");
-                        System.out.println("📨 [Webhook] Group ID: " + groupId);
-                        System.out.println("📨 [Webhook] User ID: " + userId);
-                        System.out.println("📨 [Webhook] Message: " + text);
+                            log.info("📨 [Webhook] 收到群組訊息事件");
+                        log.info("📨 [Webhook] Group ID: {}", groupId);
+                        log.info("📨 [Webhook] User ID: {}", userId);
+                        log.info("📨 [Webhook] Message: {}", text);
                         
                         if (groupId != null && userId != null) {
                             lineBotService.handleGroupMessageEvent(replyToken, groupId, userId, text);
                         } else {
-                            System.err.println("⚠️ [Webhook] 群組訊息缺少必要欄位 - groupId: " + groupId + ", userId: " + userId);
+                            log.warn("⚠️ [Webhook] 群組訊息缺少必要欄位 - groupId: {}, userId: {}", groupId, userId);
                         }
                     } else if ("user".equals(sourceType)) {
                         String userId = (String) source.get("userId");
-                        System.out.println("📨 [Webhook] 收到個人訊息事件，User ID: " + userId);
+                        log.info("📨 [Webhook] 收到個人訊息事件，User ID: {}", userId);
                         if (userId != null) {
                             lineBotService.handleMessageEvent(replyToken, userId, text);
                         } else {
-                            System.err.println("⚠️ [Webhook] 個人訊息缺少 userId");
+                            log.warn("⚠️ [Webhook] 個人訊息缺少 userId");
                         }
                     }
                 } else {
-                    System.out.println("⚠️ 收到非文字訊息事件，忽略處理");
+                    log.warn("⚠️ 收到非文字訊息事件，忽略處理");
                 }
             } else {
-                System.out.println("⚠️ 收到未處理的事件類型: " + type);
+                log.warn("⚠️ 收到未處理的事件類型: {}", type);
             }
 
         } catch (Exception e) {
             // 記錄錯誤但不拋出異常，確保 webhook 始終返回 200 OK
-            System.err.println("❌ 處理事件時發生錯誤: " + e.getMessage());
-            System.err.println("錯誤類型: " + e.getClass().getName());
-            e.printStackTrace();
+            log.error("❌ 處理事件時發生錯誤: {}", e.getMessage(), e);
             // 不重新拋出異常，避免影響 webhook 響應
         }
     }

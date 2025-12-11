@@ -22,9 +22,9 @@ public class ExchangeRateScheduler {
 
         @Override
         public void run() {
-            System.out.println("🔄 開始執行自動補足匯率任務...");
+            log.info("🔄 開始執行自動補足匯率任務...");
             int filledCount = exchangeRateService.checkAndAutoFillMissingRates(7);
-            System.out.println("✅ 自動補足匯率任務完成，補足 " + filledCount + " 個日期");
+            log.info("✅ 自動補足匯率任務完成，補足 {} 個日期", filledCount);
         }
     }
 

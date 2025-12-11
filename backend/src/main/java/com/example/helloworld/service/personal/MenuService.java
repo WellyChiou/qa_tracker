@@ -20,6 +20,8 @@ public class MenuService {
 
     @Autowired
     private MenuItemRepository menuItemRepository;
+    
+    private static final Logger log = LoggerFactory.getLogger(MenuService.class);
 
     /**
      * 獲取用戶可見的菜單（根據權限過濾）
@@ -43,7 +45,7 @@ public class MenuService {
                 }
             } catch (Exception e) {
                 // 如果獲取權限失敗，使用空權限集合（只顯示不需要權限的菜單）
-                System.err.println("獲取用戶權限失敗: " + e.getMessage());
+                log.error("❌ 獲取用戶權限失敗: {}", e.getMessage(), e);
             }
 
             // 獲取所有啟用的根菜單
@@ -71,7 +73,7 @@ public class MenuService {
                                         visibleChildren.add(convertToDTO(childMenu));
                                     }
                                 } catch (Exception e) {
-                                    System.err.println("處理子菜單時發生錯誤: " + e.getMessage());
+                                    log.error("處理子菜單時發生錯誤: {}", e.getMessage(), e);
                                 }
                             }
                         }
@@ -83,14 +85,13 @@ public class MenuService {
                         visibleMenus.add(menuDTO);
                     }
                 } catch (Exception e) {
-                    System.err.println("處理根菜單時發生錯誤: " + e.getMessage());
+                    log.error("處理根菜單時發生錯誤: {}", e.getMessage(), e);
                 }
             }
             
             return visibleMenus;
         } catch (Exception e) {
-            System.err.println("獲取可見菜單時發生錯誤: " + e.getMessage());
-            e.printStackTrace();
+            log.error("獲取可見菜單時發生錯誤: {}", e.getMessage(), e);
             // 返回空列表而不是拋出異常
             return new ArrayList<>();
         }

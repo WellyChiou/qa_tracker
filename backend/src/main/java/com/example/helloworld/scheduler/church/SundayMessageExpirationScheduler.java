@@ -5,6 +5,8 @@ import com.example.helloworld.service.church.DeactivationResult;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 主日信息過期檢查排程器
@@ -12,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Component
 public class SundayMessageExpirationScheduler {
+    private static final Logger log = LoggerFactory.getLogger(SundayMessageExpirationScheduler.class);
 
     @Autowired
     private SundayMessageService sundayMessageService;
@@ -38,17 +41,16 @@ public class SundayMessageExpirationScheduler {
     @Transactional(transactionManager = "churchTransactionManager")
     public void checkAndDeactivateExpiredMessages() {
         try {
-            System.out.println("📅 [主日信息過期檢查] 開始檢查過期主日信息...");
+            log.info("📅 [主日信息過期檢查] 開始檢查過期主日信息...");
             DeactivationResult result = sundayMessageService.deactivateExpiredMessages();
             
             // 格式化結果消息
             String resultMessage = formatResult(result);
             JobResultHolder.setResult(resultMessage);
             
-            System.out.println("✅ [主日信息過期檢查] 完成，共停用 " + result.getCount() + " 個過期主日信息");
+            log.info("✅ [主日信息過期檢查] 已停用 {} 個過期主日信息", result.getCount());
         } catch (Exception e) {
-            System.err.println("❌ [主日信息過期檢查] 執行失敗: " + e.getMessage());
-            e.printStackTrace();
+            log.error("❌ [主日信息過期檢查] 執行失敗: {}", e.getMessage(), e);
             JobResultHolder.clear();
             throw e;
         }
@@ -69,6 +71,7 @@ public class SundayMessageExpirationScheduler {
         int displayCount = Math.min(result.getCount(), 50);
         for (int i = 0; i < displayCount; i++) {
             DeactivationResult.ItemInfo item = result.getItems().get(i);
+            log.debug("  - 主日信息 ID: {}, 標題: {}, 日期: {}", item.getId(), item.getTitle(), item.getDate());
             message.append(String.format("- ID: %d, 標題: %s, 日期: %s\n", 
                 item.getId(), item.getTitle(), item.getDate()));
         }

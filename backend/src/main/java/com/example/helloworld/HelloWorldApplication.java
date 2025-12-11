@@ -13,6 +13,8 @@ import com.example.helloworld.scheduler.church.DatabaseBackupScheduler;
 import com.example.helloworld.service.personal.ScheduledJobService;
 import com.example.helloworld.service.church.ChurchScheduledJobService;
 import com.example.helloworld.service.church.ConfigurationRefreshService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -25,6 +27,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 })
 @EnableScheduling
 public class HelloWorldApplication implements CommandLineRunner {
+    private static final Logger log = LoggerFactory.getLogger(HelloWorldApplication.class);
 
     @Autowired
     private ScheduledJobService scheduledJobService;
@@ -71,9 +74,9 @@ public class HelloWorldApplication implements CommandLineRunner {
         // 初始化配置（從資料庫讀取）
         try {
             configurationRefreshService.initializeConfig();
-            System.out.println("配置初始化完成");
+            log.info("✅ 配置初始化完成");
         } catch (Exception e) {
-            System.err.println("配置初始化失敗（資料庫可能尚未準備好）: " + e.getMessage());
+            log.error("❌ 配置初始化失敗（資料庫可能尚未準備好）", e);
             // 不拋出異常，允許應用繼續啟動（使用預設配置）
         }
 

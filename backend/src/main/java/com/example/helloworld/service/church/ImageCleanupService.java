@@ -94,23 +94,22 @@ public class ImageCleanupService {
                                          Files.delete(filePath);
                                          deletedCount.incrementAndGet();
                                          deletedFiles.add(imageUrl);
-                                         System.out.println("刪除未使用的圖片: " + filePath);
+                                         log.info("🗑️ 刪除未使用的圖片: {}", filePath);
                                      } catch (IOException e) {
-                                         System.err.println("刪除圖片失敗: " + filePath + " - " + e.getMessage());
+                                         log.error("❌ 刪除圖片失敗: {} - {}", filePath, e.getMessage(), e);
                                      }
                                  }
                              } catch (Exception e) {
-                                 System.err.println("處理圖片時發生錯誤: " + filePath + " - " + e.getMessage());
+                                 log.error("❌ 處理圖片時發生錯誤: {} - {}", filePath, e.getMessage(), e);
                              }
                          });
                 } catch (IOException e) {
-                    System.err.println("掃描目錄失敗: " + subDirPath + " - " + e.getMessage());
+                    log.error("❌ 掃描目錄失敗: {} - {}", subDirPath, e.getMessage(), e);
                 }
             }
 
         } catch (Exception e) {
-            System.err.println("清理未使用圖片時發生錯誤: " + e.getMessage());
-            e.printStackTrace();
+            log.error("❌ 清理未使用圖片時發生錯誤", e);
         }
 
         return new CleanupResult(deletedCount.get(), deletedFiles);

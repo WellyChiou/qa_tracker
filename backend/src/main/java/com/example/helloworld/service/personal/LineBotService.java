@@ -25,9 +25,13 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
+@Transactional
 public class LineBotService {
+    private static final Logger log = LoggerFactory.getLogger(LineBotService.class);
 
     private final RestTemplate restTemplate = new RestTemplate();
 
@@ -57,7 +61,7 @@ public class LineBotService {
     public void handleMessageEvent(String replyToken, String userId, String messageText) {
         messageText = messageText.trim();
 
-        System.out.println("📨 收到 LINE 訊息: " + messageText + " 來自用戶: " + userId);
+        log.info("📨 收到 LINE 訊息: {} 來自用戶: {}", messageText, userId);
 
         try {
             // 檢查用戶是否已綁定
@@ -78,12 +82,11 @@ public class LineBotService {
             sendReplyMessage(replyToken, response);
 
         } catch (Exception e) {
-            System.err.println("❌ 處理 LINE 訊息時發生錯誤: " + e.getMessage());
-            e.printStackTrace();
+            log.error("❌ 處理 LINE 訊息時發生錯誤", e);
             try {
                 sendReplyMessage(replyToken, "❌ 處理訊息時發生錯誤，請稍後再試。");
             } catch (Exception replyError) {
-                System.err.println("❌ 發送錯誤回覆失敗: " + replyError.getMessage());
+                log.error("❌ 發送錯誤回覆失敗", replyError);
             }
         }
     }
@@ -201,7 +204,7 @@ public class LineBotService {
         } catch (NumberFormatException e) {
             return "❌ 金額格式錯誤，請輸入有效的數字。";
         } catch (Exception e) {
-            System.err.println("❌ 創建費用記錄時發生錯誤: " + e.getMessage());
+            log.error("❌ 創建費用記錄時發生錯誤", e);
             return "❌ 記錄費用失敗，請稍後再試。";
         }
     }
@@ -212,7 +215,7 @@ public class LineBotService {
     private void sendReplyMessage(String replyToken, String message) {
         try {
             if (replyToken == null || replyToken.trim().isEmpty()) {
-                System.err.println("❌ [Reply] Reply Token 為空，無法發送回覆");
+                log.error("❌ [Reply] Reply Token 為空，無法發送回覆");
                 return;
             }
 
@@ -228,23 +231,21 @@ public class LineBotService {
                 Map.of("type", "text", "text", message)
             });
 
-            System.out.println("📤 [Reply] 準備發送回覆訊息，Reply Token: " + replyToken.substring(0, Math.min(20, replyToken.length())) + "...");
-            System.out.println("📤 [Reply] 訊息內容: " + (message.length() > 50 ? message.substring(0, 50) + "..." : message));
+            log.info("📤 [Reply] 準備發送回覆訊息，Reply Token: {}...", replyToken.substring(0, Math.min(20, replyToken.length())));
+            log.info("📤 [Reply] 訊息內容: {}", (message.length() > 50 ? message.substring(0, 50) + "..." : message));
 
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
             ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
 
             if (response.getStatusCode().is2xxSuccessful()) {
-                System.out.println("✅ [Reply] 已成功發送回覆訊息");
-                System.out.println("✅ [Reply] 響應狀態: " + response.getStatusCode());
+                log.info("✅ [Reply] 已成功發送回覆訊息");
+                log.info("✅ [Reply] 響應狀態: {}", response.getStatusCode());
             } else {
-                System.err.println("❌ [Reply] 發送回覆訊息失敗，狀態碼: " + response.getStatusCode());
-                System.err.println("❌ [Reply] 響應內容: " + response.getBody());
+                log.error("❌ [Reply] 發送回覆訊息失敗，狀態碼: {}", response.getStatusCode());
+                log.error("❌ [Reply] 響應內容: {}", response.getBody());
             }
         } catch (Exception e) {
-            System.err.println("❌ [Reply] 發送回覆訊息失敗: " + e.getMessage());
-            System.err.println("❌ [Reply] 錯誤類型: " + e.getClass().getName());
-            e.printStackTrace();
+            log.error("❌ [Reply] 發送回覆訊息失敗", e);
             // 不重新拋出異常，避免影響 webhook 響應
         }
     }
@@ -255,7 +256,7 @@ public class LineBotService {
     public void sendPushMessage(String userId, String message) {
         try {
             if (userId == null || userId.trim().isEmpty()) {
-                System.err.println("❌ 用戶 ID 為空，無法發送推播訊息");
+                log.error("❌ 用戶 ID 為空，無法發送推播訊息");
                 return;
             }
 
@@ -275,12 +276,12 @@ public class LineBotService {
             ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
 
             if (response.getStatusCode().is2xxSuccessful()) {
-                System.out.println("✅ 已發送推播訊息給用戶 " + userId);
+                log.info("✅ 已發送推播訊息給用戶 {}", userId);
             } else {
-                System.err.println("❌ 發送推播訊息失敗，狀態碼: " + response.getStatusCode());
+                log.error("❌ 發送推播訊息失敗，狀態碼: {}", response.getStatusCode());
             }
         } catch (Exception e) {
-            System.err.println("❌ 發送推播訊息失敗: " + e.getMessage());
+            log.error("❌ 發送推播訊息失敗", e);
         }
     }
 
@@ -301,21 +302,21 @@ public class LineBotService {
     public void sendGroupMessage(String groupId, String message) {
         try {
             if (groupId == null || groupId.trim().isEmpty()) {
-                System.err.println("❌ [群組通知] 群組 ID 為空，無法發送群組訊息");
+                log.error("❌ [群組通知] 群組 ID 為空，無法發送群組訊息");
                 return;
             }
 
-            System.out.println("📤 [群組通知] 準備發送訊息到群組: " + groupId);
+            log.info("📤 [群組通知] 準備發送訊息到群組: {}", groupId);
 
             // 獲取所有已綁定 LINE 的用戶（LINE API 無法獲取群組成員列表，所以發送給所有已綁定用戶）
             List<User> allLineUsers = userRepository.findAll().stream()
                 .filter(user -> user.getLineUserId() != null && !user.getLineUserId().trim().isEmpty())
                 .collect(java.util.stream.Collectors.toList());
 
-            System.out.println("👥 [群組通知] 找到 " + allLineUsers.size() + " 個已綁定 LINE 的用戶");
+            log.info("👥 [群組通知] 找到 {} 個已綁定 LINE 的用戶", allLineUsers.size());
 
             if (allLineUsers.isEmpty()) {
-                System.out.println("⚠️ [群組通知] 群組 " + groupId + " 中沒有已綁定的用戶，無法發送群組訊息");
+                log.warn("⚠️ [群組通知] 群組 {} 中沒有已綁定的用戶，無法發送群組訊息", groupId);
                 return;
             }
 
@@ -324,16 +325,14 @@ public class LineBotService {
                 .map(User::getLineUserId)
                 .collect(java.util.stream.Collectors.toList());
 
-            System.out.println("📨 [群組通知] 準備使用 Multicast API 發送給 " + userIds.size() + " 個用戶");
-            System.out.println("📝 [群組通知] 訊息內容預覽: " + (message.length() > 100 ? message.substring(0, 100) + "..." : message));
+            log.info("📨 [群組通知] 準備使用 Multicast API 發送給 {} 個用戶", userIds.size());
+            log.info("📝 [群組通知] 訊息內容預覽: {}", (message.length() > 100 ? message.substring(0, 100) + "..." : message));
 
             sendMulticastMessage(userIds, message);
-            System.out.println("✅ [群組通知] 已發送群組訊息到群組: " + groupId + "，共 " + userIds.size() + " 個用戶");
+            log.info("✅ [群組通知] 已發送群組訊息到群組: {}，共 {} 個用戶", groupId, userIds.size());
 
         } catch (Exception e) {
-            System.err.println("❌ [群組通知] 發送群組訊息失敗: " + e.getMessage());
-            System.err.println("❌ [群組通知] 錯誤類型: " + e.getClass().getName());
-            e.printStackTrace();
+            log.error("❌ [群組通知] 發送群組訊息失敗", e);
         }
     }
 
@@ -344,13 +343,13 @@ public class LineBotService {
     public void sendMulticastMessage(java.util.List<String> userIds, String message) {
         try {
             if (userIds == null || userIds.isEmpty()) {
-                System.err.println("❌ 用戶 ID 列表為空，無法發送多播訊息");
+                log.error("❌ 用戶 ID 列表為空，無法發送多播訊息");
                 return;
             }
 
             // LINE Multicast API 最多支援 500 個用戶
             if (userIds.size() > 500) {
-                System.err.println("⚠️ 用戶數量超過 500，將分批發送");
+                log.warn("⚠️ 用戶數量超過 500，將分批發送");
                 // 分批發送
                 for (int i = 0; i < userIds.size(); i += 500) {
                     int end = Math.min(i + 500, userIds.size());
@@ -363,8 +362,7 @@ public class LineBotService {
             sendMulticastBatch(userIds, message);
 
         } catch (Exception e) {
-            System.err.println("❌ 發送多播訊息失敗: " + e.getMessage());
-            e.printStackTrace();
+            log.error("❌ 發送多播訊息失敗: {}", e.getMessage(), e);
         }
     }
 
@@ -375,8 +373,8 @@ public class LineBotService {
         try {
             String url = "https://api.line.me/v2/bot/message/multicast";
 
-            System.out.println("📡 [Multicast] 準備發送到 LINE API: " + url);
-            System.out.println("📡 [Multicast] 目標用戶數量: " + userIds.size());
+            log.info("📡 [Multicast] 準備發送到 LINE API: {}", url);
+            log.info("📡 [Multicast] 目標用戶數量: {}", userIds.size());
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -392,16 +390,14 @@ public class LineBotService {
             ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
 
             if (response.getStatusCode().is2xxSuccessful()) {
-                System.out.println("✅ [Multicast] 已成功發送多播訊息給 " + userIds.size() + " 個用戶");
-                System.out.println("✅ [Multicast] 響應狀態: " + response.getStatusCode());
+                log.info("✅ [Multicast] 已成功發送多播訊息給 {} 個用戶", userIds.size());
+                log.info("✅ [Multicast] 響應狀態: {}", response.getStatusCode());
             } else {
-                System.err.println("❌ [Multicast] 發送多播訊息失敗，狀態碼: " + response.getStatusCode());
-                System.err.println("❌ [Multicast] 響應內容: " + response.getBody());
+                log.error("❌ [Multicast] 發送多播訊息失敗，狀態碼: {}", response.getStatusCode());
+                log.error("❌ [Multicast] 響應內容: {}", response.getBody());
             }
         } catch (Exception e) {
-            System.err.println("❌ [Multicast] 發送多播訊息批次失敗: " + e.getMessage());
-            System.err.println("❌ [Multicast] 錯誤類型: " + e.getClass().getName());
-            e.printStackTrace();
+            log.error("❌ [Multicast] 發送多播訊息批次失敗", e);
             // 不重新拋出異常，避免影響其他群組的通知
         }
     }
@@ -413,31 +409,29 @@ public class LineBotService {
     public void handleGroupJoinEvent(String groupId) {
         try {
             if (groupId == null || groupId.trim().isEmpty()) {
-                System.err.println("⚠️ 群組 ID 為空，無法處理加入事件");
+                log.warn("⚠️ 群組 ID 為空，無法處理加入事件");
                 return;
             }
 
-            System.out.println("📥 處理群組加入事件，群組 ID: " + groupId);
+            log.info("📥 處理群組加入事件，群組 ID: {}", groupId);
 
             Optional<LineGroup> groupOpt = lineGroupRepository.findByGroupId(groupId);
             if (groupOpt.isPresent()) {
                 LineGroup group = groupOpt.get();
                 group.setIsActive(true);
                 lineGroupRepository.save(group);
-                System.out.println("✅ 群組已存在，已重新啟用: " + groupId);
+                log.info("✅ 群組已存在，已重新啟用: {}", groupId);
             } else {
                 LineGroup newGroup = new LineGroup();
                 newGroup.setGroupId(groupId);
                 newGroup.setGroupName("未命名群組");
                 newGroup.setIsActive(true);
                 lineGroupRepository.save(newGroup);
-                System.out.println("✅ 已記錄新群組: " + groupId);
+                log.info("✅ 已記錄新群組: {}", groupId);
             }
         } catch (Exception e) {
             // 記錄錯誤但不拋出異常，確保 webhook 返回 200 OK
-            System.err.println("❌ 處理群組加入事件失敗: " + e.getMessage());
-            System.err.println("錯誤詳情: " + e.getClass().getName());
-            e.printStackTrace();
+            log.error("❌ 處理群組加入事件失敗", e);
             // 不重新拋出異常，避免影響 webhook 響應
         }
     }
@@ -449,26 +443,24 @@ public class LineBotService {
     public void handleGroupLeaveEvent(String groupId) {
         try {
             if (groupId == null || groupId.trim().isEmpty()) {
-                System.err.println("⚠️ 群組 ID 為空，無法處理離開事件");
+                log.warn("⚠️ 群組 ID 為空，無法處理離開事件");
                 return;
             }
 
-            System.out.println("📤 處理群組離開事件，群組 ID: " + groupId);
+            log.info("📤 處理群組離開事件，群組 ID: {}", groupId);
 
             Optional<LineGroup> groupOpt = lineGroupRepository.findByGroupId(groupId);
             if (groupOpt.isPresent()) {
                 LineGroup group = groupOpt.get();
                 group.setIsActive(false);
                 lineGroupRepository.save(group);
-                System.out.println("✅ 群組已停用: " + groupId);
+                log.info("✅ 群組已停用: {}", groupId);
             } else {
-                System.out.println("⚠️ 群組不存在: " + groupId);
+                log.warn("⚠️ 群組不存在: {}", groupId);
             }
         } catch (Exception e) {
             // 記錄錯誤但不拋出異常，確保 webhook 返回 200 OK
-            System.err.println("❌ 處理群組離開事件失敗: " + e.getMessage());
-            System.err.println("錯誤詳情: " + e.getClass().getName());
-            e.printStackTrace();
+            log.error("❌ 處理群組離開事件失敗", e);
             // 不重新拋出異常，避免影響 webhook 響應
         }
     }
@@ -479,17 +471,17 @@ public class LineBotService {
     public void handleGroupMessageEvent(String replyToken, String groupId, String userId, String messageText) {
         messageText = messageText.trim();
 
-        System.out.println("📨 [群組訊息] 收到群組訊息: " + messageText);
-        System.out.println("📨 [群組訊息] 群組 ID: " + groupId);
-        System.out.println("📨 [群組訊息] 用戶 ID: " + userId);
-        System.out.println("📨 [群組訊息] Reply Token: " + (replyToken != null ? replyToken.substring(0, Math.min(20, replyToken.length())) + "..." : "null"));
+        log.info("📨 [群組訊息] 收到群組訊息: {}", messageText);
+        log.info("📨 [群組訊息] 群組 ID: {}", groupId);
+        log.info("📨 [群組訊息] 用戶 ID: {}", userId);
+        log.info("📨 [群組訊息] Reply Token: {}", (replyToken != null ? replyToken.substring(0, Math.min(20, replyToken.length())) + "..." : "null"));
 
         try {
             // 檢查群組是否存在，不存在則自動記錄（用於發送通知）
             Optional<LineGroup> groupOpt = lineGroupRepository.findByGroupId(groupId);
             
             if (!groupOpt.isPresent()) {
-                System.out.println("⚠️ [群組訊息] 群組不存在，自動記錄: " + groupId);
+                log.warn("⚠️ [群組訊息] 群組不存在，自動記錄: {}", groupId);
                 // 自動記錄新群組（用於發送通知）
                 try {
                     LineGroup newGroup = new LineGroup();
@@ -497,13 +489,12 @@ public class LineBotService {
                     newGroup.setGroupName("未命名群組");
                     newGroup.setIsActive(true); // 預設啟用
                     lineGroupRepository.save(newGroup);
-                    System.out.println("✅ [群組訊息] 已自動記錄新群組: " + groupId);
+                    log.info("✅ [群組訊息] 已自動記錄新群組: {}", groupId);
                 } catch (Exception e) {
-                    System.err.println("❌ [群組訊息] 自動記錄群組失敗: " + e.getMessage());
-                    e.printStackTrace();
+                    log.error("❌ [群組訊息] 自動記錄群組失敗", e);
                 }
             } else {
-                System.out.println("✅ [群組訊息] 群組已存在: " + groupId);
+                log.info("✅ [群組訊息] 群組已存在: {}", groupId);
             }
 
             // 檢查是否為群組 ID 查詢（LINE 群組 ID 通常以 C 開頭，長度約 33 個字符）
@@ -511,18 +502,17 @@ public class LineBotService {
                 // 用戶輸入群組 ID，查詢並返回群組資訊
                 String groupInfo = getGroupInfo(messageText);
                 sendReplyMessage(replyToken, groupInfo);
-                System.out.println("✅ [群組訊息] 已回應群組 ID 查詢");
+                log.info("✅ [群組訊息] 已回應群組 ID 查詢");
                 return;
             }
 
             // 其他群組訊息不回應，只記錄群組資訊（用於發送通知）
             // 如需使用 Bot 功能，請在個人對話中使用
-            System.out.println("ℹ️ [群組訊息] 群組訊息已記錄，但不回應（避免群組訊息干擾）");
-            System.out.println("💡 [群組訊息] 提示：如需使用 Bot 功能，請在個人對話中與 Bot 一對一聊天");
+            log.info("ℹ️ [群組訊息] 群組訊息已記錄，但不回應（避免群組訊息干擾）");
+            log.info("💡 [群組訊息] 提示：如需使用 Bot 功能，請在個人對話中與 Bot 一對一聊天");
             
         } catch (Exception e) {
-            System.err.println("❌ 處理群組訊息時發生錯誤: " + e.getMessage());
-            e.printStackTrace();
+            log.error("❌ 處理群組訊息時發生錯誤: {}", e.getMessage(), e);
             // 群組中發生錯誤也不回覆，避免干擾
         }
     }
@@ -542,10 +532,10 @@ public class LineBotService {
             user.setLineUserId(lineUserId);
             userRepository.save(user);
 
-            System.out.println("✅ 已綁定用戶 " + userUid + " 與 LINE ID " + lineUserId);
+            log.info("✅ 已綁定用戶 {} 與 LINE ID {}", userUid, lineUserId);
             return true;
         } catch (Exception e) {
-            System.err.println("❌ 綁定 LINE ID 失敗: " + e.getMessage());
+            log.error("❌ 綁定 LINE ID 失敗: {}", e.getMessage(), e);
             return false;
         }
     }
@@ -682,7 +672,7 @@ public class LineBotService {
                                totalIncome, totalExpense, totalIncome.subtract(totalExpense));
 
         } catch (Exception e) {
-            System.err.println("❌ 獲取狀態訊息失敗: " + e.getMessage());
+            log.error("❌ 獲取狀態訊息失敗: {}", e.getMessage(), e);
             return "❌ 獲取狀態失敗，請稍後再試。";
         }
     }
@@ -722,8 +712,7 @@ public class LineBotService {
                 );
             }
         } catch (Exception e) {
-            System.err.println("❌ 查詢群組資訊時發生錯誤: " + e.getMessage());
-            e.printStackTrace();
+            log.error("❌ 查詢群組資訊時發生錯誤: {}", e.getMessage(), e);
             return "❌ 查詢群組資訊時發生錯誤，請稍後再試。";
         }
     }
@@ -758,7 +747,7 @@ public class LineBotService {
             return message.toString();
 
         } catch (Exception e) {
-            System.err.println("❌ 獲取今日費用失敗: " + e.getMessage());
+            log.error("❌ 獲取今日費用失敗: {}", e.getMessage(), e);
             return "❌ 獲取今日費用失敗，請稍後再試。";
         }
     }

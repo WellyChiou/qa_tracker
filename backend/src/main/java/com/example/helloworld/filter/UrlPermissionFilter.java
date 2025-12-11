@@ -5,6 +5,8 @@ import com.example.helloworld.entity.church.ChurchUrlPermission;
 import com.example.helloworld.service.personal.UrlPermissionService;
 import com.example.helloworld.service.church.ChurchUrlPermissionService;
 import com.example.helloworld.service.church.ChurchPermissionService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -27,6 +29,7 @@ import java.util.regex.Pattern;
 
 @Component
 public class UrlPermissionFilter extends OncePerRequestFilter {
+    private static final Logger log = LoggerFactory.getLogger(UrlPermissionFilter.class);
 
     @Autowired
     private UrlPermissionService urlPermissionService;
@@ -154,8 +157,7 @@ public class UrlPermissionFilter extends OncePerRequestFilter {
                     }
                 } catch (Exception e) {
                     // 如果查詢資料庫失敗，記錄錯誤但繼續處理
-                    System.err.println("❌ [UrlPermissionFilter] 查詢教會 URL 權限配置失敗: " + e.getMessage());
-                    e.printStackTrace();
+                    log.error("❌ [UrlPermissionFilter] 查詢教會 URL 權限配置失敗", e);
                 }
             }
             

@@ -2,6 +2,8 @@ package com.example.helloworld.service.church;
 
 import com.example.helloworld.entity.church.SundayMessage;
 import com.example.helloworld.repository.church.SundayMessageRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +17,7 @@ import java.util.stream.Collectors;
 
 @Service
 public class SundayMessageService {
+    private static final Logger log = LoggerFactory.getLogger(SundayMessageService.class);
 
     @Autowired
     private SundayMessageRepository sundayMessageRepository;
@@ -71,7 +74,7 @@ public class SundayMessageService {
                 fileUploadService.deleteImage(oldImageUrl);
             } catch (Exception e) {
                 // 圖片刪除失敗不影響數據更新，只記錄錯誤
-                System.err.println("刪除舊圖片失敗: " + e.getMessage());
+                log.error("❌ 刪除舊圖片失敗: {}", e.getMessage());
             }
         }
         
@@ -101,7 +104,7 @@ public class SundayMessageService {
                 fileUploadService.deleteImage(message.getImageUrl());
             } catch (Exception e) {
                 // 圖片刪除失敗不影響數據刪除，只記錄錯誤
-                System.err.println("刪除主日信息圖片失敗: " + e.getMessage());
+                log.error("❌ 刪除主日信息圖片失敗: {}", e.getMessage());
             }
         }
         

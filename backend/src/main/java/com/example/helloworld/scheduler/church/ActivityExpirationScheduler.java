@@ -15,6 +15,8 @@ public class ActivityExpirationScheduler {
 
     @Autowired
     private ActivityService activityService;
+    
+    private static final Logger log = LoggerFactory.getLogger(ActivityExpirationScheduler.class);
 
     /**
      * 活動過期檢查任務
@@ -38,17 +40,16 @@ public class ActivityExpirationScheduler {
     @Transactional(transactionManager = "churchTransactionManager")
     public void checkAndDeactivateExpiredActivities() {
         try {
-            System.out.println("📅 [活動過期檢查] 開始檢查過期活動...");
+            log.info("📅 [活動過期檢查] 開始檢查過期活動...");
             DeactivationResult result = activityService.deactivateExpiredActivities();
             
             // 格式化結果消息
             String resultMessage = formatResult(result);
             JobResultHolder.setResult(resultMessage);
             
-            System.out.println("✅ [活動過期檢查] 完成，共停用 " + result.getCount() + " 個過期活動");
+            log.info("✅ [活動過期檢查] 完成，共停用 {} 個過期活動", result.getCount());
         } catch (Exception e) {
-            System.err.println("❌ [活動過期檢查] 執行失敗: " + e.getMessage());
-            e.printStackTrace();
+            log.error("❌ [活動過期檢查] 執行失敗: {}", e.getMessage(), e);
             JobResultHolder.clear();
             throw e;
         }

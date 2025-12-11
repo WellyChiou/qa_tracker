@@ -81,6 +81,7 @@ tar -czf "%ARCHIVE_NAME%" ^
     --exclude="%CURRENT_DIR%\.DS_Store" ^
     --exclude="%CURRENT_DIR%\*.log" ^
     --exclude="%CURRENT_DIR%\frontend\dist" ^
+    --exclude="%CURRENT_DIR%\frontend-personal\dist" ^
     --exclude="%CURRENT_DIR%\*.tar.gz" ^
     "%CURRENT_DIR%"
 

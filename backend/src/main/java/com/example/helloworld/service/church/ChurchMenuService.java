@@ -58,7 +58,7 @@ public class ChurchMenuService {
                     }
                 }
             } catch (Exception e) {
-                System.err.println("獲取用戶權限失敗: " + e.getMessage());
+                log.error("❌ 獲取用戶權限失敗: {}", e.getMessage(), e);
             }
 
             // 獲取所有啟用的、顯示在儀表板的、後台類型的根菜單（不包含子菜單）
@@ -79,14 +79,13 @@ public class ChurchMenuService {
                         visibleMenus.add(menuDTO);
                     }
                 } catch (Exception e) {
-                    System.err.println("處理儀表板菜單時發生錯誤: " + e.getMessage());
+                    log.error("❌ 處理儀表板菜單時發生錯誤: {}", e.getMessage(), e);
                 }
             }
             
             return visibleMenus;
         } catch (Exception e) {
-            System.err.println("獲取儀表板快速操作時發生錯誤: " + e.getMessage());
-            e.printStackTrace();
+            log.error("❌ 獲取儀表板快速操作時發生錯誤", e);
             return new ArrayList<>();
         }
     }
@@ -111,7 +110,7 @@ public class ChurchMenuService {
                     }
                 }
             } catch (Exception e) {
-                System.err.println("獲取用戶權限失敗: " + e.getMessage());
+                log.error("❌ 獲取用戶權限失敗: {}", e.getMessage(), e);
             }
 
             // 獲取所有啟用的根菜單
@@ -139,7 +138,7 @@ public class ChurchMenuService {
                                         visibleChildren.add(convertToDTO(childMenu));
                                     }
                                 } catch (Exception e) {
-                                    System.err.println("處理子菜單時發生錯誤: " + e.getMessage());
+                                    log.error("❌ 處理子菜單時發生錯誤: {}", e.getMessage(), e);
                                 }
                             }
                         }
@@ -151,14 +150,13 @@ public class ChurchMenuService {
                         visibleMenus.add(menuDTO);
                     }
                 } catch (Exception e) {
-                    System.err.println("處理根菜單時發生錯誤: " + e.getMessage());
+                    log.error("❌ 處理根菜單時發生錯誤: {}", e.getMessage(), e);
                 }
             }
             
             return visibleMenus;
         } catch (Exception e) {
-            System.err.println("獲取可見菜單時發生錯誤: " + e.getMessage());
-            e.printStackTrace();
+            log.error("❌ 獲取可見菜單時發生錯誤", e);
             return new ArrayList<>();
         }
     }

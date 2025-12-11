@@ -4,7 +4,7 @@ echo "=== Docker 容器狀態 ==="
 docker ps -a
 
 echo -e "\n=== 容器健康檢查 ==="
-for container in nginx_proxy java_backend vue_frontend vue_frontend_church mysql_db; do
+for container in nginx_proxy java_backend vue_personal vue_frontend_church mysql_db; do
     if docker ps | grep -q $container; then
         echo "✓ $container 正在運行"
     else

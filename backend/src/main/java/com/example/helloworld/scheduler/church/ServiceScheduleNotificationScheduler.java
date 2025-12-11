@@ -15,6 +15,8 @@ import com.example.helloworld.service.church.ChurchLineBotService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -29,6 +31,7 @@ import java.util.Optional;
  */
 @Component
 public class ServiceScheduleNotificationScheduler {
+    private static final Logger log = LoggerFactory.getLogger(ServiceScheduleNotificationScheduler.class);
 
     @Autowired
     private ServiceScheduleService serviceScheduleService;
@@ -69,7 +72,7 @@ public class ServiceScheduleNotificationScheduler {
     @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
     public void sendWeeklyServiceNotification() {
         try {
-            System.out.println("📅 [教會排程] 開始查詢本周六日服事人員...");
+            log.info("📅 [教會排程] 開始查詢本周六日服事人員...");
 
             // 獲取當前日期
             LocalDate today = LocalDate.now();
@@ -103,9 +106,9 @@ public class ServiceScheduleNotificationScheduler {
             LocalDate sunday = today.plusDays(daysUntilSunday);
             
             // 調試日誌：輸出計算結果
-            System.out.println("📅 [教會排程] 今天是 " + todayDayOfWeek + " (" + today + ")");
-            System.out.println("📅 [教會排程] 計算出的週六: " + saturday + " (距離今天 " + daysUntilSaturday + " 天)");
-            System.out.println("📅 [教會排程] 計算出的週日: " + sunday + " (距離今天 " + daysUntilSunday + " 天)");
+            log.info("📅 [教會排程] 今天是 {} ({})", todayDayOfWeek, today);
+            log.info("📅 [教會排程] 計算出的週六: {} (距離今天 {} 天)", saturday, daysUntilSaturday);
+            log.info("📅 [教會排程] 計算出的週日: {} (距離今天 {} 天)", sunday, daysUntilSunday);
 
             // 獲取所有服事表（使用完整數據載入方法，避免懶加載異常）
             List<ServiceSchedule> schedules = serviceScheduleService.getAllSchedulesWithFullData();
@@ -213,40 +216,38 @@ public class ServiceScheduleNotificationScheduler {
             
             // 如果配置了群組 ID，優先使用配置的群組 ID
             if (churchGroupId != null && !churchGroupId.trim().isEmpty()) {
-                System.out.println("📤 [教會排程] 使用配置的群組 ID: " + churchGroupId);
+                log.info("📤 [教會排程] 使用配置的群組 ID: {}", churchGroupId);
                 try {
                     churchLineBotService.sendGroupMessage(churchGroupId, message.toString());
-                    System.out.println("✅ [教會排程] 已發送服事人員通知到群組: " + churchGroupId);
+                    log.info("✅ [教會排程] 已發送服事人員通知到群組: {}", churchGroupId);
                 } catch (Exception e) {
-                    System.err.println("❌ [教會排程] 發送通知到群組失敗: " + e.getMessage());
-                    e.printStackTrace();
+                    log.error("❌ [教會排程] 發送通知到群組失敗: {}", e.getMessage(), e);
                 }
             } else {
                 // 如果沒有配置群組 ID，查找資料庫中啟用的群組
                 List<ChurchLineGroup> activeGroups = churchLineGroupRepository.findByIsActiveTrue();
                 
                 if (activeGroups.isEmpty()) {
-                    System.out.println("⚠️ [教會排程] 沒有配置群組 ID 且資料庫中沒有啟用的群組，跳過通知");
-                    System.out.println("💡 [教會排程] 提示：請設置環境變數 LINE_BOT_CHURCH_GROUP_ID 或在資料庫中啟用 LINE 群組");
+                    log.warn("⚠️ [教會排程] 沒有配置群組 ID 且資料庫中沒有啟用的群組，跳過通知");
+                    log.info("💡 [教會排程] 提示：請設置環境變數 LINE_BOT_CHURCH_GROUP_ID 或在資料庫中啟用 LINE 群組");
                     return;
                 }
 
                 int successCount = 0;
                 for (ChurchLineGroup group : activeGroups) {
                     try {
-                        System.out.println("📤 [教會排程] 發送通知到群組: " + group.getGroupId() + " (" + group.getGroupName() + ")");
+                        log.info("📤 [教會排程] 發送通知到群組: {} ({})", group.getGroupId(), group.getGroupName());
                         churchLineBotService.sendGroupMessage(group.getGroupId(), message.toString());
                         successCount++;
                     } catch (Exception e) {
-                        System.err.println("❌ [教會排程] 發送通知到群組 " + group.getGroupId() + " 失敗: " + e.getMessage());
+                        log.error("❌ [教會排程] 發送通知到群組 {} 失敗: {}", group.getGroupId(), e.getMessage(), e);
                     }
                 }
 
-                System.out.println("✅ [教會排程] 已發送服事人員通知到 " + successCount + " 個群組");
+                log.info("✅ [教會排程] 已發送服事人員通知到 {} 個群組", successCount);
             }
         } catch (Exception e) {
-            System.err.println("❌ [教會排程] 發送服事人員通知失敗: " + e.getMessage());
-            e.printStackTrace();
+            log.error("❌ [教會排程] 發送服事人員通知失敗: {}", e.getMessage(), e);
         }
     }
 
@@ -265,12 +266,12 @@ public class ServiceScheduleNotificationScheduler {
             java.time.DayOfWeek javaDayOfWeek = date.getDate().getDayOfWeek();
             int javaValue = javaDayOfWeek.getValue(); // 1=MONDAY, 7=SUNDAY
             dayOfWeek = (javaValue == 7) ? 1 : javaValue + 1; // 1=SUNDAY, 7=SATURDAY
-            System.out.println("  ⚠️ [教會排程] dayOfWeek 為 null，從 date 計算: " + javaDayOfWeek + " (javaValue=" + javaValue + ") -> " + dayOfWeek);
+            log.warn("  ⚠️ [教會排程] dayOfWeek 為 null，從 date 計算: {} (javaValue={}) -> {}", javaDayOfWeek, javaValue, dayOfWeek);
         }
         
         // 只處理週六（7）和週日（1），其他日期直接返回空列表
         if (dayOfWeek == null || (dayOfWeek != 1 && dayOfWeek != 7)) {
-            System.out.println("⚠️ [教會排程] 日期 " + date.getDate() + " 不是週六或週日（dayOfWeek=" + dayOfWeek + "），跳過處理");
+            log.warn("⚠️ [教會排程] 日期 {} 不是週六或週日（dayOfWeek={}），跳過處理", date.getDate(), dayOfWeek);
             return persons;
         }
         
@@ -278,28 +279,28 @@ public class ServiceScheduleNotificationScheduler {
         
         List<ServiceSchedulePositionConfig> configs = date.getPositionConfigs();
         if (configs == null || configs.isEmpty()) {
-            System.out.println("⚠️ [教會排程] 日期 " + date.getDate() + " 沒有崗位配置");
+            log.warn("⚠️ [教會排程] 日期 {} 沒有崗位配置", date.getDate());
             return persons;
         }
 
-        System.out.println("📋 [教會排程] 日期 " + date.getDate() + " 有 " + configs.size() + " 個崗位配置");
+        log.info("📋 [教會排程] 日期 {} 有 {} 個崗位配置", date.getDate(), configs.size());
 
         for (ServiceSchedulePositionConfig config : configs) {
             Position position = config.getPosition();
             if (position == null) {
-                System.out.println("⚠️ [教會排程] 崗位配置 ID " + config.getId() + " 沒有關聯的崗位");
+                log.warn("⚠️ [教會排程] 崗位配置 ID {} 沒有關聯的崗位", config.getId());
                 continue;
             }
 
             String positionName = position.getPositionName();
-            System.out.println("🔍 [教會排程] 檢查崗位: " + positionName + " (配置 ID: " + config.getId() + ")");
+            log.info("🔍 [教會排程] 檢查崗位: {} (配置 ID: {})", positionName, config.getId());
 
             // 強制初始化 assignments 集合（確保從 Session 中載入）
             List<ServiceScheduleAssignment> assignments = config.getAssignments();
             if (assignments != null) {
                 // 觸發初始化，確保資料已載入
                 int assignmentCount = assignments.size();
-                System.out.println("  📝 [教會排程] 崗位 " + positionName + " 有 " + assignmentCount + " 個分配記錄");
+                log.info("  📝 [教會排程] 崗位 {} 有 {} 個分配記錄", positionName, assignmentCount);
                 
                 // 處理每個 assignment（支援多人，用 "/" 串接）
                 boolean hasAssignedPerson = false;
@@ -307,7 +308,7 @@ public class ServiceScheduleNotificationScheduler {
                 // dayOfWeek 已在方法開始時計算，這裡直接使用
                 String dayType = (dayOfWeek == 7) ? "saturday" : "sunday";
                 String dayOfWeekText = (dayOfWeek == 7) ? "週六" : "週日";
-                System.out.println("  📅 [教會排程] 日期 " + date.getDate() + " 是 " + dayOfWeekText + " (dayOfWeek=" + dayOfWeek + ", dayType=" + dayType + ")");
+                log.info("  📅 [教會排程] 日期 {} 是 {} (dayOfWeek={}, dayType={})", date.getDate(), dayOfWeekText, dayOfWeek, dayType);
                 
                 // 收集該崗位的所有人員名稱
                 List<String> personNames = new ArrayList<>();
@@ -326,18 +327,19 @@ public class ServiceScheduleNotificationScheduler {
                         String personName = displayName != null && !displayName.trim().isEmpty() ? displayName : personNameValue;
                         
                         // 詳細的調試日誌：輸出 person 對象的完整信息
-                        System.out.println("  🔍 [教會排程] 檢查人員 - Person ID: " + person.getId() + 
-                                         ", displayName: " + (displayName != null ? "'" + displayName + "'" : "null") + 
-                                         ", personName: " + (personNameValue != null ? "'" + personNameValue + "'" : "null") + 
-                                         ", 最終 personName: " + (personName != null ? "'" + personName + "'" : "null") + 
-                                         ", 崗位: " + positionName + " (ID: " + position.getId() + "), dayType: " + dayType);
+                        log.debug("  🔍 [教會排程] 檢查人員 - Person ID: {}, displayName: {}, personName: {}, 最終 personName: {}, 崗位: {}", 
+                                person.getId(), 
+                                displayName != null ? "'" + displayName + "'" : "null", 
+                                personNameValue != null ? "'" + personNameValue + "'" : "null", 
+                                personName != null ? "'" + personName + "'" : "null", 
+                                positionName); 
                         
                         // 檢查 personName 是否為 null 或空字符串
                         if (personName == null || personName.trim().isEmpty()) {
-                            System.err.println("  ⚠️ [教會排程] 警告：崗位 " + positionName + " 的分配記錄 ID " + assignment.getId() + 
-                                             " 關聯的 Person ID " + person.getId() + " 的名稱為空！" +
-                                             " (displayName=" + (displayName != null ? "'" + displayName + "'" : "null") + 
-                                             ", personName=" + (personNameValue != null ? "'" + personNameValue + "'" : "null") + ")");
+                            log.warn("  ⚠️ [教會排程] 警告：崗位 {} 的分配記錄 ID {} 關聯的 Person ID {} 的名稱為空！ (displayName={}, personName={})", 
+                                    positionName, assignment.getId(), person.getId(), 
+                                    displayName != null ? "'" + displayName + "'" : "null", 
+                                    personNameValue != null ? "'" + personNameValue + "'" : "null");
                             // 跳過這個 assignment，因為沒有有效的人員名稱
                             continue;
                         }
@@ -350,26 +352,25 @@ public class ServiceScheduleNotificationScheduler {
                             if (positionPersonOpt.isPresent()) {
                                 com.example.helloworld.entity.church.PositionPerson pp = positionPersonOpt.get();
                                 Boolean includeInAutoSchedule = pp.getIncludeInAutoSchedule();
-                                System.out.println("  📋 [教會排程] 找到 position_persons 記錄，includeInAutoSchedule=" + includeInAutoSchedule);
+                                log.info("  📋 [教會排程] 找到 position_persons 記錄，includeInAutoSchedule={}", includeInAutoSchedule);
                                 
                                 if (includeInAutoSchedule != null && !includeInAutoSchedule) {
-                                    System.out.println("  ⚠️ [教會排程] 崗位 " + positionName + " 分配給: " + personName + "，但該人員不參與自動分配，跳過通知");
+                                    log.warn("  ⚠️ [教會排程] 崗位 {} 分配給: {}，但該人員不參與自動分配，跳過通知", positionName, personName);
                                     continue;
                                 }
                             } else {
-                                System.out.println("  ℹ️ [教會排程] 未找到 position_persons 記錄，默認為參與自動分配");
+                                log.info("  ℹ️ [教會排程] 未找到 position_persons 記錄，默認為參與自動分配");
                             }
                         } catch (Exception e) {
-                            System.err.println("  ❌ [教會排程] 查詢 position_persons 時發生錯誤: " + e.getMessage());
-                            e.printStackTrace();
+                            log.error("  ❌ [教會排程] 查詢 position_persons 時發生錯誤: {}", e.getMessage(), e);
                             // 發生錯誤時，默認為參與自動分配，避免漏掉通知
                         }
                         
-                        System.out.println("  ✅ [教會排程] 崗位 " + positionName + " 分配給: " + personName);
+                        log.info("  ✅ [教會排程] 崗位 {} 分配給: {}", positionName, personName);
                         personNames.add(personName);
                         hasAssignedPerson = true;
                     } else {
-                        System.out.println("  ⚠️ [教會排程] 崗位 " + positionName + " 的分配記錄 ID " + assignment.getId() + " 沒有關聯的人員");
+                        log.warn("  ⚠️ [教會排程] 崗位 {} 的分配記錄 ID {} 沒有關聯的人員", positionName, assignment.getId());
                     }
                 }
                 
@@ -384,20 +385,20 @@ public class ServiceScheduleNotificationScheduler {
                 
                 // 如果有 assignment 記錄但沒有分配人員，也顯示崗位
                 if (!hasAssignedPerson && assignmentCount > 0) {
-                    System.out.println("  ⚠️ [教會排程] 崗位 " + positionName + " 有分配記錄但沒有人員，標記為無安排人員");
+                    log.warn("  ⚠️ [教會排程] 崗位 {} 有分配記錄但沒有人員，標記為無安排人員", positionName);
                     Map<String, Object> personInfo = new HashMap<>();
                     personInfo.put("position", positionName);
                     personInfo.put("person", "無安排人員");
                     persons.add(personInfo);
                 } else if (assignmentCount == 0) {
-                    System.out.println("  ⚠️ [教會排程] 崗位 " + positionName + " 沒有分配記錄，標記為無安排人員");
+                    log.warn("  ⚠️ [教會排程] 崗位 {} 沒有分配記錄，標記為無安排人員", positionName);
                     Map<String, Object> personInfo = new HashMap<>();
                     personInfo.put("position", positionName);
                     personInfo.put("person", "無安排人員");
                     persons.add(personInfo);
                 }
             } else {
-                System.out.println("  ⚠️ [教會排程] 崗位 " + positionName + " 的 assignments 為 null，標記為無安排人員");
+                log.warn("  ⚠️ [教會排程] 崗位 {} 的 assignments 為 null，標記為無安排人員", positionName);
                 Map<String, Object> personInfo = new HashMap<>();
                 personInfo.put("position", positionName);
                 personInfo.put("person", "無安排人員");
@@ -405,7 +406,7 @@ public class ServiceScheduleNotificationScheduler {
             }
         }
 
-        System.out.println("📊 [教會排程] 日期 " + date.getDate() + " 總共找到 " + persons.size() + " 個服事人員記錄");
+        log.info("📊 [教會排程] 日期 {} 總共找到 {} 個服事人員記錄", date.getDate(), persons.size());
         return persons;
     }
 

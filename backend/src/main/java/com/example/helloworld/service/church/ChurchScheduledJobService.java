@@ -8,6 +8,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.support.CronTrigger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -19,6 +21,7 @@ import java.util.concurrent.ScheduledFuture;
 
 @Service
 public class ChurchScheduledJobService {
+    private static final Logger log = LoggerFactory.getLogger(ChurchScheduledJobService.class);
 
     @Autowired
     @Qualifier("churchScheduledJobRepository")
@@ -146,7 +149,7 @@ public class ChurchScheduledJobService {
                 
                 if (currentExecution == null) {
                     // 如果仍然找不到，創建一個新的執行記錄作為 fallback
-                    System.err.println("⚠️ [Church] 無法載入執行記錄 ID " + executionId + "，創建新的執行記錄");
+                    log.warn("⚠️ [Church] 無法載入執行記錄 ID {}，創建新的執行記錄", executionId);
                     currentExecution = new JobExecution();
                     currentExecution.setId(executionId);
                     currentExecution.setJobId(id);
@@ -162,7 +165,7 @@ public class ChurchScheduledJobService {
                 
                 runningExecutions.put(id, executionId);
 
-                System.out.println("🚀 [Church] 立即執行 Job: " + jobName + " (Execution ID: " + executionId + ")");
+                log.info("🚀 [Church] 立即執行 Job: {} (Execution ID: {})", jobName, executionId);
                 
                 // 清除之前的結果
                 com.example.helloworld.scheduler.church.JobResultHolder.clear();
@@ -189,9 +192,9 @@ public class ChurchScheduledJobService {
                     com.example.helloworld.scheduler.church.JobResultHolder.clear();
                     
                     jobExecutionRepository.save(currentExecution);
-                    System.out.println("✅ [Church] Job 執行完成: " + jobName);
+                    log.info("✅ [Church] Job 執行完成: {}", jobName);
                 } else {
-                    System.err.println("⚠️ [Church] 無法更新執行記錄 ID " + executionId + " 的狀態為成功");
+                    log.warn("⚠️ [Church] 無法更新執行記錄 ID {} 的狀態為成功", executionId);
                 }
             } catch (Exception e) {
                 // 重新載入執行記錄（添加重試邏輯）
@@ -204,10 +207,9 @@ public class ChurchScheduledJobService {
                     currentExecution.setErrorMessage(e.getMessage() != null ? e.getMessage() : e.getClass().getName());
                     jobExecutionRepository.save(currentExecution);
                 } else {
-                    System.err.println("⚠️ [Church] 無法更新執行記錄 ID " + executionId + " 的狀態為失敗");
+                    log.warn("⚠️ [Church] 無法更新執行記錄 ID {} 的狀態為失敗", executionId);
                 }
-                System.err.println("❌ [Church] Job 執行失敗: " + jobName + " - " + e.getMessage());
-                e.printStackTrace();
+                log.error("❌ [Church] Job 執行失敗: {} - {}", jobName, e.getMessage(), e);
             } finally {
                 runningExecutions.remove(id);
             }
@@ -266,7 +268,7 @@ public class ChurchScheduledJobService {
     private void scheduleJob(ScheduledJob job) {
         Runnable executor = jobExecutors.get(job.getJobClass());
         if (executor == null) {
-            System.err.println("⚠️ [Church] Job executor not found for class: " + job.getJobClass());
+            log.warn("⚠️ [Church] Job executor not found for class: {}", job.getJobClass());
             return;
         }
 
@@ -284,7 +286,7 @@ public class ChurchScheduledJobService {
                 final Long executionId = execution.getId();
                 
                 try {
-                    System.out.println("🔄 [Church] 執行定時任務: " + job.getJobName() + " (Execution ID: " + executionId + ")");
+                    log.info("🔄 [Church] 執行定時任務: {} (Execution ID: {})", job.getJobName(), executionId);
                     
                     // 清除之前的結果
                     com.example.helloworld.scheduler.church.JobResultHolder.clear();
@@ -304,37 +306,35 @@ public class ChurchScheduledJobService {
                         } else {
                             currentExecution.setResultMessage("定時任務執行成功");
                         }
-                        
-                        // 清除 ThreadLocal
-                        com.example.helloworld.scheduler.church.JobResultHolder.clear();
-                        
+                        currentExecution.setErrorMessage(null);
                         jobExecutionRepository.save(currentExecution);
-                    }
-                    
-                    System.out.println("✅ [Church] 定時任務完成: " + job.getJobName());
-                } catch (Exception e) {
-                    // 更新執行記錄為失敗
-                    JobExecution currentExecution = jobExecutionRepository.findById(executionId).orElse(null);
-                    if (currentExecution != null) {
-                        currentExecution.setStatus("FAILED");
-                        currentExecution.setCompletedAt(LocalDateTime.now());
-                        currentExecution.setErrorMessage(e.getMessage() != null ? e.getMessage() : e.getClass().getName());
-                        jobExecutionRepository.save(currentExecution);
+                        log.info("✅ [Church] 定時任務執行成功: {}", job.getJobName());
                     }
                     
                     // 清除 ThreadLocal
                     com.example.helloworld.scheduler.church.JobResultHolder.clear();
                     
-                    System.err.println("❌ [Church] 定時任務執行失敗: " + job.getJobName() + " - " + e.getMessage());
-                    e.printStackTrace();
+                } catch (Exception e) {
+                    log.error("❌ [Church] 定時任務執行失敗: {} - {}", job.getJobName(), e.getMessage(), e);
+                    // 更新執行記錄為失敗狀態
+                    try {
+                        JobExecution failedExecution = jobExecutionRepository.findById(executionId).orElse(null);
+                        if (failedExecution != null) {
+                            failedExecution.setStatus("FAILED");
+                            failedExecution.setCompletedAt(LocalDateTime.now());
+                            failedExecution.setErrorMessage(e.getMessage() != null ? e.getMessage() : e.getClass().getName());
+                            jobExecutionRepository.save(failedExecution);
+                        }
+                    } catch (Exception ex) {
+                        log.error("❌ [Church] 更新失敗狀態時發生錯誤: {}", ex.getMessage(), ex);
+                    }
                 }
             }, trigger);
 
             scheduledTasks.put(job.getId(), future);
-            System.out.println("✅ [Church] Job 已調度: " + job.getJobName() + " (Cron: " + job.getCronExpression() + ")");
+            log.info("✅ [Church] Job 已調度: {} (Cron: {})", job.getJobName(), job.getCronExpression());
         } catch (Exception e) {
-            System.err.println("❌ [Church] 調度 Job 失敗: " + job.getJobName() + " - " + e.getMessage());
-            e.printStackTrace();
+            log.error("❌ [Church] 調度 Job 失敗: {} - {}", job.getJobName(), e.getMessage(), e);
         }
     }
 
@@ -345,7 +345,7 @@ public class ChurchScheduledJobService {
         ScheduledFuture<?> future = scheduledTasks.remove(id);
         if (future != null) {
             future.cancel(false);
-            System.out.println("⏹️ [Church] Job 已取消: " + id);
+            log.info("⏹️ [Church] Job 已取消: {}", id);
         }
     }
 
@@ -357,7 +357,7 @@ public class ChurchScheduledJobService {
         for (ScheduledJob job : enabledJobs) {
             scheduleJob(job);
         }
-        System.out.println("✅ [Church] 已初始化 " + enabledJobs.size() + " 個啟用的 Job");
+        log.info("✅ [Church] 已初始化 {} 個啟用的 Job", enabledJobs.size());
     }
 
     /**

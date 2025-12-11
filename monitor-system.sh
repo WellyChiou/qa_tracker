@@ -5,21 +5,40 @@
 
 set -e
 
+# 獲取腳本所在目錄
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$SCRIPT_DIR"
+
 # 配置
-LOG_FILE="/var/log/system-monitor.log"
+LOG_DIR="/root/project/work/logs"
+LOG_FILE="$LOG_DIR/system-monitor_$(date +'%Y%m%d').log"
 DISK_WARNING_THRESHOLD=80  # 磁盤使用率警告閾值（%）
 DISK_CRITICAL_THRESHOLD=90  # 磁盤使用率嚴重警告閾值（%）
 DOCKER_WARNING_THRESHOLD=5  # Docker 未使用資源大小警告閾值（GB）
 
-# 確保日誌目錄存在
-mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null || true
+# 確保日誌目錄存在並有正確的權限
+mkdir -p "$LOG_DIR" 2>/dev/null || true
+chmod 777 "$LOG_DIR" 2>/dev/null || true
 
 # 日誌函數
 log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+    local log_msg="[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+    echo "$log_msg" | tee -a "$LOG_FILE"
+}
+
+# 確保日誌文件存在並可寫入
+touch "$LOG_FILE" 2>/dev/null || {
+    echo "錯誤: 無法創建或寫入日誌文件: $LOG_FILE"
+    exit 1
 }
 
 log "開始系統資源監控檢查..."
+
+# 切換到項目根目錄
+cd "$PROJECT_ROOT" || {
+    log "錯誤: 無法切換到項目根目錄: $PROJECT_ROOT"
+    exit 1
+}
 
 # 1. 檢查磁盤空間
 log "檢查磁盤空間..."

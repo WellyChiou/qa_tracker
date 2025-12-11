@@ -6,6 +6,8 @@ import com.example.helloworld.entity.personal.User;
 import com.example.helloworld.repository.personal.UserRepository;
 import com.example.helloworld.service.personal.ExpenseService;
 import com.example.helloworld.service.personal.LineBotService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -15,6 +17,8 @@ import java.util.List;
 
 @Component
 public class DailyExpenseReminderScheduler {
+
+    private static final Logger log = LoggerFactory.getLogger(DailyExpenseReminderScheduler.class);
 
     @Autowired
     private LineBotConfig lineBotConfig;
@@ -34,11 +38,11 @@ public class DailyExpenseReminderScheduler {
      */
     public void sendDailyExpenseReminder() {
         if (!lineBotConfig.isDailyReminderEnabled()) {
-            System.out.println("⏰ 每日費用提醒功能已關閉");
+            log.info("⏰ 每日費用提醒功能已關閉");
             return;
         }
 
-        System.out.println("⏰ 開始執行每日費用記錄提醒任務...");
+        log.info("⏰ 開始執行每日費用記錄提醒任務...");
 
         try {
             // 獲取所有已綁定 LINE 的用戶
@@ -46,7 +50,7 @@ public class DailyExpenseReminderScheduler {
                 .filter(user -> user.getLineUserId() != null && !user.getLineUserId().trim().isEmpty())
                 .toList();
 
-            System.out.println("👥 找到 " + lineUsers.size() + " 個已綁定 LINE 的用戶");
+            log.info("👥 找到 {} 個已綁定 LINE 的用戶", lineUsers.size());
 
             LocalDate today = LocalDate.now();
             int reminderCount = 0;
@@ -58,20 +62,19 @@ public class DailyExpenseReminderScheduler {
                         // 發送提醒訊息
                         sendExpenseReminder(user);
                         reminderCount++;
-                        System.out.println("📤 已發送費用記錄提醒給用戶: " + user.getDisplayName());
+                        log.info("📤 已發送費用記錄提醒給用戶: {}", user.getDisplayName());
                     } else {
-                        System.out.println("✅ 用戶 " + user.getDisplayName() + " 今日已記錄費用，跳過提醒");
+                        log.info("✅ 用戶 {} 今日已記錄費用，跳過提醒", user.getDisplayName());
                     }
                 } catch (Exception e) {
-                    System.err.println("❌ 處理用戶 " + user.getDisplayName() + " 的提醒時發生錯誤: " + e.getMessage());
+                    log.error("❌ 處理用戶 {} 的提醒時發生錯誤", user.getDisplayName(), e);
                 }
             }
 
-            System.out.println("✅ 每日費用提醒任務完成，共發送 " + reminderCount + " 個提醒");
+            log.info("✅ 每日費用提醒任務完成，共發送 {} 個提醒", reminderCount);
 
         } catch (Exception e) {
-            System.err.println("❌ 執行每日費用提醒任務時發生錯誤: " + e.getMessage());
-            e.printStackTrace();
+            log.error("❌ 執行每日費用提醒任務時發生錯誤", e);
         }
     }
 
@@ -89,8 +92,7 @@ public class DailyExpenseReminderScheduler {
                 .anyMatch(expense -> expense.getDate().equals(date));
 
         } catch (Exception e) {
-            System.err.println("❌ 檢查用戶今日費用記錄時發生錯誤: " + e.getMessage());
-            e.printStackTrace();
+            log.error("❌ 檢查用戶今日費用記錄時發生錯誤", e);
             return false; // 發生錯誤時假設沒有記錄，發送提醒
         }
     }
@@ -125,11 +127,11 @@ public class DailyExpenseReminderScheduler {
      */
     public void checkAndNotifyDailyExpense() {
         if (!lineBotConfig.isDailyReminderEnabled()) {
-            System.out.println("⏰ 每日費用提醒功能已關閉");
+            log.info("⏰ 每日費用提醒功能已關閉");
             return;
         }
 
-        System.out.println("⏰ 開始執行每日費用檢查任務（晚上 9 點）...");
+        log.info("⏰ 開始執行每日費用檢查任務（晚上 9 點）...");
 
         try {
             // 獲取所有已綁定 LINE 的用戶
@@ -137,7 +139,7 @@ public class DailyExpenseReminderScheduler {
                 .filter(user -> user.getLineUserId() != null && !user.getLineUserId().trim().isEmpty())
                 .toList();
 
-            System.out.println("👥 找到 " + lineUsers.size() + " 個已綁定 LINE 的用戶");
+            log.info("👥 找到 {} 個已綁定 LINE 的用戶", lineUsers.size());
 
             LocalDate today = LocalDate.now();
             int reminderCount = 0;
@@ -150,26 +152,25 @@ public class DailyExpenseReminderScheduler {
                         // 沒有記錄，發送提醒通知
                         sendExpenseReminder(user);
                         reminderCount++;
-                        System.out.println("📤 已發送費用記錄提醒給用戶: " + user.getDisplayName());
+                        log.info("📤 已發送費用記錄提醒給用戶: {}", user.getDisplayName());
                     } else {
                         // 有記錄，發送統計報告
                         String report = generateDailyExpenseReport(user, today);
                         if (report != null) {
                             lineBotService.sendPushMessage(user.getLineUserId(), report);
                             reportCount++;
-                            System.out.println("📊 已發送費用統計報告給用戶: " + user.getDisplayName());
+                            log.info("📊 已發送費用統計報告給用戶: {}", user.getDisplayName());
                         }
                     }
                 } catch (Exception e) {
-                    System.err.println("❌ 處理用戶 " + user.getDisplayName() + " 時發生錯誤: " + e.getMessage());
+                    log.error("❌ 處理用戶 {} 時發生錯誤", user.getDisplayName(), e);
                 }
             }
 
-            System.out.println("✅ 每日費用檢查任務完成，共發送 " + reminderCount + " 個個人提醒，" + reportCount + " 個個人統計報告");
+            log.info("✅ 每日費用檢查任務完成，共發送 {} 個個人提醒，{} 個個人統計報告", reminderCount, reportCount);
 
         } catch (Exception e) {
-            System.err.println("❌ 執行每日費用檢查任務時發生錯誤: " + e.getMessage());
-            e.printStackTrace();
+            log.error("❌ 執行每日費用檢查任務時發生錯誤", e);
         }
     }
 
@@ -237,7 +238,7 @@ public class DailyExpenseReminderScheduler {
             return report.toString();
 
         } catch (Exception e) {
-            System.err.println("❌ 生成費用統計報告時發生錯誤: " + e.getMessage());
+            log.error("❌ 生成費用統計報告時發生錯誤", e);
             return null;
         }
     }

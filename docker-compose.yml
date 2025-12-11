@@ -33,9 +33,16 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        tag: "{{.Name}}"
     volumes:
       - /root/project/work/uploads/church:/app/uploads/church
       - /root/project/work/backups:/app/backups
+      - /root/project/work/logs/backend:/app/logs
     environment:
       TZ: Asia/Taipei
       BACKUP_DIR: /app/backups
@@ -43,17 +50,19 @@ services:
       SPRING_DATASOURCE_USERNAME: appuser
       SPRING_DATASOURCE_PASSWORD: apppassword
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
+      LOGGING_FILE_PATH: /app/logs
+      LOGGING_FILE_NAME: ${LOGGING_FILE_PATH:-/app/logs}/application.log
       # 注意：LINE Bot 和 JWT 配置已移至資料庫 system_settings 表
       # 請在後台維護頁面（/admin/maintenance）進行配置
       # 這些環境變數已不再使用，但保留作為備用（如果資料庫配置失敗時使用）
     restart: unless-stopped
 
-  # Vue 前端
-  frontend:
+  # 個人網站前端
+  frontend-personal:
     build:
-      context: ./frontend
+      context: ./frontend-personal
       dockerfile: Dockerfile
-    container_name: vue_frontend
+    container_name: vue_personal
     # 移除對外端口，由 nginx 反向代理處理
     # ports:
     #   - "80:80"
@@ -138,7 +147,7 @@ services:
     networks:
       - default
     depends_on:
-      - frontend
+      - frontend-personal
       - frontend-church
       - frontend-church-admin
       - backend

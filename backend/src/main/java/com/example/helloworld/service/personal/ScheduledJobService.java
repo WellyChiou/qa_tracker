@@ -9,6 +9,8 @@ import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.support.CronTrigger;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -17,6 +19,7 @@ import java.util.concurrent.ScheduledFuture;
 
 @Service
 public class ScheduledJobService {
+    private static final Logger log = LoggerFactory.getLogger(ScheduledJobService.class);
 
     @Autowired
     @Qualifier("personalScheduledJobRepository")
@@ -144,7 +147,7 @@ public class ScheduledJobService {
                 jobExecutionRepository.save(currentExecution);
                 runningExecutions.put(id, executionId);
 
-                System.out.println("🚀 立即執行 Job: " + jobName + " (Execution ID: " + executionId + ")");
+                log.info("🚀 立即執行 Job: {} (Execution ID: {})", jobName, executionId);
                 executor.run();
 
                 // 重新載入執行記錄
@@ -156,7 +159,7 @@ public class ScheduledJobService {
                 currentExecution.setCompletedAt(LocalDateTime.now());
                 currentExecution.setResultMessage("Job 執行成功");
                 jobExecutionRepository.save(currentExecution);
-                System.out.println("✅ Job 執行完成: " + jobName);
+                log.info("✅ Job 執行完成: {}", jobName);
             } catch (Exception e) {
                 // 重新載入執行記錄
                 JobExecution currentExecution = jobExecutionRepository.findById(executionId).orElse(null);
@@ -167,8 +170,7 @@ public class ScheduledJobService {
                     currentExecution.setErrorMessage(e.getMessage() != null ? e.getMessage() : e.getClass().getName());
                     jobExecutionRepository.save(currentExecution);
                 }
-                System.err.println("❌ Job 執行失敗: " + jobName + " - " + e.getMessage());
-                e.printStackTrace();
+                log.error("❌ Job 執行失敗: {} - {}", jobName, e.getMessage(), e);
             } finally {
                 runningExecutions.remove(id);
             }
@@ -226,7 +228,7 @@ public class ScheduledJobService {
     private void scheduleJob(ScheduledJob job) {
         Runnable executor = jobExecutors.get(job.getJobClass());
         if (executor == null) {
-            System.err.println("⚠️ Job executor not found for class: " + job.getJobClass());
+            log.warn("⚠️ Job executor not found for class: {}", job.getJobClass());
             return;
         }
 
@@ -236,20 +238,18 @@ public class ScheduledJobService {
             CronTrigger trigger = new CronTrigger(job.getCronExpression(), taiwanZone);
             ScheduledFuture<?> future = taskScheduler.schedule(() -> {
                 try {
-                    System.out.println("🔄 執行定時任務: " + job.getJobName());
+                    log.info("🔄 執行定時任務: {}", job.getJobName());
                     executor.run();
-                    System.out.println("✅ 定時任務完成: " + job.getJobName());
+                    log.info("✅ 定時任務完成: {}", job.getJobName());
                 } catch (Exception e) {
-                    System.err.println("❌ 定時任務執行失敗: " + job.getJobName() + " - " + e.getMessage());
-                    e.printStackTrace();
+                    log.error("❌ 定時任務執行失敗: {} - {}", job.getJobName(), e.getMessage(), e);
                 }
             }, trigger);
 
             scheduledTasks.put(job.getId(), future);
-            System.out.println("✅ Job 已調度: " + job.getJobName() + " (Cron: " + job.getCronExpression() + ")");
+            log.info("✅ Job 已調度: {} (Cron: {})", job.getJobName(), job.getCronExpression());
         } catch (Exception e) {
-            System.err.println("❌ 調度 Job 失敗: " + job.getJobName() + " - " + e.getMessage());
-            e.printStackTrace();
+            log.error("❌ 調度 Job 失敗: {} - {}", job.getJobName(), e.getMessage(), e);
         }
     }
 
@@ -260,7 +260,7 @@ public class ScheduledJobService {
         ScheduledFuture<?> future = scheduledTasks.remove(id);
         if (future != null) {
             future.cancel(false);
-            System.out.println("⏹️ Job 已取消: " + id);
+            log.info("⏹️ Job 已取消: {}", id);
         }
     }
 
@@ -272,6 +272,6 @@ public class ScheduledJobService {
         for (ScheduledJob job : enabledJobs) {
             scheduleJob(job);
         }
-        System.out.println("✅ 已初始化 " + enabledJobs.size() + " 個啟用的 Job");
+        log.info("✅ 已初始化 {} 個啟用的 Job", enabledJobs.size());
     }
 }

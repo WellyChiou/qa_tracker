@@ -3,6 +3,8 @@ package com.example.helloworld.scheduler.church;
 import com.example.helloworld.service.church.SystemSettingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -13,6 +15,7 @@ import java.io.InputStreamReader;
  */
 @Component
 public class DatabaseBackupScheduler {
+    private static final Logger log = LoggerFactory.getLogger(DatabaseBackupScheduler.class);
 
     @Autowired
     private SystemSettingService systemSettingService;
@@ -40,13 +43,13 @@ public class DatabaseBackupScheduler {
      */
     public void executeBackup() {
         try {
-            System.out.println("💾 [資料庫備份] 開始執行備份...");
+            log.info("💾 [資料庫備份] 開始執行備份...");
             
             // 檢查備份是否啟用
             String enabled = systemSettingService.getSettingValue("backup.enabled", "true");
             if (!Boolean.parseBoolean(enabled)) {
                 String message = "備份功能已停用，跳過備份";
-                System.out.println("⚠️ [資料庫備份] " + message);
+                log.warn("⚠️ [資料庫備份] {}", message);
                 JobResultHolder.setResult(message);
                 return;
             }
@@ -76,7 +79,7 @@ public class DatabaseBackupScheduler {
             if (!scriptFile.exists()) {
                 String message = "備份腳本不存在: " + backupScript + "\n" +
                     "請確保備份腳本已正確複製到容器內";
-                System.err.println("❌ [資料庫備份] " + message);
+                log.error("❌ [資料庫備份] {}", message);
                 JobResultHolder.setResult(message);
                 return;
             }
@@ -105,11 +108,10 @@ public class DatabaseBackupScheduler {
                     String line;
                     while ((line = reader.readLine()) != null) {
                         stdoutOutput.append(line).append("\n");
-                        System.out.println("[備份腳本 stdout] " + line);
+                        log.info("[備份腳本 stdout] {}", line);
                     }
                 } catch (Exception e) {
-                    System.err.println("讀取 stdout 失敗: " + e.getMessage());
-                    e.printStackTrace();
+                    log.error("讀取 stdout 失敗: {}", e.getMessage(), e);
                 }
             });
             
@@ -119,11 +121,10 @@ public class DatabaseBackupScheduler {
                     String line;
                     while ((line = reader.readLine()) != null) {
                         stderrOutput.append(line).append("\n");
-                        System.err.println("[備份腳本 stderr] " + line);
+                        log.warn("[備份腳本 stderr] {}", line);
                     }
                 } catch (Exception e) {
-                    System.err.println("讀取 stderr 失敗: " + e.getMessage());
-                    e.printStackTrace();
+                    log.error("讀取 stderr 失敗: {}", e.getMessage(), e);
                 }
             });
             
@@ -148,22 +149,21 @@ public class DatabaseBackupScheduler {
             if (exitCode == 0) {
                 String message = "備份執行成功\n" + fullOutput.toString();
                 JobResultHolder.setResult(message);
-                System.out.println("✅ [資料庫備份] 備份完成");
+                log.info("✅ [資料庫備份] 完成，備份檔案: {}", backupFile);
             } else {
                 String message = "備份執行失敗，退出碼: " + exitCode + "\n" + fullOutput.toString();
                 JobResultHolder.setResult(message);
-                System.err.println("❌ [資料庫備份] 備份失敗，退出碼: " + exitCode);
+                log.error("❌ [資料庫備份] 備份失敗，退出碼: {}", exitCode);
                 if (stderrOutput.length() > 0) {
-                    System.err.println("錯誤訊息:\n" + stderrOutput.toString());
+                    log.error("錯誤訊息:\n{}", stderrOutput.toString());
                 }
                 if (stdoutOutput.length() > 0) {
-                    System.err.println("標準輸出:\n" + stdoutOutput.toString());
+                    log.error("標準輸出:\n{}", stdoutOutput.toString());
                 }
             }
         } catch (Exception e) {
             String errorMsg = "備份執行失敗: " + e.getMessage();
-            System.err.println("❌ [資料庫備份] " + errorMsg);
-            e.printStackTrace();
+            log.error("❌ [資料庫備份] 執行失敗: {}", e.getMessage(), e);
             JobResultHolder.setResult(errorMsg);
             // 不拋出異常，只記錄錯誤
         }

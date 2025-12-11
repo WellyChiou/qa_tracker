@@ -2,6 +2,8 @@ package com.example.helloworld.service.church;
 
 import com.example.helloworld.entity.church.Activity;
 import com.example.helloworld.repository.church.ActivityRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +17,7 @@ import java.util.stream.Collectors;
 
 @Service
 public class ActivityService {
+    private static final Logger log = LoggerFactory.getLogger(ActivityService.class);
 
     @Autowired
     private ActivityRepository activityRepository;
@@ -79,7 +82,7 @@ public class ActivityService {
                 fileUploadService.deleteImage(oldImageUrl);
             } catch (Exception e) {
                 // 圖片刪除失敗不影響數據更新，只記錄錯誤
-                System.err.println("刪除舊圖片失敗: " + e.getMessage());
+                log.error("❌ 刪除舊圖片失敗: {}", e.getMessage());
             }
         }
         
@@ -109,7 +112,7 @@ public class ActivityService {
                 fileUploadService.deleteImage(activity.getImageUrl());
             } catch (Exception e) {
                 // 圖片刪除失敗不影響數據刪除，只記錄錯誤
-                System.err.println("刪除活動圖片失敗: " + e.getMessage());
+                log.error("❌ 刪除活動圖片失敗: {}", e.getMessage());
             }
         }
         

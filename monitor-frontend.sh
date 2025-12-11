@@ -6,14 +6,20 @@
 
 set -e
 
+# 獲取腳本所在目錄
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$SCRIPT_DIR"
+
 # 配置
-LOG_FILE="/var/log/frontend-monitor.log"
-DIAGNOSE_SCRIPT="./diagnose-frontend.sh"
-FIX_SCRIPT="./fix-frontend.sh"
+LOG_DIR="/root/project/work/logs"
+LOG_FILE="$LOG_DIR/frontend-monitor_$(date +'%Y%m%d').log"
+DIAGNOSE_SCRIPT="$PROJECT_ROOT/diagnose-frontend.sh"
+FIX_SCRIPT="$PROJECT_ROOT/fix-frontend.sh"
 MAX_RETRIES=3
 
 # 確保日誌目錄存在
-mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null || true
+mkdir -p "$LOG_DIR" 2>/dev/null || true
+chmod 777 "$LOG_DIR" 2>/dev/null || true
 
 # 日誌函數
 log() {
@@ -22,9 +28,15 @@ log() {
 
 log "開始前端監控檢查..."
 
+# 切換到項目根目錄
+cd "$PROJECT_ROOT" || {
+    log "錯誤: 無法切換到項目根目錄: $PROJECT_ROOT"
+    exit 1
+}
+
 # 檢查是否在正確的目錄
 if [ ! -f "docker-compose.yml" ]; then
-    log "錯誤: 找不到 docker-compose.yml，請在專案根目錄執行"
+    log "錯誤: 在 $PROJECT_ROOT 中找不到 docker-compose.yml"
     exit 1
 fi
 

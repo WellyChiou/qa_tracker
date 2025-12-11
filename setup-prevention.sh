@@ -59,9 +59,16 @@ echo -e "${YELLOW}[2] 設置前端監控（每 5 分鐘檢查一次）...${NC}"
 
 CRON_FRONTEND="*/5 * * * * cd $PROJECT_DIR && $PROJECT_DIR/monitor-frontend.sh"
 
+# 檢查是否已存在前端監控任務
+if crontab -l 2>/dev/null | grep -q "monitor-frontend\.sh"; then
+    echo -e "${YELLOW}⚠️  前端監控任務已存在，正在更新...${NC}"
+else
+    echo -e "${GREEN}ℹ️  添加新的前端監控任務...${NC}"
+fi
+
 # 移除現有的前端監控任務（如果存在）
 temp_cron=$(mktemp)
-crontab -l 2>/dev/null | grep -v "monitor-frontend.sh" | grep -v "^#" > "$temp_cron"
+crontab -l 2>/dev/null | grep -v "monitor-frontend\.sh" | grep -v "^#" > "$temp_cron"
 
 # 添加新的前端監控任務
 echo "$CRON_FRONTEND" >> "$temp_cron"
@@ -70,7 +77,7 @@ echo "$CRON_FRONTEND" >> "$temp_cron"
 crontab "$temp_cron"
 rm -f "$temp_cron"
 
-echo -e "${GREEN}✅ 前端監控任務已更新${NC}"
+echo -e "${GREEN}✅ 前端監控任務已設置${NC}"
 echo ""
 
 # 3. 設置系統資源監控（每小時）
@@ -78,9 +85,16 @@ echo -e "${YELLOW}[3] 設置系統資源監控（每小時檢查一次）...${NC
 
 CRON_SYSTEM="0 * * * * cd $PROJECT_DIR && $PROJECT_DIR/monitor-system.sh"
 
+# 檢查是否已存在系統監控任務
+if crontab -l 2>/dev/null | grep -q "monitor-system\.sh"; then
+    echo -e "${YELLOW}⚠️  系統監控任務已存在，正在更新...${NC}"
+else
+    echo -e "${GREEN}ℹ️  添加新的系統監控任務...${NC}"
+fi
+
 # 移除現有的系統監控任務（如果存在）
 temp_cron=$(mktemp)
-crontab -l 2>/dev/null | grep -v "monitor-system.sh" | grep -v "^#" > "$temp_cron"
+crontab -l 2>/dev/null | grep -v "monitor-system\.sh" | grep -v "^#" > "$temp_cron"
 
 # 添加新的系統監控任務
 echo "$CRON_SYSTEM" >> "$temp_cron"
@@ -89,7 +103,7 @@ echo "$CRON_SYSTEM" >> "$temp_cron"
 crontab "$temp_cron"
 rm -f "$temp_cron"
 
-echo -e "${GREEN}✅ 系統監控任務已更新${NC}"
+echo -e "${GREEN}✅ 系統監控任務已設置${NC}"
 echo ""
 
 # 4. 設置定期 Docker 清理（每天凌晨 2 點）
@@ -97,6 +111,13 @@ echo ""
 echo -e "${YELLOW}[4] 設置定期 Docker 清理（每天凌晨 2 點）...${NC}"
 
 CRON_CLEANUP="0 2 * * * cd $PROJECT_DIR && docker system prune -f && docker image prune -f"
+
+# 檢查是否已存在 Docker 清理任務
+if crontab -l 2>/dev/null | grep -q "docker system prune"; then
+    echo -e "${YELLOW}⚠️  Docker 清理任務已存在，正在更新...${NC}"
+else
+    echo -e "${GREEN}ℹ️  添加新的 Docker 清理任務...${NC}"
+fi
 
 # 移除現有的 Docker 清理任務（如果存在）
 temp_cron=$(mktemp)
@@ -109,7 +130,7 @@ echo "$CRON_CLEANUP" >> "$temp_cron"
 crontab "$temp_cron"
 rm -f "$temp_cron"
 
-echo -e "${GREEN}✅ Docker 清理任務已更新${NC}"
+echo -e "${GREEN}✅ Docker 清理任務已設置${NC}"
 echo ""
 
 # 5. 創建日誌目錄和日誌管理腳本

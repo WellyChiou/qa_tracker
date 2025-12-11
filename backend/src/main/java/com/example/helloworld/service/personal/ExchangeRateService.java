@@ -2,6 +2,8 @@ package com.example.helloworld.service.personal;
 
 import com.example.helloworld.entity.personal.ExchangeRate;
 import com.example.helloworld.repository.personal.ExchangeRateRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -14,6 +16,8 @@ import java.util.Optional;
 
 @Service
 public class ExchangeRateService {
+
+    private static final Logger log = LoggerFactory.getLogger(ExchangeRateService.class);
 
     @Autowired
     private ExchangeRateRepository exchangeRateRepository;
@@ -71,7 +75,7 @@ public class ExchangeRateService {
             // 如果 API 失敗，使用備用匯率
             return getFallbackRate(currency);
         } catch (Exception e) {
-            System.err.println("取得 " + currency + " 匯率失敗: " + e.getMessage());
+            log.error("❌ 取得 {} 匯率失敗: {}", currency, e.getMessage());
             return getFallbackRate(currency);
         }
     }
@@ -119,10 +123,10 @@ public class ExchangeRateService {
             exchangeRate.setCnyRate(fetchExchangeRateFromAPI("CNY"));
             
             saveExchangeRate(exchangeRate);
-            System.out.println("✅ " + date + " 所有匯率補足成功");
+            log.info("✅ {} 所有匯率補足成功", date);
             return true;
         } catch (Exception e) {
-            System.err.println("❌ " + date + " 匯率補足失敗: " + e.getMessage());
+            log.error("❌ {} 匯率補足失敗: {}", date, e.getMessage());
             return false;
         }
     }
@@ -143,11 +147,11 @@ public class ExchangeRateService {
         }
         
         if (missingDates.isEmpty()) {
-            System.out.println("✅ 所有日期匯率資料已存在，無需補足");
+            log.info("✅ 所有日期匯率資料已存在，無需補足");
             return 0;
         }
         
-        System.out.println("⚠️ 發現 " + missingDates.size() + " 個日期缺少匯率資料，開始補足...");
+        log.warn("⚠️ 發現 {} 個日期缺少匯率資料，開始補足...", missingDates.size());
         
         int successCount = 0;
         for (LocalDate date : missingDates) {
@@ -162,7 +166,7 @@ public class ExchangeRateService {
             }
         }
         
-        System.out.println("✅ 已補足 " + successCount + "/" + missingDates.size() + " 個日期的匯率");
+        log.info("✅ 已補足 {}/{} 個日期的匯率", successCount, missingDates.size());
         return successCount;
     }
 }

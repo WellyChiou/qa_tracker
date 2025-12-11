@@ -38,12 +38,12 @@ public class ChurchLineBotService {
     public void sendGroupMessage(String groupId, String message) {
         try {
             if (groupId == null || groupId.trim().isEmpty()) {
-                System.err.println("❌ [教會群組通知] 群組 ID 為空，無法發送群組訊息");
+                log.error("❌ [教會群組通知] 群組 ID 為空，無法發送群組訊息");
                 return;
             }
 
-            System.out.println("📤 [教會群組通知] 準備發送訊息到群組: " + groupId);
-            System.out.println("📝 [教會群組通知] 訊息內容預覽: " + (message.length() > 100 ? message.substring(0, 100) + "..." : message));
+            log.info("📤 [教會群組通知] 準備發送訊息到群組: {}", groupId);
+            log.info("📝 [教會群組通知] 訊息內容預覽: {}", message.length() > 100 ? message.substring(0, 100) + "..." : message);
 
             String url = "https://api.line.me/v2/bot/message/push";
 
@@ -61,18 +61,16 @@ public class ChurchLineBotService {
             ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
 
             if (response.getStatusCode().is2xxSuccessful()) {
-                System.out.println("✅ [教會群組通知] 已成功發送訊息到群組: " + groupId);
-                System.out.println("✅ [教會群組通知] 響應狀態: " + response.getStatusCode());
+                log.info("✅ [教會群組通知] 已成功發送訊息到群組: {}", groupId);
+                log.info("✅ [教會群組通知] 響應狀態: {}", response.getStatusCode());
             } else {
-                System.err.println("❌ [教會群組通知] 發送群組訊息失敗，狀態碼: " + response.getStatusCode());
-                System.err.println("❌ [教會群組通知] 響應內容: " + response.getBody());
-                System.err.println("💡 [教會群組通知] 提示：請確認 Bot 已經加入該群組");
+                log.error("❌ [教會群組通知] 發送群組訊息失敗，狀態碼: {}", response.getStatusCode());
+                log.error("❌ [教會群組通知] 響應內容: {}", response.getBody());
+                log.error("💡 [教會群組通知] 提示：請確認 Bot 已經加入該群組");
             }
 
         } catch (Exception e) {
-            System.err.println("❌ [教會群組通知] 發送群組訊息失敗: " + e.getMessage());
-            System.err.println("❌ [教會群組通知] 錯誤類型: " + e.getClass().getName());
-            e.printStackTrace();
+            log.error("❌ [教會群組通知] 發送群組訊息失敗: {}", e.getMessage(), e);
         }
     }
 }

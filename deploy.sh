@@ -59,8 +59,8 @@ if [ ! -d "backend" ]; then
     exit 1
 fi
 
-if [ ! -d "frontend" ]; then
-    echo "❌ 錯誤: 找不到 frontend 目錄"
+if [ ! -d "frontend-personal" ]; then
+    echo "❌ 錯誤: 找不到 frontend-personal 目錄"
     exit 1
 fi
 
@@ -105,7 +105,7 @@ docker compose down 2>/dev/null || true
 # 強制刪除可能殘留的容器（避免名稱衝突）
 # ⚠️ 注意：只刪除容器，不會刪除 volume（資料庫資料會保留）
 echo "清理殘留容器（資料庫資料會保留）..."
-docker rm -f mysql_db java_backend vue_frontend nginx_proxy certbot 2>/dev/null || true
+docker rm -f mysql_db java_backend vue_personal nginx_proxy certbot 2>/dev/null || true
 
 # 構建並啟動所有服務
 echo ""

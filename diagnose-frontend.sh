@@ -33,7 +33,7 @@ echo ""
 
 # 3. 檢查前端容器是否運行
 echo -e "${YELLOW}[3] 檢查前端容器...${NC}"
-FRONTEND_CONTAINER="vue_frontend"
+FRONTEND_CONTAINER="vue_personal"
 FRONTEND_CHURCH_CONTAINER="vue_frontend_church"
 
 check_container() {

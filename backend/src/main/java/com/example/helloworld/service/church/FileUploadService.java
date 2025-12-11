@@ -1,5 +1,7 @@
 package com.example.helloworld.service.church;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -13,6 +15,7 @@ import java.util.UUID;
 
 @Service
 public class FileUploadService {
+    private static final Logger log = LoggerFactory.getLogger(FileUploadService.class);
 
     @Value("${church.upload.path:/app/uploads/church}")
     private String uploadPath;
@@ -104,10 +107,9 @@ public class FileUploadService {
                 return true;
             }
         } catch (IOException e) {
-            System.err.println("刪除文件失敗: " + e.getMessage());
+            log.error("❌ 刪除文件失敗: {}", e.getMessage());
         }
 
         return false;
     }
 }
-

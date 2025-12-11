@@ -1,6 +1,8 @@
 package com.example.helloworld.controller.church;
 
 import com.example.helloworld.service.church.SystemSettingService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -21,6 +23,7 @@ import java.util.stream.Stream;
 @RequestMapping("/api/church/admin/backups")
 @CrossOrigin(origins = "*")
 public class BackupController {
+    private static final Logger log = LoggerFactory.getLogger(BackupController.class);
 
     @Autowired
     private SystemSettingService systemSettingService;
@@ -142,11 +145,10 @@ public class BackupController {
                     String line;
                     while ((line = reader.readLine()) != null) {
                         stdoutOutput.append(line).append("\n");
-                        System.out.println("[備份腳本 stdout] " + line);
+                        log.info("[備份腳本] {}", line);
                     }
                 } catch (Exception e) {
-                    System.err.println("讀取 stdout 失敗: " + e.getMessage());
-                    e.printStackTrace();
+                    log.error("❌ 讀取備份腳本輸出失敗", e);
                 }
             });
             
@@ -156,11 +158,10 @@ public class BackupController {
                     String line;
                     while ((line = reader.readLine()) != null) {
                         stderrOutput.append(line).append("\n");
-                        System.err.println("[備份腳本 stderr] " + line);
+                        log.error("[備份腳本錯誤] {}", line);
                     }
                 } catch (Exception e) {
-                    System.err.println("讀取 stderr 失敗: " + e.getMessage());
-                    e.printStackTrace();
+                    log.error("❌ 讀取備份腳本錯誤輸出失敗", e);
                 }
             });
             
