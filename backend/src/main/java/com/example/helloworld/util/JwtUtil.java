@@ -1,10 +1,11 @@
 package com.example.helloworld.util;
 
+import com.example.helloworld.service.church.ConfigurationRefreshService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
@@ -16,25 +17,49 @@ import java.util.function.Function;
 @Component
 public class JwtUtil {
 
-    @Value("${jwt.secret:church-system-secret-key-for-jwt-token-generation-please-change-in-production}")
-    private String secret;
+    @Autowired
+    private ConfigurationRefreshService configurationRefreshService;
 
-    @Value("${jwt.access-token-expiration:3600000}") // 預設 1 小時（3600000 毫秒）
-    private Long accessTokenExpiration;
-
-    @Value("${jwt.refresh-token-expiration:604800000}") // 預設 7 天（604800000 毫秒）
-    private Long refreshTokenExpiration;
-
-    @Value("${jwt.refresh-token-enabled:true}") // 是否啟用 Refresh Token
-    private Boolean refreshTokenEnabled;
+    // 緩存 SecretKey 以提升效能（配置變更時會重新計算）
+    private volatile SecretKey cachedSigningKey;
+    private volatile String cachedSecret;
 
     private SecretKey getSigningKey() {
-        // 確保密鑰長度足夠（至少 256 bits）
-        String key = secret;
+        // 從資料庫讀取最新的 secret
+        String currentSecret = configurationRefreshService.getConfigValue(
+            "jwt.secret", 
+            "F/cPluFKK3/44X5iX9GdY6P7Ye+BIDdBTw6uljBTl9o="
+        );
+        
+        // 如果 secret 沒有變更，使用緩存的 Key
+        if (cachedSigningKey != null && currentSecret.equals(cachedSecret)) {
+            return cachedSigningKey;
+        }
+        
+        // 重新計算 SigningKey
+        String key = currentSecret;
         if (key.length() < 32) {
             key = key + "01234567890123456789012345678901"; // 補足到至少 32 字符
         }
-        return Keys.hmacShaKeyFor(key.substring(0, 32).getBytes());
+        SecretKey signingKey = Keys.hmacShaKeyFor(key.substring(0, 32).getBytes());
+        
+        // 更新緩存
+        cachedSecret = currentSecret;
+        cachedSigningKey = signingKey;
+        
+        return signingKey;
+    }
+
+    private Long getAccessTokenExpiration() {
+        return configurationRefreshService.getConfigValueAsLong("jwt.access-token-expiration", 3600000L);
+    }
+
+    private Long getRefreshTokenExpiration() {
+        return configurationRefreshService.getConfigValueAsLong("jwt.refresh-token-expiration", 604800000L);
+    }
+
+    private Boolean isRefreshTokenEnabled() {
+        return configurationRefreshService.getConfigValueAsBoolean("jwt.refresh-token-enabled", true);
     }
 
     /**
@@ -44,7 +69,7 @@ public class JwtUtil {
         Map<String, Object> claims = new HashMap<>();
         claims.put("system", system); // 標記系統類型：personal 或 church
         claims.put("type", "access"); // 標記 Token 類型
-        return createToken(claims, username, accessTokenExpiration);
+        return createToken(claims, username, getAccessTokenExpiration());
     }
 
     /**
@@ -52,13 +77,13 @@ public class JwtUtil {
      * 如果 Refresh Token 功能被禁用，返回 null
      */
     public String generateRefreshToken(String username, String system) {
-        if (!refreshTokenEnabled) {
+        if (!isRefreshTokenEnabled()) {
             return null; // Refresh Token 功能已禁用
         }
         Map<String, Object> claims = new HashMap<>();
         claims.put("system", system); // 標記系統類型：personal 或 church
         claims.put("type", "refresh"); // 標記 Token 類型
-        return createToken(claims, username, refreshTokenExpiration);
+        return createToken(claims, username, getRefreshTokenExpiration());
     }
 
     /**

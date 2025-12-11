@@ -1,59 +1,42 @@
 package com.example.helloworld.config;
 
-import org.springframework.beans.factory.annotation.Value;
+import com.example.helloworld.service.church.ConfigurationRefreshService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class LineBotConfig {
 
-    @Value("${line.bot.channel-token:}")
-    private String channelToken;
+    @Autowired
+    private ConfigurationRefreshService configurationRefreshService;
 
-    @Value("${line.bot.channel-secret:}")
-    private String channelSecret;
-
-    @Value("${line.bot.webhook-url:http://localhost:8080/api/line/webhook}")
-    private String webhookUrl;
-
-    @Value("${line.bot.daily-reminder-enabled:true}")
-    private boolean dailyReminderEnabled;
-
-    @Value("${line.bot.daily-reminder-time:20:00}")
-    private String dailyReminderTime;
-
-    @Value("${line.bot.admin-user-id:}")
-    private String adminUserId;
-
-    @Value("${line.bot.church-group-id:}")
-    private String churchGroupId;
-
-    // Getters for configuration values
+    // Getters for configuration values（從資料庫動態讀取）
     public String getChannelToken() {
-        return channelToken;
+        return configurationRefreshService.getConfigValue("line.bot.channel-token", "");
     }
 
     public String getChannelSecret() {
-        return channelSecret;
+        return configurationRefreshService.getConfigValue("line.bot.channel-secret", "");
     }
 
     public String getWebhookUrl() {
-        return webhookUrl;
+        return configurationRefreshService.getConfigValue("line.bot.webhook-url", "https://wc-project.duckdns.org/api/line/webhook");
     }
 
     public boolean isDailyReminderEnabled() {
-        return dailyReminderEnabled;
+        return configurationRefreshService.getConfigValueAsBoolean("line.bot.daily-reminder-enabled", true);
     }
 
     public String getDailyReminderTime() {
-        return dailyReminderTime;
+        return configurationRefreshService.getConfigValue("line.bot.daily-reminder-time", "20:00");
     }
 
     public String getAdminUserId() {
-        return adminUserId;
+        return configurationRefreshService.getConfigValue("line.bot.admin-user-id", "");
     }
 
     public String getChurchGroupId() {
-        return churchGroupId;
+        return configurationRefreshService.getConfigValue("line.bot.church-group-id", "");
     }
 
     /**
@@ -61,6 +44,7 @@ public class LineBotConfig {
      * 如果設定了具體時間，則轉換為對應的 Cron；否則使用預設值
      */
     public String getDailyReminderCron() {
+        String dailyReminderTime = getDailyReminderTime();
         if (dailyReminderTime != null && !dailyReminderTime.trim().isEmpty()) {
             // 將 HH:MM 格式轉換為 Cron 表達式
             try {

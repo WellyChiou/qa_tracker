@@ -126,6 +126,12 @@ const routes = [
     name: 'AdminSundayMessages',
     component: () => import('@/views/admin/SundayMessages.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/admin/maintenance',
+    name: 'AdminMaintenance',
+    component: () => import('@/views/admin/Maintenance.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 

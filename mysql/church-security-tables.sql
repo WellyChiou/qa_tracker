@@ -197,6 +197,11 @@ SELECT 'ADMIN_MENUS', '菜單管理', '📑', '/admin/menus',
     (SELECT id FROM menu_items WHERE menu_code = 'ADMIN_SETTINGS' LIMIT 1), 4, 'admin', 'CHURCH_ADMIN', 1
 WHERE NOT EXISTS (SELECT 1 FROM menu_items WHERE menu_code = 'ADMIN_MENUS');
 
+INSERT IGNORE INTO menu_items (menu_code, menu_name, icon, url, parent_id, order_index, menu_type, required_permission, is_active)
+SELECT 'ADMIN_MAINTENANCE', '系統維護', '🔧', '/admin/maintenance', 
+    (SELECT id FROM menu_items WHERE menu_code = 'ADMIN_SETTINGS' LIMIT 1), 5, 'admin', 'CHURCH_ADMIN', 1
+WHERE NOT EXISTS (SELECT 1 FROM menu_items WHERE menu_code = 'ADMIN_MAINTENANCE');
+
 -- 16. 插入 URL 權限配置（教會 API 公開訪問）
 INSERT IGNORE INTO url_permissions (
     url_pattern, http_method, is_public, required_role, required_permission, 

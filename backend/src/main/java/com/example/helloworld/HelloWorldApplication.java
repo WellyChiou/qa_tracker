@@ -9,8 +9,10 @@ import com.example.helloworld.scheduler.church.ServiceScheduleNotificationSchedu
 import com.example.helloworld.scheduler.church.ActivityExpirationScheduler;
 import com.example.helloworld.scheduler.church.SundayMessageExpirationScheduler;
 import com.example.helloworld.scheduler.church.ImageCleanupScheduler;
+import com.example.helloworld.scheduler.church.DatabaseBackupScheduler;
 import com.example.helloworld.service.personal.ScheduledJobService;
 import com.example.helloworld.service.church.ChurchScheduledJobService;
+import com.example.helloworld.service.church.ConfigurationRefreshService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -54,12 +56,27 @@ public class HelloWorldApplication implements CommandLineRunner {
     @Autowired
     private ImageCleanupScheduler imageCleanupScheduler;
 
+    @Autowired
+    private DatabaseBackupScheduler databaseBackupScheduler;
+
+    @Autowired
+    private ConfigurationRefreshService configurationRefreshService;
+
     public static void main(String[] args) {
         SpringApplication.run(HelloWorldApplication.class, args);
     }
 
     @Override
     public void run(String... args) {
+        // 初始化配置（從資料庫讀取）
+        try {
+            configurationRefreshService.initializeConfig();
+            System.out.println("配置初始化完成");
+        } catch (Exception e) {
+            System.err.println("配置初始化失敗（資料庫可能尚未準備好）: " + e.getMessage());
+            // 不拋出異常，允許應用繼續啟動（使用預設配置）
+        }
+
         // 註冊 Job 執行器
         scheduledJobService.registerJobExecutor(
             "com.example.helloworld.scheduler.personal.ExchangeRateScheduler$AutoFillExchangeRatesJob",
@@ -103,6 +120,12 @@ public class HelloWorldApplication implements CommandLineRunner {
         churchScheduledJobService.registerJobExecutor(
             "com.example.helloworld.scheduler.church.ImageCleanupScheduler$ImageCleanupJob",
             imageCleanupScheduler.getImageCleanupJob()
+        );
+
+        // 註冊資料庫備份任務執行器
+        churchScheduledJobService.registerJobExecutor(
+            "com.example.helloworld.scheduler.church.DatabaseBackupScheduler$DatabaseBackupJob",
+            databaseBackupScheduler.getDatabaseBackupJob()
         );
 
         // 初始化所有啟用的教會 Job

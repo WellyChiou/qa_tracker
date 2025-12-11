@@ -35,26 +35,17 @@ services:
         condition: service_healthy
     volumes:
       - /root/project/work/uploads/church:/app/uploads/church
+      - /root/project/work/backups:/app/backups
     environment:
       TZ: Asia/Taipei
+      BACKUP_DIR: /app/backups
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/qa_tracker?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=utf8&useUnicode=true
       SPRING_DATASOURCE_USERNAME: appuser
       SPRING_DATASOURCE_PASSWORD: apppassword
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
-      # LINE Bot 配置
-      LINE_BOT_CHANNEL_TOKEN: cY5CAs65/W4KfcU/6qTISLiqs2MCD9wHz/z/BF9vUexvUulGNrz4zPNQVy1saAlYggahICdEUiNLiVzkPYp6UDbX6QjMbvnjrkwBj75Owd/nKS/sGNkJFaT7O5CF66mtF3LS4pLqJ1dx7TnA21+ZnQdB04t89/1O/w1cDnyilFU=
-      LINE_BOT_CHANNEL_SECRET: 6075d3893ea1293b31307e8f673e26c2
-      LINE_BOT_WEBHOOK_URL: https://wc-project.duckdns.org/api/line/webhook
-      LINE_BOT_DAILY_REMINDER_ENABLED: true
-      LINE_BOT_DAILY_REMINDER_TIME: 20:00
-      LINE_BOT_ADMIN_USER_ID:
-      # 教會 LINE 群組 ID（用於發送服事人員通知）
-      LINE_BOT_CHURCH_GROUP_ID: C5246fe9f6b4f85ecbe0ff4e5299123bd 
-      # JWT 配置
-      JWT_SECRET: F/cPluFKK3/44X5iX9GdY6P7Ye+BIDdBTw6uljBTl9o=
-      JWT_ACCESS_TOKEN_EXPIRATION: 3600000
-      JWT_REFRESH_TOKEN_ENABLED: true
-      JWT_REFRESH_TOKEN_EXPIRATION: 604800000
+      # 注意：LINE Bot 和 JWT 配置已移至資料庫 system_settings 表
+      # 請在後台維護頁面（/admin/maintenance）進行配置
+      # 這些環境變數已不再使用，但保留作為備用（如果資料庫配置失敗時使用）
     restart: unless-stopped
 
   # Vue 前端

@@ -23,14 +23,18 @@ FROM eclipse-temurin:17-jre-alpine
 
 WORKDIR /app
 
-# 設置時區為台灣時間
-RUN apk add --no-cache tzdata && \
+# 設置時區為台灣時間，並安裝 mysql-client 和 gzip（用於資料庫備份）
+RUN apk add --no-cache tzdata mysql-client gzip && \
     cp /usr/share/zoneinfo/Asia/Taipei /etc/localtime && \
     echo "Asia/Taipei" > /etc/timezone && \
     apk del tzdata
 
 # 從構建階段複製 JAR 文件
 COPY --from=build /app/target/*.jar app.jar
+
+# 複製備份腳本到容器內
+COPY backup-database-container.sh /app/backup-database.sh
+RUN chmod +x /app/backup-database.sh
 
 # 暴露端口
 EXPOSE 8080
