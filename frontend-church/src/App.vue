@@ -1,7 +1,7 @@
 <template>
   <div id="app">
-    <!-- 前台 navbar：只在非後台路由顯示 -->
-    <nav v-if="!isAdminRoute" class="navbar">
+    <!-- 前台 navbar -->
+    <nav class="navbar">
       <div class="nav-container">
         <div class="nav-logo">
           <router-link to="/" class="logo-link">
@@ -19,8 +19,8 @@
     <main class="main-content">
       <router-view />
     </main>
-    <!-- 前台 footer：只在非後台路由顯示 -->
-    <footer v-if="!isAdminRoute" class="footer">
+    <!-- 前台 footer -->
+    <footer class="footer">
       <div class="footer-container">
         <p>&copy; 2026 極光教會網站. 版權所有.</p>
       </div>
@@ -54,11 +54,6 @@ const displayMenus = computed(() => {
   return menus
 })
 
-// 判斷是否為後台路由或登入頁面（這些頁面不需要顯示前台的 navbar 和 footer）
-const isAdminRoute = computed(() => {
-  return route.path.startsWith('/admin')
-})
-
 // 初始化 loading 系統（註冊回調到 API 服務）
 useLoading()
 
@@ -73,11 +68,6 @@ const defaultMenus = [
 
 // 載入前台菜單
 const loadFrontendMenus = async () => {
-  // 如果是後台路由或登入頁面，不需要載入前台菜單
-  if (isAdminRoute.value) {
-    return
-  }
-  
   try {
     const response = await apiRequest('/church/menus/frontend', {
       method: 'GET'
@@ -118,15 +108,9 @@ const loadFrontendMenus = async () => {
   }
 }
 
-// 監聽路由變化，只在非後台路由時載入前台菜單
-// immediate: true 會在組件掛載時立即執行一次，不需要在 onMounted 中重複調用
-watch(() => route.path, (newPath) => {
-  if (!isAdminRoute.value) {
+// 監聽路由變化，載入前台菜單
+watch(() => route.path, () => {
     loadFrontendMenus()
-  } else {
-    // 進入後台路由時，清空前台菜單（節省記憶體）
-    frontendMenus.value = []
-  }
 }, { immediate: true })
 </script>
 
@@ -213,4 +197,3 @@ watch(() => route.path, (newPath) => {
   text-align: center;
 }
 </style>
-

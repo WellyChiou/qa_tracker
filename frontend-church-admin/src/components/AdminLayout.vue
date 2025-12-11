@@ -2,7 +2,7 @@
   <div class="admin-layout">
     <nav class="admin-navbar">
       <div class="navbar-container">
-        <router-link to="/admin" class="title-link">
+        <router-link to="/" class="title-link">
           <img src="/images/logo.png" alt="極光教會 Logo" class="logo-image" />
           <span class="logo-text">極光教會-PLC</span>
         </router-link>
@@ -248,7 +248,7 @@ const loadAdminMenus = async () => {
 
 const handleLogout = async () => {
   await logout()
-  router.push('/admin/login')
+  router.push('/login')
 }
 
 // 監聽路由變化，自動展開包含當前路由的父菜單

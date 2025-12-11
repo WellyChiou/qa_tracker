@@ -98,6 +98,30 @@ services:
         reservations:
           memory: 256M
 
+  # 教會後台管理系統前端
+  frontend-church-admin:
+    build:
+      context: ./frontend-church-admin
+      dockerfile: Dockerfile
+    container_name: vue_frontend_church_admin
+    # 移除對外端口，由 nginx 反向代理處理
+    depends_on:
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    # 資源限制（防止資源耗盡）
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
   # Nginx 反向代理（處理 HTTPS）
   nginx:
     image: nginx:alpine
@@ -116,6 +140,7 @@ services:
     depends_on:
       - frontend
       - frontend-church
+      - frontend-church-admin
       - backend
     restart: unless-stopped
     command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"

@@ -191,7 +191,7 @@ cleanup_old_backups() {
     
     # 使用 find 命令遞迴清理舊備份（支援子資料夾，Alpine Linux 支援）
     # 先計算要刪除的檔案數量，然後執行刪除
-    deleted_count=$(find "$BACKUP_DIR" -name "*.sql.gz" -type f -mtime +$RETENTION_DAYS 2>/dev/null | wc -l)
+        deleted_count=$(find "$BACKUP_DIR" -name "*.sql.gz" -type f -mtime +$RETENTION_DAYS 2>/dev/null | wc -l)
     if [ $deleted_count -gt 0 ]; then
         find "$BACKUP_DIR" -name "*.sql.gz" -type f -mtime +$RETENTION_DAYS -delete 2>/dev/null
         log_info "已刪除 $deleted_count 個舊備份檔案"
