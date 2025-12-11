@@ -178,8 +178,8 @@ public class SecurityConfig {
             "http://38.54.89.136:80",
             "https://38.54.89.136",
             "https://38.54.89.136:443",
-            "http://wc-project.duckdns.org",
-            "https://wc-project.duckdns.org"
+            "http://power-light-church.duckdns.org",
+            "https://power-light-church.duckdns.org"
         ));
         
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));

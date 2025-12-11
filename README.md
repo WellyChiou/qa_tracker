@@ -107,7 +107,7 @@ docker compose down -v
 
 ### 🌐 當前部署狀態
 
-- **域名**：`wc-project.duckdns.org`
+- **域名**：`power-light-church.duckdns.org`
 - **HTTPS**：✅ 已啟用
 - **SSL 證書**：Let's Encrypt（自動續期）
 - **部署方式**：一鍵部署（`deploy-to-server.bat`）

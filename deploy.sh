@@ -81,7 +81,7 @@ echo "✅ HTTPS 目錄檢查完成"
 
 # 嘗試從備份目錄恢復證書（如果當前目錄沒有證書）
 BACKUP_DIR="../docker-vue-java-mysql_backup"
-if [ ! -f "certbot/conf/live/wc-project.duckdns.org/fullchain.pem" ] && [ -d "$BACKUP_DIR/certbot/conf" ]; then
+if [ ! -f "certbot/conf/live/power-light-church.duckdns.org/fullchain.pem" ] && [ -d "$BACKUP_DIR/certbot/conf" ]; then
     echo ""
     echo "從備份目錄恢復 SSL 證書..."
     if [ -d "$BACKUP_DIR/certbot/conf/live" ]; then
@@ -90,7 +90,7 @@ if [ ! -f "certbot/conf/live/wc-project.duckdns.org/fullchain.pem" ] && [ -d "$B
     if [ -d "$BACKUP_DIR/certbot/conf/archive" ]; then
         cp -r "$BACKUP_DIR/certbot/conf/archive" certbot/conf/ 2>/dev/null || true
     fi
-    if [ -f "certbot/conf/live/wc-project.duckdns.org/fullchain.pem" ]; then
+    if [ -f "certbot/conf/live/power-light-church.duckdns.org/fullchain.pem" ]; then
         echo "✅ 證書已從備份恢復"
     fi
 fi
@@ -127,7 +127,7 @@ sleep 10
 # 自動檢測並應用 HTTPS 配置
 echo ""
 echo "檢查 HTTPS 證書..."
-if [ -f "certbot/conf/live/wc-project.duckdns.org/fullchain.pem" ]; then
+if [ -f "certbot/conf/live/power-light-church.duckdns.org/fullchain.pem" ]; then
     echo "✅ 檢測到 SSL 證書，自動切換到 HTTPS 配置..."
     if [ -f "nginx/nginx-https.conf" ]; then
         cp nginx/nginx-https.conf nginx/nginx.conf
@@ -150,15 +150,15 @@ echo "=========================================="
 echo "✅ 部署完成！"
 echo "=========================================="
 echo ""
-if [ -f "certbot/conf/live/wc-project.duckdns.org/fullchain.pem" ]; then
+if [ -f "certbot/conf/live/power-light-church.duckdns.org/fullchain.pem" ]; then
     echo "服務訪問地址（HTTPS）："
-    echo "  - 前端: https://wc-project.duckdns.org"
-    echo "  - 後端 API: https://wc-project.duckdns.org/api"
-    echo "  - LINE Bot Webhook: https://wc-project.duckdns.org/api/line/webhook"
+    echo "  - 前端: https://power-light-church.duckdns.org"
+    echo "  - 後端 API: https://power-light-church.duckdns.org/api"
+    echo "  - LINE Bot Webhook: https://power-light-church.duckdns.org/api/line/webhook"
 else
     echo "服務訪問地址（HTTP）："
-    echo "  - 前端: http://wc-project.duckdns.org"
-    echo "  - 後端 API: http://wc-project.duckdns.org/api"
+    echo "  - 前端: http://power-light-church.duckdns.org"
+    echo "  - 後端 API: http://power-light-church.duckdns.org/api"
     echo ""
     echo "⚠️  HTTPS 設置："
     echo "  如需設置 HTTPS，請執行："

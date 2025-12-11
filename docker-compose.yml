@@ -140,21 +140,22 @@ services:
       - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      # 如果暫時不用 conf.d，可以先移除這行，避免衝突
+      # - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./certbot/conf:/etc/letsencrypt:ro
       - ./certbot/www:/var/www/certbot:ro
       - /root/project/work/uploads/church:/usr/share/nginx/html/uploads/church:ro
-    networks:
-      - default
     depends_on:
       - frontend-personal
       - frontend-church
       - frontend-church-admin
       - backend
     restart: unless-stopped
-    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
+    command: >
+      /bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done &
+      nginx -g "daemon off;"'
 
-  # Certbot（自動申請和續期 SSL 證書）
+  # Certbot（自動續期）
   certbot:
     image: certbot/certbot
     container_name: certbot
@@ -162,4 +163,5 @@ services:
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
 

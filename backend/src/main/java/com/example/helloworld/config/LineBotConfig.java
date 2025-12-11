@@ -20,7 +20,7 @@ public class LineBotConfig {
     }
 
     public String getWebhookUrl() {
-        return configurationRefreshService.getConfigValue("line.bot.webhook-url", "https://wc-project.duckdns.org/api/line/webhook");
+        return configurationRefreshService.getConfigValue("line.bot.webhook-url", "https://power-light-church.duckdns.org/api/line/webhook");
     }
 
     public boolean isDailyReminderEnabled() {

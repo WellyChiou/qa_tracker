@@ -1,6 +1,6 @@
 @echo off
 REM HTTPS 設置腳本 (Windows)
-REM 域名: wc-project.duckdns.org
+REM 域名: power-light-church.duckdns.org
 
 echo 🚀 開始設置 HTTPS...
 
@@ -28,7 +28,7 @@ echo 📜 申請 Let's Encrypt SSL 證書...
 echo    請輸入您的郵箱地址（用於證書到期提醒）:
 set /p EMAIL="郵箱: "
 
-docker-compose run --rm certbot certonly --webroot --webroot-path=/var/www/certbot --email %EMAIL% --agree-tos --no-eff-email -d wc-project.duckdns.org
+docker-compose run --rm certbot certonly --webroot --webroot-path=/var/www/certbot --email %EMAIL% --agree-tos --no-eff-email -d power-light-church.duckdns.org
 
 if %ERRORLEVEL% EQU 0 (
     echo ✅ SSL 證書申請成功！
@@ -48,11 +48,11 @@ if %ERRORLEVEL% EQU 0 (
     echo.
     echo 📋 下一步：
     echo 1. 在 LINE Developers Console 設置 Webhook URL:
-    echo    https://wc-project.duckdns.org/api/line/webhook
+    echo    https://power-light-church.duckdns.org/api/line/webhook
     echo.
     echo 2. 訪問您的應用：
-    echo    前端: https://wc-project.duckdns.org
-    echo    API: https://wc-project.duckdns.org/api
+    echo    前端: https://power-light-church.duckdns.org
+    echo    API: https://power-light-church.duckdns.org/api
     echo.
 ) else (
     echo ❌ SSL 證書申請失敗

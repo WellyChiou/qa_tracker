@@ -85,7 +85,7 @@ events {
 
 http {
     upstream frontend {
-        server frontend:80;
+        server frontend-personal:80;
     }
 
     upstream backend {
@@ -155,10 +155,10 @@ docker-compose up -d nginx
 docker-compose run --rm certbot certonly \
   --webroot \
   --webroot-path=/var/www/certbot \
-  --email your-email@example.com \
+  --email chiou713@gmail.com \
   --agree-tos \
   --no-eff-email \
-  -d yourdomain.com
+  -d power-light-church.duckdns.org
 
 # 如果成功，重啟 nginx
 docker-compose restart nginx
@@ -217,7 +217,7 @@ openssl x509 -req -days 365 -in nginx/ssl/server.csr -signkey nginx/ssl/server.k
 
 ```nginx
 upstream frontend {
-    server frontend:80;
+    server frontend-personal:80;
 }
 
 upstream backend {

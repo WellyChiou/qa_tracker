@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # HTTPS 設置腳本（在服務器上執行）
-# 域名: wc-project.duckdns.org
+# 注意：將 power-light-church.duckdns.org 替換為您的域名
 
 set -e
 
@@ -24,7 +24,7 @@ echo ""
 
 # 3. 檢查 DNS 是否生效
 echo "🔍 檢查 DNS 設置..."
-DNS_IP=$(dig +short wc-project.duckdns.org 2>/dev/null || echo "")
+DNS_IP=$(dig +short power-light-church.duckdns.org 2>/dev/null || echo "")
 if [ -z "$DNS_IP" ]; then
     echo "⚠️  警告: 無法解析 DNS，請確認："
     echo "   1. DuckDNS 中已設置 IP 為 38.54.89.136"
@@ -62,8 +62,16 @@ events {
 }
 
 http {
-    upstream frontend {
-        server frontend:80;
+    upstream frontend-personal {
+        server frontend-personal:80;
+    }
+
+    upstream frontend-church {
+        server frontend-church:80;
+    }
+
+    upstream frontend-church-admin {
+        server frontend-church-admin:80;
     }
 
     upstream backend {
@@ -72,14 +80,30 @@ http {
 
     server {
         listen 80;
-        server_name wc-project.duckdns.org 38.54.89.136;
+        server_name power-light-church.duckdns.org 38.54.89.136;
 
         location /.well-known/acme-challenge/ {
             root /var/www/certbot;
         }
 
         location / {
-            proxy_pass http://frontend;
+            proxy_pass http://frontend-personal;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location / {
+            proxy_pass http://frontend-church;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location / {
+            proxy_pass http://frontend-church-admin;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -101,8 +125,8 @@ echo "✅ 配置檢查完成"
 echo ""
 
 # 5. 啟動 nginx（如果還沒啟動）
-echo "🔧 啟動 Nginx..."
-docker-compose up -d nginx 2>/dev/null || docker compose up -d nginx 2>/dev/null || true
+echo    # 停止 Nginx 容器
+    docker compose stop nginx 2>/dev/null || docker compose up -d nginx 2>/dev/null || true
 
 # 等待 nginx 啟動
 echo "等待 Nginx 啟動..."
@@ -122,19 +146,13 @@ fi
 
 echo ""
 echo "正在申請證書，這可能需要幾分鐘..."
-docker-compose run --rm certbot certonly \
+docker compose run --rm certbot certonly \
   --webroot \
   --webroot-path=/var/www/certbot \
   --email "$EMAIL" \
   --agree-tos \
   --no-eff-email \
-  -d wc-project.duckdns.org || docker compose run --rm certbot certonly \
-  --webroot \
-  --webroot-path=/var/www/certbot \
-  --email "$EMAIL" \
-  --agree-tos \
-  --no-eff-email \
-  -d wc-project.duckdns.org
+  -d power-light-church.duckdns.org
 
 if [ $? -eq 0 ]; then
     echo ""
@@ -152,10 +170,10 @@ if [ $? -eq 0 ]; then
     echo ""
     
     # 8. 重啟服務
-    echo "🔄 重啟服務..."
-    docker-compose restart nginx 2>/dev/null || docker compose restart nginx 2>/dev/null || true
-    docker-compose down 2>/dev/null || docker compose down 2>/dev/null || true
-    docker-compose up -d 2>/dev/null || docker compose up -d 2>/dev/null || true
+    # 重新加載 Nginx 配置
+    docker compose exec nginx nginx -s reload 2>/dev/null || docker compose restart nginx 2>/dev/null || true
+    docker compose down 2>/dev/null || docker compose down 2>/dev/null || true
+    docker compose up -d 2>/dev/null || docker compose up -d 2>/dev/null || true
     
     echo ""
     echo "=========================================="
@@ -164,14 +182,14 @@ if [ $? -eq 0 ]; then
     echo ""
     echo "📋 下一步："
     echo "1. 在 LINE Developers Console 設置 Webhook URL:"
-    echo "   https://wc-project.duckdns.org/api/line/webhook"
+    echo "   https://power-light-church.duckdns.org/api/line/webhook"
     echo ""
     echo "2. 訪問您的應用："
-    echo "   前端: https://wc-project.duckdns.org"
-    echo "   API: https://wc-project.duckdns.org/api"
+    echo "   前端: https://power-light-church.duckdns.org"
+    echo "   API: https://power-light-church.duckdns.org/api"
     echo ""
     echo "3. 驗證 HTTPS："
-    echo "   curl -I https://wc-project.duckdns.org/api/line/webhook"
+    echo "   curl -I https://power-light-church.duckdns.org/api/line/webhook"
     echo ""
 else
     echo ""

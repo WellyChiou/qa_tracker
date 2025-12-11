@@ -198,7 +198,7 @@ events {
 
 http {
     upstream frontend {
-        server frontend:80;
+        server frontend-personal:80;
     }
 
     upstream backend {

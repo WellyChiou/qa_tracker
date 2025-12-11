@@ -16,7 +16,7 @@
    或使用完整 URL（如果部署後需要）：
    ```sql
    UPDATE config 
-   SET config_value = 'https://wc-project.duckdns.org/qrcode.png' 
+   SET config_value = 'https://power-light-church.duckdns.org/qrcode.png' 
    WHERE config_key = 'line_bot_qr_code_url';
    ```
 

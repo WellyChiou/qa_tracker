@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # HTTPS 設置腳本
-# 域名: wc-project.duckdns.org
+# 域名: power-light-church.duckdns.org
 
 echo "🚀 開始設置 HTTPS..."
 
@@ -13,7 +13,7 @@ mkdir -p certbot/www
 
 # 2. 檢查 DNS 是否生效
 echo "🔍 檢查 DNS 設置..."
-DNS_IP=$(dig +short wc-project.duckdns.org)
+DNS_IP=$(dig +short power-light-church.duckdns.org)
 if [ "$DNS_IP" != "38.54.89.136" ]; then
     echo "⚠️  警告: DNS 可能尚未生效"
     echo "   當前 DNS 解析: $DNS_IP"
@@ -46,7 +46,7 @@ docker-compose run --rm certbot certonly \
   --email "$EMAIL" \
   --agree-tos \
   --no-eff-email \
-  -d wc-project.duckdns.org
+  -d power-light-church.duckdns.org
 
 if [ $? -eq 0 ]; then
     echo "✅ SSL 證書申請成功！"
@@ -66,11 +66,11 @@ if [ $? -eq 0 ]; then
     echo ""
     echo "📋 下一步："
     echo "1. 在 LINE Developers Console 設置 Webhook URL:"
-    echo "   https://wc-project.duckdns.org/api/line/webhook"
+    echo "   https://power-light-church.duckdns.org/api/line/webhook"
     echo ""
     echo "2. 訪問您的應用："
-    echo "   前端: https://wc-project.duckdns.org"
-    echo "   API: https://wc-project.duckdns.org/api"
+    echo "   前端: https://power-light-church.duckdns.org"
+    echo "   API: https://power-light-church.duckdns.org/api"
     echo ""
 else
     echo "❌ SSL 證書申請失敗"

@@ -27,6 +27,6 @@ export default defineConfig({
       }
     }
   },
-  base: '/my-site/'
+  base: '/personal/'
 })
 

@@ -37,7 +37,7 @@ ON DUPLICATE KEY UPDATE
 INSERT INTO system_settings (setting_key, setting_value, setting_type, category, description, is_editable) VALUES
 ('line.bot.channel-token', 'CY5CAs65/W4KfcU/6qTISLiqs2MCD9wHz/z/BF9vUexvUulGNrz4zPNQVy1saAlYggahICdEUiNLiVzkPYp6UDbX6QjMbvnjrkwBj750wd/nKS/sGNkJFaT705CF66mtF3LS4pLqJ1dx7TnA21+ZnQdB04t89/10/w1cDnyilFU=', 'string', 'linebot', 'LINE Bot Channel Token', 1),
 ('line.bot.channel-secret', '6075d3893ea1293b31307e8f673e26c2', 'string', 'linebot', 'LINE Bot Channel Secret', 1),
-('line.bot.webhook-url', 'https://wc-project.duckdns.org/api/line/webhook', 'string', 'linebot', 'LINE Bot Webhook URL', 1),
+('line.bot.webhook-url', 'https://power-light-church.duckdns.org/api/line/webhook', 'string', 'linebot', 'LINE Bot Webhook URL', 1),
 ('line.bot.daily-reminder-enabled', 'true', 'boolean', 'linebot', '是否啟用每日提醒', 1),
 ('line.bot.daily-reminder-time', '20:00', 'string', 'linebot', '每日提醒時間（HH:MM 格式）', 1),
 ('line.bot.admin-user-id', '', 'string', 'linebot', 'LINE Bot 管理員用戶 ID', 1),
