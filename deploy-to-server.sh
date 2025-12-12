@@ -78,6 +78,10 @@ tar --format=ustar -czf "${ARCHIVE_NAME}" \
     --exclude="${PROJECT_NAME}/target" \
     --exclude="${PROJECT_NAME}/.DS_Store" \
     --exclude="${PROJECT_NAME}/*.log" \
+    --exclude="${PROJECT_NAME}/frontend-personal/dist" \
+    --exclude="${PROJECT_NAME}/frontend-church/dist" \
+    --exclude="${PROJECT_NAME}/frontend-church-admin/dist" \
+    --exclude="${PROJECT_NAME}/*.tar.gz" \
     "${PROJECT_NAME}"
 cd "${PROJECT_NAME}"
 

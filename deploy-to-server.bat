@@ -1,5 +1,4 @@
 @echo off
-REM Set code page to UTF-8
 chcp 65001 >nul 2>&1
 setlocal enabledelayedexpansion
 
@@ -21,92 +20,88 @@ set SCRIPT_DIR=%~dp0
 cd /d "%SCRIPT_DIR%"
 for %%I in ("%CD%") do set CURRENT_DIR=%%~nxI
 
+REM 顏色輸出
+set GREEN=[32m
+set YELLOW=[33m
+set RED=[31m
+set NC=[0m
+
+echo.
 echo ==========================================
 echo 開始一鍵部署流程
 echo ==========================================
 echo.
 
-echo ==========================================
-echo Starting deployment process
-echo ==========================================
-echo.
-
 REM 步驟 1: 檢查必要工具
-echo 步驟 1: 檢查必要工具...
+echo %YELLOW%步驟 1: 檢查必要工具...%NC%
 echo.
 
-REM 檢查 tar 命令 (Windows 10 1803+ 內建)
+REM 檢查 tar 命令
 where tar >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [ERROR] 未找到 tar 命令
+    echo %RED%[ERROR] 未找到 tar 命令%NC%
     echo 請確保您已安裝 Git for Windows 並將其加入系統 PATH
     echo 下載網址: https://git-scm.com/download/win
     pause
     exit /b 1
 )
 
-REM 檢查 scp 命令 (Windows 10 1809+ OpenSSH 內建)
+REM 檢查 scp 命令
 where scp >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [ERROR] 未找到 scp 命令
+    echo %RED%[ERROR] 未找到 scp 命令%NC%
     echo 請執行以下步驟：
     echo 1. 安裝 Git for Windows ^(如果尚未安裝^)
     echo    下載網址: https://git-scm.com/download/win
-    echo 2. 或安裝 OpenSSH 客戶端：
+    echo 2. 或安裝 OpenSSH 客戶端
     echo    - 開啟 設定 ^> 應用程式 ^> 應用程式與功能 ^> 選擇性功能 ^> 新增功能
     echo    - 搜尋並安裝 "OpenSSH 用戶端"
-    echo 3. 或使用 PuTTY 的 pscp.exe ^(請確保在系統 PATH 中^)
+    echo 3. 或使用 PuTTY 的 pscp.exe
     pause
     exit /b 1
 )
 
-echo [SUCCESS] 工具檢查完成
+echo %GREEN%[SUCCESS] 工具檢查完成%NC%
 echo.
 
 REM 步驟 2: 打包專案
-echo 步驟 2: 打包專案...
+echo %YELLOW%步驟 2: 打包專案...%NC%
 echo.
 
-REM 確保在腳本目錄
 cd /d "%SCRIPT_DIR%"
 
 REM 刪除舊的打包文件
 if exist "%ARCHIVE_NAME%" (
-    echo 刪除舊的打包文件: %ARCHIVE_NAME%
+    echo 刪除舊的打包文件...
     del "%ARCHIVE_NAME%"
 )
 
 echo 正在打包專案...
-echo 來源目錄: %CURRENT_DIR%
-echo 輸出檔案: %ARCHIVE_NAME%
-echo.
-
-REM 切換到上一層目錄進行打包
 cd /d "%SCRIPT_DIR%.."
 
-REM 使用 tar 打包目錄 (排除不需要的檔案和目錄)
-tar -czf "%SCRIPT_DIR%\%ARCHIVE_NAME%" ^
+tar --format=ustar -czf "%SCRIPT_DIR%\%ARCHIVE_NAME%" ^
+    --exclude-vcs ^
     --exclude="%CURRENT_DIR%/.git" ^
     --exclude="%CURRENT_DIR%/node_modules" ^
     --exclude="%CURRENT_DIR%/target" ^
     --exclude="%CURRENT_DIR%/.DS_Store" ^
     --exclude="%CURRENT_DIR%/*.log" ^
-    --exclude="%CURRENT_DIR%/frontend/dist" ^
     --exclude="%CURRENT_DIR%/frontend-personal/dist" ^
+    --exclude="%CURRENT_DIR%/frontend-church/dist" ^
+    --exclude="%CURRENT_DIR%/frontend-church-admin/dist" ^
     --exclude="%CURRENT_DIR%/*.tar.gz" ^
     "%CURRENT_DIR%"
 
-REM 返回原始目錄
 cd /d "%SCRIPT_DIR%"
 
 if %errorlevel% neq 0 (
-    echo [ERROR] 打包失敗!
+    echo %RED%[ERROR] 打包失敗!%NC%
     pause
     exit /b 1
 )
 
 if not exist "%ARCHIVE_NAME%" (
-    echo [ERROR] 打包失敗! 找不到歸檔文件
+    echo %RED%[ERROR] 打包失敗! 找不到歸檔文件%NC%
     pause
     exit /b 1
 )
@@ -116,24 +111,23 @@ for %%A in ("%ARCHIVE_NAME%") do set ARCHIVE_SIZE=%%~zA
 set /a ARCHIVE_SIZE_KB=!ARCHIVE_SIZE!/1024
 if !ARCHIVE_SIZE_KB! geq 1024 (
     set /a ARCHIVE_SIZE_MB=!ARCHIVE_SIZE_KB!/1024
-    echo [SUCCESS] 打包完成! 文件大小: !ARCHIVE_SIZE_MB! MB
+    echo %GREEN%[SUCCESS] 打包完成! 文件大小: !ARCHIVE_SIZE_MB! MB%NC%
 ) else (
-    echo [SUCCESS] 打包完成! 文件大小: !ARCHIVE_SIZE_KB! KB
+    echo %GREEN%[SUCCESS] 打包完成! 文件大小: !ARCHIVE_SIZE_KB! KB%NC%
 )
 echo.
 
 REM 步驟 3: 上傳到伺服器
-echo 步驟 3: 上傳到伺服器
-echo 伺服器: %SERVER_USER%@%SERVER_IP%
+echo %YELLOW%步驟 3: 上傳到伺服器 (^!%SERVER_USER%^!@^!%SERVER_IP%^!)...%NC%
 echo.
 
-REM 創建遠程目錄（如果不存在）
 echo 創建遠程目錄...
-ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL %SERVER_USER%@%SERVER_IP% "mkdir -p %REMOTE_PATH%"
+ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL %SERVER_USER%@%SERVER_IP% ^
+    "mkdir -p %REMOTE_PATH% && mkdir -p %REMOTE_PATH%/%PROJECT_NAME%/logs/backend && chmod -R 777 %REMOTE_PATH%/%PROJECT_NAME%/logs"
 
 if %errorlevel% neq 0 (
     echo.
-    echo [ERROR] 無法連接到遠端伺服器
+    echo %RED%[ERROR] 無法連接到遠端伺服器%NC%
     echo 請確認：
     echo 1. 伺服器位址和帳號是否正確
     echo 2. 網路連線是否正常
@@ -142,104 +136,86 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-REM 上傳文件
 echo 上傳打包文件...
-echo 請輸入密碼: %SERVER_PASSWORD%
-echo.
-
-REM 使用 scp 上傳 (需要 SSH 金鑰或手動輸入密碼)
-REM 注意: Windows 的 scp 不支援在命令列中直接傳遞密碼
-REM 建議使用 SSH 金鑰認證
-
 scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL "%ARCHIVE_NAME%" %SERVER_USER%@%SERVER_IP%:%REMOTE_PATH%/
 
 if %errorlevel% neq 0 (
     echo.
-    echo [ERROR] 上傳失敗!
-    echo.
-    echo 提示: 如果提示輸入密碼，請輸入: %SERVER_PASSWORD%
-    echo 或者配置 SSH 金鑰認證以避免輸入密碼
-    echo.
+    echo %RED%[ERROR] 上傳失敗!%NC%
     pause
     exit /b 1
 )
 
-echo [SUCCESS] 上傳成功!
+echo %GREEN%[SUCCESS] 上傳成功!%NC%
 echo.
 
 REM 步驟 4: 在遠程服務器上解壓和部署
-echo 步驟 4: 在遠程服務器上解壓和部署...
+echo %YELLOW%步驟 4: 在遠程服務器上解壓和部署...%NC%
 echo.
 
-echo ==========================================
-echo 需要密碼: %SERVER_PASSWORD%
-echo ==========================================
-echo 當提示輸入密碼時，請輸入上面的密碼
-echo.
-
-REM 上傳並執行遠程部署腳本 (避免引號轉義問題)
 echo 上傳遠程部署腳本...
-REM 確保使用腳本目錄中的 remote_deploy.sh
 scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL "%SCRIPT_DIR%remote_deploy.sh" %SERVER_USER%@%SERVER_IP%:/tmp/
 
 if %errorlevel% neq 0 (
-    echo [ERROR] 上傳遠程腳本失敗
+    echo %RED%[ERROR] 上傳遠程腳本失敗%NC%
     pause
     exit /b 1
 )
 
-REM 執行遠程腳本並刪除 (先修正 Windows 換行符問題)
 echo 執行遠程部署...
-ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL %SERVER_USER%@%SERVER_IP% "sed -i 's/\r$//' /tmp/remote_deploy.sh && chmod +x /tmp/remote_deploy.sh && bash /tmp/remote_deploy.sh && rm -f /tmp/remote_deploy.sh"
+ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL %SERVER_USER%@%SERVER_IP% ^
+    "sed -i 's/\r$//' /tmp/remote_deploy.sh && chmod +x /tmp/remote_deploy.sh && bash /tmp/remote_deploy.sh && rm -f /tmp/remote_deploy.sh"
 
 if %errorlevel% neq 0 (
     echo.
-    echo [ERROR] 遠程部署失敗!
-    echo.
-    echo 提示: 如果提示輸入密碼，請輸入: %SERVER_PASSWORD%
+    echo %RED%[ERROR] 遠程部署失敗!%NC%
     pause
     exit /b 1
 )
 
 echo.
 echo ==========================================
-echo [SUCCESS] 一鍵部署完成!
+echo %GREEN%[SUCCESS] 一鍵部署完成!%NC%
 echo ==========================================
 echo.
 
-echo 服務網址:
-echo   - 前台: http://power-light-church.duckdns.org 或 http://%SERVER_IP%
-echo   - 後台 API: http://power-light-church.duckdns.org/api 或 http://%SERVER_IP%/api
+echo 服務訪問地址：
+echo   - 前端: http://power-light-church.duckdns.org 或 http://%SERVER_IP%
+echo   - 後端 API: http://power-light-church.duckdns.org/api 或 http://%SERVER_IP%/api
 echo.
 
-echo HTTPS 設置:
-echo   如果已配置 HTTPS，請使用:
-echo   - 前台: https://power-light-church.duckdns.org
-echo   - 後台 API: https://power-light-church.duckdns.org/api
+echo HTTPS 設置：
+echo   如果已設置 HTTPS，請使用：
+echo   - 前端: https://power-light-church.duckdns.org
+echo   - 後端 API: https://power-light-church.duckdns.org/api
+echo   - LINE Bot Webhook: https://power-light-church.duckdns.org/api/line/webhook
 echo.
 
-echo   要設置 HTTPS，請執行:
-echo     ssh %USERNAME%@%SERVER_IP%
+echo   如需設置 HTTPS，請執行：
+echo     ssh %SERVER_USER%@%SERVER_IP%
 echo     cd %REMOTE_PATH%/%PROJECT_NAME%
 echo     ./setup-https-on-server.sh
 echo.
 
-echo 檢查服務狀態:
-echo   ssh %USERNAME%@%SERVER_IP%
+echo 查看服務狀態：
+echo   ssh %SERVER_USER%@%SERVER_IP%
 echo   cd %REMOTE_PATH%/%PROJECT_NAME%
 echo   docker compose ps
 echo.
 
-echo [SUCCESS] 已自動配置預防機制:
-echo   - 前台監控: 每 5 分鐘檢查並自動修復
+echo %GREEN%[SUCCESS] 已自動配置預防機制：%NC%
+echo   - 前端監控: 每 5 分鐘自動檢查並修復
 echo   - 系統監控: 每小時檢查資源使用情況
 echo   - 自動清理: 每天凌晨 2 點清理 Docker 資源
 echo.
 
-echo 查看監控日誌:
-echo   ssh %USERNAME%@%SERVER_IP%
-echo   tail -f /var/log/frontend-monitor.log
-echo   tail -f /var/log/system-monitor.log
+echo 查看監控日誌：
+echo   # 查看最新的前端監控日誌
+echo   ssh %SERVER_USER%@%SERVER_IP% 'ls -t /root/project/work/logs/frontend-monitor_*.log ^| head -1 ^| xargs tail -f'
+echo   # 查看最新的系統監控日誌
+echo   ssh %SERVER_USER%@%SERVER_IP% 'ls -t /root/project/work/logs/system-monitor_*.log ^| head -1 ^| xargs tail -f'
+echo   # 查看最新的後端日誌
+echo   ssh %SERVER_USER%@%SERVER_IP% 'ls -t /root/project/work/logs/backend/application*.log ^| head -1 ^| xargs tail -f'
 echo.
 
 pause
