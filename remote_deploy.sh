@@ -113,7 +113,7 @@ if [ -d "$PROJECT_NAME" ]; then
     
     # 創建測試文件
     echo "創建測試文件..."
-    if ! echo "測試日誌 $(date)" > "$LOGS_DIR/test_log_$(date +%Y%m%d_%H%M%S).log" 2>/dev/null; then
+    if ! echo "測試日誌 $(date)" > "$LOGS_DIR/test_log_$(date +%Y%m%d).log" 2>/dev/null; then
         echo "❌ 錯誤: 無法在日誌目錄中創建測試文件"
         echo "請檢查目錄權限："
         ls -ld "$LOGS_DIR"
@@ -127,8 +127,8 @@ if [ -d "$PROJECT_NAME" ]; then
         ls -la "$LOGS_DIR/"
     fi
     
-    # 獲取當前時間戳
-    TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+    # 獲取當前日期（只用日期，不用時間）
+    CURRENT_DATE=$(date +"%Y%m%d")
     
     # 確保所有腳本有執行權限
     echo "設置腳本執行權限..."
@@ -161,12 +161,12 @@ if [ -d "$PROJECT_NAME" ]; then
         systemctl start cron 2>/dev/null || systemctl start crond 2>/dev/null || true
     fi
     
-    # 創建帶時間戳的日誌文件
+    # 創建日誌文件（每天只有一個文件）
     echo "🛠️ 正在創建日誌文件..."
     
-    # 日誌文件路徑（帶時間戳）
-    FRONTEND_LOG="$LOGS_DIR/frontend-monitor_${TIMESTAMP}.log"
-    SYSTEM_LOG="$LOGS_DIR/system-monitor_${TIMESTAMP}.log"
+    # 日誌文件路徑（只用日期）
+    FRONTEND_LOG="$LOGS_DIR/frontend-monitor_${CURRENT_DATE}.log"
+    SYSTEM_LOG="$LOGS_DIR/system-monitor_${CURRENT_DATE}.log"
     
     # 創建符號鏈接（方便查找最新日誌）
     LATEST_FRONTEND_LOG="$LOGS_DIR/frontend-monitor_latest.log"
@@ -198,31 +198,48 @@ if [ -d "$PROJECT_NAME" ]; then
 #!/bin/bash
 
 LOGS_DIR="/root/project/work/logs"
+BACKUP_DIR="$LOGS_DIR/backup"
 MAX_SIZE=$((100 * 1024 * 1024))  # 100MB in bytes
 
-# 檢查日誌文件大小並輪轉
+# 確保備份目錄存在
+mkdir -p "$BACKUP_DIR" 2>/dev/null || true
+
+# 檢查日誌文件大小並輪轉（確保每天只有一個文件）
 rotate_log() {
     local logfile="$1"
     if [ -f "$logfile" ] && [ $(stat -f%z "$logfile" 2>/dev/null || stat -c%s "$logfile") -gt $MAX_SIZE ]; then
-        local timestamp=$(date +"%Y%m%d_%H%M%S")
-        mv "$logfile" "${logfile%.*}_${timestamp}.log"
+        local current_date=$(date +"%Y%m%d")
+        local filename=$(basename "$logfile")
+        local backup_file="$BACKUP_DIR/${filename}.backup"
+        
+        # 將舊文件移動到備份目錄（如果備份文件已存在，則覆蓋）
+        mv "$logfile" "$backup_file" 2>/dev/null || true
+        
+        # 創建新的空文件
         touch "$logfile"
         chmod 666 "$logfile"
+        
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] 日誌文件 $filename 已輪轉到 $backup_file"
     fi
 }
 
-# 輪轉日誌文件
+# 輪轉日誌文件（只處理當天的日誌文件，格式為 *_YYYYMMDD.log）
 for log in "$LOGS_DIR"/*.log; do
-    if [[ "$log" != *"_"*.log ]]; then  # 跳過已經帶時間戳的文件
-        rotate_log "$log"
+    if [[ "$log" =~ _[0-9]{8}\.log$ ]] && [[ "$log" != *_latest.log ]] && [[ "$log" != *.backup ]]; then
+        # 檢查是否是今天的日誌文件
+        local log_date=$(basename "$log" | grep -oE '[0-9]{8}' | head -1)
+        local today=$(date +"%Y%m%d")
+        if [ "$log_date" = "$today" ]; then
+            rotate_log "$log"
+        fi
     fi
 done
 
 # 清理符號鏈接並重新創建
 rm -f "$LOGS_DIR/frontend-monitor_latest.log"
 rm -f "$LOGS_DIR/system-monitor_latest.log"
-ln -sf "$(ls -t "$LOGS_DIR"/frontend-monitor_*.log 2>/dev/null | head -1)" "$LOGS_DIR/frontend-monitor_latest.log" 2>/dev/null || true
-ln -sf "$(ls -t "$LOGS_DIR"/system-monitor_*.log 2>/dev/null | head -1)" "$LOGS_DIR/system-monitor_latest.log" 2>/dev/null || true
+ln -sf "$(ls -t "$LOGS_DIR"/frontend-monitor_*.log 2>/dev/null | grep -v backup | head -1)" "$LOGS_DIR/frontend-monitor_latest.log" 2>/dev/null || true
+ln -sf "$(ls -t "$LOGS_DIR"/system-monitor_*.log 2>/dev/null | grep -v backup | head -1)" "$LOGS_DIR/system-monitor_latest.log" 2>/dev/null || true
 EOF
 
     # 設置日誌輪轉腳本權限
