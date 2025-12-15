@@ -272,7 +272,7 @@ const checkYearExists = async (year) => {
 // 計算可用的年份列表（用於新增）- 只能選擇當年度以及下一年度
 const availableYearsForCreate = computed(() => {
   const currentYear = new Date().getFullYear()
-  const nextYear = currentYear + 1
+  const nextYear = currentYear + 2
   const years = []
   
   // 只包含當年度和下一年度，且未存在的年份
