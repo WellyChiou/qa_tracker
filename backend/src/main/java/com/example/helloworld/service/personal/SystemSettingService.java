@@ -1,7 +1,7 @@
-package com.example.helloworld.service.church;
+package com.example.helloworld.service.personal;
 
-import com.example.helloworld.entity.church.SystemSetting;
-import com.example.helloworld.repository.church.SystemSettingRepository;
+import com.example.helloworld.entity.personal.SystemSetting;
+import com.example.helloworld.repository.personal.SystemSettingRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -10,36 +10,36 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Optional;
 
-@Service("churchSystemSettingService")
+@Service("personalSystemSettingService")
 public class SystemSettingService {
 
     @Autowired
-    @Qualifier("churchSystemSettingRepository")
+    @Qualifier("personalSystemSettingRepository")
     private SystemSettingRepository systemSettingRepository;
 
-    @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
+    @Transactional(readOnly = true, transactionManager = "primaryTransactionManager")
     public List<SystemSetting> getAllSettings() {
         return systemSettingRepository.findAllOrderByCategoryAndKey();
     }
 
-    @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
+    @Transactional(readOnly = true, transactionManager = "primaryTransactionManager")
     public List<SystemSetting> getSettingsByCategory(String category) {
         return systemSettingRepository.findByCategory(category);
     }
 
-    @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
+    @Transactional(readOnly = true, transactionManager = "primaryTransactionManager")
     public Optional<SystemSetting> getSettingByKey(String key) {
         return systemSettingRepository.findBySettingKey(key);
     }
 
-    @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
+    @Transactional(readOnly = true, transactionManager = "primaryTransactionManager")
     public String getSettingValue(String key, String defaultValue) {
         return systemSettingRepository.findBySettingKey(key)
             .map(SystemSetting::getSettingValue)
             .orElse(defaultValue);
     }
 
-    @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
+    @Transactional(readOnly = true, transactionManager = "primaryTransactionManager")
     public int getSettingValueAsInt(String key, int defaultValue) {
         String value = getSettingValue(key, String.valueOf(defaultValue));
         try {
@@ -49,13 +49,23 @@ public class SystemSettingService {
         }
     }
 
-    @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
+    @Transactional(readOnly = true, transactionManager = "primaryTransactionManager")
     public boolean getSettingValueAsBoolean(String key, boolean defaultValue) {
         String value = getSettingValue(key, String.valueOf(defaultValue));
         return Boolean.parseBoolean(value);
     }
 
-    @Transactional(transactionManager = "churchTransactionManager")
+    @Transactional(readOnly = true, transactionManager = "primaryTransactionManager")
+    public long getSettingValueAsLong(String key, long defaultValue) {
+        String value = getSettingValue(key, String.valueOf(defaultValue));
+        try {
+            return Long.parseLong(value);
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+
+    @Transactional(transactionManager = "primaryTransactionManager")
     public SystemSetting updateSetting(String key, SystemSetting settingUpdate) {
         SystemSetting existing = systemSettingRepository.findBySettingKey(key)
             .orElseThrow(() -> new RuntimeException("系統參數不存在: " + key));
@@ -74,12 +84,25 @@ public class SystemSettingService {
         return systemSettingRepository.save(existing);
     }
 
-    @Transactional(transactionManager = "churchTransactionManager")
+    @Transactional(transactionManager = "primaryTransactionManager")
     public SystemSetting createSetting(SystemSetting setting) {
         if (systemSettingRepository.existsBySettingKey(setting.getSettingKey())) {
             throw new RuntimeException("系統參數已存在: " + setting.getSettingKey());
         }
         return systemSettingRepository.save(setting);
+    }
+
+    @Transactional(transactionManager = "primaryTransactionManager")
+    public void deleteSetting(String key) {
+        SystemSetting setting = systemSettingRepository.findBySettingKey(key)
+            .orElseThrow(() -> new RuntimeException("系統參數不存在: " + key));
+        
+        // 檢查是否可刪除（某些系統關鍵參數不應被刪除）
+        if (!setting.getIsEditable()) {
+            throw new RuntimeException("此參數不可刪除: " + key);
+        }
+        
+        systemSettingRepository.delete(setting);
     }
 }
 

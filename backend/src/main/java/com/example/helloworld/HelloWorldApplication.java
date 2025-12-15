@@ -16,6 +16,7 @@ import com.example.helloworld.service.church.ConfigurationRefreshService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -60,7 +61,12 @@ public class HelloWorldApplication implements CommandLineRunner {
     private ImageCleanupScheduler imageCleanupScheduler;
 
     @Autowired
+    @Qualifier("churchDatabaseBackupScheduler")
     private DatabaseBackupScheduler databaseBackupScheduler;
+
+    @Autowired
+    @Qualifier("personalDatabaseBackupScheduler")
+    private com.example.helloworld.scheduler.personal.DatabaseBackupScheduler personalDatabaseBackupScheduler;
 
     @Autowired
     private ConfigurationRefreshService configurationRefreshService;
@@ -98,6 +104,12 @@ public class HelloWorldApplication implements CommandLineRunner {
             dailyExpenseReminderScheduler.getCheckAndNotifyDailyExpenseJob()
         );
 
+        // 註冊 Personal 系統資料庫備份任務執行器
+        scheduledJobService.registerJobExecutor(
+            "com.example.helloworld.scheduler.personal.DatabaseBackupScheduler$DatabaseBackupJob",
+            personalDatabaseBackupScheduler.getDatabaseBackupJob()
+        );
+
         // 初始化所有啟用的 Job
         scheduledJobService.initializeJobs();
 
@@ -125,7 +137,7 @@ public class HelloWorldApplication implements CommandLineRunner {
             imageCleanupScheduler.getImageCleanupJob()
         );
 
-        // 註冊資料庫備份任務執行器
+        // 註冊 Church 系統資料庫備份任務執行器
         churchScheduledJobService.registerJobExecutor(
             "com.example.helloworld.scheduler.church.DatabaseBackupScheduler$DatabaseBackupJob",
             databaseBackupScheduler.getDatabaseBackupJob()

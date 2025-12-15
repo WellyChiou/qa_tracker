@@ -1,8 +1,8 @@
-package com.example.helloworld.controller.church;
+package com.example.helloworld.controller.personal;
 
-import com.example.helloworld.entity.church.SystemSetting;
-import com.example.helloworld.service.church.SystemSettingService;
-import com.example.helloworld.service.church.ConfigurationRefreshService;
+import com.example.helloworld.entity.personal.SystemSetting;
+import com.example.helloworld.service.personal.SystemSettingService;
+import com.example.helloworld.service.personal.ConfigurationRefreshService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
@@ -15,13 +15,13 @@ import java.util.Map;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/church/admin/system-settings")
+@RequestMapping("/api/personal/admin/system-settings")
 @CrossOrigin(origins = "*")
-@Component("churchSystemSettingController")
+@Component("personalSystemSettingController")
 public class SystemSettingController {
 
     @Autowired
-    @Qualifier("churchSystemSettingService")
+    @Qualifier("personalSystemSettingService")
     private SystemSettingService systemSettingService;
 
     @Autowired
@@ -117,15 +117,35 @@ public class SystemSettingController {
     public ResponseEntity<Map<String, Object>> createSetting(@RequestBody SystemSetting setting) {
         try {
             SystemSetting created = systemSettingService.createSetting(setting);
+            // 創建配置後，刷新配置緩存
+            configurationRefreshService.refreshConfig(created.getSettingKey());
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
-            response.put("message", "創建系統參數成功");
+            response.put("message", "創建系統參數成功，配置已刷新");
             response.put("setting", created);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             Map<String, Object> response = new HashMap<>();
             response.put("success", false);
             response.put("message", "創建失敗: " + e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    @DeleteMapping("/{key}")
+    public ResponseEntity<Map<String, Object>> deleteSetting(@PathVariable String key) {
+        try {
+            systemSettingService.deleteSetting(key);
+            // 刪除配置後，刷新配置緩存
+            configurationRefreshService.refreshConfig(key);
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "刪除系統參數成功，配置已刷新");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "刪除失敗: " + e.getMessage());
             return ResponseEntity.badRequest().body(response);
         }
     }

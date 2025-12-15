@@ -1,9 +1,9 @@
 #!/bin/sh
 
 # ============================================
-# 資料庫自動備份腳本（容器內版本）
+# Personal 系統資料庫自動備份腳本（容器內版本）
 # ============================================
-# 此腳本會備份 qa_tracker 和 church 兩個資料庫
+# 此腳本會備份 qa_tracker 資料庫
 # 備份檔案會自動壓縮並根據配置清理舊備份
 # 此版本用於在容器內執行，直接連接 MySQL，不使用 docker compose exec
 # ============================================
@@ -36,6 +36,7 @@ MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-rootpassword}
 BACKUP_DIR=${BACKUP_DIR:-/app/backups}
 RETENTION_DAYS=${RETENTION_DAYS:-7}
 BACKUP_ENABLED=${BACKUP_ENABLED:-true}
+DATABASE_NAME=${DATABASE_NAME:-qa_tracker}
 
 # 檢查是否啟用備份
 if [ "$BACKUP_ENABLED" != "true" ]; then
@@ -49,7 +50,7 @@ mkdir -p "$BACKUP_DIR"
 # 時間戳記
 TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
 
-# 備份函數（根據成功測試案例重寫）
+# 備份函數
 backup_database() {
     local db_name=$1
     # 為每個資料庫創建專屬資料夾
@@ -74,7 +75,7 @@ backup_database() {
         return 1
     fi
     
-    # 根據成功測試案例，使用 2>&1 將錯誤和標準輸出合併
+    # 執行備份
     log_info "執行 mysqldump 命令..."
     mysqldump -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u root -p"$MYSQL_ROOT_PASSWORD" \
         --skip-ssl \
@@ -109,33 +110,6 @@ backup_database() {
             log_error "  備份文件不存在"
         fi
         
-        # 如果備份文件為空或不存在，嘗試直接執行 mysqldump 獲取錯誤訊息
-        if [ ! -f "$backup_file" ] || [ ! -s "$backup_file" ]; then
-            log_error "嘗試直接執行 mysqldump 獲取錯誤訊息..."
-            mysqldump -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u root -p"$MYSQL_ROOT_PASSWORD" \
-                --skip-ssl \
-                --single-transaction \
-                --routines \
-                --triggers \
-                --events \
-                "$db_name" 2>&1 | head -20 | while IFS= read -r line || [ -n "$line" ]; do
-                log_error "  $line"
-            done
-        fi
-        
-        # 測試 MySQL 連接
-        log_error "測試 MySQL 連接..."
-        local test_output=$(mysql -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u root -p"$MYSQL_ROOT_PASSWORD" --skip-ssl -e "SELECT 1;" 2>&1)
-        local mysql_exit_code=$?
-        if [ $mysql_exit_code -eq 0 ]; then
-            log_error "  MySQL 連接測試成功"
-        else
-            log_error "  MySQL 連接測試失敗 (退出碼: $mysql_exit_code):"
-            echo "$test_output" | while IFS= read -r line || [ -n "$line" ]; do
-                log_error "    $line"
-            done
-        fi
-        
         # 刪除失敗的備份文件
         rm -f "$backup_file"
         return 1
@@ -148,9 +122,7 @@ backup_database() {
         return 1
     fi
     
-    # 檢查備份文件是否包含真正的錯誤訊息（排除警告訊息）
-    # mysqldump 的警告訊息（如 "Deprecated"）會寫入備份文件，但這不是錯誤
-    # 真正的錯誤通常包含 "error"、"failed"、"unknown" 等關鍵字
+    # 檢查備份文件是否包含真正的錯誤訊息
     if head -5 "$backup_file" | grep -qiE "mysqldump:.*(error|failed|unknown|access denied|cannot)" && ! head -5 "$backup_file" | grep -qi "Deprecated"; then
         log_error "備份文件包含錯誤訊息:"
         head -20 "$backup_file" | while IFS= read -r line || [ -n "$line" ]; do
@@ -160,7 +132,7 @@ backup_database() {
         return 1
     fi
     
-    # 檢查備份文件是否包含有效的 SQL 內容（至少應該有 CREATE TABLE 或 INSERT INTO）
+    # 檢查備份文件是否包含有效的 SQL 內容
     if ! grep -qiE "(CREATE TABLE|INSERT INTO|DROP TABLE)" "$backup_file"; then
         log_error "備份文件不包含有效的 SQL 內容，可能備份失敗"
         head -20 "$backup_file" | while IFS= read -r line || [ -n "$line" ]; do
@@ -189,17 +161,10 @@ cleanup_old_backups() {
     
     local deleted_count=0
     
-    # 使用 find 命令遞迴清理舊備份（支援子資料夾，Alpine Linux 支援）
-    # 先計算要刪除的檔案數量，然後執行刪除
-        deleted_count=$(find "$BACKUP_DIR" -name "*.sql.gz" -type f -mtime +$RETENTION_DAYS 2>/dev/null | wc -l)
+    # 使用 find 命令遞迴清理舊備份（支援子資料夾）
+    deleted_count=$(find "$BACKUP_DIR" -name "*.sql.gz" -type f -mtime +$RETENTION_DAYS 2>/dev/null | wc -l)
     if [ $deleted_count -gt 0 ]; then
         find "$BACKUP_DIR" -name "*.sql.gz" -type f -mtime +$RETENTION_DAYS -delete 2>/dev/null
-        log_info "已刪除 $deleted_count 個舊備份檔案"
-    else
-        log_info "沒有需要清理的舊備份"
-    fi
-    
-    if [ $deleted_count -gt 0 ]; then
         log_info "已刪除 $deleted_count 個舊備份檔案"
     else
         log_info "沒有需要清理的舊備份"
@@ -209,25 +174,19 @@ cleanup_old_backups() {
 # 主程序
 main() {
     log_info "============================================"
-    log_info "開始資料庫備份流程"
+    log_info "開始 Personal 系統資料庫備份流程"
     log_info "============================================"
     log_info "備份目錄: $BACKUP_DIR"
     log_info "保留天數: $RETENTION_DAYS"
     log_info "MySQL 主機: $MYSQL_HOST:$MYSQL_PORT"
+    log_info "資料庫: $DATABASE_NAME"
     log_info "============================================"
     
     # 備份 qa_tracker 資料庫
-    if backup_database "qa_tracker"; then
-        QA_BACKUP_SUCCESS=true
+    if backup_database "$DATABASE_NAME"; then
+        BACKUP_SUCCESS=true
     else
-        QA_BACKUP_SUCCESS=false
-    fi
-    
-    # 備份 church 資料庫
-    if backup_database "church"; then
-        CHURCH_BACKUP_SUCCESS=true
-    else
-        CHURCH_BACKUP_SUCCESS=false
+        BACKUP_SUCCESS=false
     fi
     
     # 清理舊備份
@@ -235,11 +194,11 @@ main() {
     
     # 總結
     log_info "============================================"
-    if [ "$QA_BACKUP_SUCCESS" = true ] && [ "$CHURCH_BACKUP_SUCCESS" = true ]; then
-        log_info "所有資料庫備份完成"
+    if [ "$BACKUP_SUCCESS" = true ]; then
+        log_info "資料庫備份完成"
         exit 0
     else
-        log_error "部分資料庫備份失敗"
+        log_error "資料庫備份失敗"
         exit 1
     fi
 }

@@ -261,12 +261,17 @@ class ApiService {
     return this.request(`/records/${id}`, { method: 'DELETE' })
   }
 
-  // Config API
+  // Config API（已廢棄，請使用 SystemSettings API）
+  // 使用 /personal/admin/system-settings/{key} 替代
+  // @deprecated 請使用 SystemSettings API
   async getConfig(configKey) {
+    console.warn('getConfig 已廢棄，請使用 SystemSettings API')
     return this.request(`/config/${configKey}`, { showLoading: false })
   }
 
+  // @deprecated 請使用 SystemSettings API
   async saveConfig(configKey, data) {
+    console.warn('saveConfig 已廢棄，請使用 SystemSettings API')
     return this.request(`/config/${configKey}`, {
       method: 'POST',
       body: JSON.stringify(data)
@@ -384,12 +389,17 @@ class ApiService {
     })
   }
 
-  // Config API
+  // Config API（已廢棄，請使用 SystemSettings API）
+  // 使用 /personal/admin/system-settings/{key} 替代
+  // @deprecated 請使用 SystemSettings API
   async getConfig(configKey) {
+    console.warn('getConfig 已廢棄，請使用 SystemSettings API')
     return this.request(`/config/${configKey}`)
   }
 
+  // @deprecated 請使用 SystemSettings API
   async saveConfig(configKey, value, description) {
+    console.warn('saveConfig 已廢棄，請使用 SystemSettings API')
     return this.request(`/config/${configKey}`, {
       method: 'POST',
       body: JSON.stringify({ value, description })
