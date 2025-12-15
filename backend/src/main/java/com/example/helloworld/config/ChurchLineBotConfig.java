@@ -53,19 +53,6 @@ public class ChurchLineBotConfig {
         return getPersonalConfigValue("line.bot.webhook-url", "https://power-light-church.duckdns.org/api/line/webhook");
     }
 
-    /**
-     * 獲取 Personal 系統的每日提醒是否啟用
-     */
-    public boolean isDailyReminderEnabled() {
-        return personalConfigurationRefreshService.getConfigValueAsBoolean("line.bot.daily-reminder-enabled", true);
-    }
-
-    /**
-     * 獲取 Personal 系統的每日提醒時間
-     */
-    public String getDailyReminderTime() {
-        return getPersonalConfigValue("line.bot.daily-reminder-time", "20:00");
-    }
 
     /**
      * 獲取 Personal 系統的管理員用戶 ID
@@ -91,24 +78,4 @@ public class ChurchLineBotConfig {
         return getChurchConfigValue("line.bot.church-group-ids", "");
     }
 
-    /**
-     * 獲取每日提醒的 Cron 表達式
-     * 如果設定了具體時間，則轉換為對應的 Cron；否則使用預設值
-     */
-    public String getDailyReminderCron() {
-        String dailyReminderTime = getDailyReminderTime();
-        if (dailyReminderTime != null && !dailyReminderTime.trim().isEmpty()) {
-            // 將 HH:MM 格式轉換為 Cron 表達式
-            try {
-                String[] parts = dailyReminderTime.split(":");
-                int hour = Integer.parseInt(parts[0]);
-                int minute = Integer.parseInt(parts[1]);
-                return String.format("0 %d %d * * ?", minute, hour);
-            } catch (Exception e) {
-                // 如果解析失敗，使用預設值
-                return "0 0 20 * * ?";
-            }
-        }
-        return "0 0 20 * * ?";
-    }
 }

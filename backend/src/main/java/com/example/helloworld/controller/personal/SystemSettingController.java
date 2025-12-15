@@ -199,8 +199,6 @@ public class SystemSettingController {
         
         addDefaultIfMissing(existingKeys, "line.bot.channel-token", "", "Channel Access Token", "linebot", "string");
         addDefaultIfMissing(existingKeys, "line.bot.channel-secret", "", "Channel Secret", "linebot", "string");
-        addDefaultIfMissing(existingKeys, "line.bot.daily-reminder-enabled", "true", "啟用每日記帳提醒", "linebot", "boolean");
-        addDefaultIfMissing(existingKeys, "line.bot.daily-reminder-time", "20:00", "每日提醒時間 (HH:mm)", "linebot", "string");
         
         addDefaultIfMissing(existingKeys, "jwt.secret", "F/cPluFKK3/44X5iX9GdY6P7Ye+BIDdBTw6uljBTl9o=", "JWT Secret", "jwt", "string");
         addDefaultIfMissing(existingKeys, "jwt.access-token-expiration", "3600000", "Access Token 過期時間 (ms)", "jwt", "number");

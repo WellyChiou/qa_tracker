@@ -432,7 +432,7 @@ const loadLineBotInfo = async () => {
   try {
     // 嘗試獲取 QR Code URL
     try {
-      const qrCodeResponse = await api.request('/personal/admin/system-settings/line.bot.qr-code-url')
+      const qrCodeResponse = await api.request('/system-settings/line.bot.qr-code-url')
       if (qrCodeResponse?.setting?.settingValue) {
         lineBotQrCodeUrl.value = qrCodeResponse.setting.settingValue
       }
@@ -442,7 +442,7 @@ const loadLineBotInfo = async () => {
 
     // 嘗試獲取加入連結（優先）
     try {
-      const joinUrlResponse = await api.request('/personal/admin/system-settings/line.bot.join-url')
+      const joinUrlResponse = await api.request('/system-settings/line.bot.join-url')
       if (joinUrlResponse?.setting?.settingValue) {
         lineBotJoinUrl.value = joinUrlResponse.setting.settingValue
       }
@@ -453,7 +453,7 @@ const loadLineBotInfo = async () => {
     // 嘗試獲取 Bot ID（如果沒有加入連結）
     if (!lineBotJoinUrl.value) {
       try {
-        const botIdResponse = await api.request('/personal/admin/system-settings/line.bot.id')
+        const botIdResponse = await api.request('/system-settings/line.bot.id')
         if (botIdResponse?.setting?.settingValue) {
           lineBotId.value = botIdResponse.setting.settingValue
         }

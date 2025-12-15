@@ -41,7 +41,19 @@
             </button>
           </div>
           <div v-for="category in categories" :key="category" class="category-group">
-            <h3 class="category-title">{{ getCategoryName(category) }}</h3>
+            <div class="category-header">
+              <h3 class="category-title">{{ getCategoryName(category) }}</h3>
+              
+              <!-- 只有在 linebot 分類時顯示測試按鈕 -->
+              <button 
+                v-if="category === 'linebot'"
+                @click="showTestMessageModal = true"
+                class="btn btn-sm btn-primary ms-3"
+              >
+                <i class="fas fa-paper-plane me-1"></i> 測試群組訊息
+              </button>
+            </div>
+
             <div class="settings-grid">
               <div 
                 v-for="setting in getSettingsByCategory(category)" 
@@ -103,7 +115,7 @@
       </div>
 
        <!-- 新增參數對話框 (From Remote) -->
-       <div v-if="showCreateModal" class="modal-overlay" @click.self="showCreateModal = false">
+      <div v-if="showCreateModal" class="modal-overlay" @click.self="showCreateModal = false">
         <div class="modal-content">
           <h3>新增系統參數</h3>
           <form @submit.prevent="createSetting">
@@ -148,6 +160,31 @@
                 {{ creatingSetting ? '創建中...' : '創建' }}
               </button>
               <button type="button" @click="showCreateModal = false" class="btn btn-secondary">取消</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- 測試訊息對話框 -->
+      <div v-if="showTestMessageModal" class="modal-overlay" @click.self="showTestMessageModal = false">
+        <div class="modal-content">
+          <h3>發送測試群組訊息</h3>
+          <form @submit.prevent="sendTestMessage">
+            <div class="form-group">
+              <label>群組 ID (Group ID) *</label>
+              <input v-model="testMessage.groupId" type="text" required class="form-input" placeholder="輸入 LINE 群組 ID (C...)" />
+              <small class="form-text text-muted">可以從 LINE Bot webhook 日誌中找到群組 ID</small>
+            </div>
+            <div class="form-group">
+              <label>訊息內容 *</label>
+              <textarea v-model="testMessage.message" required class="form-input" rows="4" placeholder="輸入要發送的測試訊息..."></textarea>
+            </div>
+            <div class="modal-actions">
+              <button type="submit" :disabled="sendingTestMessage" class="btn btn-primary">
+                <i class="fas fa-paper-plane me-2"></i>
+                {{ sendingTestMessage ? '發送中...' : '發送' }}
+              </button>
+              <button type="button" @click="showTestMessageModal = false" class="btn btn-secondary">取消</button>
             </div>
           </form>
         </div>
@@ -238,6 +275,14 @@ const newSetting = ref({
   isEditable: true
 })
 
+// Test Message Modal
+const showTestMessageModal = ref(false)
+const sendingTestMessage = ref(false)
+const testMessage = ref({
+  groupId: 'C421bdbec9e301e1d93fe9aceef84243c',
+  message: ''
+})
+
 const showNotification = (message, type = 'success') => {
   notification.value = { show: true, message, type }
   setTimeout(() => { notification.value.show = false }, 3000)
@@ -324,6 +369,45 @@ const createSetting = async () => {
     showNotification('創建失敗: ' + err.message, 'error')
   } finally {
     creatingSetting.value = false
+  }
+}
+
+const sendTestMessage = async () => {
+  if (!testMessage.value.groupId || !testMessage.value.message) {
+    showNotification('請填寫群組 ID 和訊息內容', 'error')
+    return
+  }
+
+  sendingTestMessage.value = true
+  
+  try {
+    // 調用後端 API 發送測試訊息
+    // 注意：這裡假設後端有對應的 API，如果沒有需要手動實現 fetch
+    const token = localStorage.getItem('personal_access_token')
+    const headers = {
+      'Content-Type': 'application/json'
+    }
+    if (token) headers['Authorization'] = `Bearer ${token}`
+    
+    const response = await fetch('/api/personal/line/test/group-push', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(testMessage.value)
+    })
+    
+    const data = await response.json()
+    
+    if (response.ok && data.success) {
+      showNotification('測試訊息發送成功', 'success')
+      showTestMessageModal.value = false
+      testMessage.value.message = '' // 清空訊息，保留 Group ID 方便下次測試
+    } else {
+      showNotification(data.message || '發送失敗', 'error')
+    }
+  } catch (err) {
+    showNotification('發送失敗: ' + err.message, 'error')
+  } finally {
+    sendingTestMessage.value = false
   }
 }
 
@@ -565,12 +649,42 @@ onMounted(() => {
   margin-bottom: 2rem;
 }
 
-.category-title {
-  font-size: 1.3rem;
-  color: #333;
+.form-text {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
+  color: #6c757d;
+}
+
+.text-muted {
+  color: #6c757d;
+}
+
+.ms-3 {
+  margin-left: 1rem;
+}
+
+.me-1 {
+  margin-right: 0.25rem;
+}
+
+.category-header {
+  display: flex;
+  align-items: center;
   margin-bottom: 1rem;
   padding-bottom: 0.5rem;
   border-bottom: 1px solid #e0e0e0;
+}
+
+.category-header .category-title {
+  margin-bottom: 0;
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.category-title {
+  font-size: 1.3rem;
+  color: #333;
 }
 
 .settings-grid {

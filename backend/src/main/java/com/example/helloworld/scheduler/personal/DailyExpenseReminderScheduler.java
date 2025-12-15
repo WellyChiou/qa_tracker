@@ -1,6 +1,5 @@
 package com.example.helloworld.scheduler.personal;
 
-import com.example.helloworld.config.PersonalLineBotConfig;
 import com.example.helloworld.entity.personal.Expense;
 import com.example.helloworld.entity.personal.User;
 import com.example.helloworld.repository.personal.UserRepository;
@@ -19,8 +18,6 @@ public class DailyExpenseReminderScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(DailyExpenseReminderScheduler.class);
 
-    @Autowired
-    private PersonalLineBotConfig lineBotConfig;
 
     @Autowired
     private LineBotService lineBotService;
@@ -36,11 +33,6 @@ public class DailyExpenseReminderScheduler {
      * 通過動態排程器系統調度執行
      */
     public void sendDailyExpenseReminder() {
-        if (!lineBotConfig.isDailyReminderEnabled()) {
-            log.info("⏰ 每日費用提醒功能已關閉");
-            return;
-        }
-
         log.info("⏰ 開始執行每日費用記錄提醒任務...");
 
         try {
@@ -135,11 +127,6 @@ public class DailyExpenseReminderScheduler {
      * 通過動態排程器系統調度執行
      */
     public void checkAndNotifyDailyExpense() {
-        if (!lineBotConfig.isDailyReminderEnabled()) {
-            log.info("⏰ 每日費用提醒功能已關閉");
-            return;
-        }
-
         log.info("⏰ 開始執行每日費用檢查任務（晚上 9 點）...");
 
         try {

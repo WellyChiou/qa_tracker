@@ -244,6 +244,46 @@ public class LineBotController {
     }
 
     /**
+     * 手動發送群組訊息測試端點
+     * 支持 JSON body: { "groupId": "xxx", "message": "xxx" }
+     */
+    @PostMapping("/test/group-push")
+    public ResponseEntity<Map<String, Object>> testGroupPushMessage(@RequestBody Map<String, String> body) {
+        try {
+            String groupId = body.get("groupId");
+            String message = body.get("message");
+
+            if (groupId == null || groupId.isEmpty()) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("success", false);
+                errorResponse.put("message", "groupId 參數不能為空");
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
+            if (message == null || message.isEmpty()) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("success", false);
+                errorResponse.put("message", "message 參數不能為空");
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
+
+            // 直接調用 LineBotService 發送訊息
+            // 注意：這裡直接使用 lineBotService，它是 Personal 系統的服務
+            // 如果是要發送給教會群組，應該使用 ChurchLineBotService，但這裡是 Personal 系統的 API
+            lineBotService.sendPushMessage(groupId, message);
+            
+            Map<String, Object> successResponse = new HashMap<>();
+            successResponse.put("success", true);
+            successResponse.put("message", "群組測試訊息已發送");
+            return ResponseEntity.ok(successResponse);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "發送失敗: " + e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    /**
      * 判斷是否為教會群組
      * 
      * 檢查方式：

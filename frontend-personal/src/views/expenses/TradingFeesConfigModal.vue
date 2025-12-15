@@ -96,7 +96,7 @@ const config = ref({
 
 const loadConfig = async () => {
   try {
-    const response = await apiService.request('/personal/admin/system-settings/trading.fees')
+    const response = await apiService.request('/system-settings/trading.fees')
     if (response && response.setting && response.setting.settingValue) {
       const parsed = typeof response.setting.settingValue === 'string' 
         ? JSON.parse(response.setting.settingValue) 
@@ -118,7 +118,7 @@ const loadConfig = async () => {
 const saveConfig = async () => {
   saving.value = true
   try {
-    await apiService.request('/personal/admin/system-settings/trading.fees', {
+    await apiService.request('/system-settings/trading.fees', {
       method: 'PUT',
       body: JSON.stringify({
         settingValue: JSON.stringify(config.value),
