@@ -5,20 +5,15 @@
 ## 📖 快速導航
 
 ### 🚀 [部署指南](./deployment/)
-- [快速開始](./deployment/QUICK_START.md) - 快速部署指南
+- [快速開始](./deployment/QUICK_START.md) ⭐ - 快速部署指南（推薦）
+- [一鍵部署（含預防機制）](./deployment/DEPLOYMENT_WITH_PREVENTION.md) - 自動預防機制的部署說明
+- [HTTPS 完整指南](./deployment/HTTPS_COMPLETE_GUIDE.md) ⭐ - HTTPS 配置完整指南（推薦）
 - [SSH 免密碼登入](./deployment/SSH_PASSWORDLESS_LOGIN.md) - 設置 SSH 免密碼登入到虛擬主機
 - [Windows 部署](./deployment/DEPLOY_WINDOWS.md) - Windows 環境部署說明
-- [虛擬主機部署](./deployment/DEPLOY.md) - 詳細的虛擬主機部署指南
-- [一鍵部署（含預防機制）](./deployment/DEPLOYMENT_WITH_PREVENTION.md) - 自動預防機制的部署說明
 - [Docker Compose 安裝](./deployment/INSTALL_DOCKER_COMPOSE.md) - Docker Compose 安裝指南
-- [部署問題修復](./deployment/DEPLOY_FIX.md) - 常見部署問題解決方案
-- [部署狀態](./deployment/DEPLOYMENT_STATUS.md) - 部署狀態檢查
 
 ### 👥 [系統管理](./admin/)
-- [系統管理指南](./admin/ADMIN_SYSTEM_GUIDE.md) - 完整的系統管理功能說明
-- [快速參考](./admin/ADMIN_QUICK_REFERENCE.md) - 管理功能快速參考
-- [權限管理](./admin/ADMIN_PERMISSIONS.md) - 權限系統詳細說明
-- [權限系統架構](./admin/權限系統架構說明.md) - 權限系統架構圖和說明
+- [系統管理指南](./admin/ADMIN_SYSTEM_GUIDE.md) ⭐ - 完整的系統管理功能說明（推薦）
 - [動態 URL 權限](./admin/DYNAMIC_URL_PERMISSIONS.md) - URL 權限管理說明
 
 ### 💻 [開發指南](./development/)

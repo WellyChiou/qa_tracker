@@ -261,10 +261,55 @@ fi
 3. 檢查日誌文件是否可寫入
 4. 手動執行腳本查看錯誤信息
 
+## 監控系統架構
+
+本專案包含一套「前端自動監控 + 診斷 + 修復」機制，用於確保三個前端服務在異常（白屏、容器掛掉、檔案缺失）時能自動恢復。
+
+### 三層腳本架構
+
+```
+monitor-frontend.sh   （入口，cron 會跑）
+        ↓
+diagnose-frontend.sh  （只負責檢查，不改任何東西）
+        ↓
+fix-frontend.sh       （只在診斷失敗時才會被呼叫）
+```
+
+**核心原則**：
+- 平常只檢查，不動服務
+- 有問題才修
+- 只修壞掉的那一個前端
+
+### 監控的前端服務
+
+系統目前會監控 **三個前端服務**（對齊 docker-compose.yml）：
+
+| Service 名稱 | Container 名稱 |
+|--------------|----------------|
+| frontend-personal | vue_personal |
+| frontend-church | vue_frontend_church |
+| frontend-church-admin | vue_frontend_church_admin |
+
+### 各腳本用途說明
+
+1. **monitor-frontend.sh（監控入口）**
+   - 由 cron 定期執行
+   - 控制整個流程，決定是否需要修復
+   - 只修異常的前端，不影響其他服務
+
+2. **diagnose-frontend.sh（診斷工具）**
+   - 僅做檢查，不修改系統
+   - 支援全量與指定前端檢查
+   - 檢查 Docker、容器狀態、檔案完整性、HTTP 回應
+
+3. **fix-frontend.sh（修復工具）**
+   - 僅在診斷失敗時執行
+   - 支援修復全部或指定前端
+   - 非互動環境不會卡住
+
 ## 相關文檔
 
 - [前端故障排除指南](./FRONTEND_TROUBLESHOOTING.md)
-- [快速修復指南](../FRONTEND_QUICK_FIX.md)
 
 ## 總結
 
