@@ -1,9 +1,14 @@
 <template>
-  <AdminLayout>
-    <div class="admin-maintenance">
-      <div class="page-header">
-        <h2>系統維護</h2>
+  <div class="admin-page">
+    <TopNavbar />
+    <header class="header">
+      <div class="header-top">
+        <h1>🔧 系統維護</h1>
       </div>
+    </header>
+
+    <main class="main-content">
+      <div class="admin-maintenance">
 
       <!-- 標籤頁 -->
       <div class="tabs">
@@ -188,17 +193,17 @@
         </div>
       </div>
 
+      </div>
     </div>
-    <Notification ref="notificationRef" />
-  </AdminLayout>
+    </main>
+  </div>
 </template>
 
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import AdminLayout from '@/components/AdminLayout.vue'
-import Notification from '@/components/Notification.vue'
-import { apiRequest } from '@/utils/api'
+import TopNavbar from '@/components/TopNavbar.vue'
+import { apiService } from '@/composables/useApi'
 
 const route = useRoute()
 const activeTab = ref(route.query.tab || 'settings')
@@ -219,13 +224,14 @@ const newSetting = ref({
   isEditable: true
 })
 
-// 通知組件引用
-const notificationRef = ref(null)
-
-// 顯示通知的輔助函數
-const showNotification = (message, type = 'info', duration = 3000) => {
-  if (notificationRef.value) {
-    notificationRef.value.showNotification(message, type, duration)
+// 顯示通知的輔助函數（使用簡單的 alert）
+const showNotification = (message, type = 'info') => {
+  if (type === 'error') {
+    alert('錯誤: ' + message)
+  } else if (type === 'success') {
+    alert('成功: ' + message)
+  } else {
+    alert(message)
   }
 }
 
@@ -250,15 +256,10 @@ const getSettingsByCategory = (category) => {
 
 const loadSettings = async () => {
   try {
-    const response = await apiRequest('/personal/admin/system-settings', {
-      method: 'GET',
-      credentials: 'include'
+    const data = await apiService.request('/personal/admin/system-settings', {
+      method: 'GET'
     })
-    
-    if (response.ok) {
-      const data = await response.json()
-      settings.value = data.settings || []
-    }
+    settings.value = data.settings || []
   } catch (err) {
     showNotification('載入系統參數失敗: ' + err.message, 'error')
   }
@@ -271,24 +272,18 @@ const saveSetting = async (setting) => {
   savedSettings.value.delete(setting.settingKey)
   
   try {
-    const response = await apiRequest(`/personal/admin/system-settings/${setting.settingKey}`, {
+    await apiService.request(`/personal/admin/system-settings/${setting.settingKey}`, {
       method: 'PUT',
       body: JSON.stringify({
         settingValue: setting.settingValue
-      }),
-      credentials: 'include'
+      })
     })
     
-    if (response.ok) {
-      savedSettings.value.add(setting.settingKey)
-      setTimeout(() => {
-        savedSettings.value.delete(setting.settingKey)
-      }, 2000)
-      showNotification('設定已儲存', 'success')
-    } else {
-      const data = await response.json()
-      showNotification(data.message || '儲存失敗', 'error')
-    }
+    savedSettings.value.add(setting.settingKey)
+    setTimeout(() => {
+      savedSettings.value.delete(setting.settingKey)
+    }, 2000)
+    showNotification('設定已儲存', 'success')
   } catch (err) {
     showNotification('儲存失敗: ' + err.message, 'error')
   } finally {
@@ -300,21 +295,14 @@ const refreshConfig = async () => {
   refreshingConfig.value = true
   
   try {
-    const response = await apiRequest('/personal/admin/system-settings/refresh', {
-      method: 'POST',
-      credentials: 'include'
+    const data = await apiService.request('/personal/admin/system-settings/refresh', {
+      method: 'POST'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      if (data.success) {
-        showNotification('配置刷新成功，新的配置已生效', 'success')
-        loadSettings()
-      } else {
-        showNotification(data.message || '配置刷新失敗', 'error')
-      }
+    if (data.success) {
+      showNotification('配置刷新成功，新的配置已生效', 'success')
+      loadSettings()
     } else {
-      const data = await response.json()
       showNotification(data.message || '配置刷新失敗', 'error')
     }
   } catch (err) {
@@ -326,15 +314,10 @@ const refreshConfig = async () => {
 
 const loadBackups = async () => {
   try {
-    const response = await apiRequest('/personal/admin/backups', {
-      method: 'GET',
-      credentials: 'include'
+    const data = await apiService.request('/personal/admin/backups', {
+      method: 'GET'
     })
-    
-    if (response.ok) {
-      const data = await response.json()
-      backups.value = data.backups || []
-    }
+    backups.value = data.backups || []
   } catch (err) {
     showNotification('載入備份列表失敗: ' + err.message, 'error')
   }
@@ -348,21 +331,14 @@ const createBackup = async () => {
   creatingBackup.value = true
   
   try {
-    const response = await apiRequest('/personal/admin/backups/create', {
-      method: 'POST',
-      credentials: 'include'
+    const data = await apiService.request('/personal/admin/backups/create', {
+      method: 'POST'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      if (data.success) {
-        showNotification('備份創建成功', 'success')
-        loadBackups()
-      } else {
-        showNotification(data.message || '備份創建失敗', 'error')
-      }
+    if (data.success) {
+      showNotification('備份創建成功', 'success')
+      loadBackups()
     } else {
-      const data = await response.json()
       showNotification(data.message || '備份創建失敗', 'error')
     }
   } catch (err) {
@@ -376,8 +352,15 @@ const downloadBackup = async (relativePath) => {
   try {
     // 從相對路徑中提取檔案名稱
     const filename = relativePath.split('/').pop() || relativePath
-    const response = await apiRequest(`/personal/admin/backups/download?path=${encodeURIComponent(relativePath)}`, {
+    // 下載需要使用 fetch 直接處理 blob
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
+      (import.meta.env.DEV 
+        ? `${window.location.protocol}//${window.location.hostname}:8080/api`
+        : `${window.location.protocol}//${window.location.hostname}/api`)
+    const token = localStorage.getItem('personal_access_token')
+    const response = await fetch(`${API_BASE_URL}/personal/admin/backups/download?path=${encodeURIComponent(relativePath)}`, {
       method: 'GET',
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {},
       credentials: 'include'
     })
     
@@ -406,19 +389,15 @@ const deleteBackup = async (relativePath) => {
   }
   
   try {
-    const response = await apiRequest(`/personal/admin/backups/delete?path=${encodeURIComponent(relativePath)}`, {
-      method: 'DELETE',
-      credentials: 'include'
+    const data = await apiService.request(`/personal/admin/backups/delete?path=${encodeURIComponent(relativePath)}`, {
+      method: 'DELETE'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      if (data.success) {
-        showNotification('備份檔案刪除成功', 'success')
-        loadBackups()
-      } else {
-        showNotification(data.message || '刪除失敗', 'error')
-      }
+    if (data.success) {
+      showNotification('備份檔案刪除成功', 'success')
+      loadBackups()
+    } else {
+      showNotification(data.message || '刪除失敗', 'error')
     }
   } catch (err) {
     showNotification('刪除失敗: ' + err.message, 'error')
@@ -441,32 +420,25 @@ const createSetting = async () => {
   creatingSetting.value = true
   
   try {
-    const response = await apiRequest('/personal/admin/system-settings', {
+    const data = await apiService.request('/personal/admin/system-settings', {
       method: 'POST',
-      body: JSON.stringify(newSetting.value),
-      credentials: 'include'
+      body: JSON.stringify(newSetting.value)
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      if (data.success) {
-        showNotification('參數創建成功', 'success')
-        showCreateModal.value = false
-        // 重置表單
-        newSetting.value = {
-          settingKey: '',
-          settingValue: '',
-          settingType: 'string',
-          category: 'system',
-          description: '',
-          isEditable: true
-        }
-        loadSettings()
-      } else {
-        showNotification(data.message || '創建失敗', 'error')
+    if (data.success) {
+      showNotification('參數創建成功', 'success')
+      showCreateModal.value = false
+      // 重置表單
+      newSetting.value = {
+        settingKey: '',
+        settingValue: '',
+        settingType: 'string',
+        category: 'system',
+        description: '',
+        isEditable: true
       }
+      loadSettings()
     } else {
-      const data = await response.json()
       showNotification(data.message || '創建失敗', 'error')
     }
   } catch (err) {
@@ -482,21 +454,14 @@ const deleteSetting = async (settingKey) => {
   }
   
   try {
-    const response = await apiRequest(`/personal/admin/system-settings/${settingKey}`, {
-      method: 'DELETE',
-      credentials: 'include'
+    const data = await apiService.request(`/personal/admin/system-settings/${settingKey}`, {
+      method: 'DELETE'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      if (data.success) {
-        showNotification('參數刪除成功', 'success')
-        loadSettings()
-      } else {
-        showNotification(data.message || '刪除失敗', 'error')
-      }
+    if (data.success) {
+      showNotification('參數刪除成功', 'success')
+      loadSettings()
     } else {
-      const data = await response.json()
       showNotification(data.message || '刪除失敗', 'error')
     }
   } catch (err) {
