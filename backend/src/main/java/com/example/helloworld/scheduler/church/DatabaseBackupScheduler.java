@@ -13,7 +13,7 @@ import java.io.InputStreamReader;
  * 資料庫備份定時任務
  * 自動備份 qa_tracker 和 church 資料庫
  */
-@Component
+@Component("churchDatabaseBackupScheduler")
 public class DatabaseBackupScheduler {
     private static final Logger log = LoggerFactory.getLogger(DatabaseBackupScheduler.class);
 
@@ -70,8 +70,7 @@ public class DatabaseBackupScheduler {
             }
             int retentionDays = systemSettingService.getSettingValueAsInt("backup.retention_days", 7);
             
-            // 執行備份腳本（容器內版本）
-            // 備份腳本已複製到容器內的 /app/backup-database.sh
+            // 執行備份腳本（容器內版本），傳入 'church' 參數只備份教會資料庫
             String backupScript = "/app/backup-database.sh";
             
             // 檢查腳本是否存在
@@ -84,7 +83,7 @@ public class DatabaseBackupScheduler {
                 return;
             }
             
-            ProcessBuilder processBuilder = new ProcessBuilder("/bin/sh", backupScript);
+            ProcessBuilder processBuilder = new ProcessBuilder("/bin/sh", backupScript, "church");
             // 不重定向錯誤流，分別讀取 stdout 和 stderr
             processBuilder.redirectErrorStream(false);
             // 設置環境變數（容器內版本使用這些環境變數）
@@ -160,12 +159,15 @@ public class DatabaseBackupScheduler {
                 if (stdoutOutput.length() > 0) {
                     log.error("標準輸出:\n{}", stdoutOutput.toString());
                 }
+                // 拋出異常以標記任務失敗
+                throw new RuntimeException("備份執行失敗，退出碼: " + exitCode);
             }
         } catch (Exception e) {
             String errorMsg = "備份執行失敗: " + e.getMessage();
             log.error("❌ [資料庫備份] 執行失敗: {}", e.getMessage(), e);
             JobResultHolder.setResult(errorMsg);
-            // 不拋出異常，只記錄錯誤
+            // 重新拋出異常，確保 Job 狀態標記為 FAILED
+            throw new RuntimeException("備份執行失敗: " + e.getMessage(), e);
         }
     }
 

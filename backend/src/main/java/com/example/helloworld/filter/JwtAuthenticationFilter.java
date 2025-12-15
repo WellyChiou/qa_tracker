@@ -3,7 +3,8 @@ package com.example.helloworld.filter;
 import com.example.helloworld.service.personal.CustomUserDetailsService;
 import com.example.helloworld.service.personal.TokenBlacklistService;
 import com.example.helloworld.service.church.ChurchUserDetailsService;
-import com.example.helloworld.util.JwtUtil;
+import com.example.helloworld.util.ChurchJwtUtil;
+import com.example.helloworld.util.PersonalJwtUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,7 +23,10 @@ import java.io.IOException;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Autowired
-    private JwtUtil jwtUtil;
+    private ChurchJwtUtil churchJwtUtil;
+
+    @Autowired
+    private PersonalJwtUtil personalJwtUtil;
 
     @Autowired
     private CustomUserDetailsService personalUserDetailsService;
@@ -42,14 +46,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         
         // 只處理需要 JWT 認證的路徑
         boolean isChurchPath = requestPath.startsWith("/api/church/");
-        boolean isPersonalPath = requestPath.startsWith("/api/") && 
+        boolean isPersonalPath = requestPath.startsWith("/api/personal/") && 
                                  !isChurchPath &&
-                                 !requestPath.startsWith("/api/auth/login") &&
-                                 !requestPath.startsWith("/api/auth/register") &&
-                                 !requestPath.startsWith("/api/public/") &&
-                                 !requestPath.startsWith("/api/hello") &&
-                                 !requestPath.startsWith("/api/utils/") &&
-                                 !requestPath.startsWith("/api/line/");
+                                 !requestPath.startsWith("/api/personal/auth/login") &&
+                                 !requestPath.startsWith("/api/personal/auth/register") &&
+                                 !requestPath.startsWith("/api/personal/line/");
         
         // 如果路徑不需要認證，直接放行
         if (!isChurchPath && !isPersonalPath) {
@@ -65,8 +66,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             jwt = authHeader.substring(7);
             try {
-                username = jwtUtil.extractUsername(jwt);
-                system = jwtUtil.extractSystem(jwt);
+                if (isChurchPath) {
+                    username = churchJwtUtil.extractUsername(jwt);
+                    system = churchJwtUtil.extractSystem(jwt);
+                } else {
+                    username = personalJwtUtil.extractUsername(jwt);
+                    system = personalJwtUtil.extractSystem(jwt);
+                }
             } catch (Exception e) {
                 // Token 無效，繼續處理（讓後續的 Security Filter 處理）
             }
@@ -84,15 +90,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             
             if (system != null && system.equals(expectedSystem)) {
                 // 只接受 Access Token（不接受 Refresh Token）
-                String tokenType = jwtUtil.extractTokenType(jwt);
+                String tokenType = isChurchPath ? churchJwtUtil.extractTokenType(jwt) : personalJwtUtil.extractTokenType(jwt);
                 if (!"access".equals(tokenType)) {
                     filterChain.doFilter(request, response);
                     return;
                 }
                 
                 Boolean isValid = isChurchPath 
-                    ? jwtUtil.validateChurchAccessToken(jwt, username)
-                    : jwtUtil.validatePersonalAccessToken(jwt, username);
+                    ? churchJwtUtil.validateChurchAccessToken(jwt, username)
+                    : personalJwtUtil.validatePersonalAccessToken(jwt, username);
                 
                 if (isValid) {
                     try {

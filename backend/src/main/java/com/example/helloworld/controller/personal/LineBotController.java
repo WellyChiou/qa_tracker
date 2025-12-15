@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/line")
+@RequestMapping("/api/personal/line")
 @CrossOrigin(origins = "*")
 public class LineBotController {
     

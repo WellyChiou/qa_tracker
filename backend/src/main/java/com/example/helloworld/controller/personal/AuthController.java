@@ -4,7 +4,7 @@ import com.example.helloworld.entity.personal.User;
 import com.example.helloworld.repository.personal.UserRepository;
 import com.example.helloworld.service.personal.MenuService;
 import com.example.helloworld.service.personal.TokenBlacklistService;
-import com.example.helloworld.util.JwtUtil;
+import com.example.helloworld.util.PersonalJwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -21,7 +21,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/api/personal/auth")
 @CrossOrigin(origins = "*")
 public class AuthController {
 
@@ -39,7 +39,7 @@ public class AuthController {
     private MenuService menuService;
 
     @Autowired
-    private JwtUtil jwtUtil;
+    private PersonalJwtUtil jwtUtil;
 
     @Autowired
     private TokenBlacklistService tokenBlacklistService;

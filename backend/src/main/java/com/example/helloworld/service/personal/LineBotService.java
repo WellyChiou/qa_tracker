@@ -1,6 +1,6 @@
 package com.example.helloworld.service.personal;
 
-import com.example.helloworld.config.LineBotConfig;
+import com.example.helloworld.config.PersonalLineBotConfig;
 import com.example.helloworld.entity.personal.Expense;
 import com.example.helloworld.entity.personal.LineGroup;
 import com.example.helloworld.entity.personal.User;
@@ -36,7 +36,7 @@ public class LineBotService {
     private final RestTemplate restTemplate = new RestTemplate();
 
     @Autowired
-    private LineBotConfig lineBotConfig;
+    private PersonalLineBotConfig lineBotConfig;
 
     @Autowired
     private ExpenseService expenseService;

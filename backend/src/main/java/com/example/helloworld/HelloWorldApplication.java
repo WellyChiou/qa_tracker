@@ -1,6 +1,6 @@
 package com.example.helloworld;
 
-import com.example.helloworld.config.LineBotConfig;
+import com.example.helloworld.config.ChurchLineBotConfig;
 import com.example.helloworld.entity.personal.ScheduledJob;
 import com.example.helloworld.repository.personal.ScheduledJobRepository;
 import com.example.helloworld.scheduler.personal.DailyExpenseReminderScheduler;
@@ -36,7 +36,7 @@ public class HelloWorldApplication implements CommandLineRunner {
     private ScheduledJobRepository scheduledJobRepository;
 
     @Autowired
-    private LineBotConfig lineBotConfig;
+    private ChurchLineBotConfig lineBotConfig;
 
     @Autowired
     private ExchangeRateScheduler exchangeRateScheduler;
@@ -60,6 +60,11 @@ public class HelloWorldApplication implements CommandLineRunner {
     private ImageCleanupScheduler imageCleanupScheduler;
 
     @Autowired
+    @org.springframework.beans.factory.annotation.Qualifier("personalDatabaseBackupScheduler")
+    private com.example.helloworld.scheduler.personal.DatabaseBackupScheduler personalDatabaseBackupScheduler;
+
+    @Autowired
+    @org.springframework.beans.factory.annotation.Qualifier("churchDatabaseBackupScheduler")
     private DatabaseBackupScheduler databaseBackupScheduler;
 
     @Autowired
@@ -125,10 +130,23 @@ public class HelloWorldApplication implements CommandLineRunner {
             imageCleanupScheduler.getImageCleanupJob()
         );
 
-        // 註冊資料庫備份任務執行器
+        // 註冊資料庫備份任務執行器（教會網站）
         churchScheduledJobService.registerJobExecutor(
             "com.example.helloworld.scheduler.church.DatabaseBackupScheduler$DatabaseBackupJob",
             databaseBackupScheduler.getDatabaseBackupJob()
+        );
+
+        // 註冊資料庫備份任務執行器（個人網站）
+        // 使用獨立的 Scheduler，只備份 qa_tracker
+        scheduledJobService.registerJobExecutor(
+            "com.example.helloworld.scheduler.personal.DatabaseBackupScheduler$DatabaseBackupJob",
+            personalDatabaseBackupScheduler.getDatabaseBackupJob()
+        );
+        
+        // 為了相容舊的 Job Class 名稱（如果有指向 church 的）
+        scheduledJobService.registerJobExecutor(
+            "com.example.helloworld.scheduler.church.DatabaseBackupScheduler$DatabaseBackupJob",
+            personalDatabaseBackupScheduler.getDatabaseBackupJob()
         );
 
         // 初始化所有啟用的教會 Job

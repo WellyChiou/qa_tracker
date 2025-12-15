@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/permissions")
+@RequestMapping("/api/personal/permissions")
 @CrossOrigin(origins = "*")
 public class PermissionController {
 

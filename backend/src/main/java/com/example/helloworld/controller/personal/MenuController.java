@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/menus")
+@RequestMapping("/api/personal/menus")
 @CrossOrigin(origins = "*")
 public class MenuController {
 

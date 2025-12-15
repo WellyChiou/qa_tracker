@@ -1,6 +1,6 @@
 package com.example.helloworld.scheduler.personal;
 
-import com.example.helloworld.config.LineBotConfig;
+import com.example.helloworld.config.PersonalLineBotConfig;
 import com.example.helloworld.entity.personal.Expense;
 import com.example.helloworld.entity.personal.User;
 import com.example.helloworld.repository.personal.UserRepository;
@@ -9,7 +9,6 @@ import com.example.helloworld.service.personal.LineBotService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -21,7 +20,7 @@ public class DailyExpenseReminderScheduler {
     private static final Logger log = LoggerFactory.getLogger(DailyExpenseReminderScheduler.class);
 
     @Autowired
-    private LineBotConfig lineBotConfig;
+    private PersonalLineBotConfig lineBotConfig;
 
     @Autowired
     private LineBotService lineBotService;
@@ -54,6 +53,7 @@ public class DailyExpenseReminderScheduler {
 
             LocalDate today = LocalDate.now();
             int reminderCount = 0;
+            int errorCount = 0;
 
             for (User user : lineUsers) {
                 try {
@@ -67,14 +67,22 @@ public class DailyExpenseReminderScheduler {
                         log.info("✅ 用戶 {} 今日已記錄費用，跳過提醒", user.getDisplayName());
                     }
                 } catch (Exception e) {
+                    errorCount++;
                     log.error("❌ 處理用戶 {} 的提醒時發生錯誤", user.getDisplayName(), e);
                 }
             }
 
-            log.info("✅ 每日費用提醒任務完成，共發送 {} 個提醒", reminderCount);
+            log.info("✅ 每日費用提醒任務完成，共發送 {} 個提醒，{} 個錯誤", reminderCount, errorCount);
+            
+            // 如果有錯誤，拋出異常以便 JobExecution 記錄失敗狀態
+            if (errorCount > 0) {
+                throw new RuntimeException("每日費用提醒任務部分失敗，共 " + errorCount + " 個錯誤");
+            }
 
         } catch (Exception e) {
             log.error("❌ 執行每日費用提醒任務時發生錯誤", e);
+            // 重新拋出異常，讓外層 Job 執行器捕獲並更新狀態
+            throw new RuntimeException("執行每日費用提醒任務時發生錯誤: " + e.getMessage(), e);
         }
     }
 
@@ -93,7 +101,8 @@ public class DailyExpenseReminderScheduler {
 
         } catch (Exception e) {
             log.error("❌ 檢查用戶今日費用記錄時發生錯誤", e);
-            return false; // 發生錯誤時假設沒有記錄，發送提醒
+            // 發生錯誤時拋出異常，而不是靜默失敗
+            throw new RuntimeException("檢查用戶今日費用記錄失敗: " + e.getMessage(), e);
         }
     }
 
@@ -144,6 +153,7 @@ public class DailyExpenseReminderScheduler {
             LocalDate today = LocalDate.now();
             int reminderCount = 0;
             int reportCount = 0;
+            int errorCount = 0;
 
             for (User user : lineUsers) {
                 try {
@@ -163,14 +173,22 @@ public class DailyExpenseReminderScheduler {
                         }
                     }
                 } catch (Exception e) {
+                    errorCount++;
                     log.error("❌ 處理用戶 {} 時發生錯誤", user.getDisplayName(), e);
                 }
             }
 
-            log.info("✅ 每日費用檢查任務完成，共發送 {} 個個人提醒，{} 個個人統計報告", reminderCount, reportCount);
+            log.info("✅ 每日費用檢查任務完成，共發送 {} 個個人提醒，{} 個個人統計報告，{} 個錯誤", reminderCount, reportCount, errorCount);
+            
+            // 如果有錯誤，拋出異常以便 JobExecution 記錄失敗狀態
+            if (errorCount > 0) {
+                throw new RuntimeException("每日費用檢查任務部分失敗，共 " + errorCount + " 個錯誤");
+            }
 
         } catch (Exception e) {
             log.error("❌ 執行每日費用檢查任務時發生錯誤", e);
+            // 重新拋出異常，讓外層 Job 執行器捕獲並更新狀態
+            throw new RuntimeException("執行每日費用檢查任務時發生錯誤: " + e.getMessage(), e);
         }
     }
 
@@ -239,7 +257,8 @@ public class DailyExpenseReminderScheduler {
 
         } catch (Exception e) {
             log.error("❌ 生成費用統計報告時發生錯誤", e);
-            return null;
+            // 拋出異常
+            throw new RuntimeException("生成費用統計報告失敗: " + e.getMessage(), e);
         }
     }
 

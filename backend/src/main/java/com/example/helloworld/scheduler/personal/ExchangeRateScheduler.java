@@ -26,8 +26,14 @@ public class ExchangeRateScheduler {
         @Override
         public void run() {
             log.info("🔄 開始執行自動補足匯率任務...");
-            int filledCount = exchangeRateService.checkAndAutoFillMissingRates(7);
-            log.info("✅ 自動補足匯率任務完成，補足 {} 個日期", filledCount);
+            try {
+                int filledCount = exchangeRateService.checkAndAutoFillMissingRates(7);
+                log.info("✅ 自動補足匯率任務完成，補足 {} 個日期", filledCount);
+            } catch (Exception e) {
+                log.error("❌ 自動補足匯率任務失敗", e);
+                // 重新拋出異常，讓外層 Job 執行器捕獲並更新狀態
+                throw new RuntimeException("自動補足匯率任務失敗: " + e.getMessage(), e);
+            }
         }
     }
 

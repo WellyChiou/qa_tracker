@@ -183,9 +183,9 @@ public class ChurchScheduledJobService {
                     // 從 ThreadLocal 獲取詳細結果
                     String detailedResult = com.example.helloworld.scheduler.church.JobResultHolder.getResult();
                     if (detailedResult != null && !detailedResult.isEmpty()) {
-                        currentExecution.setResultMessage(detailedResult);
+                        currentExecution.setResultMessage("[手動執行] " + detailedResult);
                     } else {
-                        currentExecution.setResultMessage("Job 執行成功");
+                        currentExecution.setResultMessage("[手動執行] Job 執行成功");
                     }
                     
                     // 清除 ThreadLocal
@@ -204,7 +204,8 @@ public class ChurchScheduledJobService {
                     // 更新狀態為失敗
                     currentExecution.setStatus("FAILED");
                     currentExecution.setCompletedAt(LocalDateTime.now());
-                    currentExecution.setErrorMessage(e.getMessage() != null ? e.getMessage() : e.getClass().getName());
+                    String errorMsg = e.getMessage() != null ? e.getMessage() : e.getClass().getName();
+                    currentExecution.setErrorMessage("[手動執行] " + errorMsg);
                     jobExecutionRepository.save(currentExecution);
                 } else {
                     log.warn("⚠️ [Church] 無法更新執行記錄 ID {} 的狀態為失敗", executionId);
@@ -302,9 +303,9 @@ public class ChurchScheduledJobService {
                         // 從 ThreadLocal 獲取詳細結果
                         String detailedResult = com.example.helloworld.scheduler.church.JobResultHolder.getResult();
                         if (detailedResult != null && !detailedResult.isEmpty()) {
-                            currentExecution.setResultMessage(detailedResult);
+                            currentExecution.setResultMessage("[自動排程] " + detailedResult);
                         } else {
-                            currentExecution.setResultMessage("定時任務執行成功");
+                            currentExecution.setResultMessage("[自動排程] 定時任務執行成功");
                         }
                         currentExecution.setErrorMessage(null);
                         jobExecutionRepository.save(currentExecution);
@@ -322,7 +323,8 @@ public class ChurchScheduledJobService {
                         if (failedExecution != null) {
                             failedExecution.setStatus("FAILED");
                             failedExecution.setCompletedAt(LocalDateTime.now());
-                            failedExecution.setErrorMessage(e.getMessage() != null ? e.getMessage() : e.getClass().getName());
+                            String errorMsg = e.getMessage() != null ? e.getMessage() : e.getClass().getName();
+                            failedExecution.setErrorMessage("[自動排程] " + errorMsg);
                             jobExecutionRepository.save(failedExecution);
                         }
                     } catch (Exception ex) {

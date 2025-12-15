@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/roles")
+@RequestMapping("/api/personal/roles")
 @CrossOrigin(origins = "*")
 public class RoleController {
 

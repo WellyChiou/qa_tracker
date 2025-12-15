@@ -3,8 +3,8 @@
 // 開發環境：使用 8080 端口
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
   (import.meta.env.DEV 
-    ? `${window.location.protocol}//${window.location.hostname}:8080/api`
-    : `${window.location.protocol}//${window.location.hostname}/api`)
+    ? `${window.location.protocol}//${window.location.hostname}:8080/api/personal`
+    : `${window.location.protocol}//${window.location.hostname}/api/personal`)
 
 // 全局 loading 狀態管理
 let loadingCount = 0
@@ -261,9 +261,10 @@ class ApiService {
     return this.request(`/records/${id}`, { method: 'DELETE' })
   }
 
-  // Config API
+  // System Settings API (Replaces Config API)
   async getConfig(configKey) {
-    return this.request(`/config/${configKey}`, { showLoading: false })
+    // 兼容舊方法名，但在底層改用新的 system-settings API
+    return this.request(`/system-settings/${configKey}/value`, { showLoading: false })
   }
 
   async saveConfig(configKey, data) {
@@ -272,6 +273,44 @@ class ApiService {
       body: JSON.stringify(data)
     })
   }
+
+  // System Settings API (Admin Maintenance)
+  async getSystemSettings() {
+    return this.request('/system-settings')
+  }
+
+  async updateSystemSetting(key, value) {
+    return this.request(`/system-settings/${key}`, {
+      method: 'PUT',
+      body: JSON.stringify({ settingValue: value })
+    })
+  }
+
+  async refreshSystemSettings() {
+    return this.request('/system-settings/refresh', {
+      method: 'POST'
+    })
+  }
+
+  // Backup API (Admin Maintenance)
+  async getBackups() {
+    return this.request('/backups')
+  }
+
+  async createBackup() {
+    return this.request('/backups/create', {
+      method: 'POST'
+    })
+  }
+
+  async deleteBackup(relativePath) {
+    return this.request(`/backups/delete?path=${encodeURIComponent(relativePath)}`, {
+      method: 'DELETE'
+    })
+  }
+
+  // Note: Download backup typically requires direct link or blob handling, 
+  // currently handled in component but could be moved here if returning blob.
 
   async getInProgressCount() {
     return this.request('/records/stats/in-progress', { showLoading: false })
@@ -381,18 +420,6 @@ class ApiService {
   async autoFillExchangeRates(days = 7) {
     return this.request(`/exchange-rates/auto-fill?days=${days}`, {
       method: 'POST'
-    })
-  }
-
-  // Config API
-  async getConfig(configKey) {
-    return this.request(`/config/${configKey}`)
-  }
-
-  async saveConfig(configKey, value, description) {
-    return this.request(`/config/${configKey}`, {
-      method: 'POST',
-      body: JSON.stringify({ value, description })
     })
   }
 
@@ -639,4 +666,3 @@ class ApiService {
 }
 
 export const apiService = new ApiService()
-

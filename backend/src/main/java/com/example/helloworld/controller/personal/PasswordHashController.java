@@ -11,7 +11,7 @@ import java.util.Map;
  * 僅用於開發環境，生產環境應該移除或禁用
  */
 @RestController
-@RequestMapping("/api/utils")
+@RequestMapping("/api/personal/utils")
 @CrossOrigin(origins = "*")
 public class PasswordHashController {
 

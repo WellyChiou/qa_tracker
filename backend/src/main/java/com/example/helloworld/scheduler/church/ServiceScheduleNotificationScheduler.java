@@ -6,7 +6,7 @@ import com.example.helloworld.entity.church.ServiceSchedulePositionConfig;
 import com.example.helloworld.entity.church.ServiceScheduleAssignment;
 import com.example.helloworld.entity.church.Person;
 import com.example.helloworld.entity.church.Position;
-import com.example.helloworld.config.LineBotConfig;
+import com.example.helloworld.config.ChurchLineBotConfig;
 import com.example.helloworld.entity.church.ChurchLineGroup;
 import com.example.helloworld.repository.church.ChurchLineGroupRepository;
 import com.example.helloworld.repository.church.PositionPersonRepository;
@@ -43,7 +43,7 @@ public class ServiceScheduleNotificationScheduler {
     private ChurchLineGroupRepository churchLineGroupRepository;
 
     @Autowired
-    private LineBotConfig lineBotConfig;
+    private ChurchLineBotConfig lineBotConfig;
 
     @Autowired
     private PositionPersonRepository positionPersonRepository;
@@ -222,6 +222,7 @@ public class ServiceScheduleNotificationScheduler {
                     log.info("✅ [教會排程] 已發送服事人員通知到群組: {}", churchGroupId);
                 } catch (Exception e) {
                     log.error("❌ [教會排程] 發送通知到群組失敗: {}", e.getMessage(), e);
+                    // 這裡只是發送過程的錯誤，不拋出異常，讓整體任務算成功
                 }
             } else {
                 // 如果沒有配置群組 ID，查找資料庫中啟用的群組
@@ -234,20 +235,28 @@ public class ServiceScheduleNotificationScheduler {
                 }
 
                 int successCount = 0;
+                int errorCount = 0;
                 for (ChurchLineGroup group : activeGroups) {
                     try {
                         log.info("📤 [教會排程] 發送通知到群組: {} ({})", group.getGroupId(), group.getGroupName());
                         churchLineBotService.sendGroupMessage(group.getGroupId(), message.toString());
                         successCount++;
                     } catch (Exception e) {
+                        errorCount++;
                         log.error("❌ [教會排程] 發送通知到群組 {} 失敗: {}", group.getGroupId(), e.getMessage(), e);
                     }
                 }
 
                 log.info("✅ [教會排程] 已發送服事人員通知到 {} 個群組", successCount);
+                if (errorCount > 0) {
+                    log.warn("⚠️ [教會排程] 發送通知時發生 {} 個錯誤", errorCount);
+                    throw new RuntimeException("發送通知時發生 " + errorCount + " 個錯誤，詳見日誌");
+                }
             }
         } catch (Exception e) {
             log.error("❌ [教會排程] 發送服事人員通知失敗: {}", e.getMessage(), e);
+            // 重新拋出異常，確保 Job 狀態標記為 FAILED
+            throw new RuntimeException("發送服事人員通知失敗: " + e.getMessage(), e);
         }
     }
 
@@ -353,11 +362,11 @@ public class ServiceScheduleNotificationScheduler {
                                 com.example.helloworld.entity.church.PositionPerson pp = positionPersonOpt.get();
                                 Boolean includeInAutoSchedule = pp.getIncludeInAutoSchedule();
                                 log.info("  📋 [教會排程] 找到 position_persons 記錄，includeInAutoSchedule={}", includeInAutoSchedule);
-                                
-                                if (includeInAutoSchedule != null && !includeInAutoSchedule) {
-                                    log.warn("  ⚠️ [教會排程] 崗位 {} 分配給: {}，但該人員不參與自動分配，跳過通知", positionName, personName);
-                                    continue;
-                                }
+                                // TODO: 取消註解
+                                // if (includeInAutoSchedule != null && !includeInAutoSchedule) {
+                                //     log.warn("  ⚠️ [教會排程] 崗位 {} 分配給: {}，但該人員不參與自動分配，跳過通知", positionName, personName);
+                                //     continue;
+                                // }
                             } else {
                                 log.info("  ℹ️ [教會排程] 未找到 position_persons 記錄，默認為參與自動分配");
                             }
@@ -451,4 +460,3 @@ public class ServiceScheduleNotificationScheduler {
         return new WeeklyServiceNotificationJob(this);
     }
 }
-

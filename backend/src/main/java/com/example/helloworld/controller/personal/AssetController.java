@@ -12,7 +12,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/assets")
+@RequestMapping("/api/personal/assets")
 @CrossOrigin(origins = "*")
 public class AssetController {
 

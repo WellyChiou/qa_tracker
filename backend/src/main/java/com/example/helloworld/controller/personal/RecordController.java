@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/records")
+@RequestMapping("/api/personal/records")
 @CrossOrigin(origins = "*")
 public class RecordController {
     

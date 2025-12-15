@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/scheduled-jobs")
+@RequestMapping("/api/personal/scheduled-jobs")
 @CrossOrigin(origins = "*")
 public class ScheduledJobController {
 

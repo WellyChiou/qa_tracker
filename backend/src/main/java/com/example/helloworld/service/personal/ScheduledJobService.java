@@ -12,6 +12,8 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.example.helloworld.scheduler.church.JobResultHolder;
+
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
@@ -148,6 +150,10 @@ public class ScheduledJobService {
                 runningExecutions.put(id, executionId);
 
                 log.info("🚀 立即執行 Job: {} (Execution ID: {})", jobName, executionId);
+                
+                // 清除之前的結果
+                JobResultHolder.clear();
+
                 executor.run();
 
                 // 重新載入執行記錄
@@ -157,7 +163,18 @@ public class ScheduledJobService {
                 // 更新狀態為成功
                 currentExecution.setStatus("SUCCESS");
                 currentExecution.setCompletedAt(LocalDateTime.now());
-                currentExecution.setResultMessage("Job 執行成功");
+                
+                // 從 ThreadLocal 獲取詳細結果
+                String detailedResult = JobResultHolder.getResult();
+                if (detailedResult != null && !detailedResult.isEmpty()) {
+                    currentExecution.setResultMessage("[手動執行] " + detailedResult);
+                } else {
+                    currentExecution.setResultMessage("[手動執行] Job 執行成功");
+                }
+                
+                // 清除 ThreadLocal
+                JobResultHolder.clear();
+                
                 jobExecutionRepository.save(currentExecution);
                 log.info("✅ Job 執行完成: {}", jobName);
             } catch (Exception e) {
@@ -167,7 +184,8 @@ public class ScheduledJobService {
                     // 更新狀態為失敗
                     currentExecution.setStatus("FAILED");
                     currentExecution.setCompletedAt(LocalDateTime.now());
-                    currentExecution.setErrorMessage(e.getMessage() != null ? e.getMessage() : e.getClass().getName());
+                    String errorMsg = e.getMessage() != null ? e.getMessage() : e.getClass().getName();
+                    currentExecution.setErrorMessage("[手動執行] " + errorMsg);
                     jobExecutionRepository.save(currentExecution);
                 }
                 log.error("❌ Job 執行失敗: {} - {}", jobName, e.getMessage(), e);
@@ -237,12 +255,59 @@ public class ScheduledJobService {
             ZoneId taiwanZone = ZoneId.of("Asia/Taipei");
             CronTrigger trigger = new CronTrigger(job.getCronExpression(), taiwanZone);
             ScheduledFuture<?> future = taskScheduler.schedule(() -> {
+                // 創建執行記錄
+                JobExecution execution = new JobExecution();
+                execution.setJobId(job.getId());
+                execution.setStatus("RUNNING");
+                execution.setStartedAt(LocalDateTime.now());
+                execution = jobExecutionRepository.save(execution);
+                final Long executionId = execution.getId();
+
                 try {
-                    log.info("🔄 執行定時任務: {}", job.getJobName());
+                    log.info("🔄 執行定時任務: {} (Execution ID: {})", job.getJobName(), executionId);
+                    
+                    // 清除之前的結果
+                    JobResultHolder.clear();
+                    
                     executor.run();
-                    log.info("✅ 定時任務完成: {}", job.getJobName());
+                    
+                    // 重新載入執行記錄
+                    JobExecution currentExecution = jobExecutionRepository.findById(executionId).orElse(null);
+                    if (currentExecution != null) {
+                        currentExecution.setStatus("SUCCESS");
+                        currentExecution.setCompletedAt(LocalDateTime.now());
+                        
+                        // 從 ThreadLocal 獲取詳細結果
+                        String detailedResult = JobResultHolder.getResult();
+                        if (detailedResult != null && !detailedResult.isEmpty()) {
+                             currentExecution.setResultMessage("[自動排程] " + detailedResult);
+                             log.info("✅ 定時任務完成: {}\n詳細結果: {}", job.getJobName(), detailedResult);
+                        } else {
+                             currentExecution.setResultMessage("[自動排程] 定時任務執行成功");
+                             log.info("✅ 定時任務完成: {}", job.getJobName());
+                        }
+                        
+                        jobExecutionRepository.save(currentExecution);
+                    }
+                    
+                    // 清除 ThreadLocal
+                    JobResultHolder.clear();
+                    
                 } catch (Exception e) {
                     log.error("❌ 定時任務執行失敗: {} - {}", job.getJobName(), e.getMessage(), e);
+                    // 更新執行記錄為失敗狀態
+                    try {
+                        JobExecution failedExecution = jobExecutionRepository.findById(executionId).orElse(null);
+                        if (failedExecution != null) {
+                            failedExecution.setStatus("FAILED");
+                            failedExecution.setCompletedAt(LocalDateTime.now());
+                            String errorMsg = e.getMessage() != null ? e.getMessage() : e.getClass().getName();
+                            failedExecution.setErrorMessage("[自動排程] " + errorMsg);
+                            jobExecutionRepository.save(failedExecution);
+                        }
+                    } catch (Exception ex) {
+                        log.error("❌ 更新失敗狀態時發生錯誤: {}", ex.getMessage(), ex);
+                    }
                 }
             }, trigger);
 

@@ -50,7 +50,8 @@ public class ImageCleanupScheduler {
         } catch (Exception e) {
             log.error("❌ [圖片清理] 執行失敗: {}", e.getMessage(), e);
             JobResultHolder.clear();
-            throw e;
+            // 重新拋出異常，確保 Job 狀態標記為 FAILED
+            throw new RuntimeException("圖片清理失敗: " + e.getMessage(), e);
         }
     }
 
@@ -85,4 +86,3 @@ public class ImageCleanupScheduler {
         return new ImageCleanupJob(this);
     }
 }
-

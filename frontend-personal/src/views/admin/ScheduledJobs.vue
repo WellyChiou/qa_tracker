@@ -4,7 +4,9 @@
     <header class="header">
       <div class="header-top">
         <h1>⏰ 定時任務管理</h1>
-        <button class="btn btn-primary" @click="showAddModal = true">新增任務</button>
+        <button class="btn btn-primary" @click="showAddModal = true">
+          <i class="fas fa-plus me-2"></i>新增任務
+        </button>
       </div>
     </header>
 
@@ -14,7 +16,6 @@
           <tr>
             <th>ID</th>
             <th>任務名稱</th>
-            <th>任務類別</th>
             <th>Cron 表達式</th>
             <th>描述</th>
             <th>啟用狀態</th>
@@ -24,21 +25,25 @@
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="8" style="text-align: center; padding: 20px;">載入中...</td>
+            <td colspan="7" style="text-align: center; padding: 20px;">載入中...</td>
           </tr>
           <tr v-else-if="jobs.length === 0">
-            <td colspan="8" style="text-align: center; padding: 20px;">尚無任務</td>
+            <td colspan="7" style="text-align: center; padding: 20px;">尚無任務</td>
           </tr>
           <tr v-for="job in jobs" :key="job.id">
             <td>{{ job.id }}</td>
             <td>{{ job.jobName }}</td>
             <td>
-              <code style="font-size: 0.85em;">{{ job.jobClass }}</code>
+              <div style="font-weight: 500; color: #1e293b; margin-bottom: 0.25rem;">
+                {{ formatCronExpression(job.cronExpression) }}
+              </div>
+              <code style="font-size: 0.75em; color: #94a3b8; background: #f1f5f9; padding: 0.125rem 0.375rem; border-radius: 0.25rem;">
+                {{ job.cronExpression }}
+              </code>
             </td>
-            <td>
-              <code style="font-size: 0.9em; color: #667eea;">{{ job.cronExpression }}</code>
+            <td :title="job.description || '-'">
+              {{ job.description || '-' }}
             </td>
-            <td>{{ job.description || '-' }}</td>
             <td>
               <span :class="job.enabled ? 'status-active' : 'status-inactive'">
                 {{ job.enabled ? '啟用' : '停用' }}
@@ -76,92 +81,113 @@
 
     <!-- 執行記錄模態框 -->
     <div v-if="showExecutionModal" class="modal-overlay" @click="showExecutionModal = false">
-      <div class="modal-content" @click.stop style="max-width: 800px;">
-        <h2>執行記錄 - {{ selectedJobName }}</h2>
-        <div v-if="executionHistory.length === 0" style="text-align: center; padding: 2rem; color: #94a3b8;">
-          尚無執行記錄
+      <div class="modal-panel execution-modal-content" @click.stop>
+        <div class="modal-header">
+          <h2 class="modal-title">執行記錄 - {{ selectedJobName }}</h2>
+          <button class="btn-close" @click="showExecutionModal = false">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
         </div>
-        <div v-else style="max-height: 500px; overflow-y: auto;">
-          <table class="execution-table">
-            <thead>
-              <tr>
-                <th>執行時間</th>
-                <th>狀態</th>
-                <th>開始時間</th>
-                <th>完成時間</th>
-                <th>結果/錯誤</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="execution in executionHistory" :key="execution.id">
-                <td>{{ formatDateTime(execution.createdAt) }}</td>
-                <td>
-                  <span :class="getStatusClass(execution.status)">
-                    {{ getStatusText(execution.status) }}
-                  </span>
-                </td>
-                <td>{{ execution.startedAt ? formatDateTime(execution.startedAt) : '-' }}</td>
-                <td>{{ execution.completedAt ? formatDateTime(execution.completedAt) : '-' }}</td>
-                <td>
-                  <div v-if="execution.resultMessage" style="color: #10b981; font-size: 0.875rem;">
-                    {{ execution.resultMessage }}
-                  </div>
-                  <div v-if="execution.errorMessage" style="color: #ef4444; font-size: 0.875rem;">
-                    {{ execution.errorMessage }}
-                  </div>
-                  <span v-if="!execution.resultMessage && !execution.errorMessage" style="color: #94a3b8;">-</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="form-actions">
-          <button type="button" class="btn btn-secondary" @click="showExecutionModal = false">關閉</button>
+        <div class="modal-body">
+          <div v-if="executionHistory.length === 0" style="text-align: center; padding: 2rem; color: #94a3b8;">
+            尚無執行記錄
+          </div>
+          <div v-else class="execution-table-container">
+            <table class="execution-table">
+              <thead>
+                <tr>
+                  <th class="execution-time-col">執行時間</th>
+                  <th class="execution-status-col">狀態</th>
+                  <th class="execution-time-col">開始時間</th>
+                  <th class="execution-time-col">完成時間</th>
+                  <th class="execution-result-col">結果/錯誤</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="execution in executionHistory" :key="execution.id">
+                  <td>{{ formatDateTime(execution.createdAt) }}</td>
+                  <td>
+                    <span :class="getStatusClass(execution.status)">
+                      {{ getStatusText(execution.status) }}
+                    </span>
+                  </td>
+                  <td>{{ execution.startedAt ? formatDateTime(execution.startedAt) : '-' }}</td>
+                  <td>{{ execution.completedAt ? formatDateTime(execution.completedAt) : '-' }}</td>
+                  <td>
+                    <div v-if="execution.resultMessage" class="result-message">
+                      {{ execution.resultMessage }}
+                    </div>
+                    <div v-if="execution.errorMessage" class="error-message">
+                      {{ execution.errorMessage }}
+                    </div>
+                    <span v-if="!execution.resultMessage && !execution.errorMessage" style="color: #94a3b8;">-</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" @click="showExecutionModal = false">關閉</button>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- 新增/編輯模態框 -->
     <div v-if="showAddModal || editingJob" class="modal-overlay" @click="closeModal">
-      <div class="modal-content" @click.stop>
-        <h2>{{ editingJob ? '編輯定時任務' : '新增定時任務' }}</h2>
-        <form @submit.prevent="handleSubmit">
-          <div class="form-group">
-            <label>任務名稱 <span class="required">*</span></label>
-            <input v-model="form.jobName" placeholder="例如：自動補足匯率" required />
-          </div>
-          <div class="form-group">
-            <label>任務類別（完整類名） <span class="required">*</span></label>
-            <input v-model="form.jobClass" placeholder="例如：com.example.helloworld.scheduler.ExchangeRateScheduler$AutoFillExchangeRatesJob" required />
-            <small style="color: #666; font-size: 0.875rem; margin-top: 0.25rem; display: block;">
-              必須是已註冊的 Job 執行器類別
-            </small>
-          </div>
-          <div class="form-group">
-            <label>Cron 表達式 <span class="required">*</span></label>
-            <input v-model="form.cronExpression" placeholder="例如：0 0 7 * * ?" required />
-            <small style="color: #666; font-size: 0.875rem; margin-top: 0.25rem; display: block;">
-              格式：秒 分 時 日 月 星期<br>
-              範例：0 0 7 * * ? (每天 7:00) | 0 0 0 * * ? (每天 0:00) | 0 0 12 * * MON-FRI (週一到週五 12:00)
-            </small>
-          </div>
-          <div class="form-group">
-            <label>描述</label>
-            <textarea v-model="form.description" rows="3" placeholder="任務描述..."></textarea>
-          </div>
-          <div class="form-group">
-            <label>
-              <input type="checkbox" v-model="form.enabled" />
-              啟用此任務
-            </label>
-          </div>
-          <div class="form-actions">
-            <button type="submit" class="btn btn-primary" :disabled="saving">
-              {{ saving ? '儲存中...' : '儲存' }}
-            </button>
-            <button type="button" class="btn btn-secondary" @click="closeModal">取消</button>
-          </div>
-        </form>
+      <div class="modal-panel" @click.stop>
+        <div class="modal-header">
+          <h2 class="modal-title">{{ editingJob ? '編輯定時任務' : '新增定時任務' }}</h2>
+          <button class="btn-close" @click="closeModal">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <form @submit.prevent="handleSubmit" class="form-container">
+            <div class="form-group">
+              <label class="form-label">任務名稱 <span class="text-danger">*</span></label>
+              <input v-model="form.jobName" class="form-input" placeholder="例如：週二服事人員通知" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">任務類別（完整類名） <span class="text-danger">*</span></label>
+              <input v-model="form.jobClass" class="form-input" placeholder="例如：com.example.helloworld.scheduler.personal.DatabaseBackupScheduler$DatabaseBackupJob" required />
+              <small class="form-hint">
+                必須是已註冊的 Job 執行器類別
+              </small>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Cron 表達式 <span class="text-danger">*</span></label>
+              <input v-model="form.cronExpression" class="form-input" placeholder="例如：0 0 10 ? * TUE" required />
+              <small class="form-hint">
+                格式：秒 分 時 日 月 星期<br>
+                範例：0 0 10 ? * TUE (每週二 10:00) | 0 0 7 * * ? (每天 7:00) | 0 0 12 * * MON-FRI (週一到週五 12:00)
+              </small>
+            </div>
+            <div class="form-group">
+              <label class="form-label">描述</label>
+              <textarea v-model="form.description" rows="3" class="form-input" placeholder="任務描述..."></textarea>
+            </div>
+            <div class="form-group checkbox-group">
+              <label class="checkbox-label">
+                <input type="checkbox" v-model="form.enabled" class="checkbox-input" />
+                啟用此任務
+              </label>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary" :disabled="saving">
+                <i class="fas fa-save me-2"></i>
+                {{ saving ? '儲存中...' : '儲存' }}
+              </button>
+              <button type="button" class="btn btn-secondary" @click="closeModal">
+                <i class="fas fa-times me-2"></i>取消
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   </div>
@@ -169,8 +195,8 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { apiService } from '@/composables/useApi'
 import TopNavbar from '@/components/TopNavbar.vue'
+import { apiService } from '@/composables/useApi'
 
 const jobs = ref([])
 const loading = ref(false)
@@ -196,6 +222,7 @@ const loadJobs = async () => {
   loading.value = true
   try {
     jobs.value = await apiService.getScheduledJobs()
+    
     // 載入每個任務的最新執行狀態
     for (const job of jobs.value) {
       await loadLatestExecution(job.id)
@@ -211,6 +238,7 @@ const loadJobs = async () => {
 const loadLatestExecution = async (jobId) => {
   try {
     const execution = await apiService.getLatestJobExecution(jobId)
+    
     if (execution) {
       jobExecutions.value[jobId] = execution
       // 如果正在執行，開始輪詢
@@ -218,7 +246,6 @@ const loadLatestExecution = async (jobId) => {
         startPolling(jobId)
       }
     } else {
-      // 沒有執行記錄，設置為 null
       jobExecutions.value[jobId] = null
     }
   } catch (error) {
@@ -241,6 +268,7 @@ const startPolling = (jobId) => {
   pollingIntervals.value[jobId] = setInterval(async () => {
     try {
       const execution = await apiService.getLatestJobExecution(jobId)
+      
       if (execution) {
         jobExecutions.value[jobId] = execution
         // 如果執行完成，停止輪詢
@@ -256,7 +284,7 @@ const startPolling = (jobId) => {
         jobExecutions.value[jobId] = null
         stopPolling(jobId)
       } else {
-      console.error('輪詢執行狀態失敗:', error)
+        console.error('輪詢執行狀態失敗:', error)
       }
     }
   }, 2000)
@@ -301,6 +329,7 @@ const handleSubmit = async () => {
     } else {
       await apiService.createScheduledJob(form.value)
     }
+    
     await loadJobs()
     closeModal()
   } catch (error) {
@@ -339,6 +368,7 @@ const executeJob = async (id) => {
   executingJobId.value = id
   try {
     const response = await apiService.executeScheduledJob(id)
+    
     alert(response?.message || '任務已開始執行')
     // 重新載入執行狀態
     await loadLatestExecution(id)
@@ -409,6 +439,141 @@ const formatDateTime = (dateTime) => {
   })
 }
 
+const formatCronExpression = (cronExpr) => {
+  if (!cronExpr) return '-'
+  
+  // 移除多餘的空格並分割
+  const parts = cronExpr.trim().split(/\s+/)
+  if (parts.length < 6) {
+    return cronExpr // 如果格式不對，直接返回原值
+  }
+  
+  const [second, minute, hour, day, month, weekday] = parts
+  
+  // 星期映射
+  const weekdayMap = {
+    'SUN': '週日',
+    'MON': '週一',
+    'TUE': '週二',
+    'WED': '週三',
+    'THU': '週四',
+    'FRI': '週五',
+    'SAT': '週六',
+    '0': '週日',
+    '1': '週一',
+    '2': '週二',
+    '3': '週三',
+    '4': '週四',
+    '5': '週五',
+    '6': '週六',
+    '7': '週日'
+  }
+  
+  // 月份映射
+  const monthMap = {
+    'JAN': '1月',
+    'FEB': '2月',
+    'MAR': '3月',
+    'APR': '4月',
+    'MAY': '5月',
+    'JUN': '6月',
+    'JUL': '7月',
+    'AUG': '8月',
+    'SEP': '9月',
+    'OCT': '10月',
+    'NOV': '11月',
+    'DEC': '12月'
+  }
+  
+  // 解析時間
+  const timeStr = `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`
+  
+  // 解析星期
+  let weekdayStr = ''
+  if (weekday === '?' || weekday === '*') {
+    weekdayStr = ''
+  } else if (weekday.includes(',')) {
+    const weekdays = weekday.split(',').map(w => weekdayMap[w.trim()] || w.trim()).join('、')
+    weekdayStr = weekdays
+  } else if (weekday.includes('-')) {
+    const [start, end] = weekday.split('-')
+    weekdayStr = `${weekdayMap[start.trim()] || start.trim()}到${weekdayMap[end.trim()] || end.trim()}`
+  } else {
+    weekdayStr = weekdayMap[weekday] || weekday
+  }
+  
+  // 解析日期
+  let dayStr = ''
+  if (day === '?' || day === '*') {
+    dayStr = ''
+  } else if (day.includes(',')) {
+    dayStr = `每月${day.split(',').join('、')}日`
+  } else if (day.includes('-')) {
+    const [start, end] = day.split('-')
+    dayStr = `每月${start}日到${end}日`
+  } else if (day === 'L') {
+    dayStr = '每月最後一天'
+  } else if (day.startsWith('L-')) {
+    const dayNum = day.substring(2)
+    dayStr = `每月倒數第${dayNum}天`
+  } else {
+    dayStr = `每月${day}日`
+  }
+  
+  // 解析月份
+  let monthStr = ''
+  if (month === '*') {
+    monthStr = ''
+  } else if (month.includes(',')) {
+    const months = month.split(',').map(m => monthMap[m.trim()] || m.trim()).join('、')
+    monthStr = months
+  } else if (month.includes('-')) {
+    const [start, end] = month.split('-')
+    monthStr = `${monthMap[start.trim()] || start.trim()}到${monthMap[end.trim()] || end.trim()}`
+  } else {
+    monthStr = monthMap[month] || month
+  }
+  
+  // 組合描述
+  let description = ''
+  
+  // 每天特定時間
+  if (day === '*' && month === '*' && (weekday === '*' || weekday === '?')) {
+    if (second === '0' && minute === '0') {
+      description = `每天 ${timeStr}`
+    } else {
+      description = `每天 ${timeStr}:${second.padStart(2, '0')}`
+    }
+  }
+  // 每週特定時間
+  else if (day === '?' && month === '*' && weekday !== '*' && weekday !== '?') {
+    if (weekdayStr.includes('、')) {
+      description = `每${weekdayStr} ${timeStr}`
+    } else {
+      description = `${weekdayStr} ${timeStr}`
+    }
+  }
+  // 每月特定日期和時間
+  else if (day !== '*' && day !== '?' && month === '*' && (weekday === '*' || weekday === '?')) {
+    description = `${dayStr} ${timeStr}`
+  }
+  // 特定月份
+  else if (month !== '*') {
+    description = `${monthStr}${dayStr ? ' ' + dayStr : ''}${weekdayStr ? ' ' + weekdayStr : ''} ${timeStr}`
+  }
+  // 其他複雜情況
+  else {
+    const parts = []
+    if (monthStr) parts.push(monthStr)
+    if (dayStr) parts.push(dayStr)
+    if (weekdayStr) parts.push(weekdayStr)
+    parts.push(timeStr)
+    description = parts.join(' ')
+  }
+  
+  return description || cronExpr
+}
+
 onMounted(() => {
   loadJobs()
 })
@@ -424,57 +589,101 @@ onUnmounted(() => {
 <style scoped>
 .admin-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #f5f5f5;
+  padding-bottom: 2rem;
 }
 
 .header {
+  background: white;
   padding: 2rem;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
 .header-top {
+  max-width: 1400px;
+  margin: 0 auto;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
 .header h1 {
-  color: white;
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #333;
   margin: 0;
 }
 
 .main-content {
-  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 2rem;
 }
 
 .data-table {
   width: 100%;
+  border-collapse: collapse;
   background: white;
-  border-radius: 0.75rem;
+  border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  table-layout: fixed;
 }
 
-.data-table thead {
-  background: #f8fafc;
+.data-table th,
+.data-table td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid #e0e0e0;
 }
 
 .data-table th {
-  padding: 1rem;
-  text-align: left;
+  background: #f9fafb;
   font-weight: 600;
-  color: #475569;
-  border-bottom: 2px solid #e2e8f0;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #374151;
 }
 
+.data-table th:nth-child(1) { width: 5%; }
+.data-table th:nth-child(2) { width: 20%; }
+.data-table th:nth-child(3) { width: 20%; }
+.data-table th:nth-child(4) { width: 20%; }
+.data-table th:nth-child(5) { width: 8%; }
+.data-table th:nth-child(6) { width: 12%; }
+.data-table th:nth-child(7) { width: 15%; }
+
 .data-table td {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.data-table td:nth-child(4) {
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  position: relative;
+  cursor: help;
+}
+
+.data-table td:nth-child(4):hover {
+  white-space: normal;
+  overflow: visible;
+  z-index: 10;
+  background: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   padding: 1rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  max-width: 400px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .data-table tbody tr:hover {
-  background: #f8fafc;
+  background: #f9fafb;
 }
 
 .actions {
@@ -483,19 +692,53 @@ onUnmounted(() => {
   flex-wrap: wrap;
 }
 
-.btn-sm {
-  padding: 0.375rem 0.75rem;
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
+.btn {
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
   font-weight: 600;
   cursor: pointer;
   border: none;
-  transition: all 0.2s ease;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+}
+
+.btn-primary {
+  background: #667eea;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #5a67d8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(102, 126, 234, 0.25);
+}
+
+.btn-secondary {
+  background: #fff;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.btn-secondary:hover {
+  background: #f9fafb;
+  color: #111827;
+}
+
+.btn-sm {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.85rem;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  color: white;
+  transition: all 0.2s;
 }
 
 .btn-execute {
   background: #10b981;
-  color: white;
 }
 
 .btn-execute:hover:not(:disabled) {
@@ -504,7 +747,6 @@ onUnmounted(() => {
 
 .btn-toggle {
   background: #f59e0b;
-  color: white;
 }
 
 .btn-toggle:hover {
@@ -513,220 +755,234 @@ onUnmounted(() => {
 
 .btn-edit {
   background: #3b82f6;
-  color: white;
-  border: 1px solid #2563eb;
 }
 
 .btn-edit:hover {
   background: #2563eb;
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
 }
 
 .btn-delete {
   background: #ef4444;
-  color: white;
-  border: 1px solid #dc2626;
 }
 
 .btn-delete:hover {
   background: #dc2626;
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-}
-
-.btn-sm:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.status-active {
-  color: #10b981;
-  font-weight: 600;
-}
-
-.status-inactive {
-  color: #ef4444;
-  font-weight: 600;
-}
-
-.status-success {
-  color: #10b981;
-  font-weight: 600;
-}
-
-.status-failed {
-  color: #ef4444;
-  font-weight: 600;
-}
-
-.status-running {
-  color: #f59e0b;
-  font-weight: 600;
-  animation: pulse 2s infinite;
-}
-
-.status-pending {
-  color: #6b7280;
-  font-weight: 600;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
 }
 
 .btn-view {
   background: #3b82f6;
-  color: white;
-  padding: 0.25rem 0.5rem;
-  font-size: 0.75rem;
 }
 
 .btn-view:hover {
   background: #2563eb;
 }
 
-.execution-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 1rem;
+.btn:disabled, .btn-sm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
-.execution-table th,
-.execution-table td {
-  padding: 0.75rem;
-  text-align: left;
-  border-bottom: 1px solid #e2e8f0;
-}
+.status-active, .status-success { color: #10b981; font-weight: 600; }
+.status-inactive, .status-failed { color: #ef4444; font-weight: 600; }
+.status-running { color: #f59e0b; font-weight: 600; animation: pulse 2s infinite; }
+.status-pending { color: #6b7280; font-weight: 600; }
 
-.execution-table th {
-  background: #f8fafc;
-  font-weight: 600;
-  color: #475569;
-}
-
-.execution-table tbody tr:hover {
-  background: #f8fafc;
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 .modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: 1000;
   background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
+  animation: fadeIn 0.2s;
 }
 
-.modal-content {
-  background: white;
-  border-radius: 1rem;
-  padding: 2rem;
-  max-width: 600px;
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-panel {
   width: 100%;
+  max-width: 600px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  margin: 2rem;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.3s;
 }
 
-.modal-content h2 {
-  margin-top: 0;
-  margin-bottom: 1.5rem;
-  color: #1e293b;
+.execution-modal-content {
+  max-width: 1200px !important;
+  width: 90% !important;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+.btn-close {
+  background: transparent;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-close:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.form-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
 }
 
 .form-group {
-  margin-bottom: 1.5rem;
+  margin-bottom: 0;
 }
 
-.form-group label {
+.form-label {
   display: block;
   margin-bottom: 0.5rem;
-  font-weight: 600;
-  color: #475569;
+  font-weight: 500;
+  color: #374151;
+  font-size: 0.9rem;
 }
 
-.form-group input,
-.form-group textarea {
+.form-input {
   width: 100%;
-  padding: 0.625rem;
-  border: 1.5px solid #cbd5e1;
-  border-radius: 0.5rem;
-  font-size: 1rem;
-  box-sizing: border-box;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  transition: all 0.2s;
+  background: white;
+  color: #1f2937;
 }
 
-.form-group input:focus,
-.form-group textarea:focus {
+.form-input:focus {
   outline: none;
-  border-color: #818cf8;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
-.form-group small {
+.checkbox-group {
+  display: flex;
+  align-items: center;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 500;
+  color: #374151;
+  gap: 0.5rem;
+}
+
+.checkbox-input {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+  accent-color: #667eea;
+}
+
+.form-hint {
   display: block;
   margin-top: 0.25rem;
-  color: #64748b;
-  line-height: 1.5;
-}
-
-.required {
-  color: #ef4444;
+  color: #6b7280;
+  font-size: 0.85rem;
 }
 
 .form-actions {
   display: flex;
   gap: 0.75rem;
-  margin-top: 2rem;
+  margin-top: 0.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #e5e7eb;
   justify-content: flex-end;
 }
 
-.btn {
-  padding: 0.625rem 1.25rem;
-  border-radius: 0.5rem;
+.text-danger { color: #ef4444; }
+.me-2 { margin-right: 0.5rem; }
+
+/* 執行記錄樣式 */
+.execution-table-container {
+  max-height: 500px;
+  overflow-y: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+
+.execution-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.execution-table th, .execution-table td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.execution-table th {
+  background: #f9fafb;
   font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: none;
+  color: #374151;
+  position: sticky;
+  top: 0;
 }
 
-.btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+.result-message {
+  color: #059669;
+  background: #ecfdf5;
+  padding: 0.5rem;
+  border-radius: 4px;
+  font-family: monospace;
+  white-space: pre-wrap;
 }
 
-.btn-primary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-}
-
-.btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-secondary {
-  background: #6c757d;
-  color: white;
-}
-
-.btn-secondary:hover {
-  background: #5a6268;
-}
-
-code {
-  background: #f1f5f9;
-  padding: 0.125rem 0.375rem;
-  border-radius: 0.25rem;
-  font-family: 'Courier New', monospace;
+.error-message {
+  color: #dc2626;
+  background: #fef2f2;
+  padding: 0.5rem;
+  border-radius: 4px;
+  font-family: monospace;
+  white-space: pre-wrap;
 }
 </style>
-

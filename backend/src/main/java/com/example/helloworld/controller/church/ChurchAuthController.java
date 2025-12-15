@@ -4,7 +4,7 @@ import com.example.helloworld.entity.church.ChurchUser;
 import com.example.helloworld.repository.church.ChurchUserRepository;
 import com.example.helloworld.service.personal.TokenBlacklistService;
 import com.example.helloworld.service.church.ChurchMenuService;
-import com.example.helloworld.util.JwtUtil;
+import com.example.helloworld.util.ChurchJwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
@@ -39,7 +39,7 @@ public class ChurchAuthController {
     private ChurchMenuService churchMenuService;
 
     @Autowired
-    private JwtUtil jwtUtil;
+    private ChurchJwtUtil jwtUtil;
 
     @Autowired
     private TokenBlacklistService tokenBlacklistService;

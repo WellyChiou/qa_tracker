@@ -50,11 +50,13 @@ public class SecurityConfig {
                 // ===== 必須公開的端點（這些不應該由資料庫控制）=====
                 // 認證相關 API 必須公開，否則無法登入
                 .requestMatchers("/api/church/auth/**").permitAll() // 教會認證 API
-                .requestMatchers("/api/auth/**").permitAll() // 個人網站認證 API
+                .requestMatchers("/api/personal/auth/**").permitAll() // 個人網站認證 API (新路徑)
+                .requestMatchers("/api/auth/**").permitAll() // 個人網站認證 API (舊路徑兼容)
                 .requestMatchers("/api/public/**").permitAll() // 明確標記為公開的 API
                 .requestMatchers("/api/hello").permitAll() // Hello API
                 .requestMatchers("/api/utils/**").permitAll() // 工具 API（生成密碼 hash 等）
-                .requestMatchers("/api/line/**").permitAll() // LINE Bot Webhook（LINE 平台會直接調用，無需認證）
+                .requestMatchers("/api/line/**").permitAll() // LINE Bot Webhook (舊路徑)
+                .requestMatchers("/api/personal/line/**").permitAll() // LINE Bot Webhook (新路徑)
                 
                 // ===== 靜態資源和前端入口 =====
                 .requestMatchers("/*.css", "/*.js", "/api.js", "/style.css").permitAll()

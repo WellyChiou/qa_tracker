@@ -84,6 +84,8 @@ public class BackupController {
                         
                         return backup;
                     })
+                    // 只保留 church 的備份
+                    .filter(backup -> "church".equals(backup.get("database")))
                     .sorted((a, b) -> {
                         Date dateA = (Date) a.get("modified");
                         Date dateB = (Date) b.get("modified");
@@ -118,10 +120,9 @@ public class BackupController {
             int retentionDays = systemSettingService.getSettingValueAsInt("backup.retention_days", 7);
             String enabled = systemSettingService.getSettingValue("backup.enabled", "true");
             
-            // 執行備份腳本（容器內版本）
-            // 備份腳本已複製到容器內的 /app/backup-database.sh
+            // 執行備份腳本（容器內版本），傳入 'church' 參數只備份教會資料庫
             String backupScript = "/app/backup-database.sh";
-            ProcessBuilder processBuilder = new ProcessBuilder("/bin/sh", backupScript);
+            ProcessBuilder processBuilder = new ProcessBuilder("/bin/sh", backupScript, "church");
             // 不重定向錯誤流，分別讀取 stdout 和 stderr
             processBuilder.redirectErrorStream(false);
             // 設置環境變數
@@ -225,6 +226,15 @@ public class BackupController {
             
             // 安全檢查：移除路徑中的 ".." 和開頭的 "/"
             relativePath = relativePath.replace("..", "").replaceAll("^/", "");
+            
+            // 檢查是否包含 church，防止刪除其他資料庫備份
+            if (!relativePath.contains("church")) {
+                 Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("message", "只能刪除教會網站的備份");
+                return ResponseEntity.badRequest().body(response);
+            }
+
             Path backupPath = Paths.get(backupDir, relativePath);
             
             // 安全檢查：確保檔案在備份目錄內
@@ -269,6 +279,12 @@ public class BackupController {
             
             // 安全檢查：移除路徑中的 ".." 和開頭的 "/"
             relativePath = relativePath.replace("..", "").replaceAll("^/", "");
+
+            // 檢查是否包含 church
+            if (!relativePath.contains("church")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
             Path backupPath = Paths.get(backupDir, relativePath);
             
             // 安全檢查

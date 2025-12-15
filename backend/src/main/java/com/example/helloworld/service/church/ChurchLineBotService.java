@@ -1,6 +1,6 @@
 package com.example.helloworld.service.church;
 
-import com.example.helloworld.config.LineBotConfig;
+import com.example.helloworld.config.ChurchLineBotConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -27,7 +27,7 @@ public class ChurchLineBotService {
     private final RestTemplate restTemplate = new RestTemplate();
 
     @Autowired
-    private LineBotConfig lineBotConfig;
+    private ChurchLineBotConfig lineBotConfig;
 
     /**
      * 發送群組訊息
