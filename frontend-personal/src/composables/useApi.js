@@ -506,6 +506,56 @@ class ApiService {
     })
   }
 
+  // Admin - Line Groups API
+  async getLineGroups() {
+    return this.request('/line-groups')
+  }
+
+  async getLineGroupById(groupId) {
+    return this.request(`/line-groups/${groupId}`)
+  }
+
+  async createLineGroup(group) {
+    return this.request('/line-groups', {
+      method: 'POST',
+      body: JSON.stringify(group)
+    })
+  }
+
+  async updateLineGroup(groupId, group) {
+    return this.request(`/line-groups/${groupId}`, {
+      method: 'PUT',
+      body: JSON.stringify(group)
+    })
+  }
+
+  async deleteLineGroup(groupId) {
+    return this.request(`/line-groups/${groupId}`, { method: 'DELETE' })
+  }
+
+  // Admin - Line Group Members API
+  async getLineGroupMembers(groupId) {
+    return this.request(`/line-groups/${groupId}/members`)
+  }
+
+  async addLineGroupMember(groupId, member) {
+    return this.request(`/line-groups/${groupId}/members`, {
+      method: 'POST',
+      body: JSON.stringify(member)
+    })
+  }
+
+  async updateLineGroupMember(groupId, memberId, member) {
+    return this.request(`/line-groups/${groupId}/members/${memberId}`, {
+      method: 'PUT',
+      body: JSON.stringify(member)
+    })
+  }
+
+  async deleteLineGroupMember(groupId, memberId) {
+    return this.request(`/line-groups/${groupId}/members/${memberId}`, { method: 'DELETE' })
+  }
+
   // Admin - Roles API
   async getRoles() {
     return this.request('/roles')

@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import com.example.helloworld.entity.personal.LineGroupMember;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.HashMap;
@@ -47,12 +48,37 @@ public class LineBotService {
     @Autowired
     private LineGroupRepository lineGroupRepository;
 
+    @Autowired
+    private com.example.helloworld.repository.personal.LineGroupMemberRepository lineGroupMemberRepository;
+
+    @Autowired
+    private com.example.helloworld.repository.church.ServiceScheduleDateRepository serviceScheduleDateRepository;
+    @Autowired
+    private com.example.helloworld.repository.church.PositionRepository positionRepository;
+    @Autowired
+    private com.example.helloworld.repository.church.PersonRepository personRepository;
+    @Autowired
+    private com.example.helloworld.repository.church.PositionPersonRepository positionPersonRepository;
+    @Autowired
+    private com.example.helloworld.repository.church.ServiceSchedulePositionConfigRepository serviceSchedulePositionConfigRepository;
+    @Autowired
+    private com.example.helloworld.repository.church.ServiceScheduleAssignmentRepository serviceScheduleAssignmentRepository;
+    
+    @Autowired
+    private com.example.helloworld.scheduler.church.ServiceScheduleNotificationScheduler serviceScheduleNotificationScheduler;
+
     // 費用記錄格式：類型 主類別 細項 金額 描述
     // 例如：支出 食 外食 150 午餐
     // 支援智慧辨識：支出 外食 150 早餐（自動識別為「食 > 外食」）
     private static final Pattern EXPENSE_PATTERN = Pattern.compile(
         "(支出|收入)\\s+([^\\d\\s]+)(?:\\s+([^\\d\\s]+))?\\s+(\\d+(?:\\.\\d{1,2})?)(?:\\s+(.*))?",
         Pattern.CASE_INSENSITIVE
+    );
+
+    // 服事更新格式：日期(yyyyMMdd),崗位,人員
+    // 例如：20231225,音控,王小明
+    private static final Pattern SERVICE_UPDATE_PATTERN = Pattern.compile(
+        "^(\\d{8}),([^,]+),(.+)$"
     );
 
     /**
@@ -101,8 +127,14 @@ public class LineBotService {
             return processExpenseMessage(matcher, user);
         }
 
-        // 檢查是否為群組 ID（LINE 群組 ID 通常以 C 開頭，長度約 33 個字符）
+        // 檢查是否為服事更新指令（格式：yyyyMMdd,崗位,人員）
         String trimmedMessage = messageText.trim();
+        Matcher serviceMatcher = SERVICE_UPDATE_PATTERN.matcher(trimmedMessage);
+        if (serviceMatcher.find()) {
+            return processServiceUpdateMessage(serviceMatcher);
+        }
+
+        // 檢查是否為群組 ID（LINE 群組 ID 通常以 C 開頭，長度約 33 個字符）
         if (trimmedMessage.startsWith("C") && trimmedMessage.length() >= 30 && trimmedMessage.length() <= 40) {
             return getGroupInfo(trimmedMessage);
         }
@@ -121,10 +153,166 @@ public class LineBotService {
             case "今天":
                 return getTodayExpensesMessage(user);
 
+            case "本周服事表":
+            case "本週服事表":
+                // 異步執行通知任務，避免阻塞 LINE 回應
+                new Thread(() -> {
+                    try {
+                        log.info("🔔 [LINE Bot] 用戶 {} 請求發送本週服事表通知", user.getUid());
+                        serviceScheduleNotificationScheduler.sendWeeklyServiceNotification();
+                    } catch (Exception e) {
+                        log.error("❌ [LINE Bot] 執行本週服事表通知失敗", e);
+                        // 可以選擇發送失敗訊息給用戶
+                        sendPushMessage(user.getLineUserId(), "❌ 發送通知失敗：" + e.getMessage());
+                    }
+                }).start();
+                return "✅ 已觸發本週服事表通知任務，請稍候...";
+
             default:
                 return "❓ 無法識別的指令。請輸入 '幫助' 查看可用指令，或使用格式：\n" +
                        "'支出 主類別 細項 金額 描述'\n" +
                        "例如：'支出 食 外食 150 午餐' 或 '收入 薪資 本薪 50000'";
+        }
+    }
+
+    /**
+     * 處理服事更新訊息
+     * 格式：日期(yyyyMMdd),崗位,人員
+     */
+    private String processServiceUpdateMessage(Matcher matcher) {
+        try {
+            String dateStr = matcher.group(1);
+            String positionName = matcher.group(2).trim();
+            String personName = matcher.group(3).trim();
+
+            // 1. 驗證日期
+            LocalDate date;
+            try {
+                date = LocalDate.parse(dateStr, java.time.format.DateTimeFormatter.BASIC_ISO_DATE);
+            } catch (Exception e) {
+                return "❌ 日期格式錯誤，請使用 yyyyMMdd 格式（例如：20231225）。";
+            }
+
+            // 檢查日期是否為過去
+            if (date.isBefore(LocalDate.now())) {
+                return "❌ 無法更新過去的服事表，請輸入未來的日期。";
+            }
+
+            // 檢查日期是否為週六或週日
+            java.time.DayOfWeek dayOfWeek = date.getDayOfWeek();
+            String dayType;
+            if (dayOfWeek == java.time.DayOfWeek.SATURDAY) {
+                dayType = "SAT";
+            } else if (dayOfWeek == java.time.DayOfWeek.SUNDAY) {
+                dayType = "SUN";
+            } else {
+                return "❌ 該日期不是週六或週日，請輸入週末的日期。";
+            }
+
+            // 2. 驗證崗位
+            Optional<com.example.helloworld.entity.church.Position> positionOpt = positionRepository.findByPositionName(positionName);
+            if (!positionOpt.isPresent()) {
+                // 如果找不到，嘗試列出所有可用崗位
+                List<com.example.helloworld.entity.church.Position> allPositions = positionRepository.findByIsActiveTrueOrderBySortOrderAsc();
+                StringBuilder sb = new StringBuilder("❌ 找不到崗位「" + positionName + "」。\n\n可用崗位：\n");
+                for (com.example.helloworld.entity.church.Position p : allPositions) {
+                    sb.append("• ").append(p.getPositionName()).append("\n");
+                }
+                return sb.toString();
+            }
+            com.example.helloworld.entity.church.Position position = positionOpt.get();
+
+            // 3. 驗證人員
+            // 先找人員實體
+            Optional<com.example.helloworld.entity.church.Person> personOpt = personRepository.findByPersonName(personName);
+            if (!personOpt.isPresent()) {
+                // 如果找不到該人員
+                return "❌ 系統中找不到人員「" + personName + "」。請確認姓名是否正確。";
+            }
+            com.example.helloworld.entity.church.Person person = personOpt.get();
+
+            // 檢查該人員是否屬於該崗位且符合日期類型（六/日）
+            Optional<com.example.helloworld.entity.church.PositionPerson> ppOpt = 
+                positionPersonRepository.findByPositionIdAndPersonIdAndDayType(position.getId(), person.getId(), dayType);
+            
+            if (!ppOpt.isPresent()) {
+                // 如果人員不在此崗位的此時段配置中，列出該崗位在該時段的可用人員
+                List<com.example.helloworld.entity.church.PositionPerson> availablePersons = 
+                    positionPersonRepository.findByPositionIdAndDayTypeOrdered(position.getId(), dayType);
+                
+                StringBuilder sb = new StringBuilder("❌ 人員「" + personName + "」未被分配到「" + positionName + "」的" + (dayType.equals("SAT") ? "週六" : "週日") + "班次。\n\n");
+                sb.append("該崗位在").append(dayType.equals("SAT") ? "週六" : "週日").append("的可用人員：\n");
+                
+                if (availablePersons.isEmpty()) {
+                    sb.append("(無可用人員)");
+                } else {
+                    for (com.example.helloworld.entity.church.PositionPerson pp : availablePersons) {
+                        sb.append("• ").append(pp.getPerson().getPersonName()).append("\n");
+                    }
+                }
+                return sb.toString();
+            }
+
+            // 4. 執行更新
+            // 查找該日期的服事表
+            Optional<com.example.helloworld.entity.church.ServiceScheduleDate> scheduleDateOpt = serviceScheduleDateRepository.findByDate(date);
+            if (!scheduleDateOpt.isPresent()) {
+                return "❌ 找不到 " + dateStr + " 的服事表，請先在後台建立該年度的服事表。";
+            }
+            com.example.helloworld.entity.church.ServiceScheduleDate scheduleDate = scheduleDateOpt.get();
+
+            // 查找或創建該崗位的配置
+            com.example.helloworld.entity.church.ServiceSchedulePositionConfig config;
+            Optional<com.example.helloworld.entity.church.ServiceSchedulePositionConfig> configOpt = 
+                serviceSchedulePositionConfigRepository.findByServiceScheduleDateAndPosition(scheduleDate, position);
+            
+            String originalPersonName = "(無)";
+            if (configOpt.isPresent()) {
+                config = configOpt.get();
+                
+                // 獲取原始分配的人員，用於顯示變更前資訊
+                List<com.example.helloworld.entity.church.ServiceScheduleAssignment> assignments = 
+                    serviceScheduleAssignmentRepository.findByServiceSchedulePositionConfig(config);
+                if (!assignments.isEmpty()) {
+                    StringBuilder sb = new StringBuilder();
+                    for (int i = 0; i < assignments.size(); i++) {
+                        if (i > 0) sb.append("、");
+                        sb.append(assignments.get(i).getPerson().getPersonName());
+                    }
+                    originalPersonName = sb.toString();
+                }
+                
+                // 清除舊的分配
+                serviceScheduleAssignmentRepository.deleteByServiceSchedulePositionConfig(config);
+            } else {
+                config = new com.example.helloworld.entity.church.ServiceSchedulePositionConfig();
+                config.setServiceScheduleDate(scheduleDate);
+                config.setPosition(position);
+                config.setPersonCount(1);
+                config = serviceSchedulePositionConfigRepository.save(config);
+            }
+
+            // 創建新的分配
+            com.example.helloworld.entity.church.ServiceScheduleAssignment assignment = new com.example.helloworld.entity.church.ServiceScheduleAssignment();
+            assignment.setServiceSchedulePositionConfig(config);
+            assignment.setPerson(person);
+            assignment.setSortOrder(0);
+            serviceScheduleAssignmentRepository.save(assignment);
+
+            // 更新配置的人數
+            config.setPersonCount(1); // 目前只支援單人更新，若需多人需修改指令格式
+            serviceSchedulePositionConfigRepository.save(config);
+
+            return String.format("✅ 服事更新成功！\n\n日期：%s (%s)\n崗位：%s\n變更前：%s\n變更後：%s", 
+                date.toString(), 
+                dayType.equals("SAT") ? "週六" : "週日",
+                positionName,
+                originalPersonName,
+                personName);
+
+        } catch (Exception e) {
+            log.error("❌ 處理服事更新失敗", e);
+            return "❌ 更新失敗，系統發生錯誤：" + e.getMessage();
         }
     }
 
@@ -466,6 +654,19 @@ public class LineBotService {
     }
 
     /**
+     * 更新群組成員計數
+     */
+    private void updateGroupMemberCount(LineGroup group) {
+        try {
+            long count = lineGroupMemberRepository.countByLineGroup(group);
+            group.setMemberCount((int) count);
+            lineGroupRepository.save(group);
+        } catch (Exception e) {
+            log.error("❌ 更新群組成員計數失敗: {}", e.getMessage());
+        }
+    }
+
+    /**
      * 處理群組訊息事件
      */
     public void handleGroupMessageEvent(String replyToken, String groupId, String userId, String messageText) {
@@ -477,8 +678,9 @@ public class LineBotService {
         log.info("📨 [群組訊息] Reply Token: {}", (replyToken != null ? replyToken.substring(0, Math.min(20, replyToken.length())) + "..." : "null"));
 
         try {
-            // 檢查群組是否存在，不存在則自動記錄（用於發送通知）
+            // 1. 檢查並更新群組資訊
             Optional<LineGroup> groupOpt = lineGroupRepository.findByGroupId(groupId);
+            LineGroup group;
             
             if (!groupOpt.isPresent()) {
                 log.warn("⚠️ [群組訊息] 群組不存在，自動記錄: {}", groupId);
@@ -488,13 +690,43 @@ public class LineBotService {
                     newGroup.setGroupId(groupId);
                     newGroup.setGroupName("未命名群組");
                     newGroup.setIsActive(true); // 預設啟用
-                    lineGroupRepository.save(newGroup);
+                    newGroup.setMemberCount(1); // 初始只有發送者
+                    group = lineGroupRepository.save(newGroup);
                     log.info("✅ [群組訊息] 已自動記錄新群組: {}", groupId);
                 } catch (Exception e) {
                     log.error("❌ [群組訊息] 自動記錄群組失敗", e);
+                    return; // 無法記錄群組，無法繼續處理成員
                 }
             } else {
+                group = groupOpt.get();
                 log.info("✅ [群組訊息] 群組已存在: {}", groupId);
+            }
+
+            // 2. 檢查並更新成員資訊
+            if (userId != null && !userId.isEmpty()) {
+                try {
+                    Optional<LineGroupMember> memberOpt = lineGroupMemberRepository.findByLineGroupAndUserId(group, userId);
+                    if (!memberOpt.isPresent()) {
+                        log.info("👤 [群組訊息] 記錄新成員: {}", userId);
+                        LineGroupMember newMember = new LineGroupMember();
+                        newMember.setLineGroup(group);
+                        newMember.setUserId(userId);
+                        newMember.setIsAdmin(false); // 預設非管理員
+                        // 嘗試獲取顯示名稱（如果有的話，這裡暫時沒有，後續可以通過 Profile API 獲取）
+                        newMember.setDisplayName("Line User"); 
+                        lineGroupMemberRepository.save(newMember);
+                        
+                        // 更新群組人數
+                        updateGroupMemberCount(group);
+                    } else {
+                        // 更新最後活躍時間
+                        LineGroupMember member = memberOpt.get();
+                        // 可以在這裡更新 displayName 如果有變更
+                        lineGroupMemberRepository.save(member); // 觸發 updatedAt 更新
+                    }
+                } catch (Exception e) {
+                    log.error("❌ [群組訊息] 記錄成員失敗: {}", e.getMessage());
+                }
             }
 
             // 檢查是否為群組 ID 查詢（LINE 群組 ID 通常以 C 開頭，長度約 33 個字符）
@@ -504,6 +736,54 @@ public class LineBotService {
                 sendReplyMessage(replyToken, groupInfo);
                 log.info("✅ [群組訊息] 已回應群組 ID 查詢");
                 return;
+            }
+
+            // 處理「本周服事表」命令
+            if ("本周服事表".equals(messageText) || "本週服事表".equals(messageText)) {
+                log.info("🔔 [LINE Bot] 群組 {} 請求發送本週服事表通知", groupId);
+                
+                // 異步執行通知任務，避免阻塞 LINE 回應
+                new Thread(() -> {
+                    try {
+                        // 調用帶有 targetGroupId 參數的方法，直接發送到該群組
+                        serviceScheduleNotificationScheduler.sendWeeklyServiceNotification(groupId);
+                    } catch (Exception e) {
+                        log.error("❌ [LINE Bot] 執行本週服事表通知失敗", e);
+                        // 在群組中發送錯誤訊息（使用 ChurchLineBotService 發送群組訊息）
+                        // 注意：這裡是 Personal 系統的 LineBotService，但我們注入了 Scheduler
+                        // Scheduler 內部會使用 ChurchLineBotService 發送訊息
+                    }
+                }).start();
+                
+                // 回應確認訊息
+                sendReplyMessage(replyToken, "✅ 已收到請求，正在查詢並發送本週服事表...");
+                return;
+            }
+
+            // 3. 檢查成員是否為管理員，若是則解析訊息
+            if (userId != null && !userId.isEmpty()) {
+                Optional<LineGroupMember> memberOpt = lineGroupMemberRepository.findByLineGroupAndUserId(group, userId);
+                if (memberOpt.isPresent() && memberOpt.get().getIsAdmin()) {
+                    log.info("🛡️ [群組訊息] 用戶 {} 是管理員，開始解析訊息", userId);
+                    
+                    // 嘗試解析訊息（使用與個人訊息相同的處理邏輯）
+                    // 但需要先獲取 User 物件（用於記錄創建者）
+                    Optional<User> userOpt = userRepository.findByLineUserId(userId);
+                    if (userOpt.isPresent()) {
+                        String response = processMessage(messageText, userOpt.get());
+                        if (response != null && !response.isEmpty()) {
+                            sendReplyMessage(replyToken, response);
+                            log.info("✅ [群組訊息] 已回應管理員指令");
+                            return;
+                        }
+                    } else {
+                        log.warn("⚠️ [群組訊息] 管理員 {} 未綁定系統帳號，無法執行指令", userId);
+                        // 可以選擇發送提示，或者忽略
+                        // sendReplyMessage(replyToken, "⚠️ 您是群組管理員，但尚未綁定系統帳號，請先進行綁定。");
+                    }
+                } else {
+                    log.info("ℹ️ [群組訊息] 用戶 {} 不是管理員，忽略指令", userId);
+                }
             }
 
             // 其他群組訊息不回應，只記錄群組資訊（用於發送通知）

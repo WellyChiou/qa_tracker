@@ -157,10 +157,10 @@ public class LineBotController {
                         
                         if (groupId != null && userId != null) {
                             // 檢查是否為教會群組，如果是則跳過 Personal 處理
-                            if (isChurchGroup(groupId)) {
-                                log.info("📨 [教會群組] 收到教會群組訊息，跳過 Personal 處理: {}", groupId);
-                                return;
-                            }
+                            // if (isChurchGroup(groupId)) {
+                            //     log.info("📨 [教會群組] 收到教會群組訊息，跳過 Personal 處理: {}", groupId);
+                            //     return;
+                            // }
                             lineBotService.handleGroupMessageEvent(replyToken, groupId, userId, text);
                         } else {
                             log.warn("⚠️ [Webhook] 群組訊息缺少必要欄位 - groupId: {}, userId: {}", groupId, userId);

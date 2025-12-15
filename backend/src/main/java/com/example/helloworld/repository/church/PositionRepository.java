@@ -12,8 +12,9 @@ import java.util.Optional;
 public interface PositionRepository extends JpaRepository<Position, Long> {
     Optional<Position> findByPositionCode(String positionCode);
     
+    Optional<Position> findByPositionName(String positionName);
+    
     List<Position> findByIsActiveTrueOrderBySortOrderAsc();
     
     List<Position> findAllByOrderBySortOrderAsc();
 }
-

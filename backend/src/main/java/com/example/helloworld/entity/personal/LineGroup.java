@@ -16,6 +16,9 @@ public class LineGroup {
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true; // 是否啟用通知
 
+    @Column(name = "member_count", nullable = false)
+    private Integer memberCount = 0; // 群組人數
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
@@ -56,6 +59,14 @@ public class LineGroup {
 
     public void setIsActive(Boolean isActive) {
         this.isActive = isActive;
+    }
+
+    public Integer getMemberCount() {
+        return memberCount;
+    }
+
+    public void setMemberCount(Integer memberCount) {
+        this.memberCount = memberCount;
     }
 
     public LocalDateTime getCreatedAt() {

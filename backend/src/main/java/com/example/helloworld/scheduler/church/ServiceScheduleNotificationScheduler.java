@@ -71,6 +71,15 @@ public class ServiceScheduleNotificationScheduler {
      */
     @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
     public void sendWeeklyServiceNotification() {
+        sendWeeklyServiceNotification(null);
+    }
+
+    /**
+     * 發送週服事人員通知
+     * @param targetGroupId 指定發送的群組 ID，如果為 null 則發送到所有啟用群組
+     */
+    @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
+    public void sendWeeklyServiceNotification(String targetGroupId) {
         try {
             log.info("📅 [教會排程] 開始查詢本周六日服事人員...");
 
@@ -209,6 +218,19 @@ public class ServiceScheduleNotificationScheduler {
 
             if (!hasSaturday && !hasSundayDate) {
                 message.append("本週六日暫無服事安排。");
+            }
+
+            // 如果指定了目標群組，只發送到該群組
+            if (targetGroupId != null && !targetGroupId.trim().isEmpty()) {
+                log.info("📤 [教會排程] 指定發送通知到群組: {}", targetGroupId);
+                try {
+                    churchLineBotService.sendGroupMessage(targetGroupId, message.toString());
+                    log.info("✅ [教會排程] 已發送服事人員通知到指定群組: {}", targetGroupId);
+                } catch (Exception e) {
+                    log.error("❌ [教會排程] 發送通知到指定群組 {} 失敗: {}", targetGroupId, e.getMessage(), e);
+                    throw new RuntimeException("發送通知到群組失敗: " + e.getMessage(), e);
+                }
+                return;
             }
 
             // 發送 LINE 通知到教會群組

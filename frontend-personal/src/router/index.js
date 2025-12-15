@@ -77,6 +77,12 @@ const routes = [
     name: 'AdminMaintenance',
     component: () => import('@/views/admin/Maintenance.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/admin/line-groups',
+    name: 'AdminLineGroups',
+    component: () => import('@/views/admin/LineGroups.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 
