@@ -72,14 +72,9 @@ public class DatabaseBackupScheduler {
             }
             int retentionDays = systemSettingService.getSettingValueAsInt("backup.retention_days", 7);
             
-<<<<<<< HEAD
-            // 執行備份腳本（容器內版本），傳入 'church' 參數只備份教會資料庫
-            String backupScript = "/app/backup-database.sh";
-=======
             // 執行備份腳本（容器內版本）
             // 備份腳本已複製到容器內的 /app/church-backup-database.sh
             String backupScript = "/app/church-backup-database.sh";
->>>>>>> 45b7fd36d7e04bf5e2b8c79b7542d7cec8adf2d1
             
             // 檢查腳本是否存在
             java.io.File scriptFile = new java.io.File(backupScript);
@@ -187,4 +182,3 @@ public class DatabaseBackupScheduler {
         return new DatabaseBackupJob(this);
     }
 }
-

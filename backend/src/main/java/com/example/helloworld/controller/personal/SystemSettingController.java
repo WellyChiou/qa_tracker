@@ -1,9 +1,9 @@
 package com.example.helloworld.controller.personal;
 
 import com.example.helloworld.entity.personal.SystemSetting;
-<<<<<<< HEAD
 import com.example.helloworld.repository.personal.SystemSettingRepository;
 import com.example.helloworld.service.personal.SystemSettingService;
+import com.example.helloworld.service.personal.ConfigurationRefreshService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
@@ -18,46 +18,16 @@ import java.util.stream.Collectors;
 public class SystemSettingController {
 
     @Autowired
-    @Qualifier("personalSystemSettingRepository")
-    private SystemSettingRepository systemSettingRepository;
-
-    @Autowired
-    @Qualifier("personalSystemSettingService")
-    private SystemSettingService systemSettingService;
-
-=======
-import com.example.helloworld.service.personal.SystemSettingService;
-import com.example.helloworld.service.personal.ConfigurationRefreshService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.stereotype.Component;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-
-@RestController
-@RequestMapping("/api/personal/admin/system-settings")
-@CrossOrigin(origins = "*")
-@Component("personalSystemSettingController")
-public class SystemSettingController {
-
-    @Autowired
     @Qualifier("personalSystemSettingService")
     private SystemSettingService systemSettingService;
 
     @Autowired
     private ConfigurationRefreshService configurationRefreshService;
 
->>>>>>> 45b7fd36d7e04bf5e2b8c79b7542d7cec8adf2d1
     @GetMapping
     public ResponseEntity<Map<String, Object>> getAllSettings() {
         try {
             List<SystemSetting> settings = systemSettingService.getAllSettings();
-<<<<<<< HEAD
             
             // Map Config entities to the structure expected by the frontend (SystemSetting-like)
             // SystemSetting is already in the correct format, but we wrap it to match frontend expectation
@@ -68,8 +38,6 @@ public class SystemSettingController {
             // Reload after ensuring defaults
             settings = systemSettingService.getAllSettings();
 
-=======
->>>>>>> 45b7fd36d7e04bf5e2b8c79b7542d7cec8adf2d1
             Map<String, Object> response = new HashMap<>();
             response.put("settings", settings);
             response.put("message", "獲取系統參數成功");
@@ -81,7 +49,6 @@ public class SystemSettingController {
         }
     }
 
-<<<<<<< HEAD
     @GetMapping("/{key}/value")
     public ResponseEntity<Map<String, String>> getSettingValue(@PathVariable String key) {
         String value = systemSettingService.getSettingValue(key, null);
@@ -91,7 +58,9 @@ public class SystemSettingController {
             return ResponseEntity.ok(response);
         } else {
             return ResponseEntity.notFound().build();
-=======
+        }
+    }
+
     @GetMapping("/category/{category}")
     public ResponseEntity<Map<String, Object>> getSettingsByCategory(@PathVariable String category) {
         try {
@@ -123,14 +92,12 @@ public class SystemSettingController {
             Map<String, Object> error = new HashMap<>();
             error.put("error", "獲取系統參數失敗：" + e.getMessage());
             return ResponseEntity.badRequest().body(error);
->>>>>>> 45b7fd36d7e04bf5e2b8c79b7542d7cec8adf2d1
         }
     }
 
     @PutMapping("/{key}")
     public ResponseEntity<Map<String, Object>> updateSetting(
             @PathVariable String key,
-<<<<<<< HEAD
             @RequestBody Map<String, Object> request) {
         try {
             String value = (String) request.get("settingValue");
@@ -139,25 +106,24 @@ public class SystemSettingController {
             
             SystemSetting update = new SystemSetting();
             update.setSettingValue(value);
-            update.setDescription(description);
+            if (description != null) {
+                update.setDescription(description);
+            }
             
             SystemSetting saved = systemSettingService.updateSetting(key, update);
+            
+            // 更新配置後，刷新配置緩存
+            try {
+                configurationRefreshService.refreshConfig(key);
+            } catch (Exception ex) {
+                // Log warning but don't fail the request if cache refresh fails
+                System.err.println("Failed to refresh config cache: " + ex.getMessage());
+            }
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "更新系統參數成功");
             response.put("setting", saved);
-=======
-            @RequestBody SystemSetting settingUpdate) {
-        try {
-            SystemSetting updated = systemSettingService.updateSetting(key, settingUpdate);
-            // 更新配置後，刷新配置緩存
-            configurationRefreshService.refreshConfig(key);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "更新系統參數成功，配置已刷新");
-            response.put("setting", updated);
->>>>>>> 45b7fd36d7e04bf5e2b8c79b7542d7cec8adf2d1
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             Map<String, Object> response = new HashMap<>();
@@ -169,20 +135,11 @@ public class SystemSettingController {
 
     @PostMapping("/refresh")
     public ResponseEntity<Map<String, Object>> refreshConfig() {
-<<<<<<< HEAD
-        // Personal site reads directly from DB via SystemSettingService, no caching layer to refresh.
-        // But we return success to satisfy the frontend.
-        try {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "配置已更新 (無緩存)");
-=======
         try {
             configurationRefreshService.refreshConfig();
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "配置刷新成功");
->>>>>>> 45b7fd36d7e04bf5e2b8c79b7542d7cec8adf2d1
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             Map<String, Object> response = new HashMap<>();
@@ -191,7 +148,43 @@ public class SystemSettingController {
             return ResponseEntity.badRequest().body(response);
         }
     }
-<<<<<<< HEAD
+    
+    @PostMapping
+    public ResponseEntity<Map<String, Object>> createSetting(@RequestBody SystemSetting setting) {
+        try {
+            SystemSetting created = systemSettingService.createSetting(setting);
+            // 創建配置後，刷新配置緩存
+            configurationRefreshService.refreshConfig(created.getSettingKey());
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "創建系統參數成功，配置已刷新");
+            response.put("setting", created);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "創建失敗: " + e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    @DeleteMapping("/{key}")
+    public ResponseEntity<Map<String, Object>> deleteSetting(@PathVariable String key) {
+        try {
+            systemSettingService.deleteSetting(key);
+            // 刪除配置後，刷新配置緩存
+            configurationRefreshService.refreshConfig(key);
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "刪除系統參數成功，配置已刷新");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "刪除失敗: " + e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
     
     private void ensureDefaultSettingsExist(List<SystemSetting> settings) {
         Set<String> existingKeys = settings.stream()
@@ -232,44 +225,6 @@ public class SystemSettingController {
             } catch (Exception e) {
                 // Ignore if created concurrently
             }
-=======
-
-    @PostMapping
-    public ResponseEntity<Map<String, Object>> createSetting(@RequestBody SystemSetting setting) {
-        try {
-            SystemSetting created = systemSettingService.createSetting(setting);
-            // 創建配置後，刷新配置緩存
-            configurationRefreshService.refreshConfig(created.getSettingKey());
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "創建系統參數成功，配置已刷新");
-            response.put("setting", created);
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "創建失敗: " + e.getMessage());
-            return ResponseEntity.badRequest().body(response);
-        }
-    }
-
-    @DeleteMapping("/{key}")
-    public ResponseEntity<Map<String, Object>> deleteSetting(@PathVariable String key) {
-        try {
-            systemSettingService.deleteSetting(key);
-            // 刪除配置後，刷新配置緩存
-            configurationRefreshService.refreshConfig(key);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "刪除系統參數成功，配置已刷新");
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "刪除失敗: " + e.getMessage());
-            return ResponseEntity.badRequest().body(response);
->>>>>>> 45b7fd36d7e04bf5e2b8c79b7542d7cec8adf2d1
         }
     }
 }
-

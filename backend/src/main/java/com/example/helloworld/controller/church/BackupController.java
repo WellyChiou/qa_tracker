@@ -133,16 +133,10 @@ public class BackupController {
             int retentionDays = systemSettingService.getSettingValueAsInt("backup.retention_days", 7);
             String enabled = systemSettingService.getSettingValue("backup.enabled", "true");
             
-<<<<<<< HEAD
-            // 執行備份腳本（容器內版本），傳入 'church' 參數只備份教會資料庫
-            String backupScript = "/app/backup-database.sh";
-            ProcessBuilder processBuilder = new ProcessBuilder("/bin/sh", backupScript, "church");
-=======
             // 執行備份腳本（容器內版本）
             // 備份腳本已複製到容器內的 /app/church-backup-database.sh
             String backupScript = "/app/church-backup-database.sh";
             ProcessBuilder processBuilder = new ProcessBuilder("/bin/sh", backupScript);
->>>>>>> 45b7fd36d7e04bf5e2b8c79b7542d7cec8adf2d1
             // 不重定向錯誤流，分別讀取 stdout 和 stderr
             processBuilder.redirectErrorStream(false);
             // 設置環境變數
@@ -356,4 +350,3 @@ public class BackupController {
         return String.format("%.2f GB", bytes / (1024.0 * 1024.0 * 1024.0));
     }
 }
-

@@ -1,6 +1,7 @@
 package com.example.helloworld.controller.personal;
 
-import com.example.helloworld.config.LineBotConfig;
+import com.example.helloworld.config.PersonalLineBotConfig;
+import com.example.helloworld.config.ChurchLineBotConfig;
 import com.example.helloworld.repository.church.ChurchLineGroupRepository;
 import com.example.helloworld.service.personal.LineBotService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,7 +25,10 @@ public class LineBotController {
     private LineBotService lineBotService;
 
     @Autowired
-    private LineBotConfig lineBotConfig;
+    private PersonalLineBotConfig lineBotConfig;
+
+    @Autowired
+    private ChurchLineBotConfig churchLineBotConfig;
 
     @Autowired
     private ChurchLineGroupRepository churchLineGroupRepository;
@@ -256,7 +260,7 @@ public class LineBotController {
 
         try {
             // 方式1：檢查是否等於配置的教會群組 ID
-            String churchGroupId = lineBotConfig.getChurchGroupId();
+            String churchGroupId = churchLineBotConfig.getChurchGroupId();
             if (churchGroupId != null && !churchGroupId.trim().isEmpty() && churchGroupId.equals(groupId)) {
                 log.debug("✅ [群組判斷] 群組 {} 匹配配置的教會群組 ID", groupId);
                 return true;

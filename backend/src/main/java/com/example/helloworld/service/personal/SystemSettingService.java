@@ -17,49 +17,29 @@ public class SystemSettingService {
     @Qualifier("personalSystemSettingRepository")
     private SystemSettingRepository systemSettingRepository;
 
-<<<<<<< HEAD
-    @Transactional(readOnly = true)
-=======
     @Transactional(readOnly = true, transactionManager = "primaryTransactionManager")
->>>>>>> 45b7fd36d7e04bf5e2b8c79b7542d7cec8adf2d1
     public List<SystemSetting> getAllSettings() {
         return systemSettingRepository.findAllOrderByCategoryAndKey();
     }
 
-<<<<<<< HEAD
-    @Transactional(readOnly = true)
-=======
     @Transactional(readOnly = true, transactionManager = "primaryTransactionManager")
->>>>>>> 45b7fd36d7e04bf5e2b8c79b7542d7cec8adf2d1
     public List<SystemSetting> getSettingsByCategory(String category) {
         return systemSettingRepository.findByCategory(category);
     }
 
-<<<<<<< HEAD
-    @Transactional(readOnly = true)
-=======
     @Transactional(readOnly = true, transactionManager = "primaryTransactionManager")
->>>>>>> 45b7fd36d7e04bf5e2b8c79b7542d7cec8adf2d1
     public Optional<SystemSetting> getSettingByKey(String key) {
         return systemSettingRepository.findBySettingKey(key);
     }
 
-<<<<<<< HEAD
-    @Transactional(readOnly = true)
-=======
     @Transactional(readOnly = true, transactionManager = "primaryTransactionManager")
->>>>>>> 45b7fd36d7e04bf5e2b8c79b7542d7cec8adf2d1
     public String getSettingValue(String key, String defaultValue) {
         return systemSettingRepository.findBySettingKey(key)
             .map(SystemSetting::getSettingValue)
             .orElse(defaultValue);
     }
 
-<<<<<<< HEAD
-    @Transactional(readOnly = true)
-=======
     @Transactional(readOnly = true, transactionManager = "primaryTransactionManager")
->>>>>>> 45b7fd36d7e04bf5e2b8c79b7542d7cec8adf2d1
     public int getSettingValueAsInt(String key, int defaultValue) {
         String value = getSettingValue(key, String.valueOf(defaultValue));
         try {
@@ -69,19 +49,12 @@ public class SystemSettingService {
         }
     }
 
-<<<<<<< HEAD
-    @Transactional(readOnly = true)
-=======
     @Transactional(readOnly = true, transactionManager = "primaryTransactionManager")
->>>>>>> 45b7fd36d7e04bf5e2b8c79b7542d7cec8adf2d1
     public boolean getSettingValueAsBoolean(String key, boolean defaultValue) {
         String value = getSettingValue(key, String.valueOf(defaultValue));
         return Boolean.parseBoolean(value);
     }
 
-<<<<<<< HEAD
-    @Transactional
-=======
     @Transactional(readOnly = true, transactionManager = "primaryTransactionManager")
     public long getSettingValueAsLong(String key, long defaultValue) {
         String value = getSettingValue(key, String.valueOf(defaultValue));
@@ -93,7 +66,6 @@ public class SystemSettingService {
     }
 
     @Transactional(transactionManager = "primaryTransactionManager")
->>>>>>> 45b7fd36d7e04bf5e2b8c79b7542d7cec8adf2d1
     public SystemSetting updateSetting(String key, SystemSetting settingUpdate) {
         SystemSetting existing = systemSettingRepository.findBySettingKey(key)
             .orElseThrow(() -> new RuntimeException("系統參數不存在: " + key));
@@ -112,19 +84,13 @@ public class SystemSettingService {
         return systemSettingRepository.save(existing);
     }
 
-<<<<<<< HEAD
-    @Transactional
-=======
     @Transactional(transactionManager = "primaryTransactionManager")
->>>>>>> 45b7fd36d7e04bf5e2b8c79b7542d7cec8adf2d1
     public SystemSetting createSetting(SystemSetting setting) {
         if (systemSettingRepository.existsBySettingKey(setting.getSettingKey())) {
             throw new RuntimeException("系統參數已存在: " + setting.getSettingKey());
         }
         return systemSettingRepository.save(setting);
     }
-<<<<<<< HEAD
-=======
 
     @Transactional(transactionManager = "primaryTransactionManager")
     public void deleteSetting(String key) {
@@ -138,6 +104,4 @@ public class SystemSettingService {
         
         systemSettingRepository.delete(setting);
     }
->>>>>>> 45b7fd36d7e04bf5e2b8c79b7542d7cec8adf2d1
 }
-
