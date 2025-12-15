@@ -70,7 +70,7 @@
         <div class="d-flex justify-content-between align-items-center">
           <div>
             <i class="fas fa-users-cog me-1"></i>
-            成員管理 - {{ currentGroup.groupName || currentGroup.groupId }}
+            成員管理 - {{ currentGroup?.groupName || currentGroup?.groupId }}
           </div>
           <div>
             <button class="btn btn-secondary btn-sm me-2" @click="closeMembersView">
@@ -184,6 +184,7 @@
           </div>
         </div>
       </div>
+    </div>
     </div>
   </div>
 </template>
