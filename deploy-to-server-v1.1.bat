@@ -1,0 +1,162 @@
+@echo off
+REM ==========================================
+REM 一鍵部署腳本 (Windows 版本 - unified)
+REM 目標：與 Mac/Linux 版本同步（Single Source of Truth = remote_deploy.sh）
+REM 流程：打包 -> 上傳 tar.gz -> 上傳 /tmp/remote_deploy.sh -> 遠端執行 remote_deploy.sh
+REM
+REM 注意：
+REM 1) Windows 內建 scp/ssh 無法在命令列安全傳遞密碼，建議使用 SSH Key
+REM 2) 本腳本不內嵌密碼（避免外洩）；若你要用密碼登入，請在提示時手動輸入
+REM ==========================================
+
+chcp 65001 >nul 2>&1
+setlocal enabledelayedexpansion
+
+REM ====== 配置區（需要改就改這裡）======
+set SERVER_IP=38.54.89.136
+set SERVER_USER=root
+set PROJECT_NAME=docker-vue-java-mysql
+set REMOTE_PATH=/root/project/work
+set ARCHIVE_NAME=%PROJECT_NAME%.tar.gz
+set REMOTE_DEPLOY=remote_deploy.sh
+REM =========================================
+
+REM 取得腳本所在目錄
+set SCRIPT_DIR=%~dp0
+cd /d "%SCRIPT_DIR%"
+for %%I in ("%CD%") do set CURRENT_DIR=%%~nxI
+
+echo ==========================================
+echo 🚀 開始一鍵部署（Windows - unified）
+echo ==========================================
+echo Server: %SERVER_USER%@%SERVER_IP%
+echo Remote Path: %REMOTE_PATH%
+echo Project: %PROJECT_NAME%
+echo.
+
+REM ====== Step 1: 檢查必要工具 ======
+echo Step 1/4: 檢查必要工具...
+where tar >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] 未找到 tar 命令（Windows 10 1803+ 內建；或裝 Git for Windows）
+    pause
+    exit /b 1
+)
+where scp >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] 未找到 scp 命令（Windows 10 1809+ OpenSSH 內建；或裝 Git for Windows）
+    pause
+    exit /b 1
+)
+where ssh >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] 未找到 ssh 命令（Windows 10 1809+ OpenSSH 內建）
+    pause
+    exit /b 1
+)
+
+if not exist "%SCRIPT_DIR%%REMOTE_DEPLOY%" (
+    echo [ERROR] 找不到 %REMOTE_DEPLOY%（請確認放在腳本同層）
+    pause
+    exit /b 1
+)
+
+echo [OK] 工具檢查完成
+echo.
+
+REM ====== Step 2: 打包 ======
+echo Step 2/4: 打包專案...
+cd /d "%SCRIPT_DIR%"
+if exist "%ARCHIVE_NAME%" del "%ARCHIVE_NAME%"
+
+REM 切到上一層打包（讓 tar 內路徑是 docker-vue-java-mysql/...）
+cd /d "%SCRIPT_DIR%.."
+
+tar -czf "%SCRIPT_DIR%\%ARCHIVE_NAME%" ^
+    --exclude="%CURRENT_DIR%/.git" ^
+    --exclude="%CURRENT_DIR%/node_modules" ^
+    --exclude="%CURRENT_DIR%/target" ^
+    --exclude="%CURRENT_DIR%/.DS_Store" ^
+    --exclude="%CURRENT_DIR%/*.log" ^
+    --exclude="%CURRENT_DIR%/frontend/dist" ^
+    --exclude="%CURRENT_DIR%/frontend-personal/dist" ^
+    --exclude="%CURRENT_DIR%/frontend-church/dist" ^
+    --exclude="%CURRENT_DIR%/frontend-church-admin/dist" ^
+    --exclude="%CURRENT_DIR%/*.tar.gz" ^
+    "%CURRENT_DIR%"
+
+cd /d "%SCRIPT_DIR%"
+
+if %errorlevel% neq 0 (
+    echo [ERROR] 打包失敗!
+    pause
+    exit /b 1
+)
+
+if not exist "%ARCHIVE_NAME%" (
+    echo [ERROR] 打包失敗! 找不到歸檔文件
+    pause
+    exit /b 1
+)
+
+for %%A in ("%ARCHIVE_NAME%") do set ARCHIVE_SIZE=%%~zA
+set /a ARCHIVE_SIZE_KB=!ARCHIVE_SIZE!/1024
+if !ARCHIVE_SIZE_KB! geq 1024 (
+    set /a ARCHIVE_SIZE_MB=!ARCHIVE_SIZE_KB!/1024
+    echo [OK] 打包完成: %ARCHIVE_NAME% (!ARCHIVE_SIZE_MB! MB)
+) else (
+    echo [OK] 打包完成: %ARCHIVE_NAME% (!ARCHIVE_SIZE_KB! KB)
+)
+echo.
+
+REM ====== Step 3: 上傳 ======
+echo Step 3/4: 上傳到伺服器...
+echo 你可能會被要求輸入密碼（建議改用 SSH Key 免輸入）
+echo.
+
+ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL %SERVER_USER%@%SERVER_IP% "mkdir -p %REMOTE_PATH%"
+if %errorlevel% neq 0 (
+    echo [ERROR] 無法連線到遠端伺服器（請確認 IP/帳號/網路/金鑰或密碼）
+    pause
+    exit /b 1
+)
+
+scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL "%ARCHIVE_NAME%" %SERVER_USER%@%SERVER_IP%:%REMOTE_PATH%/
+if %errorlevel% neq 0 (
+    echo [ERROR] 上傳壓縮檔失敗
+    pause
+    exit /b 1
+)
+
+scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL "%SCRIPT_DIR%%REMOTE_DEPLOY%" %SERVER_USER%@%SERVER_IP%:/tmp/remote_deploy.sh
+if %errorlevel% neq 0 (
+    echo [ERROR] 上傳 remote_deploy.sh 失敗
+    pause
+    exit /b 1
+)
+
+echo [OK] 上傳完成
+echo.
+
+REM ====== Step 4: 遠端執行 ======
+echo Step 4/4: 遠端部署中（remote_deploy.sh）...
+ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL %SERVER_USER%@%SERVER_IP% ^
+ "sed -i 's/\r$//' /tmp/remote_deploy.sh && chmod +x /tmp/remote_deploy.sh && bash /tmp/remote_deploy.sh && rm -f /tmp/remote_deploy.sh"
+
+if %errorlevel% neq 0 (
+    echo [ERROR] 遠端部署失敗（請到伺服器查看 log）
+    pause
+    exit /b 1
+)
+
+echo.
+echo ==========================================
+echo ✅ 一鍵部署完成（Windows - unified）
+echo ==========================================
+echo.
+echo 檢查服務狀態：
+echo   ssh %SERVER_USER%@%SERVER_IP%
+echo   cd %REMOTE_PATH%/%PROJECT_NAME%
+echo   docker compose ps
+echo.
+pause

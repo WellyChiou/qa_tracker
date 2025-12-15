@@ -261,13 +261,24 @@ class ApiService {
     return this.request(`/records/${id}`, { method: 'DELETE' })
   }
 
+<<<<<<< HEAD
   // System Settings API (Replaces Config API)
   async getConfig(configKey) {
     // 兼容舊方法名，但在底層改用新的 system-settings API
     return this.request(`/system-settings/${configKey}/value`, { showLoading: false })
+=======
+  // Config API（已廢棄，請使用 SystemSettings API）
+  // 使用 /personal/admin/system-settings/{key} 替代
+  // @deprecated 請使用 SystemSettings API
+  async getConfig(configKey) {
+    console.warn('getConfig 已廢棄，請使用 SystemSettings API')
+    return this.request(`/config/${configKey}`, { showLoading: false })
+>>>>>>> 45b7fd36d7e04bf5e2b8c79b7542d7cec8adf2d1
   }
 
+  // @deprecated 請使用 SystemSettings API
   async saveConfig(configKey, data) {
+    console.warn('saveConfig 已廢棄，請使用 SystemSettings API')
     return this.request(`/config/${configKey}`, {
       method: 'POST',
       body: JSON.stringify(data)
@@ -423,6 +434,26 @@ class ApiService {
     })
   }
 
+<<<<<<< HEAD
+=======
+  // Config API（已廢棄，請使用 SystemSettings API）
+  // 使用 /personal/admin/system-settings/{key} 替代
+  // @deprecated 請使用 SystemSettings API
+  async getConfig(configKey) {
+    console.warn('getConfig 已廢棄，請使用 SystemSettings API')
+    return this.request(`/config/${configKey}`)
+  }
+
+  // @deprecated 請使用 SystemSettings API
+  async saveConfig(configKey, value, description) {
+    console.warn('saveConfig 已廢棄，請使用 SystemSettings API')
+    return this.request(`/config/${configKey}`, {
+      method: 'POST',
+      body: JSON.stringify({ value, description })
+    })
+  }
+
+>>>>>>> 45b7fd36d7e04bf5e2b8c79b7542d7cec8adf2d1
   // Admin - Users API
   async getUsers() {
     return this.request('/users')

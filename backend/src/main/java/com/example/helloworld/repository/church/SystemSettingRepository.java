@@ -8,7 +8,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
-@Repository
+@Repository("churchSystemSettingRepository")
 public interface SystemSettingRepository extends JpaRepository<SystemSetting, Long> {
     Optional<SystemSetting> findBySettingKey(String settingKey);
     

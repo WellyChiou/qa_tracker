@@ -362,7 +362,12 @@ public class ServiceScheduleNotificationScheduler {
                                 com.example.helloworld.entity.church.PositionPerson pp = positionPersonOpt.get();
                                 Boolean includeInAutoSchedule = pp.getIncludeInAutoSchedule();
                                 log.info("  📋 [教會排程] 找到 position_persons 記錄，includeInAutoSchedule={}", includeInAutoSchedule);
+<<<<<<< HEAD
                                 // TODO: 取消註解
+=======
+                                
+                                // 暫時關閉這邏輯
+>>>>>>> 45b7fd36d7e04bf5e2b8c79b7542d7cec8adf2d1
                                 // if (includeInAutoSchedule != null && !includeInAutoSchedule) {
                                 //     log.warn("  ⚠️ [教會排程] 崗位 {} 分配給: {}，但該人員不參與自動分配，跳過通知", positionName, personName);
                                 //     continue;

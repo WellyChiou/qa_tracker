@@ -119,6 +119,9 @@ else
     docker-compose up -d --build
 fi
 
+echo "🔒 設定 cron（集中管理，避免覆蓋）"
+bash ./setup-prevention.sh
+
 # 等待服務啟動
 echo ""
 echo "等待服務啟動..."

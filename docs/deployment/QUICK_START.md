@@ -46,6 +46,19 @@ cd /root/project/work
 tar -xzf docker-vue-java-mysql.tar.gz
 ```
 
+### 方法 C: 使用 Git（如果虛擬主機有 Git）
+
+```bash
+# 在本地先初始化 Git（如果還沒有）
+cd /Users/wellychiou/my-github/docker-vue-java-mysql
+git init
+git add .
+git commit -m "Initial commit"
+
+# 在虛擬主機上
+git clone your-repo-url
+```
+
 ---
 
 ## 步驟 2: SSH 連接到虛擬主機
@@ -364,6 +377,21 @@ docker compose exec mysql bash
 
 ---
 
+## 一鍵部署（推薦）
+
+如果您使用 Windows 或 Mac，可以使用一鍵部署腳本：
+
+- **Windows**: `deploy-to-server.bat`
+- **Mac/Linux**: `deploy-to-server-v1.1.sh`
+
+這些腳本會自動：
+1. 打包專案
+2. 上傳到伺服器
+3. 執行遠端部署腳本
+4. 設置預防機制（監控、自動修復）
+
+詳細說明請參考：[一鍵部署（含預防機制）](./DEPLOYMENT_WITH_PREVENTION.md)
+
 ## 下一步
 
 部署成功後，您可以：
@@ -371,7 +399,7 @@ docker compose exec mysql bash
 1. 開始開發您的 Vue 前端應用
 2. 擴展 Java 後端 API
 3. 設計 MySQL 資料庫結構
-4. 配置域名和 SSL 證書
+4. 配置域名和 SSL 證書（參考 [HTTPS 完整指南](./HTTPS_COMPLETE_GUIDE.md)）
 
 祝您部署順利！🎉
 

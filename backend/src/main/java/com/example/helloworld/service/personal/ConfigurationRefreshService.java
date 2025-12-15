@@ -1,4 +1,4 @@
-package com.example.helloworld.service.church;
+package com.example.helloworld.service.personal;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -9,14 +9,14 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Church 系統配置刷新服務
- * 從 church 資料庫讀取配置並提供動態刷新功能
+ * Personal 系統配置刷新服務
+ * 從 qa_tracker 資料庫讀取配置並提供動態刷新功能
  */
-@Service("churchConfigurationRefreshService")
+@Service("personalConfigurationRefreshService")
 public class ConfigurationRefreshService {
 
     @Autowired
-    @Qualifier("churchSystemSettingService")
+    @Qualifier("personalSystemSettingService")
     private SystemSettingService systemSettingService;
 
     // 配置緩存
@@ -25,7 +25,7 @@ public class ConfigurationRefreshService {
     /**
      * 獲取配置值（從緩存或資料庫）
      */
-    @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
+    @Transactional(readOnly = true, transactionManager = "primaryTransactionManager")
     public String getConfigValue(String key, String defaultValue) {
         // 先從緩存讀取
         if (configCache.containsKey(key)) {
@@ -73,7 +73,7 @@ public class ConfigurationRefreshService {
     /**
      * 刷新配置緩存（從資料庫重新讀取）
      */
-    @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
+    @Transactional(readOnly = true, transactionManager = "primaryTransactionManager")
     public void refreshConfig() {
         configCache.clear();
         // 預先載入常用配置
@@ -83,7 +83,7 @@ public class ConfigurationRefreshService {
     /**
      * 刷新特定配置
      */
-    @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
+    @Transactional(readOnly = true, transactionManager = "primaryTransactionManager")
     public void refreshConfig(String key) {
         String value = systemSettingService.getSettingValue(key, null);
         if (value != null) {
@@ -97,26 +97,31 @@ public class ConfigurationRefreshService {
      * 預先載入常用配置
      */
     private void loadCommonConfigs() {
-        // LINE Bot 配置
+        // LINE Bot 配置（Personal 系統）
         getConfigValue("line.bot.channel-token", "");
         getConfigValue("line.bot.channel-secret", "");
         getConfigValue("line.bot.webhook-url", "https://power-light-church.duckdns.org/api/line/webhook");
         getConfigValue("line.bot.daily-reminder-enabled", "true");
         getConfigValue("line.bot.daily-reminder-time", "20:00");
         getConfigValue("line.bot.admin-user-id", "");
-        getConfigValue("line.bot.church-group-id", "");
         
-        // JWT 配置
+        // JWT 配置（Personal 系統）
         getConfigValue("jwt.secret", "F/cPluFKK3/44X5iX9GdY6P7Ye+BIDdBTw6uljBTl9o=");
         getConfigValue("jwt.access-token-expiration", "3600000");
         getConfigValue("jwt.refresh-token-enabled", "true");
         getConfigValue("jwt.refresh-token-expiration", "604800000");
+        
+        // 備份配置
+        getConfigValue("backup.enabled", "true");
+        getConfigValue("backup.retention_days", "7");
+        getConfigValue("backup.mysql_service", "mysql");
+        getConfigValue("backup.mysql_root_password", "rootpassword");
     }
 
     /**
      * 初始化配置（應用啟動時調用）
      */
-    @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
+    @Transactional(readOnly = true, transactionManager = "primaryTransactionManager")
     public void initializeConfig() {
         refreshConfig();
     }

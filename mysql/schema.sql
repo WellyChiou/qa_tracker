@@ -59,19 +59,78 @@ CREATE TABLE IF NOT EXISTS records (
     FOREIGN KEY (created_by_uid) REFERENCES users(uid) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='工作記錄表';
 
--- 3. 設定表（對應 Firestore config collection）
-CREATE TABLE IF NOT EXISTS config (
-    config_key VARCHAR(100) PRIMARY KEY COMMENT '設定鍵',
-    config_value TEXT COMMENT '設定值（JSON 格式）',
-    description VARCHAR(255) COMMENT '說明',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '建立時間',
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新時間'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='系統設定表';
+-- 3. 設定表（已廢棄，已遷移到 system_settings 表）
+-- 注意：config 表已不再使用，所有配置已遷移到 system_settings 表
+-- 如需遷移現有資料，請執行 mysql/migrate-config-to-system-settings.sql
+-- CREATE TABLE IF NOT EXISTS config (
+--     config_key VARCHAR(100) PRIMARY KEY COMMENT '設定鍵',
+--     config_value TEXT COMMENT '設定值（JSON 格式）',
+--     description VARCHAR(255) COMMENT '說明',
+--     created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '建立時間',
+--     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新時間'
+-- ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='系統設定表（已廢棄）';
 
--- 插入預設設定（GitLab Token）
-INSERT INTO config (config_key, config_value, description) 
-VALUES ('gitlab_token', '', 'GitLab API Token')
-ON DUPLICATE KEY UPDATE config_value = config_value;
+-- 3.1. 系統參數設定表（Personal 系統）
+CREATE TABLE IF NOT EXISTS system_settings (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主鍵 ID',
+    setting_key VARCHAR(100) UNIQUE NOT NULL COMMENT '參數鍵（唯一）',
+    setting_value TEXT COMMENT '參數值（JSON 或字串）',
+    setting_type VARCHAR(20) NOT NULL DEFAULT 'string' COMMENT '參數類型：string, number, boolean, json',
+    category VARCHAR(50) NOT NULL DEFAULT 'system' COMMENT '分類：backup, system, linebot, jwt',
+    description VARCHAR(255) COMMENT '參數說明',
+    is_editable TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否可編輯（1=是，0=否）',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '建立時間',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新時間',
+    INDEX idx_setting_key (setting_key),
+    INDEX idx_category (category)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Personal 系統參數設定表';
+
+-- 插入預設的備份相關參數
+INSERT INTO system_settings (setting_key, setting_value, setting_type, category, description, is_editable) VALUES
+('backup.retention_days', '7', 'number', 'backup', '備份保留天數', 1),
+('backup.schedule_time', '02:00', 'string', 'backup', '每日備份時間（HH:MM 格式）', 1),
+('backup.enabled', 'true', 'boolean', 'backup', '是否啟用自動備份', 1),
+('backup.mysql_service', 'mysql', 'string', 'backup', 'MySQL 服務名稱（docker compose 服務名）', 1),
+('backup.mysql_root_password', 'rootpassword', 'string', 'backup', 'MySQL root 密碼', 1)
+ON DUPLICATE KEY UPDATE 
+    description = VALUES(description),
+    updated_at = CURRENT_TIMESTAMP;
+
+-- 插入 LINE Bot 相關參數（Personal 系統專用）
+INSERT INTO system_settings (setting_key, setting_value, setting_type, category, description, is_editable) VALUES
+('line.bot.channel-token', '', 'string', 'linebot', 'LINE Bot Channel Token（Personal 系統）', 1),
+('line.bot.channel-secret', '', 'string', 'linebot', 'LINE Bot Channel Secret（Personal 系統）', 1),
+('line.bot.webhook-url', 'https://power-light-church.duckdns.org/api/line/webhook', 'string', 'linebot', 'LINE Bot Webhook URL', 1),
+('line.bot.daily-reminder-enabled', 'true', 'boolean', 'linebot', '是否啟用每日提醒', 1),
+('line.bot.daily-reminder-time', '20:00', 'string', 'linebot', '每日提醒時間（HH:MM 格式）', 1),
+('line.bot.admin-user-id', '', 'string', 'linebot', 'LINE Bot 管理員用戶 ID', 1),
+('line.bot.qr-code-url', '', 'string', 'linebot', 'LINE Bot QR Code 圖片 URL（用於用戶掃描加入 Bot）', 1),
+('line.bot.join-url', '', 'string', 'linebot', 'LINE Bot 加入連結（用戶點擊即可加入 Bot）', 1),
+('line.bot.id', '', 'string', 'linebot', 'LINE Bot Channel ID（用於生成加入連結）', 1)
+ON DUPLICATE KEY UPDATE 
+    setting_value = VALUES(setting_value),
+    description = VALUES(description),
+    updated_at = CURRENT_TIMESTAMP;
+
+-- 插入 JWT 相關參數（Personal 系統專用）
+INSERT INTO system_settings (setting_key, setting_value, setting_type, category, description, is_editable) VALUES
+('jwt.secret', 'F/cPluFKK3/44X5iX9GdY6P7Ye+BIDdBTw6uljBTl9o=', 'string', 'jwt', 'JWT 密鑰（Personal 系統，用於簽名 Token）', 1),
+('jwt.access-token-expiration', '3600000', 'number', 'jwt', 'Access Token 過期時間（毫秒，預設1小時）', 1),
+('jwt.refresh-token-enabled', 'true', 'boolean', 'jwt', '是否啟用 Refresh Token', 1),
+('jwt.refresh-token-expiration', '604800000', 'number', 'jwt', 'Refresh Token 過期時間（毫秒，預設7天）', 1)
+ON DUPLICATE KEY UPDATE 
+    description = VALUES(description),
+    updated_at = CURRENT_TIMESTAMP;
+
+-- 插入其他系統參數
+INSERT INTO system_settings (setting_key, setting_value, setting_type, category, description, is_editable) VALUES
+('system.timezone', 'Asia/Taipei', 'string', 'system', '系統時區', 1),
+('system.language', 'zh_TW', 'string', 'system', '系統語言', 1),
+('gitlab.token', '', 'string', 'system', 'GitLab API Token', 1),
+('trading.fees', '{"commission":0.1425,"tax":{"TWD":0.3,"USD":0,"ETF":0.1}}', 'json', 'system', '交易費用配置（JSON 格式）', 1)
+ON DUPLICATE KEY UPDATE 
+    description = VALUES(description),
+    updated_at = CURRENT_TIMESTAMP;
 
 -- 4. 記帳記錄表（對應 Firestore expenses collection）
 CREATE TABLE IF NOT EXISTS expenses (
@@ -167,6 +226,29 @@ ON DUPLICATE KEY UPDATE job_name = job_name;
 INSERT INTO scheduled_jobs (job_name, job_class, cron_expression, description, enabled) 
 VALUES ('LINE Bot 每日費用檢查與統計', 'com.example.helloworld.scheduler.DailyExpenseReminderScheduler$CheckAndNotifyDailyExpenseJob', '0 0 21 * * ?', '每天晚上 21:00 檢查用戶是否已記錄今日費用，如果沒有則發送提醒，如果有則發送統計報告（包含個人和群組）', 1)
 ON DUPLICATE KEY UPDATE job_name = job_name;
+
+-- 插入 Personal 資料庫自動備份任務
+INSERT INTO scheduled_jobs (
+    job_name,
+    job_class,
+    cron_expression,
+    description,
+    enabled,
+    created_at,
+    updated_at
+) VALUES (
+    'Personal 資料庫自動備份',
+    'com.example.helloworld.scheduler.personal.DatabaseBackupScheduler$DatabaseBackupJob',
+    '0 0 2 * * ?',  -- 每天凌晨 2:00（預設值，可通過系統設定修改）
+    '自動備份 qa_tracker 資料庫（Personal 系統）。備份時間和啟用狀態可通過系統維護頁面的系統參數設定進行配置。',
+    1,
+    NOW(),
+    NOW()
+) ON DUPLICATE KEY UPDATE
+    cron_expression = '0 0 2 * * ?',
+    description = '自動備份 qa_tracker 資料庫（Personal 系統）。備份時間和啟用狀態可通過系統維護頁面的系統參數設定進行配置。',
+    enabled = 1,
+    updated_at = NOW();
 
 -- 8. Job 執行記錄表
 CREATE TABLE IF NOT EXISTS job_executions (

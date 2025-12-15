@@ -1090,12 +1090,12 @@ const loadGitlabToken = async () => {
   if (gitlabToken.value) return gitlabToken.value
   
   try {
-    const response = await apiService.getConfig('gitlab_token')
+    const response = await apiService.request('/personal/admin/system-settings/gitlab.token')
     
-    if (!response || !response.value || response.value.trim() === '') {
+    if (!response || !response.setting || !response.setting.settingValue || response.setting.settingValue.trim() === '') {
       throw new Error('GitLab token 配置為空，請先在系統設定中配置 GitLab API Token')
     }
-    gitlabToken.value = response.value
+    gitlabToken.value = response.setting.settingValue
     console.log('成功載入 GitLab token')
     return gitlabToken.value
   } catch (error) {

@@ -3,16 +3,18 @@ package com.example.helloworld.service.church;
 import com.example.helloworld.entity.church.SystemSetting;
 import com.example.helloworld.repository.church.SystemSettingRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
 
-@Service
+@Service("churchSystemSettingService")
 public class SystemSettingService {
 
     @Autowired
+    @Qualifier("churchSystemSettingRepository")
     private SystemSettingRepository systemSettingRepository;
 
     @Transactional(readOnly = true, transactionManager = "churchTransactionManager")

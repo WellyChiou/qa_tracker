@@ -2,6 +2,7 @@ package com.example.helloworld.scheduler.church;
 
 import com.example.helloworld.service.church.SystemSettingService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,14 +11,15 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 
 /**
- * 資料庫備份定時任務
- * 自動備份 qa_tracker 和 church 資料庫
+ * Church 系統資料庫備份定時任務
+ * 自動備份 church 資料庫
  */
 @Component("churchDatabaseBackupScheduler")
 public class DatabaseBackupScheduler {
     private static final Logger log = LoggerFactory.getLogger(DatabaseBackupScheduler.class);
 
     @Autowired
+    @Qualifier("churchSystemSettingService")
     private SystemSettingService systemSettingService;
 
     /**
@@ -43,13 +45,13 @@ public class DatabaseBackupScheduler {
      */
     public void executeBackup() {
         try {
-            log.info("💾 [資料庫備份] 開始執行備份...");
+            log.info("💾 [Church 資料庫備份] 開始執行備份...");
             
             // 檢查備份是否啟用
             String enabled = systemSettingService.getSettingValue("backup.enabled", "true");
             if (!Boolean.parseBoolean(enabled)) {
                 String message = "備份功能已停用，跳過備份";
-                log.warn("⚠️ [資料庫備份] {}", message);
+                log.warn("⚠️ [Church 資料庫備份] {}", message);
                 JobResultHolder.setResult(message);
                 return;
             }
@@ -70,15 +72,21 @@ public class DatabaseBackupScheduler {
             }
             int retentionDays = systemSettingService.getSettingValueAsInt("backup.retention_days", 7);
             
+<<<<<<< HEAD
             // 執行備份腳本（容器內版本），傳入 'church' 參數只備份教會資料庫
             String backupScript = "/app/backup-database.sh";
+=======
+            // 執行備份腳本（容器內版本）
+            // 備份腳本已複製到容器內的 /app/church-backup-database.sh
+            String backupScript = "/app/church-backup-database.sh";
+>>>>>>> 45b7fd36d7e04bf5e2b8c79b7542d7cec8adf2d1
             
             // 檢查腳本是否存在
             java.io.File scriptFile = new java.io.File(backupScript);
             if (!scriptFile.exists()) {
                 String message = "備份腳本不存在: " + backupScript + "\n" +
                     "請確保備份腳本已正確複製到容器內";
-                log.error("❌ [資料庫備份] {}", message);
+                log.error("❌ [Church 資料庫備份] {}", message);
                 JobResultHolder.setResult(message);
                 return;
             }
@@ -93,6 +101,7 @@ public class DatabaseBackupScheduler {
             processBuilder.environment().put("BACKUP_DIR", backupDir);
             processBuilder.environment().put("RETENTION_DAYS", String.valueOf(retentionDays));
             processBuilder.environment().put("BACKUP_ENABLED", enabled);
+            processBuilder.environment().put("DATABASE_NAME", "church");
             
             Process process = processBuilder.start();
             
@@ -107,7 +116,7 @@ public class DatabaseBackupScheduler {
                     String line;
                     while ((line = reader.readLine()) != null) {
                         stdoutOutput.append(line).append("\n");
-                        log.info("[備份腳本 stdout] {}", line);
+                        log.info("[Church 備份腳本 stdout] {}", line);
                     }
                 } catch (Exception e) {
                     log.error("讀取 stdout 失敗: {}", e.getMessage(), e);
@@ -120,7 +129,7 @@ public class DatabaseBackupScheduler {
                     String line;
                     while ((line = reader.readLine()) != null) {
                         stderrOutput.append(line).append("\n");
-                        log.warn("[備份腳本 stderr] {}", line);
+                        log.warn("[Church 備份腳本 stderr] {}", line);
                     }
                 } catch (Exception e) {
                     log.error("讀取 stderr 失敗: {}", e.getMessage(), e);
@@ -148,11 +157,11 @@ public class DatabaseBackupScheduler {
             if (exitCode == 0) {
                 String message = "備份執行成功\n" + fullOutput.toString();
                 JobResultHolder.setResult(message);
-                log.info("✅ [資料庫備份] 完成，備份目錄: {}", backupDir);
+                log.info("✅ [Church 資料庫備份] 完成，備份目錄: {}", backupDir);
             } else {
                 String message = "備份執行失敗，退出碼: " + exitCode + "\n" + fullOutput.toString();
                 JobResultHolder.setResult(message);
-                log.error("❌ [資料庫備份] 備份失敗，退出碼: {}", exitCode);
+                log.error("❌ [Church 資料庫備份] 備份失敗，退出碼: {}", exitCode);
                 if (stderrOutput.length() > 0) {
                     log.error("錯誤訊息:\n{}", stderrOutput.toString());
                 }
@@ -164,7 +173,7 @@ public class DatabaseBackupScheduler {
             }
         } catch (Exception e) {
             String errorMsg = "備份執行失敗: " + e.getMessage();
-            log.error("❌ [資料庫備份] 執行失敗: {}", e.getMessage(), e);
+            log.error("❌ [Church 資料庫備份] 執行失敗: {}", e.getMessage(), e);
             JobResultHolder.setResult(errorMsg);
             // 重新拋出異常，確保 Job 狀態標記為 FAILED
             throw new RuntimeException("備份執行失敗: " + e.getMessage(), e);

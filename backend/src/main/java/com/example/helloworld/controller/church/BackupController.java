@@ -4,6 +4,8 @@ import com.example.helloworld.service.church.SystemSettingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Component;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -22,10 +24,12 @@ import java.util.stream.Stream;
 @RestController
 @RequestMapping("/api/church/admin/backups")
 @CrossOrigin(origins = "*")
+@Component("churchBackupController")
 public class BackupController {
     private static final Logger log = LoggerFactory.getLogger(BackupController.class);
 
     @Autowired
+    @Qualifier("churchSystemSettingService")
     private SystemSettingService systemSettingService;
 
     @GetMapping
@@ -51,6 +55,17 @@ public class BackupController {
                 backups = paths
                     .filter(Files::isRegularFile)
                     .filter(path -> path.toString().endsWith(".sql.gz") || path.toString().endsWith(".sql"))
+                    .filter(path -> {
+                        // 只顯示 church 資料庫的備份
+                        Path relativePath = backupPath.relativize(path);
+                        if (relativePath.getNameCount() > 0) {
+                            String firstSegment = relativePath.getName(0).toString();
+                            return firstSegment.equals("church");
+                        }
+                        // 向後兼容：從檔案名稱解析
+                        String filename = path.getFileName().toString();
+                        return filename.startsWith("church_");
+                    })
                     .map(path -> {
                         Map<String, Object> backup = new HashMap<>();
                         File file = path.toFile();
@@ -65,14 +80,12 @@ public class BackupController {
                         if (relativePath.getNameCount() > 0) {
                             // 第一個路徑段是資料庫名稱（資料夾名稱）
                             String firstSegment = relativePath.getName(0).toString();
-                            if (firstSegment.equals("qa_tracker") || firstSegment.equals("church")) {
+                            if (firstSegment.equals("church")) {
                                 dbName = firstSegment;
                             } else {
                                 // 如果不在子資料夾中，從檔案名稱解析（向後兼容）
                                 String filename = file.getName();
-                                if (filename.startsWith("qa_tracker_")) {
-                                    dbName = "qa_tracker";
-                                } else if (filename.startsWith("church_")) {
+                                if (filename.startsWith("church_")) {
                                     dbName = "church";
                                 }
                             }
@@ -120,9 +133,16 @@ public class BackupController {
             int retentionDays = systemSettingService.getSettingValueAsInt("backup.retention_days", 7);
             String enabled = systemSettingService.getSettingValue("backup.enabled", "true");
             
+<<<<<<< HEAD
             // 執行備份腳本（容器內版本），傳入 'church' 參數只備份教會資料庫
             String backupScript = "/app/backup-database.sh";
             ProcessBuilder processBuilder = new ProcessBuilder("/bin/sh", backupScript, "church");
+=======
+            // 執行備份腳本（容器內版本）
+            // 備份腳本已複製到容器內的 /app/church-backup-database.sh
+            String backupScript = "/app/church-backup-database.sh";
+            ProcessBuilder processBuilder = new ProcessBuilder("/bin/sh", backupScript);
+>>>>>>> 45b7fd36d7e04bf5e2b8c79b7542d7cec8adf2d1
             // 不重定向錯誤流，分別讀取 stdout 和 stderr
             processBuilder.redirectErrorStream(false);
             // 設置環境變數
@@ -132,6 +152,7 @@ public class BackupController {
             processBuilder.environment().put("BACKUP_DIR", backupDir);
             processBuilder.environment().put("RETENTION_DAYS", String.valueOf(retentionDays));
             processBuilder.environment().put("BACKUP_ENABLED", enabled);
+            processBuilder.environment().put("DATABASE_NAME", "church");
             
             Process process = processBuilder.start();
             
@@ -247,6 +268,14 @@ public class BackupController {
                 return ResponseEntity.badRequest().body(error);
             }
             
+            // 額外檢查：確保是 church 資料庫的備份
+            if (!relativePath.startsWith("church/") && !relativePath.startsWith("church_")) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("success", false);
+                error.put("message", "只能刪除 Church 系統的備份檔案");
+                return ResponseEntity.badRequest().body(error);
+            }
+            
             if (Files.exists(backupPath)) {
                 Files.delete(backupPath);
                 Map<String, Object> response = new HashMap<>();
@@ -291,6 +320,11 @@ public class BackupController {
             Path normalizedBackupPath = backupPath.normalize();
             Path normalizedBackupDir = Paths.get(backupDir).normalize();
             if (!normalizedBackupPath.startsWith(normalizedBackupDir)) {
+                return ResponseEntity.badRequest().build();
+            }
+            
+            // 額外檢查：確保是 church 資料庫的備份
+            if (!relativePath.startsWith("church/") && !relativePath.startsWith("church_")) {
                 return ResponseEntity.badRequest().build();
             }
             

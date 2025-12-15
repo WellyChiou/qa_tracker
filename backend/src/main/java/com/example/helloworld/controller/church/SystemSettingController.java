@@ -4,6 +4,8 @@ import com.example.helloworld.entity.church.SystemSetting;
 import com.example.helloworld.service.church.SystemSettingService;
 import com.example.helloworld.service.church.ConfigurationRefreshService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Component;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,9 +17,11 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/church/admin/system-settings")
 @CrossOrigin(origins = "*")
+@Component("churchSystemSettingController")
 public class SystemSettingController {
 
     @Autowired
+    @Qualifier("churchSystemSettingService")
     private SystemSettingService systemSettingService;
 
     @Autowired

@@ -120,16 +120,16 @@ INSERT INTO scheduled_jobs (
     created_at,
     updated_at
 ) VALUES (
-    '資料庫自動備份',
+    'Church 資料庫自動備份',
     'com.example.helloworld.scheduler.church.DatabaseBackupScheduler$DatabaseBackupJob',
     '0 0 2 * * ?',  -- 每天凌晨 2:00（預設值，可通過系統設定修改）
-    '自動備份 qa_tracker 和 church 資料庫。備份時間和啟用狀態可通過系統維護頁面的系統參數設定進行配置。',
+    '自動備份 church 資料庫（Church 系統）。備份時間和啟用狀態可通過系統維護頁面的系統參數設定進行配置。',
     1,
     NOW(),
     NOW()
 ) ON DUPLICATE KEY UPDATE
     cron_expression = '0 0 2 * * ?',
-    description = '自動備份 qa_tracker 和 church 資料庫。備份時間和啟用狀態可通過系統維護頁面的系統參數設定進行配置。',
+    description = '自動備份 church 資料庫（Church 系統）。備份時間和啟用狀態可通過系統維護頁面的系統參數設定進行配置。',
     enabled = 1,
     updated_at = NOW();
 

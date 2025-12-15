@@ -432,9 +432,9 @@ const loadLineBotInfo = async () => {
   try {
     // 嘗試獲取 QR Code URL
     try {
-      const qrCodeResponse = await api.request('/config/line_bot_qr_code_url')
-      if (qrCodeResponse?.value) {
-        lineBotQrCodeUrl.value = qrCodeResponse.value
+      const qrCodeResponse = await api.request('/personal/admin/system-settings/line.bot.qr-code-url')
+      if (qrCodeResponse?.setting?.settingValue) {
+        lineBotQrCodeUrl.value = qrCodeResponse.setting.settingValue
       }
     } catch (e) {
       // QR Code URL 不存在，忽略
@@ -442,9 +442,9 @@ const loadLineBotInfo = async () => {
 
     // 嘗試獲取加入連結（優先）
     try {
-      const joinUrlResponse = await api.request('/config/line_bot_join_url')
-      if (joinUrlResponse?.value) {
-        lineBotJoinUrl.value = joinUrlResponse.value
+      const joinUrlResponse = await api.request('/personal/admin/system-settings/line.bot.join-url')
+      if (joinUrlResponse?.setting?.settingValue) {
+        lineBotJoinUrl.value = joinUrlResponse.setting.settingValue
       }
     } catch (e) {
       // 加入連結不存在，忽略
@@ -453,9 +453,9 @@ const loadLineBotInfo = async () => {
     // 嘗試獲取 Bot ID（如果沒有加入連結）
     if (!lineBotJoinUrl.value) {
       try {
-        const botIdResponse = await api.request('/config/line_bot_id')
-        if (botIdResponse?.value) {
-          lineBotId.value = botIdResponse.value
+        const botIdResponse = await api.request('/personal/admin/system-settings/line.bot.id')
+        if (botIdResponse?.setting?.settingValue) {
+          lineBotId.value = botIdResponse.setting.settingValue
         }
       } catch (e) {
         // Bot ID 不存在，忽略

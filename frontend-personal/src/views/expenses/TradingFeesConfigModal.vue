@@ -96,9 +96,11 @@ const config = ref({
 
 const loadConfig = async () => {
   try {
-    const response = await apiService.getConfig('tradingFees')
-    if (response && response.value) {
-      const parsed = typeof response.value === 'string' ? JSON.parse(response.value) : response.value
+    const response = await apiService.request('/personal/admin/system-settings/trading.fees')
+    if (response && response.setting && response.setting.settingValue) {
+      const parsed = typeof response.setting.settingValue === 'string' 
+        ? JSON.parse(response.setting.settingValue) 
+        : response.setting.settingValue
       config.value = {
         commission: parsed.commission || 0.1425,
         tax: {
@@ -116,9 +118,12 @@ const loadConfig = async () => {
 const saveConfig = async () => {
   saving.value = true
   try {
-    await apiService.saveConfig('tradingFees', {
-      value: JSON.stringify(config.value),
-      description: '交易費用配置'
+    await apiService.request('/personal/admin/system-settings/trading.fees', {
+      method: 'PUT',
+      body: JSON.stringify({
+        settingValue: JSON.stringify(config.value),
+        description: '交易費用配置'
+      })
     })
     emit('close')
   } catch (error) {

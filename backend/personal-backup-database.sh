@@ -1,11 +1,17 @@
 #!/bin/sh
 
 # ============================================
-# 資料庫自動備份腳本（容器內版本）
+# Personal 系統資料庫自動備份腳本（容器內版本）
 # ============================================
+<<<<<<< HEAD:backend/backup-database-container.sh
 # 此腳本用於備份資料庫
 # 用法：./backup-database-container.sh [db_name]
 # 如果未指定 [db_name]，則預設備份 qa_tracker 和 church 兩個資料庫
+=======
+# 此腳本會備份 qa_tracker 資料庫
+# 備份檔案會自動壓縮並根據配置清理舊備份
+# 此版本用於在容器內執行，直接連接 MySQL，不使用 docker compose exec
+>>>>>>> 45b7fd36d7e04bf5e2b8c79b7542d7cec8adf2d1:backend/personal-backup-database.sh
 # ============================================
 
 # 日誌函數
@@ -28,6 +34,7 @@ MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-rootpassword}
 BACKUP_DIR=${BACKUP_DIR:-/app/backups}
 RETENTION_DAYS=${RETENTION_DAYS:-7}
 BACKUP_ENABLED=${BACKUP_ENABLED:-true}
+DATABASE_NAME=${DATABASE_NAME:-qa_tracker}
 
 # 檢查是否啟用備份
 if [ "$BACKUP_ENABLED" != "true" ]; then
@@ -41,7 +48,11 @@ mkdir -p "$BACKUP_DIR"
 # 時間戳記
 TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
 
+<<<<<<< HEAD:backend/backup-database-container.sh
 # 備份單一資料庫函數
+=======
+# 備份函數
+>>>>>>> 45b7fd36d7e04bf5e2b8c79b7542d7cec8adf2d1:backend/personal-backup-database.sh
 backup_database() {
     local db_name=$1
     local db_backup_dir="${BACKUP_DIR}/${db_name}"
@@ -59,7 +70,18 @@ backup_database() {
     # 創建資料庫專屬備份目錄
     mkdir -p "$db_backup_dir"
     
+<<<<<<< HEAD:backend/backup-database-container.sh
     # 執行 mysqldump
+=======
+    # 檢查備份目錄權限
+    if [ ! -w "$db_backup_dir" ]; then
+        log_error "備份目錄沒有寫入權限: $db_backup_dir"
+        return 1
+    fi
+    
+    # 執行備份
+    log_info "執行 mysqldump 命令..."
+>>>>>>> 45b7fd36d7e04bf5e2b8c79b7542d7cec8adf2d1:backend/personal-backup-database.sh
     mysqldump -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u root -p"$MYSQL_ROOT_PASSWORD" \
         --skip-ssl \
         --single-transaction \
@@ -72,6 +94,7 @@ backup_database() {
     if [ $exit_code -ne 0 ]; then
         log_error "備份資料庫失敗: $db_name (mysqldump 退出碼: $exit_code)"
         
+<<<<<<< HEAD:backend/backup-database-container.sh
         # 嘗試讀取錯誤訊息
         if [ -s "$backup_file" ]; then
             log_error "錯誤訊息:"
@@ -80,6 +103,29 @@ backup_database() {
             done
         fi
         
+=======
+        # 診斷信息：檢查備份文件狀態
+        log_error "診斷信息:"
+        if [ -f "$backup_file" ]; then
+            local file_size=$(ls -lh "$backup_file" 2>/dev/null | awk '{print $5}' || echo "unknown")
+            log_error "  備份文件存在，大小: $file_size"
+            
+            # 讀取並輸出錯誤訊息（錯誤訊息會寫入備份文件）
+            if [ -s "$backup_file" ]; then
+                log_error "錯誤訊息:"
+                # 只讀取前50行錯誤訊息，避免輸出過多
+                head -50 "$backup_file" | while IFS= read -r line || [ -n "$line" ]; do
+                    log_error "  $line"
+                done
+            else
+                log_error "  備份文件為空"
+            fi
+        else
+            log_error "  備份文件不存在"
+        fi
+        
+        # 刪除失敗的備份文件
+>>>>>>> 45b7fd36d7e04bf5e2b8c79b7542d7cec8adf2d1:backend/personal-backup-database.sh
         rm -f "$backup_file"
         return 1
     fi
@@ -91,9 +137,28 @@ backup_database() {
         return 1
     fi
     
+<<<<<<< HEAD:backend/backup-database-container.sh
     # 檢查是否包含關鍵錯誤
     if head -5 "$backup_file" | grep -qiE "mysqldump:.*(error|failed|unknown|access denied|cannot)" && ! head -5 "$backup_file" | grep -qi "Deprecated"; then
         log_error "備份文件包含錯誤訊息"
+=======
+    # 檢查備份文件是否包含真正的錯誤訊息
+    if head -5 "$backup_file" | grep -qiE "mysqldump:.*(error|failed|unknown|access denied|cannot)" && ! head -5 "$backup_file" | grep -qi "Deprecated"; then
+        log_error "備份文件包含錯誤訊息:"
+        head -20 "$backup_file" | while IFS= read -r line || [ -n "$line" ]; do
+            log_error "  $line"
+        done
+        rm -f "$backup_file"
+        return 1
+    fi
+    
+    # 檢查備份文件是否包含有效的 SQL 內容
+    if ! grep -qiE "(CREATE TABLE|INSERT INTO|DROP TABLE)" "$backup_file"; then
+        log_error "備份文件不包含有效的 SQL 內容，可能備份失敗"
+        head -20 "$backup_file" | while IFS= read -r line || [ -n "$line" ]; do
+            log_error "  $line"
+        done
+>>>>>>> 45b7fd36d7e04bf5e2b8c79b7542d7cec8adf2d1:backend/personal-backup-database.sh
         rm -f "$backup_file"
         return 1
     fi
@@ -117,6 +182,11 @@ cleanup_old_backups() {
     
     local deleted_count=$(find "$BACKUP_DIR" -name "*.sql.gz" -type f -mtime +$RETENTION_DAYS 2>/dev/null | wc -l)
     
+<<<<<<< HEAD:backend/backup-database-container.sh
+=======
+    # 使用 find 命令遞迴清理舊備份（支援子資料夾）
+    deleted_count=$(find "$BACKUP_DIR" -name "*.sql.gz" -type f -mtime +$RETENTION_DAYS 2>/dev/null | wc -l)
+>>>>>>> 45b7fd36d7e04bf5e2b8c79b7542d7cec8adf2d1:backend/personal-backup-database.sh
     if [ $deleted_count -gt 0 ]; then
         find "$BACKUP_DIR" -name "*.sql.gz" -type f -mtime +$RETENTION_DAYS -delete 2>/dev/null
         log_info "已刪除 $deleted_count 個舊備份檔案"
@@ -130,8 +200,9 @@ main() {
     local target_db=$1
     
     log_info "============================================"
-    log_info "開始資料庫備份流程"
+    log_info "開始 Personal 系統資料庫備份流程"
     log_info "============================================"
+<<<<<<< HEAD:backend/backup-database-container.sh
     
     if [ -n "$target_db" ]; then
         # 如果指定了資料庫，只備份該資料庫
@@ -166,6 +237,32 @@ main() {
             log_error "部分資料庫備份失敗"
             exit 1
         fi
+=======
+    log_info "備份目錄: $BACKUP_DIR"
+    log_info "保留天數: $RETENTION_DAYS"
+    log_info "MySQL 主機: $MYSQL_HOST:$MYSQL_PORT"
+    log_info "資料庫: $DATABASE_NAME"
+    log_info "============================================"
+    
+    # 備份 qa_tracker 資料庫
+    if backup_database "$DATABASE_NAME"; then
+        BACKUP_SUCCESS=true
+    else
+        BACKUP_SUCCESS=false
+    fi
+    
+    # 清理舊備份
+    cleanup_old_backups
+    
+    # 總結
+    log_info "============================================"
+    if [ "$BACKUP_SUCCESS" = true ]; then
+        log_info "資料庫備份完成"
+        exit 0
+    else
+        log_error "資料庫備份失敗"
+        exit 1
+>>>>>>> 45b7fd36d7e04bf5e2b8c79b7542d7cec8adf2d1:backend/personal-backup-database.sh
     fi
 }
 

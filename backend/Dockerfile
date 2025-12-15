@@ -33,8 +33,9 @@ RUN apk add --no-cache tzdata mysql-client gzip && \
 COPY --from=build /app/target/*.jar app.jar
 
 # 複製備份腳本到容器內
-COPY backup-database-container.sh /app/backup-database.sh
-RUN chmod +x /app/backup-database.sh
+COPY personal-backup-database.sh /app/personal-backup-database.sh
+COPY church-backup-database.sh /app/church-backup-database.sh
+RUN chmod +x /app/personal-backup-database.sh /app/church-backup-database.sh
 
 # 暴露端口
 EXPOSE 8080

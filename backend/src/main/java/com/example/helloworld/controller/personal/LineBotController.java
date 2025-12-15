@@ -1,5 +1,7 @@
 package com.example.helloworld.controller.personal;
 
+import com.example.helloworld.config.LineBotConfig;
+import com.example.helloworld.repository.church.ChurchLineGroupRepository;
 import com.example.helloworld.service.personal.LineBotService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +22,12 @@ public class LineBotController {
 
     @Autowired
     private LineBotService lineBotService;
+
+    @Autowired
+    private LineBotConfig lineBotConfig;
+
+    @Autowired
+    private ChurchLineGroupRepository churchLineGroupRepository;
 
     /**
      * LINE Bot Webhook 端點
@@ -81,6 +89,11 @@ public class LineBotController {
                 if ("group".equals(sourceType)) {
                     String groupId = (String) source.get("groupId");
                     if (groupId != null && !groupId.trim().isEmpty()) {
+                        // 檢查是否為教會群組，如果是則跳過 Personal 處理
+                        if (isChurchGroup(groupId)) {
+                            log.info("📥 [教會群組] Bot 加入教會群組，跳過 Personal 處理: {}", groupId);
+                            return;
+                        }
                         lineBotService.handleGroupJoinEvent(groupId);
                     } else {
                         log.warn("⚠️ 群組 join 事件缺少 groupId");
@@ -102,6 +115,11 @@ public class LineBotController {
                 if ("group".equals(sourceType)) {
                     String groupId = (String) source.get("groupId");
                     if (groupId != null && !groupId.trim().isEmpty()) {
+                        // 檢查是否為教會群組，如果是則跳過 Personal 處理
+                        if (isChurchGroup(groupId)) {
+                            log.info("📤 [教會群組] Bot 離開教會群組，跳過 Personal 處理: {}", groupId);
+                            return;
+                        }
                         lineBotService.handleGroupLeaveEvent(groupId);
                     } else {
                         log.warn("⚠️ 群組 leave 事件缺少 groupId");
@@ -128,12 +146,17 @@ public class LineBotController {
                     if ("group".equals(sourceType)) {
                         String groupId = (String) source.get("groupId");
                         String userId = (String) source.get("userId");
-                            log.info("📨 [Webhook] 收到群組訊息事件");
+                        log.info("📨 [Webhook] 收到群組訊息事件");
                         log.info("📨 [Webhook] Group ID: {}", groupId);
                         log.info("📨 [Webhook] User ID: {}", userId);
                         log.info("📨 [Webhook] Message: {}", text);
                         
                         if (groupId != null && userId != null) {
+                            // 檢查是否為教會群組，如果是則跳過 Personal 處理
+                            if (isChurchGroup(groupId)) {
+                                log.info("📨 [教會群組] 收到教會群組訊息，跳過 Personal 處理: {}", groupId);
+                                return;
+                            }
                             lineBotService.handleGroupMessageEvent(replyToken, groupId, userId, text);
                         } else {
                             log.warn("⚠️ [Webhook] 群組訊息缺少必要欄位 - groupId: {}, userId: {}", groupId, userId);
@@ -213,6 +236,46 @@ public class LineBotController {
             errorResponse.put("success", false);
             errorResponse.put("message", "發送失敗: " + e.getMessage());
             return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    /**
+     * 判斷是否為教會群組
+     * 
+     * 檢查方式：
+     * 1. 檢查是否等於配置的 church-group-id
+     * 2. 檢查是否在 church.church_line_groups 資料表中
+     * 
+     * @param groupId LINE 群組 ID
+     * @return true 如果是教會群組，false 如果是 Personal 群組
+     */
+    private boolean isChurchGroup(String groupId) {
+        if (groupId == null || groupId.trim().isEmpty()) {
+            return false;
+        }
+
+        try {
+            // 方式1：檢查是否等於配置的教會群組 ID
+            String churchGroupId = lineBotConfig.getChurchGroupId();
+            if (churchGroupId != null && !churchGroupId.trim().isEmpty() && churchGroupId.equals(groupId)) {
+                log.debug("✅ [群組判斷] 群組 {} 匹配配置的教會群組 ID", groupId);
+                return true;
+            }
+
+            // 方式2：檢查是否在教會群組資料表中
+            boolean existsInChurchDb = churchLineGroupRepository.findByGroupId(groupId).isPresent();
+            if (existsInChurchDb) {
+                log.debug("✅ [群組判斷] 群組 {} 存在於教會群組資料表", groupId);
+                return true;
+            }
+
+            log.debug("ℹ️ [群組判斷] 群組 {} 不是教會群組，屬於 Personal 群組", groupId);
+            return false;
+
+        } catch (Exception e) {
+            // 如果查詢失敗，為了安全起見，不當作教會群組處理
+            log.warn("⚠️ [群組判斷] 檢查群組 {} 時發生錯誤，當作 Personal 群組處理: {}", groupId, e.getMessage());
+            return false;
         }
     }
 }
