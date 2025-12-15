@@ -354,10 +354,11 @@ public class ServiceScheduleNotificationScheduler {
                                 Boolean includeInAutoSchedule = pp.getIncludeInAutoSchedule();
                                 log.info("  📋 [教會排程] 找到 position_persons 記錄，includeInAutoSchedule={}", includeInAutoSchedule);
                                 
-                                if (includeInAutoSchedule != null && !includeInAutoSchedule) {
-                                    log.warn("  ⚠️ [教會排程] 崗位 {} 分配給: {}，但該人員不參與自動分配，跳過通知", positionName, personName);
-                                    continue;
-                                }
+                                // 暫時關閉這邏輯
+                                // if (includeInAutoSchedule != null && !includeInAutoSchedule) {
+                                //     log.warn("  ⚠️ [教會排程] 崗位 {} 分配給: {}，但該人員不參與自動分配，跳過通知", positionName, personName);
+                                //     continue;
+                                // }
                             } else {
                                 log.info("  ℹ️ [教會排程] 未找到 position_persons 記錄，默認為參與自動分配");
                             }

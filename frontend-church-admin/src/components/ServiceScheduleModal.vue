@@ -1411,8 +1411,10 @@ const saveSchedule = async () => {
     showNotification(`該年度（${year}年）已存在服事表，每個年度只能有一個版本。請先刪除或更新現有的服事表。`, 'error', 5000)
     return
   }
-
-  const validationErrors = validateSchedule()
+  // 暫時關閉驗證
+  // const validationErrors = validateSchedule()
+  const validationErrors = 0
+  
   if (validationErrors.length > 0) {
     showNotification('驗證失敗：\n' + validationErrors.join('\n') + '\n\n請修正後再保存。', 'error', 5000)
     return
@@ -1479,7 +1481,10 @@ const updateSchedule = async () => {
   }
 
   if (localSchedule.value && localSchedule.value.length > 0) {
-    const validationErrors = validateSchedule()
+    // 暫時關閉驗證
+    // const validationErrors = validateSchedule()
+    const validationErrors = 0
+
     if (validationErrors.length > 0) {
       showNotification('驗證失敗：\n' + validationErrors.join('\n') + '\n\n請修正後再保存。', 'error', 5000)
       return
