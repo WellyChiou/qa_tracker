@@ -9,9 +9,8 @@
 
     <main class="main-content">
       <div class="admin-maintenance">
-
-      <!-- 標籤頁 -->
-      <div class="tabs">
+        <!-- 標籤頁 -->
+        <div class="tabs">
         <button 
           @click="activeTab = 'settings'" 
           :class="['tab-button', { active: activeTab === 'settings' }]"
@@ -24,10 +23,10 @@
         >
           備份管理
         </button>
-      </div>
+        </div>
 
-      <!-- 系統參數標籤頁 -->
-      <div v-if="activeTab === 'settings'" class="tab-content">
+        <!-- 系統參數標籤頁 -->
+        <div v-if="activeTab === 'settings'" class="tab-content">
         <div class="settings-section">
           <div class="settings-actions">
             <button @click="showCreateModal = true" class="btn btn-primary">+ 新增參數</button>
@@ -95,10 +94,10 @@
             </div>
           </div>
         </div>
-      </div>
+        </div>
 
-      <!-- 新增參數對話框 -->
-      <div v-if="showCreateModal" class="modal-overlay" @click.self="showCreateModal = false">
+        <!-- 新增參數對話框 -->
+        <div v-if="showCreateModal" class="modal-overlay" @click.self="showCreateModal = false">
         <div class="modal-content">
           <h3>新增系統參數</h3>
           <form @submit.prevent="createSetting">
@@ -146,10 +145,10 @@
             </div>
           </form>
         </div>
-      </div>
+        </div>
 
-      <!-- 備份管理標籤頁 -->
-      <div v-if="activeTab === 'backups'" class="tab-content">
+        <!-- 備份管理標籤頁 -->
+        <div v-if="activeTab === 'backups'" class="tab-content">
         <div class="backups-section">
           <div class="backup-actions">
             <button @click="createBackup" :disabled="creatingBackup" class="btn btn-primary">
@@ -191,10 +190,8 @@
             </table>
           </div>
         </div>
+        </div>
       </div>
-
-      </div>
-    </div>
     </main>
   </div>
 </template>
