@@ -161,7 +161,7 @@ if [ -d "$PROJECT_NAME" ]; then
         systemctl start cron 2>/dev/null || systemctl start crond 2>/dev/null || true
     fi
     
-    # 創建日誌文件（每天只有一個文件）
+    # 創建日誌文件（每天只有一個文件，如果已存在則不重新創建）
     echo "🛠️ 正在創建日誌文件..."
     
     # 日誌文件路徑（只用日期）
@@ -172,9 +172,13 @@ if [ -d "$PROJECT_NAME" ]; then
     LATEST_FRONTEND_LOG="$LOGS_DIR/frontend-monitor_latest.log"
     LATEST_SYSTEM_LOG="$LOGS_DIR/system-monitor_latest.log"
     
-    # 創建日誌文件
-    touch "$FRONTEND_LOG" "$SYSTEM_LOG" 2>/dev/null || {
-        echo "❌ 無法創建日誌文件"
+    # 創建日誌文件（如果不存在才創建，避免重複創建）
+    [ -f "$FRONTEND_LOG" ] || touch "$FRONTEND_LOG" 2>/dev/null || {
+        echo "❌ 無法創建前端日誌文件"
+        exit 1
+    }
+    [ -f "$SYSTEM_LOG" ] || touch "$SYSTEM_LOG" 2>/dev/null || {
+        echo "❌ 無法創建系統日誌文件"
         exit 1
     }
     
