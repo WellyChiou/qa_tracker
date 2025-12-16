@@ -273,7 +273,7 @@ EOL
     
     # 確保所有腳本有執行權限
     echo "設置腳本執行權限..."
-    chmod +x monitor-frontend.sh monitor-system.sh cleanup-docker.sh fix-frontend.sh diagnose-frontend.sh setup-prevention.sh 2>/dev/null || true
+    chmod +x monitor-frontend.sh monitor-system.sh cleanup-docker.sh fix-frontend.sh diagnose-frontend.sh setup-prevention.sh cleanup-crontab.sh 2>/dev/null || true
     
     # 設置前端監控（每 5 分鐘）
     echo "設置前端監控（每 5 分鐘檢查一次）..."

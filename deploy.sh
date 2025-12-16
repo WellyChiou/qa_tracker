@@ -131,12 +131,20 @@ sleep 10
 echo ""
 echo "檢查 HTTPS 證書..."
 if [ -f "certbot/conf/live/power-light-church.duckdns.org/fullchain.pem" ]; then
-    echo "✅ 檢測到 SSL 證書，自動切換到 HTTPS 配置..."
-    if [ -f "nginx/nginx-https.conf" ]; then
+    echo "✅ 檢測到 SSL 證書"
+    
+    # 檢查當前的 nginx.conf 是否已經包含 HTTPS 配置
+    if grep -q "listen 443 ssl" nginx/nginx.conf 2>/dev/null; then
+        echo "✅ nginx.conf 已包含 HTTPS 配置，無需切換"
+    elif [ -f "nginx/nginx-https.conf" ]; then
         cp nginx/nginx-https.conf nginx/nginx.conf
         echo "✅ 已切換到 HTTPS 配置"
+    elif [ -f "nginx/nginx-https.conf.bak" ]; then
+        cp nginx/nginx-https.conf.bak nginx/nginx.conf
+        echo "✅ 已從備份文件切換到 HTTPS 配置"
     else
-        echo "⚠️  警告: 找不到 nginx-https.conf，使用 HTTP 配置"
+        echo "⚠️  警告: 找不到 nginx-https.conf，但 nginx.conf 可能已包含 HTTPS 配置"
+        echo "   請確認 nginx.conf 是否正確配置了 HTTPS"
     fi
 else
     echo "ℹ️  未檢測到 SSL 證書，使用 HTTP 配置"
