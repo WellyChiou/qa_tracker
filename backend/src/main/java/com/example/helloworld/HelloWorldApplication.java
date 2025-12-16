@@ -1,6 +1,5 @@
 package com.example.helloworld;
 
-import com.example.helloworld.config.ChurchLineBotConfig;
 import com.example.helloworld.entity.personal.ScheduledJob;
 import com.example.helloworld.repository.personal.ScheduledJobRepository;
 import com.example.helloworld.scheduler.personal.DailyExpenseReminderScheduler;
@@ -35,9 +34,6 @@ public class HelloWorldApplication implements CommandLineRunner {
 
     @Autowired
     private ScheduledJobRepository scheduledJobRepository;
-
-    @Autowired
-    private ChurchLineBotConfig lineBotConfig;
 
     @Autowired
     private ExchangeRateScheduler exchangeRateScheduler;

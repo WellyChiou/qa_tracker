@@ -33,15 +33,12 @@ ON DUPLICATE KEY UPDATE
     updated_at = CURRENT_TIMESTAMP;
 
 -- 插入 LINE Bot 相關參數
+-- 注意：LINE Bot 配置現在統一從個人網站資料庫（qa_tracker）讀取
+-- 教會資料庫不再需要這些配置
 -- 注意：使用 ON DUPLICATE KEY UPDATE 確保如果記錄已存在則更新值，不存在則插入
 INSERT INTO system_settings (setting_key, setting_value, setting_type, category, description, is_editable) VALUES
-('line.bot.channel-token', 'CY5CAs65/W4KfcU/6qTISLiqs2MCD9wHz/z/BF9vUexvUulGNrz4zPNQVy1saAlYggahICdEUiNLiVzkPYp6UDbX6QjMbvnjrkwBj750wd/nKS/sGNkJFaT705CF66mtF3LS4pLqJ1dx7TnA21+ZnQdB04t89/10/w1cDnyilFU=', 'string', 'linebot', 'LINE Bot Channel Token', 1),
-('line.bot.channel-secret', '6075d3893ea1293b31307e8f673e26c2', 'string', 'linebot', 'LINE Bot Channel Secret', 1),
-('line.bot.webhook-url', 'https://power-light-church.duckdns.org/api/line/webhook', 'string', 'linebot', 'LINE Bot Webhook URL', 1),
 ('line.bot.daily-reminder-enabled', 'true', 'boolean', 'linebot', '是否啟用每日提醒', 1),
-('line.bot.daily-reminder-time', '20:00', 'string', 'linebot', '每日提醒時間（HH:MM 格式）', 1),
-('line.bot.admin-user-id', '', 'string', 'linebot', 'LINE Bot 管理員用戶 ID', 1),
-('line.bot.church-group-id', 'C5246fe9f6b4f85ecbe0ff4e5299123bd', 'string', 'linebot', '教會 LINE 群組 ID（用於發送服事人員通知）', 1)
+('line.bot.daily-reminder-time', '20:00', 'string', 'linebot', '每日提醒時間（HH:MM 格式）', 1)
 ON DUPLICATE KEY UPDATE 
     setting_value = VALUES(setting_value),
     description = VALUES(description),

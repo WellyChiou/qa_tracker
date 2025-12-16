@@ -56,6 +56,7 @@ public class LineGroupManagementController {
         return lineGroupRepository.findByGroupId(groupId).map(group -> {
             group.setGroupName(groupDetails.getGroupName());
             group.setIsActive(groupDetails.getIsActive());
+            group.setGroupCode(groupDetails.getGroupCode());
             // memberCount is usually updated by system, but allow admin override if needed
             if (groupDetails.getMemberCount() != null) {
                 group.setMemberCount(groupDetails.getMemberCount());
@@ -81,7 +82,8 @@ public class LineGroupManagementController {
         if (groupOpt.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(lineGroupMemberRepository.findByLineGroup(groupOpt.get()));
+        // 只返回啟用的成員
+        return ResponseEntity.ok(lineGroupMemberRepository.findByLineGroupAndIsActiveTrue(groupOpt.get()));
     }
 
     @PostMapping("/{groupId}/members")
@@ -135,9 +137,11 @@ public class LineGroupManagementController {
             }
             
             LineGroup group = member.getLineGroup();
-            lineGroupMemberRepository.delete(member);
+            // 軟刪除：將成員標記為未啟用，而不是直接刪除記錄
+            member.setIsActive(false);
+            lineGroupMemberRepository.save(member);
             
-            // Update member count
+            // Update member count (只計算啟用的成員)
             updateGroupMemberCount(group);
             
             return ResponseEntity.ok(Map.of("message", "Member removed"));
@@ -145,7 +149,8 @@ public class LineGroupManagementController {
     }
     
     private void updateGroupMemberCount(LineGroup group) {
-        long count = lineGroupMemberRepository.countByLineGroup(group);
+        // 只計算啟用的成員
+        long count = lineGroupMemberRepository.countByLineGroupAndIsActiveTrue(group);
         group.setMemberCount((int) count);
         lineGroupRepository.save(group);
     }

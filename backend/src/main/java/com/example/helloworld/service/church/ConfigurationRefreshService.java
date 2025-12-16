@@ -98,13 +98,10 @@ public class ConfigurationRefreshService {
      */
     private void loadCommonConfigs() {
         // LINE Bot 配置
-        getConfigValue("line.bot.channel-token", "");
-        getConfigValue("line.bot.channel-secret", "");
-        getConfigValue("line.bot.webhook-url", "https://power-light-church.duckdns.org/api/line/webhook");
-        getConfigValue("line.bot.daily-reminder-enabled", "true");
-        getConfigValue("line.bot.daily-reminder-time", "20:00");
-        getConfigValue("line.bot.admin-user-id", "");
-        getConfigValue("line.bot.church-group-id", "");
+        // 注意：channel-token、channel-secret、webhook-url、admin-user-id 現在統一從個人網站資料庫讀取
+        // 教會資料庫不再需要這些配置
+        // getConfigValue("line.bot.daily-reminder-enabled", "true");
+        // getConfigValue("line.bot.daily-reminder-time", "20:00");
         
         // JWT 配置
         getConfigValue("jwt.secret", "F/cPluFKK3/44X5iX9GdY6P7Ye+BIDdBTw6uljBTl9o=");

@@ -13,7 +13,13 @@ public interface LineGroupMemberRepository extends JpaRepository<LineGroupMember
     Optional<LineGroupMember> findByLineGroupAndUserId(LineGroup lineGroup, String userId);
     List<LineGroupMember> findByLineGroup(LineGroup lineGroup);
     
-    // 計算群組成員數
-    long countByLineGroup(LineGroup lineGroup);
+    // 查詢啟用的成員
+    List<LineGroupMember> findByLineGroupAndIsActiveTrue(LineGroup lineGroup);
+    
+    // 計算群組成員數（只計算啟用的成員）
+    long countByLineGroupAndIsActiveTrue(LineGroup group);
+    
+    // 計算群組成員數（包含所有成員）
+    long countByLineGroup(LineGroup group);
 }
 

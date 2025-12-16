@@ -1,8 +1,7 @@
 package com.example.helloworld.controller.personal;
 
 import com.example.helloworld.config.PersonalLineBotConfig;
-import com.example.helloworld.config.ChurchLineBotConfig;
-import com.example.helloworld.repository.church.ChurchLineGroupRepository;
+import com.example.helloworld.repository.personal.LineGroupRepository;
 import com.example.helloworld.service.personal.LineBotService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -28,10 +27,7 @@ public class LineBotController {
     private PersonalLineBotConfig lineBotConfig;
 
     @Autowired
-    private ChurchLineBotConfig churchLineBotConfig;
-
-    @Autowired
-    private ChurchLineGroupRepository churchLineGroupRepository;
+    private LineGroupRepository lineGroupRepository;
 
     /**
      * LINE Bot Webhook 端點
@@ -268,7 +264,7 @@ public class LineBotController {
 
             // 直接調用 LineBotService 發送訊息
             // 注意：這裡直接使用 lineBotService，它是 Personal 系統的服務
-            // 如果是要發送給教會群組，應該使用 ChurchLineBotService，但這裡是 Personal 系統的 API
+            // 教會群組現在也統一使用 LineBotService，透過 group_code = 'CHURCH_TECH_CONTROL' 識別
             lineBotService.sendPushMessage(groupId, message);
             
             Map<String, Object> successResponse = new HashMap<>();
@@ -287,8 +283,7 @@ public class LineBotController {
      * 判斷是否為教會群組
      * 
      * 檢查方式：
-     * 1. 檢查是否等於配置的 church-group-id
-     * 2. 檢查是否在 church.church_line_groups 資料表中
+     * 檢查是否在個人網站資料庫的 line_groups 表中，且 group_code = 'CHURCH_TECH_CONTROL'
      * 
      * @param groupId LINE 群組 ID
      * @return true 如果是教會群組，false 如果是 Personal 群組
@@ -299,17 +294,10 @@ public class LineBotController {
         }
 
         try {
-            // 方式1：檢查是否等於配置的教會群組 ID
-            String churchGroupId = churchLineBotConfig.getChurchGroupId();
-            if (churchGroupId != null && !churchGroupId.trim().isEmpty() && churchGroupId.equals(groupId)) {
-                log.debug("✅ [群組判斷] 群組 {} 匹配配置的教會群組 ID", groupId);
-                return true;
-            }
-
-            // 方式2：檢查是否在教會群組資料表中
-            boolean existsInChurchDb = churchLineGroupRepository.findByGroupId(groupId).isPresent();
-            if (existsInChurchDb) {
-                log.debug("✅ [群組判斷] 群組 {} 存在於教會群組資料表", groupId);
+            // 檢查是否在個人網站資料庫中，且 group_code = 'CHURCH_TECH_CONTROL'
+            boolean isChurchGroup = lineGroupRepository.findByGroupIdAndGroupCode(groupId, "CHURCH_TECH_CONTROL").isPresent();
+            if (isChurchGroup) {
+                log.debug("✅ [群組判斷] 群組 {} 存在於個人網站資料庫，且為教會群組", groupId);
                 return true;
             }
 

@@ -6,13 +6,13 @@ import com.example.helloworld.entity.church.ServiceSchedulePositionConfig;
 import com.example.helloworld.entity.church.ServiceScheduleAssignment;
 import com.example.helloworld.entity.church.Person;
 import com.example.helloworld.entity.church.Position;
-import com.example.helloworld.config.ChurchLineBotConfig;
-import com.example.helloworld.entity.church.ChurchLineGroup;
-import com.example.helloworld.repository.church.ChurchLineGroupRepository;
+import com.example.helloworld.entity.personal.LineGroup;
+import com.example.helloworld.repository.personal.LineGroupRepository;
 import com.example.helloworld.repository.church.PositionPersonRepository;
 import com.example.helloworld.service.church.ServiceScheduleService;
-import com.example.helloworld.service.church.ChurchLineBotService;
+import com.example.helloworld.service.personal.LineBotService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
@@ -37,13 +37,11 @@ public class ServiceScheduleNotificationScheduler {
     private ServiceScheduleService serviceScheduleService;
 
     @Autowired
-    private ChurchLineBotService churchLineBotService;
+    @Lazy
+    private LineBotService lineBotService;
 
     @Autowired
-    private ChurchLineGroupRepository churchLineGroupRepository;
-
-    @Autowired
-    private ChurchLineBotConfig lineBotConfig;
+    private LineGroupRepository lineGroupRepository;
 
     @Autowired
     private PositionPersonRepository positionPersonRepository;
@@ -224,7 +222,7 @@ public class ServiceScheduleNotificationScheduler {
             if (targetGroupId != null && !targetGroupId.trim().isEmpty()) {
                 log.info("📤 [教會排程] 指定發送通知到群組: {}", targetGroupId);
                 try {
-                    churchLineBotService.sendGroupMessage(targetGroupId, message.toString());
+                    lineBotService.sendGroupMessageByPush(targetGroupId, message.toString());
                     log.info("✅ [教會排程] 已發送服事人員通知到指定群組: {}", targetGroupId);
                 } catch (Exception e) {
                     log.error("❌ [教會排程] 發送通知到指定群組 {} 失敗: {}", targetGroupId, e.getMessage(), e);
@@ -233,47 +231,32 @@ public class ServiceScheduleNotificationScheduler {
                 return;
             }
 
-            // 發送 LINE 通知到教會群組
-            String churchGroupId = lineBotConfig.getChurchGroupId();
+            // 查詢資料庫中啟用的教會群組（group_code = 'CHURCH_TECH_CONTROL'）
+            List<LineGroup> activeGroups = lineGroupRepository.findByGroupCodeAndIsActiveTrue("CHURCH_TECH_CONTROL");
             
-            // 如果配置了群組 ID，優先使用配置的群組 ID
-            if (churchGroupId != null && !churchGroupId.trim().isEmpty()) {
-                log.info("📤 [教會排程] 使用配置的群組 ID: {}", churchGroupId);
+            if (activeGroups.isEmpty()) {
+                log.warn("⚠️ [教會排程] 資料庫中沒有啟用的教會群組（group_code = 'CHURCH_TECH_CONTROL'），跳過通知");
+                log.info("💡 [教會排程] 提示：請在個人網站資料庫的 line_groups 表中建立 group_code = 'CHURCH_TECH_CONTROL' 的群組");
+                return;
+            }
+
+            int successCount = 0;
+            int errorCount = 0;
+            for (LineGroup group : activeGroups) {
                 try {
-                    churchLineBotService.sendGroupMessage(churchGroupId, message.toString());
-                    log.info("✅ [教會排程] 已發送服事人員通知到群組: {}", churchGroupId);
+                    log.info("📤 [教會排程] 發送通知到群組: {} ({})", group.getGroupId(), group.getGroupName());
+                    lineBotService.sendGroupMessageByPush(group.getGroupId(), message.toString());
+                    successCount++;
                 } catch (Exception e) {
-                    log.error("❌ [教會排程] 發送通知到群組失敗: {}", e.getMessage(), e);
-                    // 這裡只是發送過程的錯誤，不拋出異常，讓整體任務算成功
+                    errorCount++;
+                    log.error("❌ [教會排程] 發送通知到群組 {} 失敗: {}", group.getGroupId(), e.getMessage(), e);
                 }
-            } else {
-                // 如果沒有配置群組 ID，查找資料庫中啟用的群組
-                List<ChurchLineGroup> activeGroups = churchLineGroupRepository.findByIsActiveTrue();
-                
-                if (activeGroups.isEmpty()) {
-                    log.warn("⚠️ [教會排程] 沒有配置群組 ID 且資料庫中沒有啟用的群組，跳過通知");
-                    log.info("💡 [教會排程] 提示：請設置環境變數 LINE_BOT_CHURCH_GROUP_ID 或在資料庫中啟用 LINE 群組");
-                    return;
-                }
+            }
 
-                int successCount = 0;
-                int errorCount = 0;
-                for (ChurchLineGroup group : activeGroups) {
-                    try {
-                        log.info("📤 [教會排程] 發送通知到群組: {} ({})", group.getGroupId(), group.getGroupName());
-                        churchLineBotService.sendGroupMessage(group.getGroupId(), message.toString());
-                        successCount++;
-                    } catch (Exception e) {
-                        errorCount++;
-                        log.error("❌ [教會排程] 發送通知到群組 {} 失敗: {}", group.getGroupId(), e.getMessage(), e);
-                    }
-                }
-
-                log.info("✅ [教會排程] 已發送服事人員通知到 {} 個群組", successCount);
-                if (errorCount > 0) {
-                    log.warn("⚠️ [教會排程] 發送通知時發生 {} 個錯誤", errorCount);
-                    throw new RuntimeException("發送通知時發生 " + errorCount + " 個錯誤，詳見日誌");
-                }
+            log.info("✅ [教會排程] 已發送服事人員通知到 {} 個群組", successCount);
+            if (errorCount > 0) {
+                log.warn("⚠️ [教會排程] 發送通知時發生 {} 個錯誤", errorCount);
+                throw new RuntimeException("發送通知時發生 " + errorCount + " 個錯誤，詳見日誌");
             }
         } catch (Exception e) {
             log.error("❌ [教會排程] 發送服事人員通知失敗: {}", e.getMessage(), e);

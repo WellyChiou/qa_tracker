@@ -101,8 +101,8 @@ public class ConfigurationRefreshService {
         getConfigValue("line.bot.channel-token", "");
         getConfigValue("line.bot.channel-secret", "");
         getConfigValue("line.bot.webhook-url", "https://power-light-church.duckdns.org/api/line/webhook");
-        getConfigValue("line.bot.daily-reminder-enabled", "true");
-        getConfigValue("line.bot.daily-reminder-time", "20:00");
+        // getConfigValue("line.bot.daily-reminder-enabled", "true");
+        // getConfigValue("line.bot.daily-reminder-time", "20:00");
         getConfigValue("line.bot.admin-user-id", "");
         
         // JWT 配置（Personal 系統）

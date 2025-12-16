@@ -25,6 +25,9 @@ public class LineGroupMember {
     @Column(name = "is_admin", nullable = false)
     private Boolean isAdmin = false; // 是否為管理員
 
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive = true; // 是否仍在群組中（false 表示已離開）
+
     @Column(name = "joined_at")
     private LocalDateTime joinedAt;
 
@@ -87,6 +90,14 @@ public class LineGroupMember {
 
     public void setIsAdmin(Boolean isAdmin) {
         this.isAdmin = isAdmin;
+    }
+
+    public Boolean getIsActive() {
+        return isActive;
+    }
+
+    public void setIsActive(Boolean isActive) {
+        this.isActive = isActive;
     }
 
     public LocalDateTime getJoinedAt() {

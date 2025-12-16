@@ -19,6 +19,9 @@ public class LineGroup {
     @Column(name = "member_count", nullable = false)
     private Integer memberCount = 0; // 群組人數
 
+    @Column(name = "group_code", length = 50)
+    private String groupCode; // 群組代碼：PERSONAL（個人）或 CHURCH_TECH_CONTROL（教會技術控制）
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
@@ -67,6 +70,14 @@ public class LineGroup {
 
     public void setMemberCount(Integer memberCount) {
         this.memberCount = memberCount;
+    }
+
+    public String getGroupCode() {
+        return groupCode;
+    }
+
+    public void setGroupCode(String groupCode) {
+        this.groupCode = groupCode;
     }
 
     public LocalDateTime getCreatedAt() {

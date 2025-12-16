@@ -62,20 +62,7 @@ public class ChurchLineBotConfig {
     }
 
     // ========== Church 系統配置（從 church.system_settings 讀取）==========
-    
-    /**
-     * 獲取 Church 系統的群組 ID（用於發送服事人員通知）
-     */
-    public String getChurchGroupId() {
-        return getChurchConfigValue("line.bot.church-group-id", "");
-    }
-
-    /**
-     * 獲取 Church 系統的群組 ID 列表（未來可能有多個群組）
-     * 返回逗號分隔的群組 ID 字串
-     */
-    public String getChurchGroupIds() {
-        return getChurchConfigValue("line.bot.church-group-ids", "");
-    }
+    // 注意：教會群組現在統一使用個人網站資料庫的 line_groups 表管理
+    // 透過 group_code = 'CHURCH_TECH_CONTROL' 識別，不再使用系統配置的群組 ID
 
 }
