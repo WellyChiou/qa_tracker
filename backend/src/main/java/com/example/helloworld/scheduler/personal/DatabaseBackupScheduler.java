@@ -184,7 +184,7 @@ public class DatabaseBackupScheduler {
             
             // 構建並執行命令
             String command = String.format(
-                "mysqldump -h %s -P 3306 -u root -p%s --skip-ssl --single-transaction --routines --triggers --events %s > %s && gzip %s",
+                "mysqldump -h %s -P 3306 -u root -p%s --ssl-mode=DISABLED --single-transaction --routines --triggers --events %s > %s && gzip %s",
                 mysqlService, mysqlRootPassword, dbName, backupFile, backupFile
             );
             

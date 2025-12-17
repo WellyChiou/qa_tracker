@@ -69,7 +69,7 @@ backup_database() {
     # 執行備份
     log_info "執行 mysqldump 命令..."
     mysqldump -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u root -p"$MYSQL_ROOT_PASSWORD" \
-        --skip-ssl \
+        --ssl-mode=DISABLED \
         --single-transaction \
         --routines \
         --triggers \
