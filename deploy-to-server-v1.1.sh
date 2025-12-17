@@ -114,6 +114,10 @@ tar --format=ustar -czf "${ARCHIVE_NAME}" \
   --exclude="${PROJECT_NAME}/frontend-church-admin/dist" \
   --exclude="${PROJECT_NAME}/**/dist" \
   --exclude="${PROJECT_NAME}/*.tar.gz" \
+  --exclude="${PROJECT_NAME}/local-letsencrypt" \
+  --exclude="${PROJECT_NAME}/local-letsencrypt/**" \
+  --exclude="${PROJECT_NAME}/docker-compose.local.yml" \
+  --exclude="${PROJECT_NAME}/docker-compose.override.yml" \
   "${PROJECT_NAME}"
 
 if [[ ! -f "${ARCHIVE_NAME}" ]]; then

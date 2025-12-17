@@ -125,6 +125,16 @@ nano /root/project/work/restore_mysql.sh
 ```bash
 # 替換 YYYYMMDD_HHMMSS 為實際的備份文件名
 cd /root/project/work/docker-vue-java-mysql && docker compose exec -T mysql mysql -u root -prootpassword < /root/project/work/mysql_backup_YYYYMMDD_HHMMSS.sql && echo "還原完成" && docker compose exec mysql mysql -u root -prootpassword -e "SHOW DATABASES;"
+
+# mac version
+cd /Users/wellychiou/my-github/docker-vue-java-mysql && \
+sed '/^mysqldump: /d' /Users/wellychiou/my-github/backups/qa_tracker_20251216_180000.sql \
+| docker compose exec -T mysql mysql -uroot -prootpassword qa_tracker
+
+cd /Users/wellychiou/my-github/docker-vue-java-mysql && \
+sed '/^mysqldump: /d' /Users/wellychiou/my-github/backups/church_20251216_180000.sql \
+| docker compose exec -T mysql mysql -uroot -prootpassword church
+
 ```
 
 ## 注意事項

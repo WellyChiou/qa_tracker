@@ -213,7 +213,7 @@ failed to resolve source metadata for docker.io/library/maven:3.8.6-openjdk-17-s
 FROM maven:3.8-eclipse-temurin-17 AS build
 
 # 運行階段也改為
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:17-jre-jammy
 ```
 
 **原因：** 某些 Maven 映像標籤可能不存在或已被移除，使用 `eclipse-temurin` 是更可靠的選擇。

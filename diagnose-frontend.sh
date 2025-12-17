@@ -226,11 +226,13 @@ for SVC in "${FRONTEND_SERVICES[@]}"; do
   fi
   if [ "${OK_MAP[$SVC]}" = "true" ]; then
     CNAME="$(service_to_container "$SVC")"
-    if docker exec "$CNAME" wget -q -O - http://localhost/ 2>/dev/null | grep -q "<!DOCTYPE html\|<html"; then
+    if docker exec "$CNAME" sh -c 'exec 3<>/dev/tcp/127.0.0.1/80 && echo -e "GET / HTTP/1.0\r\n\r\n" >&3 && head -n 1 <&3' \
+      | grep -q "200"; then
       echo -e "  ${GREEN}✅ $CNAME 可以正常響應${NC}"
     else
       echo -e "  ${RED}❌ $CNAME 無法正常響應${NC}"
     fi
+
   fi
 done
 echo ""

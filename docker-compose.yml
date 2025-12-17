@@ -9,10 +9,10 @@ services:
       MYSQL_USER: appuser
       MYSQL_PASSWORD: apppassword
     volumes:
-      - /root/project/work/mysql:/var/lib/mysql
+      #- /root/project/work/mysql:/var/lib/mysql
+      - ../mysql:/var/lib/mysql
       - ./mysql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
       - ./mysql/church-schema.sql:/docker-entrypoint-initdb.d/02-church-schema.sql
-      - ./mysql/init-position-config.sql:/docker-entrypoint-initdb.d/03-init-position-config.sql
     ports:
       - "3306:3306"
     healthcheck:
@@ -40,9 +40,12 @@ services:
         max-file: "3"
         tag: "{{.Name}}"
     volumes:
-      - /root/project/work/uploads/church:/app/uploads/church
-      - /root/project/work/backups:/app/backups
-      - /root/project/work/logs/backend:/app/logs
+      #- /root/project/work/uploads/church:/app/uploads/church
+      - ../uploads/church:/app/uploads/church
+      #- /root/project/work/backups:/app/backups
+      - ../backups:/app/backups
+      #- /root/project/work/logs/backend:/app/logs
+      - ../logs/backend:/app/logs
     environment:
       TZ: Asia/Taipei
       BACKUP_DIR: /app/backups
@@ -69,12 +72,12 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
+    #healthcheck:
+      #test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      #interval: 30s
+      #timeout: 10s
+      #retries: 3
+      #start_period: 10s
     # 資源限制（防止資源耗盡）
     deploy:
       resources:
@@ -93,12 +96,12 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
+    #healthcheck:
+      #test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      #interval: 30s
+      #timeout: 10s
+      #retries: 3
+      #start_period: 10s
     # 資源限制（防止資源耗盡）
     deploy:
       resources:
@@ -117,12 +120,12 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
+    #healthcheck:
+      #test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      #interval: 30s
+      #timeout: 10s
+      #retries: 3
+      #start_period: 10s
     # 資源限制（防止資源耗盡）
     deploy:
       resources:
@@ -144,7 +147,8 @@ services:
       # - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./certbot/conf:/etc/letsencrypt:ro
       - ./certbot/www:/var/www/certbot:ro
-      - /root/project/work/uploads/church:/usr/share/nginx/html/uploads/church:ro
+      #- /root/project/work/uploads/church:/usr/share/nginx/html/uploads/church:ro
+      - ../uploads/church:/usr/share/nginx/html/uploads/church:ro
     depends_on:
       - frontend-personal
       - frontend-church

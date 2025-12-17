@@ -1,6 +1,8 @@
 # 使用 Maven 官方映像作為構建階段
 FROM maven:3.8-eclipse-temurin-17 AS build
 
+
+
 WORKDIR /app
 
 # 複製 pom.xml 和源代碼
@@ -19,15 +21,21 @@ RUN mvn dependency:resolve -B -U || \
 RUN mvn clean package -DskipTests -B
 
 # 運行階段：使用 Eclipse Temurin（OpenJDK 的替代品）
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:17-jre-jammy
 
 WORKDIR /app
 
 # 設置時區為台灣時間，並安裝 mysql-client 和 gzip（用於資料庫備份）
-RUN apk add --no-cache tzdata mysql-client gzip && \
-    cp /usr/share/zoneinfo/Asia/Taipei /etc/localtime && \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      tzdata \
+      default-mysql-client \
+      gzip && \
+    ln -sf /usr/share/zoneinfo/Asia/Taipei /etc/localtime && \
     echo "Asia/Taipei" > /etc/timezone && \
-    apk del tzdata
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 
 # 從構建階段複製 JAR 文件
 COPY --from=build /app/target/*.jar app.jar

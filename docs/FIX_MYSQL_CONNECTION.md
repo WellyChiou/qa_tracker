@@ -71,6 +71,7 @@ docker compose exec mysql mysql -u root -prootpassword
 
 # 修改 appuser 的認證方式
 ALTER USER 'appuser'@'%' IDENTIFIED WITH mysql_native_password BY 'apppassword';
+ALTER USER 'root'@'%' IDENTIFIED WITH mysql_native_password BY 'rootpassword';
 FLUSH PRIVILEGES;
 
 # 驗證

@@ -176,6 +176,8 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(Arrays.asList(
             "http://localhost",
             "http://localhost:80",
+            "https://localhost",
+            "https://localhost:80",
             "http://38.54.89.136",
             "http://38.54.89.136:80",
             "https://38.54.89.136",
