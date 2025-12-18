@@ -83,6 +83,9 @@ tar -czf "%SCRIPT_DIR%\%ARCHIVE_NAME%" ^
     --exclude="%CURRENT_DIR%/frontend-church/dist" ^
     --exclude="%CURRENT_DIR%/frontend-church-admin/dist" ^
     --exclude="%CURRENT_DIR%/*.tar.gz" ^
+    --exclude="%CURRENT_DIR%\local-letsencrypt" ^
+    --exclude="%CURRENT_DIR%\docker-compose.local.yml" ^
+    --exclude="%CURRENT_DIR%\docker-compose.override.yml" ^
     "%CURRENT_DIR%"
 
 cd /d "%SCRIPT_DIR%"
