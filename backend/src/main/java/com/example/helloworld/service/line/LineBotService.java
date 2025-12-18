@@ -1,4 +1,4 @@
-package com.example.helloworld.service.personal;
+package com.example.helloworld.service.line;
 
 import com.example.helloworld.config.PersonalLineBotConfig;
 import com.example.helloworld.dto.church.GoogleSyncResult;
@@ -11,7 +11,7 @@ import com.example.helloworld.entity.personal.User;
 import com.example.helloworld.repository.personal.LineGroupRepository;
 import com.example.helloworld.repository.personal.UserRepository;
 import com.example.helloworld.service.church.GoogleSheetsRosterService;
-import com.example.helloworld.service.line.LineApiClient;
+import com.example.helloworld.service.personal.ExpenseService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,8 +32,6 @@ import java.util.regex.Pattern;
 @Transactional
 public class LineBotService {
     private static final Logger log = LoggerFactory.getLogger(LineBotService.class);
-    @Autowired
-    private PersonalLineBotConfig lineBotConfig;
 
     @Autowired
     private LineApiClient lineApiClient;
@@ -587,7 +585,7 @@ public class LineBotService {
 
         // 🎨 主題色
         String headerColor = testMode ? "#F2994A" : "#1DB446"; // 橘 / 綠
-        String badgeText = testMode ? "🧪 TEST MODE" : null;
+        String badgeText = testMode ? "🧪 【測試模式】" : null;
 
         Map<String, Object> bubble = new LinkedHashMap<>();
         bubble.put("type", "bubble");

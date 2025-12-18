@@ -10,7 +10,7 @@ import com.example.helloworld.entity.personal.LineGroup;
 import com.example.helloworld.repository.personal.LineGroupRepository;
 import com.example.helloworld.repository.church.PositionPersonRepository;
 import com.example.helloworld.service.church.ServiceScheduleService;
-import com.example.helloworld.service.personal.LineBotService;
+import com.example.helloworld.service.line.LineBotService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;

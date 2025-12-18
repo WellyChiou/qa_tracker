@@ -4,7 +4,7 @@ import com.example.helloworld.entity.personal.Expense;
 import com.example.helloworld.entity.personal.User;
 import com.example.helloworld.repository.personal.UserRepository;
 import com.example.helloworld.service.personal.ExpenseService;
-import com.example.helloworld.service.personal.LineBotService;
+import com.example.helloworld.service.line.LineBotService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -16,14 +16,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-import java.io.FileInputStream;
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -33,8 +33,7 @@ import java.util.concurrent.CompletableFuture;
 public class GoogleSheetsRosterService {
     private static final Logger log = LoggerFactory.getLogger(GoogleSheetsRosterService.class);
 
-    private static final DateTimeFormatter SHEET_DATE_FMT =
-            DateTimeFormatter.ofPattern("yyyy/MM/dd");
+    private static final DateTimeFormatter SHEET_DATE_FMT = DateTimeFormatter.ofPattern("yyyy/MM/dd");
 
     private static final String HDR_DATE = "日期";
     private static final String HDR_AUDIO = "音控";
@@ -42,14 +41,13 @@ public class GoogleSheetsRosterService {
     private static final String HDR_CAMERA = "攝像";
 
     // ===== DB keys =====
-    private static final String KEY_SA_JSON_PATH = "google.sheets.service-account-json";
-
     private static final String KEY_SHEET_PROD = "google.sheets.church.service_schedules";
     private static final String KEY_SHEET_TEST = "google.sheets.church.service_schedules_test";
     private static final String KEY_TEST_MODE = "google.sheets.church.service_schedules_test_mode";
 
     private static final String KEY_CONNECT_TIMEOUT = "google.sheets.church.service_schedules.http.connect-timeout-ms";
     private static final String KEY_READ_TIMEOUT = "google.sheets.church.service_schedules.http.read-timeout-ms";
+    private static final String KEY_SERVICE_ACCOUNT_JSON = "google.sheets.service_account.json";
 
     // ===== Loaded config (fixed after init, except testMode can change) =====
     private String spreadsheetIdProd;
@@ -58,6 +56,8 @@ public class GoogleSheetsRosterService {
     // testMode 可能會被更新，所以用 volatile 讓多執行緒讀取安全
     private volatile boolean testMode;
 
+    private String serviceAccountJson;
+    private GoogleCredentials credentials;
     private int connectTimeoutMs;
     private int readTimeoutMs;
 
@@ -66,14 +66,6 @@ public class GoogleSheetsRosterService {
      * Google Sheets API client
      */
     private Sheets sheets;
-
-    /**
-     * service account json 檔案路徑（容器內路徑 or 本機路徑）
-     * application.properties:
-     * google.sheets.service-account-json=/app/secret/service-account.json
-     */
-    @Value("${google.sheets.service-account-json}")
-    private String serviceAccountJsonPath;
 
     @Autowired
     @Qualifier("churchSystemSettingService")
@@ -95,28 +87,30 @@ public class GoogleSheetsRosterService {
         this.readTimeoutMs = parseIntOrDefault(readTimeoutStr, 5000);
 
         // 2) 從 DB 讀「可變值」（test_mode）— 初始化先讀一次
-        this.testMode = parseBoolean(systemSettingService.getSettingValue(KEY_TEST_MODE, "false"));
+        this.testMode = systemSettingService.getSettingValueAsBoolean(KEY_TEST_MODE, Boolean.TRUE);
 
-        // 3) service account json path（你要不要也放 DB 看你）
-        //    你原本是 @Value("${google.sheets.service-account-json}")
-        //    如果你也已經放 DB，就改成下面這行；否則保留你原本的 @Value 欄位也可以
-        String serviceAccountJsonPathFromDb = systemSettingService.getSettingValue(KEY_SA_JSON_PATH, serviceAccountJsonPath).trim();
-        String jsonPathToUse = serviceAccountJsonPathFromDb.isBlank() ? serviceAccountJsonPath : serviceAccountJsonPathFromDb;
+        // 3) service account json
+        this.serviceAccountJson = systemSettingService.getSettingValue(KEY_SERVICE_ACCOUNT_JSON, null);
 
-        if (spreadsheetIdProd.isBlank()) {
+        if (this.spreadsheetIdProd.isBlank()) {
             throw new IllegalStateException("DB setting missing: " + KEY_SHEET_PROD);
         }
-        if (spreadsheetIdTest.isBlank()) {
+        if (this.spreadsheetIdTest.isBlank()) {
             throw new IllegalStateException("DB setting missing: " + KEY_SHEET_TEST);
         }
-        if (jsonPathToUse.isBlank()) {
-            throw new IllegalStateException("serviceAccountJsonPath is blank (check @Value or DB key: " + KEY_SA_JSON_PATH + ")");
+        if (this.serviceAccountJson.isBlank()) {
+            throw new IllegalStateException("DB setting missing: " + KEY_SERVICE_ACCOUNT_JSON);
         }
+        log.info("⏹️ [KEY_SERVICE_ACCOUNT_JSON] : {}", KEY_SERVICE_ACCOUNT_JSON);
+        log.info("⏹️ [serviceAccountJson]: {}", this.serviceAccountJson);
 
         // 4) 建立 Sheets client（只建一次）
-        GoogleCredentials credentials = GoogleCredentials
-                .fromStream(new FileInputStream(jsonPathToUse))
-                .createScoped(List.of(SheetsScopes.SPREADSHEETS));
+        try (ByteArrayInputStream in =
+                     new ByteArrayInputStream(serviceAccountJson.getBytes(StandardCharsets.UTF_8))) {
+
+            this.credentials = GoogleCredentials.fromStream(in)
+                    .createScoped(List.of(SheetsScopes.SPREADSHEETS));
+        }
 
         HttpCredentialsAdapter credentialsAdapter = new HttpCredentialsAdapter(credentials);
 
@@ -126,20 +120,9 @@ public class GoogleSheetsRosterService {
             request.setReadTimeout(this.readTimeoutMs);
         };
 
-        this.sheets = new Sheets.Builder(
-                GoogleNetHttpTransport.newTrustedTransport(),
-                GsonFactory.getDefaultInstance(),
-                requestInitializer
-        ).setApplicationName("church-roster-sync").build();
+        this.sheets = new Sheets.Builder(GoogleNetHttpTransport.newTrustedTransport(), GsonFactory.getDefaultInstance(), requestInitializer).setApplicationName("church-roster-sync").build();
 
-        log.info("GoogleSheetsRosterService initialized from DB. testMode={}, prodSheetId={}, testSheetId={}, connectTimeoutMs={}, readTimeoutMs={}, jsonPath={}",
-                this.testMode,
-                maskSheetId(this.spreadsheetIdProd),
-                maskSheetId(this.spreadsheetIdTest),
-                this.connectTimeoutMs,
-                this.readTimeoutMs,
-                jsonPathToUse
-        );
+        log.info("GoogleSheetsRosterService initialized from DB. testMode={}, prodSheetId={}, testSheetId={}, connectTimeoutMs={}, readTimeoutMs={}, serviceAccountJson={}", this.testMode, maskSheetId(this.spreadsheetIdProd), maskSheetId(this.spreadsheetIdTest), this.connectTimeoutMs, this.readTimeoutMs, this.serviceAccountJson);
     }
 
     // ===== helpers =====
@@ -149,12 +132,6 @@ public class GoogleSheetsRosterService {
         } catch (Exception ignore) {
             return def;
         }
-    }
-
-    private boolean parseBoolean(String s) {
-        if (s == null) return false;
-        String t = s.trim().toLowerCase();
-        return "true".equals(t) || "1".equals(t) || "yes".equals(t) || "y".equals(t);
     }
 
     // log 用：不要把整串 spreadsheetId 暴露在 log
@@ -171,11 +148,7 @@ public class GoogleSheetsRosterService {
     }
 
     @Async
-    public CompletableFuture<GoogleSyncResult> syncAsync(
-            LocalDate date,
-            String positionName,
-            String personName
-    ) {
+    public CompletableFuture<GoogleSyncResult> syncAsync(LocalDate date, String positionName, String personName) {
         // 讓 async 也享受到 retry（syncWithRetry 裡會 throw 讓 Retryable 接手）
         try {
             GoogleSyncResult result = syncWithRetry(date, positionName, personName);
@@ -188,42 +161,24 @@ public class GoogleSheetsRosterService {
     }
 
     // ================== Retry 包裝 ==================
-    @Retryable(
-            value = Exception.class,
-            maxAttempts = 3,
-            backoff = @Backoff(delay = 1000, multiplier = 2.0)
-    )
-    public GoogleSyncResult syncWithRetry(
-            LocalDate date,
-            String positionName,
-            String personName
-    ) throws Exception {
+    @Retryable(value = Exception.class, maxAttempts = 3, backoff = @Backoff(delay = 1000, multiplier = 2.0))
+    public GoogleSyncResult syncWithRetry(LocalDate date, String positionName, String personName) throws Exception {
         return syncOneUpdate(date, positionName, personName);
     }
 
     // ================== Retry 最終失敗 ==================
     @Recover
-    public GoogleSyncResult recover(
-            Exception e,
-            LocalDate date,
-            String positionName,
-            String personName
-    ) {
-        log.error("Google Sheet sync failed after retries. date={}, position={}, person={}",
-                date, positionName, personName, e);
+    public GoogleSyncResult recover(Exception e, LocalDate date, String positionName, String personName) {
+        log.error("Google Sheet sync failed after retries. date={}, position={}, person={}", date, positionName, personName, e);
         return GoogleSyncResult.fail("📄 Google PLC 服事表 同步失敗（已重試 3 次）：" + safeMsg(e));
     }
 
     // ================== 核心同步邏輯 ==================
-    public GoogleSyncResult syncOneUpdate(
-            LocalDate date,
-            String positionName,
-            String personName
-    ) throws Exception {
+    public GoogleSyncResult syncOneUpdate(LocalDate date, String positionName, String personName) throws Exception {
 
 
         // 設定目前模式 要使用哪一個 excel
-        this.testMode = parseBoolean(systemSettingService.getSettingValue(KEY_TEST_MODE, "false"));
+        this.testMode = systemSettingService.getSettingValueAsBoolean(KEY_TEST_MODE, Boolean.TRUE);
         String spreadsheetId = this.testMode ? spreadsheetIdTest : spreadsheetIdProd;
 
         String sheetName = sheetNameByYear(date);
@@ -236,12 +191,7 @@ public class GoogleSheetsRosterService {
         int liveCol0 = header.colIndex.get(HDR_LIVE);
         int camCol0 = header.colIndex.get(HDR_CAMERA);
 
-        int row1 = findUniqueRowByDate(spreadsheetId,
-                sheetName,
-                header.headerRow1 + 1,
-                dateCol0,
-                targetDate
-        );
+        int row1 = findUniqueRowByDate(spreadsheetId, sheetName, header.headerRow1 + 1, dateCol0, targetDate);
 
         if (row1 == -1) {
             // ✅ 規格：找不到 或 日期重複 -> 不處理 + log
@@ -257,12 +207,7 @@ public class GoogleSheetsRosterService {
             // 音控欄位本身是 電腦/混音/燈光 的合併字串
             String oldAudio = readCell(spreadsheetId, sheetName + "!" + toA1Col(audioCol0) + row1);
 
-            String merged = mergeAudio(
-                    oldAudio,
-                    pos.equals("電腦") ? personName : null,
-                    pos.equals("混音") ? personName : null,
-                    pos.equals("燈光") ? personName : null
-            );
+            String merged = mergeAudio(oldAudio, pos.equals("電腦") ? personName : null, pos.equals("混音") ? personName : null, pos.equals("燈光") ? personName : null);
 
             updates.add(cellUpdate(sheetName, row1, audioCol0, merged));
 
@@ -277,21 +222,16 @@ public class GoogleSheetsRosterService {
         }
 
         try {
-            BatchUpdateValuesRequest req = new BatchUpdateValuesRequest()
-                    .setValueInputOption("USER_ENTERED")
-                    .setData(updates);
+            BatchUpdateValuesRequest req = new BatchUpdateValuesRequest().setValueInputOption("USER_ENTERED").setData(updates);
 
-            sheets.spreadsheets().values()
-                    .batchUpdate(spreadsheetId, req)
-                    .execute();
+            sheets.spreadsheets().values().batchUpdate(spreadsheetId, req).execute();
             String msg = "📄 Google PLC 服事表 同步成功";
             if (this.testMode) {
                 msg += "\n🧪 測試模式（未寫入正式服事表）";
             }
             return GoogleSyncResult.ok(msg);
         } catch (Exception e) {
-            log.error("Google Sheet sync error (will retry). date={}, position={}, person={}",
-                    date, positionName, personName, e);
+            log.error("Google Sheet sync error (will retry). date={}, position={}, person={}", date, positionName, personName, e);
             throw e; // ✅ 交給 Spring Retry
         }
     }
@@ -302,10 +242,7 @@ public class GoogleSheetsRosterService {
     }
 
     private HeaderInfo findHeader(String spreadsheetId, String sheetName) throws Exception {
-        ValueRange vr = sheets.spreadsheets().values()
-                .get(spreadsheetId, sheetName + "!A1:AN30")
-                .setValueRenderOption("FORMATTED_VALUE")
-                .execute();
+        ValueRange vr = sheets.spreadsheets().values().get(spreadsheetId, sheetName + "!A1:AN30").setValueRenderOption("FORMATTED_VALUE").execute();
 
         if (vr.getValues() == null) {
             throw new IllegalStateException("找不到任何資料（可能工作表名稱不對）: " + sheetName);
@@ -329,18 +266,13 @@ public class GoogleSheetsRosterService {
     }
 
     private int findUniqueRowByDate(String spreadsheetId, String sheet, int startRow1, int col0, String target) throws Exception {
-        ValueRange vr = sheets.spreadsheets().values()
-                .get(spreadsheetId,
-                        sheet + "!" + toA1Col(col0) + startRow1 + ":" + toA1Col(col0))
-                .setValueRenderOption("FORMATTED_VALUE")
-                .execute();
+        ValueRange vr = sheets.spreadsheets().values().get(spreadsheetId, sheet + "!" + toA1Col(col0) + startRow1 + ":" + toA1Col(col0)).setValueRenderOption("FORMATTED_VALUE").execute();
 
         if (vr.getValues() == null) return -1;
 
         List<Integer> hits = new ArrayList<>();
         for (int i = 0; i < vr.getValues().size(); i++) {
-            if (!vr.getValues().get(i).isEmpty()
-                    && target.equals(String.valueOf(vr.getValues().get(i).get(0)).trim())) {
+            if (!vr.getValues().get(i).isEmpty() && target.equals(String.valueOf(vr.getValues().get(i).get(0)).trim())) {
                 hits.add(startRow1 + i);
             }
         }
@@ -348,18 +280,12 @@ public class GoogleSheetsRosterService {
     }
 
     private String readCell(String spreadsheetId, String a1) throws Exception {
-        ValueRange vr = sheets.spreadsheets().values()
-                .get(spreadsheetId, a1)
-                .setValueRenderOption("FORMATTED_VALUE")
-                .execute();
-        return (vr.getValues() == null || vr.getValues().isEmpty() || vr.getValues().get(0).isEmpty())
-                ? "" : String.valueOf(vr.getValues().get(0).get(0));
+        ValueRange vr = sheets.spreadsheets().values().get(spreadsheetId, a1).setValueRenderOption("FORMATTED_VALUE").execute();
+        return (vr.getValues() == null || vr.getValues().isEmpty() || vr.getValues().get(0).isEmpty()) ? "" : String.valueOf(vr.getValues().get(0).get(0));
     }
 
     private ValueRange cellUpdate(String sheet, int row1, int col0, String value) {
-        return new ValueRange()
-                .setRange(sheet + "!" + toA1Col(col0) + row1)
-                .setValues(List.of(List.of(value == null ? "" : value)));
+        return new ValueRange().setRange(sheet + "!" + toA1Col(col0) + row1).setValues(List.of(List.of(value == null ? "" : value)));
     }
 
     /**

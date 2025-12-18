@@ -2,7 +2,7 @@ package com.example.helloworld.controller.personal;
 
 import com.example.helloworld.entity.personal.User;
 import com.example.helloworld.repository.personal.UserRepository;
-import com.example.helloworld.service.personal.LineBotService;
+import com.example.helloworld.service.line.LineBotService;
 import com.example.helloworld.service.personal.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
