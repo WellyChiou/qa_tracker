@@ -52,3 +52,4 @@ certbot/conf/
 
 # Nginx logs
 nginx/logs/
+keys/google-service-account.json
