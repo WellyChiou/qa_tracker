@@ -33,8 +33,7 @@ http {
         server_name power-light-church.duckdns.org 38.54.89.136;
 
         # SSL 證書（Let's Encrypt）
-        ssl_certificate /etc/letsencrypt/live/power-light-church.duckdns.org/fullchain.pem;
-        ssl_certificate_key /etc/letsencrypt/live/power-light-church.duckdns.org/privkey.pem;
+        ssl_certificate /etc/letletsencrypt/live/power-light-church.duckdns.org/privkey.pem;
 
         # SSL 配置（安全最佳實踐）
         ssl_protocols TLSv1.2 TLSv1.3;

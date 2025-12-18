@@ -1,72 +1,214 @@
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+/* =========
+   Global Design Tokens (minimal-intrusion UI refresh)
+   ========= */
+:root{
+  --bg: #f6f7fb;
+  --surface: #ffffff;
+  --surface-2: #fbfbff;
+  --text: #0f172a;
+  --muted: #475569;
+  --border: rgba(15,23,42,0.10);
+  --primary: #667eea;
+  --primary-2: #764ba2;
+  --ring: rgba(102,126,234,0.32);
+
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 22px;
+
+  --shadow-sm: 0 6px 18px rgba(15,23,42,0.06);
+  --shadow-md: 0 14px 40px rgba(15,23,42,0.10);
+
+  --container: 1120px;
 }
+
+*{ margin:0; padding:0; box-sizing:border-box; }
+
+html, body{ height:100%; }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Microsoft JhengHei', sans-serif;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    Segoe UI, Roboto, Helvetica Neue, Arial, Microsoft JhengHei,
+    PingFang TC, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color: #333;
-  line-height: 1.6;
+  background: var(--bg);
+  line-height: 1.65;
 }
 
-#app {
+a{ color: inherit; }
+
+#app{
   min-height: 100vh;
-  display: flex;
+  display:flex;
   flex-direction: column;
 }
 
-a {
-  color: #667eea;
-  text-decoration: none;
-}
-
-a:hover {
-  text-decoration: underline;
-}
-
-.container {
-  max-width: 1200px;
+/* =========
+   Layout helpers
+   ========= */
+.container{
+  max-width: var(--container);
   margin: 0 auto;
-  padding: 2rem;
+  padding: 0 1.25rem;
 }
 
-.section {
-  padding: 4rem 0;
+.section{
+  padding: 3rem 0;
 }
 
-.section-title {
-  font-size: 2.5rem;
-  text-align: center;
-  margin-bottom: 3rem;
-  color: #667eea;
+.section-title{
+  font-size: 1.6rem;
+  letter-spacing: -0.3px;
+  margin-bottom: 1.25rem;
 }
 
-.card {
-  background: white;
-  border-radius: 10px;
-  padding: 2rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  margin-bottom: 2rem;
+.bg-light{
+  background: rgba(255,255,255,0.60);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
 }
 
-.btn {
-  display: inline-block;
-  padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+/* =========
+   Content / Reading helpers (used for text-heavy pages like About)
+   ========= */
+.container--narrow{
+  max-width: 960px;
+}
+
+.stack{
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.prose{
+  color: var(--text);
+}
+
+.prose p{
+  line-height: 1.9;
+}
+
+.prose h2{
+  letter-spacing: -0.2px;
+}
+
+/* =========
+   Cards & Buttons
+   ========= */
+.card{
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 1.5rem;
+}
+
+.card--compact{ padding: 1.1rem; }
+
+.card:hover{
+  transform: translateY(-1px);
+  transition: transform 0.15s ease;
+}
+
+.btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap: 0.5rem;
+  padding: 0.7rem 1rem;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-2) 100%);
   color: white;
   border: none;
-  border-radius: 5px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   font-size: 1rem;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  font-weight: 700;
   text-decoration: none;
+  box-shadow: 0 10px 24px rgba(102,126,234,0.25);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
 }
 
+.btn:hover{
+  transform: translateY(-2px);
+  filter: saturate(1.05);
+  box-shadow: 0 14px 34px rgba(102,126,234,0.30);
+}
+
+.btn:focus{
+  outline: none;
+  box-shadow: 0 0 0 4px var(--ring), 0 14px 34px rgba(102,126,234,0.20);
+}
+
+.btn--ghost{
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  box-shadow: none;
+}
+
+.btn--ghost:hover{
+  background: rgba(15,23,42,0.04);
+  transform: translateY(-1px);
+}
+
+/* =========
+   Form basics
+   ========= */
+input, textarea, select{
+  width: 100%;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.9);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 0.9rem;
+  font-size: 1rem;
+  color: var(--text);
+}
+
+input:focus, textarea:focus, select:focus{
+  outline: none;
+  box-shadow: 0 0 0 4px var(--ring);
+  border-color: rgba(102,126,234,0.40);
+}
+
+/* =========
+   Small screens
+   ========= */
+@media (max-width: 640px){
+  .section{ padding: 2.25rem 0; }
+  .section-title{ font-size: 1.35rem; }
+  .card{ padding: 1.15rem; }
+}
+/* ===== 固定背景光暈層（根治灰色條問題） ===== */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      1200px 700px at 20% -10%,
+      rgba(102, 126, 234, 0.14),
+      transparent 60%
+    ),
+    radial-gradient(
+      900px 500px at 90% 10%,
+      rgba(118, 75, 162, 0.10),
+      transparent 55%
+    ),
+    var(--bg);
+}
+
+/* 避免內容陰影貼到 footer 交界 */
+.main-content {
+  padding-bottom: 56px;
+}
+
+/* footer 不再製造視覺分隔線 */
+.footer {
+  background: transparent;
+  border-top: none;
+  box-shadow: none;
+}

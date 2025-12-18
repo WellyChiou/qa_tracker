@@ -1,18 +1,20 @@
 <template>
   <div class="about">
     <section class="section">
-      <div class="container">
+      <div class="container container--narrow">
         <h1 class="section-title">關於我們</h1>
         
         <div v-if="aboutInfoList && aboutInfoList.length > 0">
-          <div class="card" v-for="info in aboutInfoList" :key="info.id">
-            <h2>{{ info.title }}</h2>
-            <p v-if="info.sectionKey !== 'values'" class="content-text">{{ info.content }}</p>
-            <ul v-else class="values-list">
-              <li v-for="(line, index) in parseValuesContent(info.content)" :key="index">
-                <strong>{{ line.label }}：</strong>{{ line.value }}
-              </li>
-            </ul>
+          <div class="stack">
+            <div class="card prose" v-for="info in aboutInfoList" :key="info.id">
+              <h2>{{ info.title }}</h2>
+              <p v-if="info.sectionKey !== 'values'" class="content-text">{{ info.content }}</p>
+              <ul v-else class="values-list">
+                <li v-for="(line, index) in parseValuesContent(info.content)" :key="index">
+                  <strong>{{ line.label }}：</strong>{{ line.value }}
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
         <div v-else class="loading">
@@ -66,14 +68,18 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.card{
+  padding: 2rem;
+}
+
 .values-list {
   list-style: none;
   padding: 0;
 }
 
 .values-list li {
-  padding: 0.75rem 0;
-  border-bottom: 1px solid #eee;
+  padding: 0.95rem 0;
+  border-bottom: 1px solid var(--border);
 }
 
 .values-list li:last-child {
@@ -81,22 +87,28 @@ onMounted(() => {
 }
 
 .card h2 {
-  color: #667eea;
+  color: var(--text);
   margin-bottom: 1rem;
-  font-size: 1.8rem;
+  font-size: 1.85rem;
+  letter-spacing: -0.3px;
 }
 
-.card p,
 .content-text {
-  line-height: 1.8;
-  margin-bottom: 1rem;
+  color: var(--muted);
+  margin-bottom: 0;
   white-space: pre-line;
 }
+
+.card p{ margin-bottom: 0; }
 
 .loading {
   text-align: center;
   padding: 2rem;
-  color: #666;
+  color: var(--muted);
+}
+
+@media (max-width: 640px){
+  .card{ padding: 1.35rem; }
 }
 </style>
 
