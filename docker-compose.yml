@@ -46,6 +46,7 @@ services:
       - ../backups:/app/backups
       #- /root/project/work/logs/backend:/app/logs
       - ../logs/backend:/app/logs
+      - ./keys:/opt/keys:ro
     environment:
       TZ: Asia/Taipei
       BACKUP_DIR: /app/backups
