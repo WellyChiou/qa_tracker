@@ -69,15 +69,16 @@ public class ServiceScheduleNotificationScheduler {
      */
     @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
     public void sendWeeklyServiceNotification() {
-        sendWeeklyServiceNotification(null);
+        sendWeeklyServiceNotification(null, null);
     }
 
     /**
      * 發送週服事人員通知
+     *
      * @param targetGroupId 指定發送的群組 ID，如果為 null 則發送到所有啟用群組
      */
     @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
-    public void sendWeeklyServiceNotification(String targetGroupId) {
+    public void sendWeeklyServiceNotification(String targetGroupId, String replyToken) {
         try {
             log.info("📅 [教會排程] 開始查詢本周六日服事人員...");
 
@@ -85,11 +86,11 @@ public class ServiceScheduleNotificationScheduler {
             LocalDate today = LocalDate.now();
             DayOfWeek todayDayOfWeek = today.getDayOfWeek();
             int todayValue = todayDayOfWeek.getValue(); // 1=MONDAY, 7=SUNDAY
-            
+
             // 計算本周六和週日
             // 週六的值是 6，週日的值是 7
             // 使用簡單的計算方法：計算到本週六/週日的天數
-            
+
             // 計算到本週六的天數
             int daysUntilSaturday;
             if (todayValue <= DayOfWeek.SATURDAY.getValue()) {
@@ -100,7 +101,7 @@ public class ServiceScheduleNotificationScheduler {
                 daysUntilSaturday = 6;
             }
             LocalDate saturday = today.plusDays(daysUntilSaturday);
-            
+
             // 計算到本週日的天數
             int daysUntilSunday;
             if (todayValue < DayOfWeek.SUNDAY.getValue()) {
@@ -111,7 +112,7 @@ public class ServiceScheduleNotificationScheduler {
                 daysUntilSunday = 7;
             }
             LocalDate sunday = today.plusDays(daysUntilSunday);
-            
+
             // 調試日誌：輸出計算結果
             log.info("📅 [教會排程] 今天是 {} ({})", todayDayOfWeek, today);
             log.info("📅 [教會排程] 計算出的週六: {} (距離今天 {} 天)", saturday, daysUntilSaturday);
@@ -119,13 +120,13 @@ public class ServiceScheduleNotificationScheduler {
 
             // 獲取所有服事表（使用完整數據載入方法，避免懶加載異常）
             List<ServiceSchedule> schedules = serviceScheduleService.getAllSchedulesWithFullData();
-            
+
             // 查找包含本周六或週日的服事表
             Map<LocalDate, List<Map<String, Object>>> serviceInfo = new HashMap<>();
             // 記錄週六和週日是否有服事表日期記錄（不管有沒有崗位配置）
             boolean hasSaturdayDate = false;
             boolean hasSundayDate = false;
-            
+
             for (ServiceSchedule schedule : schedules) {
                 // 獲取服事表的日期（需要手動載入）
                 List<ServiceScheduleDate> dates = schedule.getDates();
@@ -152,88 +153,61 @@ public class ServiceScheduleNotificationScheduler {
                     }
                 }
             }
-
-            // 構建通知訊息
-            StringBuilder message = new StringBuilder();
-            message.append("🔔 本周服事人員通知\n\n");
-            
+// ✅ 構建通知內容：Flex 卡片（主要） + 純文字（降級備援）
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy年MM月dd日", Locale.TRADITIONAL_CHINESE);
-            String saturdayText = "週六";
-            String sundayText = "週日";
-            
+
             boolean hasSaturday = serviceInfo.containsKey(saturday);
             boolean hasSunday = serviceInfo.containsKey(sunday);
-            
-            if (hasSaturday) {
-                List<Map<String, Object>> saturdayPersons = serviceInfo.get(saturday);
-                // 檢查週六是否所有崗位都是「無安排人員」
-                boolean allUnassignedSaturday = saturdayPersons.stream()
-                    .allMatch(p -> "無安排人員".equals(p.get("person")));
-                
-                message.append("📆 ").append(saturday.format(formatter)).append(" (").append(saturdayText).append(")\n\n");
-                if (allUnassignedSaturday) {
-                    message.append("  本日無安排服事\n");
-                } else {
-                    message.append(buildPersonList(saturdayPersons));
-                }
-                message.append("\n");
-            }
-            
-            // 處理週日：如果有服事表日期記錄，即使沒有崗位配置也要顯示
-            if (hasSundayDate) {
-                if (hasSunday) {
-                    List<Map<String, Object>> sundayPersons = serviceInfo.get(sunday);
-                    // 檢查週日是否所有崗位都是「無安排人員」
-                    boolean allUnassignedSunday = sundayPersons.stream()
-                        .allMatch(p -> "無安排人員".equals(p.get("person")));
-                    
-                    message.append("📆 ").append(sunday.format(formatter)).append(" (").append(sundayText).append(")\n\n");
-                    if (allUnassignedSunday) {
-                        message.append("  本日無安排服事\n");
-                    } else {
-                        message.append(buildPersonList(sundayPersons));
-                    }
-                } else {
-                    // 週日沒有崗位配置（或所有崗位都是「無安排人員」）
-                    message.append("📆 ").append(sunday.format(formatter)).append(" (").append(sundayText).append(")\n\n");
-                    message.append("  本日無安排服事\n");
-                }
-                message.append("\n");
-            } else if (hasSunday) {
-                // 如果週日有崗位配置但沒有日期記錄（理論上不會發生，但為了安全）
-                List<Map<String, Object>> sundayPersons = serviceInfo.get(sunday);
-                boolean allUnassignedSunday = sundayPersons.stream()
-                    .allMatch(p -> "無安排人員".equals(p.get("person")));
-                
-                message.append("📆 ").append(sunday.format(formatter)).append(" (").append(sundayText).append(")\n\n");
-                if (allUnassignedSunday) {
-                    message.append("  本日無安排服事\n");
-                } else {
-                    message.append(buildPersonList(sundayPersons));
-                }
-                message.append("\n");
-            }
 
-            if (!hasSaturday && !hasSundayDate) {
-                message.append("本週六日暫無服事安排。");
-            }
+            List<Map<String, Object>> saturdayPersons = serviceInfo.getOrDefault(saturday, Collections.emptyList());
+            List<Map<String, Object>> sundayPersons = serviceInfo.getOrDefault(sunday, Collections.emptyList());
 
-            // 如果指定了目標群組，只發送到該群組
+// --- 純文字（降級備援）---
+            String fallbackText = buildWeeklyServiceText(
+                    saturday, sunday,
+                    hasSaturdayDate, hasSundayDate,
+                    hasSaturday, hasSunday,
+                    saturdayPersons, sundayPersons,
+                    formatter
+            );
+
+// --- Flex（主要）---
+            Map<String, Object> flexContents = buildWeeklyServiceCarousel(
+                    saturday, sunday,
+                    hasSaturdayDate, hasSundayDate,
+                    hasSaturday, hasSunday,
+                    saturdayPersons, sundayPersons,
+                    formatter
+            );
+
+            String altText = "🔔 本週服事表";
+
+// 如果指定了目標群組，只發送到該群組
             if (targetGroupId != null && !targetGroupId.trim().isEmpty()) {
                 log.info("📤 [教會排程] 指定發送通知到群組: {}", targetGroupId);
                 try {
-                    lineBotService.sendGroupMessageByPush(targetGroupId, message.toString());
-                    log.info("✅ [教會排程] 已發送服事人員通知到指定群組: {}", targetGroupId);
+                    if (replyToken != null) {
+                        lineBotService.sendReplyFlexMessage(replyToken, altText, flexContents);
+                    } else {
+                        lineBotService.sendGroupFlexMessageByPush(targetGroupId, altText, flexContents);
+                    }
+                    log.info("✅ [教會排程] 已發送服事表（Flex）到指定群組: {}", targetGroupId);
                 } catch (Exception e) {
-                    log.error("❌ [教會排程] 發送通知到指定群組 {} 失敗: {}", targetGroupId, e.getMessage(), e);
-                    throw new RuntimeException("發送通知到群組失敗: " + e.getMessage(), e);
+                    log.error("❌ [教會排程] 發送 Flex 到指定群組 {} 失敗: {}", targetGroupId, e.getMessage(), e);
+                    // 降級：純文字
+                    if (replyToken != null) {
+                        lineBotService.sendReplyMessage(replyToken, fallbackText);
+                    } else {
+                        lineBotService.sendGroupMessageByPush(targetGroupId, fallbackText);
+                    }
                 }
                 return;
             }
 
+
             // 查詢資料庫中啟用的教會群組（group_code = 'CHURCH_TECH_CONTROL'）
             List<LineGroup> activeGroups = lineGroupRepository.findByGroupCodeAndIsActiveTrue("CHURCH_TECH_CONTROL");
-            
+
             if (activeGroups.isEmpty()) {
                 log.warn("⚠️ [教會排程] 資料庫中沒有啟用的教會群組（group_code = 'CHURCH_TECH_CONTROL'），跳過通知");
                 log.info("💡 [教會排程] 提示：請在個人網站資料庫的 line_groups 表中建立 group_code = 'CHURCH_TECH_CONTROL' 的群組");
@@ -244,8 +218,13 @@ public class ServiceScheduleNotificationScheduler {
             int errorCount = 0;
             for (LineGroup group : activeGroups) {
                 try {
-                    log.info("📤 [教會排程] 發送通知到群組: {} ({})", group.getGroupId(), group.getGroupName());
-                    lineBotService.sendGroupMessageByPush(group.getGroupId(), message.toString());
+                    log.info("📤 [教會排程] 發送服事表（Flex）到群組: {} ({})", group.getGroupId(), group.getGroupName());
+                    try {
+                        lineBotService.sendGroupFlexMessageByPush(group.getGroupId(), altText, flexContents);
+                    } catch (Exception flexEx) {
+                        log.error("❌ [教會排程] 發送 Flex 失敗，降級純文字: {}", flexEx.getMessage());
+                        lineBotService.sendGroupMessageByPush(group.getGroupId(), fallbackText);
+                    }
                     successCount++;
                 } catch (Exception e) {
                     errorCount++;
@@ -253,7 +232,8 @@ public class ServiceScheduleNotificationScheduler {
                 }
             }
 
-            log.info("✅ [教會排程] 已發送服事人員通知到 {} 個群組", successCount);
+            log.info("✅ [教會排程] 已發送服事表通知到 {} 個群組", successCount);
+
             if (errorCount > 0) {
                 log.warn("⚠️ [教會排程] 發送通知時發生 {} 個錯誤", errorCount);
                 throw new RuntimeException("發送通知時發生 " + errorCount + " 個錯誤，詳見日誌");
@@ -272,7 +252,7 @@ public class ServiceScheduleNotificationScheduler {
      */
     private List<Map<String, Object>> getServicePersons(ServiceScheduleDate date) {
         List<Map<String, Object>> persons = new ArrayList<>();
-        
+
         // 檢查日期是否為週六或週日，如果不是則直接返回
         Integer dayOfWeek = date.getDayOfWeek();
         if (dayOfWeek == null) {
@@ -282,15 +262,15 @@ public class ServiceScheduleNotificationScheduler {
             dayOfWeek = (javaValue == 7) ? 1 : javaValue + 1; // 1=SUNDAY, 7=SATURDAY
             log.warn("  ⚠️ [教會排程] dayOfWeek 為 null，從 date 計算: {} (javaValue={}) -> {}", javaDayOfWeek, javaValue, dayOfWeek);
         }
-        
+
         // 只處理週六（7）和週日（1），其他日期直接返回空列表
         if (dayOfWeek == null || (dayOfWeek != 1 && dayOfWeek != 7)) {
             log.warn("⚠️ [教會排程] 日期 {} 不是週六或週日（dayOfWeek={}），跳過處理", date.getDate(), dayOfWeek);
             return persons;
         }
-        
+
         // dayOfWeek 變數將在後續邏輯中使用
-        
+
         List<ServiceSchedulePositionConfig> configs = date.getPositionConfigs();
         if (configs == null || configs.isEmpty()) {
             log.warn("⚠️ [教會排程] 日期 {} 沒有崗位配置", date.getDate());
@@ -315,7 +295,7 @@ public class ServiceScheduleNotificationScheduler {
                 // 觸發初始化，確保資料已載入
                 int assignmentCount = assignments.size();
                 log.info("  📝 [教會排程] 崗位 {} 有 {} 個分配記錄", positionName, assignmentCount);
-                
+
                 // 處理每個 assignment（支援多人，用 "/" 串接）
                 boolean hasAssignedPerson = false;
                 // 判斷是週六還是週日（1=週日, 7=週六）
@@ -323,15 +303,15 @@ public class ServiceScheduleNotificationScheduler {
                 String dayType = (dayOfWeek == 7) ? "saturday" : "sunday";
                 String dayOfWeekText = (dayOfWeek == 7) ? "週六" : "週日";
                 log.info("  📅 [教會排程] 日期 {} 是 {} (dayOfWeek={}, dayType={})", date.getDate(), dayOfWeekText, dayOfWeek, dayType);
-                
+
                 // 收集該崗位的所有人員名稱
                 List<String> personNames = new ArrayList<>();
-                
+
                 // 按 sortOrder 排序 assignments
                 List<ServiceScheduleAssignment> sortedAssignments = assignments.stream()
-                    .sorted(Comparator.comparing(ServiceScheduleAssignment::getSortOrder))
-                    .collect(Collectors.toList());
-                
+                        .sorted(Comparator.comparing(ServiceScheduleAssignment::getSortOrder))
+                        .collect(Collectors.toList());
+
                 for (ServiceScheduleAssignment assignment : sortedAssignments) {
                     Person person = assignment.getPerson();
                     if (person != null) {
@@ -339,35 +319,35 @@ public class ServiceScheduleNotificationScheduler {
                         String displayName = person.getDisplayName();
                         String personNameValue = person.getPersonName();
                         String personName = displayName != null && !displayName.trim().isEmpty() ? displayName : personNameValue;
-                        
+
                         // 詳細的調試日誌：輸出 person 對象的完整信息
-                        log.debug("  🔍 [教會排程] 檢查人員 - Person ID: {}, displayName: {}, personName: {}, 最終 personName: {}, 崗位: {}", 
-                                person.getId(), 
-                                displayName != null ? "'" + displayName + "'" : "null", 
-                                personNameValue != null ? "'" + personNameValue + "'" : "null", 
-                                personName != null ? "'" + personName + "'" : "null", 
-                                positionName); 
-                        
+                        log.debug("  🔍 [教會排程] 檢查人員 - Person ID: {}, displayName: {}, personName: {}, 最終 personName: {}, 崗位: {}",
+                                person.getId(),
+                                displayName != null ? "'" + displayName + "'" : "null",
+                                personNameValue != null ? "'" + personNameValue + "'" : "null",
+                                personName != null ? "'" + personName + "'" : "null",
+                                positionName);
+
                         // 檢查 personName 是否為 null 或空字符串
                         if (personName == null || personName.trim().isEmpty()) {
-                            log.warn("  ⚠️ [教會排程] 警告：崗位 {} 的分配記錄 ID {} 關聯的 Person ID {} 的名稱為空！ (displayName={}, personName={})", 
-                                    positionName, assignment.getId(), person.getId(), 
-                                    displayName != null ? "'" + displayName + "'" : "null", 
+                            log.warn("  ⚠️ [教會排程] 警告：崗位 {} 的分配記錄 ID {} 關聯的 Person ID {} 的名稱為空！ (displayName={}, personName={})",
+                                    positionName, assignment.getId(), person.getId(),
+                                    displayName != null ? "'" + displayName + "'" : "null",
                                     personNameValue != null ? "'" + personNameValue + "'" : "null");
                             // 跳過這個 assignment，因為沒有有效的人員名稱
                             continue;
                         }
-                        
+
                         // 檢查該人員是否參與自動分配
                         try {
-                            Optional<com.example.helloworld.entity.church.PositionPerson> positionPersonOpt = 
-                                positionPersonRepository.findByPositionIdAndPersonIdAndDayType(position.getId(), person.getId(), dayType);
-                            
+                            Optional<com.example.helloworld.entity.church.PositionPerson> positionPersonOpt =
+                                    positionPersonRepository.findByPositionIdAndPersonIdAndDayType(position.getId(), person.getId(), dayType);
+
                             if (positionPersonOpt.isPresent()) {
                                 com.example.helloworld.entity.church.PositionPerson pp = positionPersonOpt.get();
                                 Boolean includeInAutoSchedule = pp.getIncludeInAutoSchedule();
                                 log.info("  📋 [教會排程] 找到 position_persons 記錄，includeInAutoSchedule={}", includeInAutoSchedule);
-                                
+
                                 // 暫時關閉這邏輯
                                 // if (includeInAutoSchedule != null && !includeInAutoSchedule) {
                                 //     log.warn("  ⚠️ [教會排程] 崗位 {} 分配給: {}，但該人員不參與自動分配，跳過通知", positionName, personName);
@@ -380,7 +360,7 @@ public class ServiceScheduleNotificationScheduler {
                             log.error("  ❌ [教會排程] 查詢 position_persons 時發生錯誤: {}", e.getMessage(), e);
                             // 發生錯誤時，默認為參與自動分配，避免漏掉通知
                         }
-                        
+
                         log.info("  ✅ [教會排程] 崗位 {} 分配給: {}", positionName, personName);
                         personNames.add(personName);
                         hasAssignedPerson = true;
@@ -388,7 +368,7 @@ public class ServiceScheduleNotificationScheduler {
                         log.warn("  ⚠️ [教會排程] 崗位 {} 的分配記錄 ID {} 沒有關聯的人員", positionName, assignment.getId());
                     }
                 }
-                
+
                 // 如果有分配人員，創建一個 personInfo，用 "/" 串接多人
                 if (hasAssignedPerson && !personNames.isEmpty()) {
                     String personsString = String.join("/", personNames);
@@ -397,7 +377,7 @@ public class ServiceScheduleNotificationScheduler {
                     personInfo.put("person", personsString);
                     persons.add(personInfo);
                 }
-                
+
                 // 如果有 assignment 記錄但沒有分配人員，也顯示崗位
                 if (!hasAssignedPerson && assignmentCount > 0) {
                     log.warn("  ⚠️ [教會排程] 崗位 {} 有分配記錄但沒有人員，標記為無安排人員", positionName);
@@ -426,6 +406,176 @@ public class ServiceScheduleNotificationScheduler {
     }
 
     /**
+     * 建立本週服事表純文字（降級備援）
+     */
+    private String buildWeeklyServiceText(
+            LocalDate saturday,
+            LocalDate sunday,
+            boolean hasSaturdayDate,
+            boolean hasSundayDate,
+            boolean hasSaturday,
+            boolean hasSunday,
+            List<Map<String, Object>> saturdayPersons,
+            List<Map<String, Object>> sundayPersons,
+            DateTimeFormatter formatter
+    ) {
+        StringBuilder message = new StringBuilder();
+        message.append("🔔 本週服事人員通知\n\n");
+
+        // 週六
+        message.append("📆 ")
+                .append(saturday.format(formatter))
+                .append(" (週六)\n\n");
+
+        if (!hasSaturdayDate && !hasSaturday) {
+            message.append("  本日無安排服事\n\n");
+        } else {
+            boolean allUnassignedSaturday = saturdayPersons == null || saturdayPersons.isEmpty()
+                    || saturdayPersons.stream().allMatch(p -> "無安排人員".equals(String.valueOf(p.get("person"))));
+            if (allUnassignedSaturday) {
+                message.append("  本日無安排服事\n\n");
+            } else {
+                message.append(buildPersonList(saturdayPersons)).append("\n\n");
+            }
+        }
+
+        // 週日
+        message.append("📆 ")
+                .append(sunday.format(formatter))
+                .append(" (週日)\n\n");
+
+        if (!hasSundayDate && !hasSunday) {
+            message.append("  本日無安排服事\n");
+        } else {
+            boolean allUnassignedSunday = sundayPersons == null || sundayPersons.isEmpty()
+                    || sundayPersons.stream().allMatch(p -> "無安排人員".equals(String.valueOf(p.get("person"))));
+            if (allUnassignedSunday) {
+                message.append("  本日無安排服事\n");
+            } else {
+                message.append(buildPersonList(sundayPersons));
+            }
+        }
+
+        return message.toString();
+    }
+
+
+    /**
+     * 建立本週服事表 Flex Carousel
+     */
+    private Map<String, Object> buildWeeklyServiceCarousel(
+            LocalDate saturday,
+            LocalDate sunday,
+            boolean hasSaturdayDate,
+            boolean hasSundayDate,
+            boolean hasSaturday,
+            boolean hasSunday,
+            List<Map<String, Object>> saturdayPersons,
+            List<Map<String, Object>> sundayPersons,
+            DateTimeFormatter formatter
+    ) {
+        List<Map<String, Object>> bubbles = new ArrayList<>();
+
+        // 週六 Bubble（若不存在也顯示「無安排」）
+        bubbles.add(buildDayBubble(
+                "本週服事表",
+                saturday.format(formatter) + "（週六）",
+                hasSaturdayDate || hasSaturday,
+                saturdayPersons
+        ));
+
+        // 週日 Bubble（若不存在也顯示「無安排」）
+        bubbles.add(buildDayBubble(
+                "本週服事表",
+                sunday.format(formatter) + "（週日）",
+                hasSundayDate || hasSunday,
+                sundayPersons
+        ));
+
+        Map<String, Object> carousel = new LinkedHashMap<>();
+        carousel.put("type", "carousel");
+        carousel.put("contents", bubbles);
+        return carousel;
+    }
+
+    private Map<String, Object> buildDayBubble(String title, String subtitle, boolean hasSchedule, List<Map<String, Object>> persons) {
+        Map<String, Object> bubble = new LinkedHashMap<>();
+        bubble.put("type", "bubble");
+        bubble.put("size", "mega");
+
+        Map<String, Object> header = Map.of(
+                "type", "box",
+                "layout", "vertical",
+                "paddingAll", "12px",
+                "backgroundColor", "#1F2D3D",
+                "contents", List.of(
+                        Map.of("type", "text", "text", title, "color", "#FFFFFF", "weight", "bold", "size", "lg"),
+                        Map.of("type", "text", "text", subtitle, "color", "#FFFFFF", "size", "sm")
+                )
+        );
+
+        List<Map<String, Object>> bodyContents = new ArrayList<>();
+
+        if (!hasSchedule) {
+            bodyContents.add(Map.of(
+                    "type", "box",
+                    "layout", "vertical",
+                    "backgroundColor", "#F7F7F7",
+                    "paddingAll", "12px",
+                    "cornerRadius", "10px",
+                    "contents", List.of(
+                            Map.of("type", "text", "text", "本日無安排服事", "weight", "bold", "size", "md", "wrap", true),
+                            Map.of("type", "text", "text", "（尚未建立服事表日期或未配置崗位）", "size", "sm", "color", "#777777", "wrap", true)
+                    )
+            ));
+        } else {
+            boolean allUnassigned = persons == null || persons.isEmpty() ||
+                    persons.stream().allMatch(p -> "無安排人員".equals(p.get("person")));
+
+            if (allUnassigned) {
+                bodyContents.add(Map.of(
+                        "type", "box",
+                        "layout", "vertical",
+                        "backgroundColor", "#F7F7F7",
+                        "paddingAll", "12px",
+                        "cornerRadius", "10px",
+                        "contents", List.of(
+                                Map.of("type", "text", "text", "本日無安排服事", "weight", "bold", "size", "md", "wrap", true)
+                        )
+                ));
+            } else {
+                // 每個崗位一列
+                for (Map<String, Object> p : persons) {
+                    String position = String.valueOf(p.getOrDefault("position", ""));
+                    String person = String.valueOf(p.getOrDefault("person", ""));
+
+                    bodyContents.add(Map.of(
+                            "type", "box",
+                            "layout", "baseline",
+                            "spacing", "sm",
+                            "contents", List.of(
+                                    Map.of("type", "text", "text", position, "size", "sm", "color", "#555555", "flex", 3, "wrap", true),
+                                    Map.of("type", "text", "text", person, "size", "sm", "flex", 7, "wrap", true)
+                            )
+                    ));
+                }
+            }
+        }
+
+        Map<String, Object> body = Map.of(
+                "type", "box",
+                "layout", "vertical",
+                "paddingAll", "14px",
+                "spacing", "md",
+                "contents", bodyContents
+        );
+
+        bubble.put("header", header);
+        bubble.put("body", body);
+        return bubble;
+    }
+
+    /**
      * 構建人員列表訊息
      */
     private String buildPersonList(List<Map<String, Object>> persons) {
@@ -438,7 +588,7 @@ public class ServiceScheduleNotificationScheduler {
         for (Map<String, Object> personInfo : persons) {
             String position = (String) personInfo.get("position");
             String person = (String) personInfo.get("person");
-            
+
             positionGroups.computeIfAbsent(position, k -> new ArrayList<>()).add(person);
         }
 
