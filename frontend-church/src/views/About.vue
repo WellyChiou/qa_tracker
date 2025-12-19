@@ -1,22 +1,32 @@
 <template>
-  <div class="about">
-    <section class="section">
-      <div class="container container--narrow">
-        <h1 class="section-title">關於我們</h1>
-        
-        <div v-if="aboutInfoList && aboutInfoList.length > 0">
-          <div class="stack">
-            <div class="card prose" v-for="info in aboutInfoList" :key="info.id">
-              <h2>{{ info.title }}</h2>
-              <p v-if="info.sectionKey !== 'values'" class="content-text">{{ info.content }}</p>
-              <ul v-else class="values-list">
-                <li v-for="(line, index) in parseValuesContent(info.content)" :key="index">
-                  <strong>{{ line.label }}：</strong>{{ line.value }}
-                </li>
-              </ul>
-            </div>
-          </div>
+  <div>
+    <section class="page-hero">
+      <div class="container hero-surface">
+        <div class="hero-inner">
+          <div class="badge">About</div>
+          <h1 class="h1" style="margin-top:12px">關於我們</h1>
+          <p class="lead" style="margin-top:10px">認識我們的故事、異象與核心價值。</p>
         </div>
+      </div>
+    </section>
+
+    <section class="section section--tight">
+      <div class="container">
+        <div v-if="aboutInfoList && aboutInfoList.length > 0" class="grid">
+          <article class="card" v-for="info in aboutInfoList" :key="info.id">
+            <h2 class="h2" style="margin:0 0 10px">{{ info.title }}</h2>
+
+            <p v-if="info.sectionKey !== 'values'" class="content-text muted">{{ info.content }}</p>
+
+            <ul v-else class="values-list">
+              <li v-for="(line, index) in parseValuesContent(info.content)" :key="index">
+                <span class="badge" style="margin-right:8px">{{ line.label }}</span>
+                <span class="muted">{{ line.value }}</span>
+              </li>
+            </ul>
+          </article>
+        </div>
+
         <div v-else class="loading">
           <p>載入中...</p>
         </div>
@@ -33,10 +43,10 @@ const aboutInfoList = ref([])
 
 const parseValuesContent = (content) => {
   if (!content) return []
-  // 將內容按行分割，每行格式為 "標籤：值"
-  return content.split('\n')
-    .filter(line => line.trim())
-    .map(line => {
+  return content
+    .split('\n')
+    .filter((line) => line.trim())
+    .map((line) => {
       const parts = line.split('：')
       return {
         label: parts[0] || '',
@@ -47,10 +57,8 @@ const parseValuesContent = (content) => {
 
 const loadAboutInfo = async () => {
   try {
-    const response = await apiRequest('/church/public/about-info', {
-      method: 'GET'
-    }, '載入關於我們資訊', false)
-    
+    const response = await apiRequest('/church/public/about-info', { method: 'GET' }, '載入關於我們資訊', false)
+
     if (response.ok) {
       const data = await response.json()
       if (data.success && data.data) {
@@ -62,53 +70,27 @@ const loadAboutInfo = async () => {
   }
 }
 
-onMounted(() => {
-  loadAboutInfo()
-})
+onMounted(loadAboutInfo)
 </script>
 
 <style scoped>
-.card{
-  padding: 2rem;
+.content-text {
+  white-space: pre-line;
+  margin: 0;
 }
 
 .values-list {
   list-style: none;
   padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
 }
 
 .values-list li {
-  padding: 0.95rem 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.values-list li:last-child {
-  border-bottom: none;
-}
-
-.card h2 {
-  color: var(--text);
-  margin-bottom: 1rem;
-  font-size: 1.85rem;
-  letter-spacing: -0.3px;
-}
-
-.content-text {
-  color: var(--muted);
-  margin-bottom: 0;
-  white-space: pre-line;
-}
-
-.card p{ margin-bottom: 0; }
-
-.loading {
-  text-align: center;
-  padding: 2rem;
-  color: var(--muted);
-}
-
-@media (max-width: 640px){
-  .card{ padding: 1.35rem; }
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
 }
 </style>
-

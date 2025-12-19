@@ -1,8 +1,17 @@
 <template>
   <div class="service-schedule">
-    <section class="section">
+    <section class="page-hero">
+      <div class="container hero-surface">
+        <div class="hero-inner">
+          <div class="badge">Schedule</div>
+          <h1 class="h1" style="margin-top:12px">服事人員安排</h1>
+          <p class="lead" style="margin-top:10px">本週服事與崗位人員配置一覽。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--tight">
       <div class="container">
-        <h1 class="section-title">服事人員安排</h1>
 
         <!-- 崗位人員配置 -->
         <div class="card">

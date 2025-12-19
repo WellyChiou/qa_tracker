@@ -1,38 +1,46 @@
 <template>
-  <div class="sunday-messages">
-    <section class="section">
-      <div class="container">
-        <h1 class="section-title">主日信息</h1>
-        
-        <div v-if="isLoading" class="loading">
-          <p>載入中...</p>
+  <div>
+    <section class="page-hero">
+      <div class="container hero-surface">
+        <div class="hero-inner">
+          <div class="badge">Messages</div>
+          <h1 class="h1" style="margin-top:12px">主日信息</h1>
+          <p class="lead" style="margin-top:10px">回顧信息、再次默想神的話。</p>
         </div>
-        <div v-else-if="messagesWithFormattedData.length > 0" class="messages-grid">
-          <div class="card message-card" v-for="message in messagesWithFormattedData" :key="message.id">
-            <div v-if="message.imageUrl" class="message-image">
+      </div>
+    </section>
+
+    <section class="section section--tight">
+      <div class="container">
+        <div v-if="isLoading" class="loading"><p>載入中...</p></div>
+
+        <div v-else-if="messagesWithFormattedData.length > 0" class="grid grid-3">
+          <article class="card card--hover" v-for="message in messagesWithFormattedData" :key="message.id">
+            <div v-if="message.imageUrl" class="media" style="height:190px">
               <img :src="message.imageUrl" :alt="message.title || '主日信息'" />
             </div>
-            <div class="message-header">
-              <div class="message-type-badge" :class="message.typeClass">
-                {{ message.typeText }}
+
+            <div style="margin-top:14px">
+              <div class="tags" style="margin-bottom:10px">
+                <span class="badge" :class="message.typeClass">{{ message.typeText }}</span>
+                <span class="badge badge--accent">📅 {{ message.date }}</span>
               </div>
-              <h3>{{ message.title || '主日信息' }}</h3>
+
+              <h3 class="card__title h3">{{ message.title || '主日信息' }}</h3>
+
+              <div class="card__meta" style="margin-top:6px">
+                <span v-if="message.scripture">📖 {{ message.scripture }}</span>
+                <span v-if="message.speaker">🎤 {{ message.speaker }}</span>
+              </div>
+
+              <p v-if="message.content" class="muted message-content" style="margin-top:10px; margin-bottom:0">
+                {{ message.content }}
+              </p>
             </div>
-            <div v-if="message.scripture" class="message-scripture">
-              <strong>經文：</strong>{{ message.scripture }}
-            </div>
-            <div v-if="message.speaker" class="message-speaker">
-              <strong>講員：</strong>{{ message.speaker }}
-            </div>
-            <div v-if="message.content" class="message-content">
-              {{ message.content }}
-            </div>
-            <span class="message-date">{{ message.date }}</span>
-          </div>
+          </article>
         </div>
-        <div v-else class="no-messages">
-          <p>目前沒有主日信息</p>
-        </div>
+
+        <div v-else class="loading"><p>目前沒有主日信息</p></div>
       </div>
     </section>
   </div>
@@ -98,115 +106,17 @@ onMounted(() => {
 })
 </script>
 
+
 <style scoped>
-.messages-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-  gap: 2rem;
-}
-
-.message-card {
-  position: relative;
-  transition: transform 0.3s, box-shadow 0.3s;
-  padding-bottom: 3.5rem;
-  overflow: hidden;
-}
-
-.message-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-}
-
-.message-image {
-  width: calc(100% + 4rem);
-  height: 300px;
-  overflow: hidden;
-  margin: -2rem -2rem 1rem -2rem;
-  border-radius: 10px 10px 0 0;
-}
-
-.message-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.3s;
-  display: block;
-}
-
-.message-card:hover .message-image img {
-  transform: scale(1.05);
-}
-
-.message-header {
-  margin-bottom: 1rem;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.message-type-badge {
-  padding: 0.25rem 0.75rem;
-  border-radius: 15px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
 .type-saturday {
-  background: #f0f0f0;
-  color: #667eea;
+  background: rgba(244, 180, 0, 0.12);
+  border: 1px solid rgba(244, 180, 0, 0.25);
+  color: #7a5a00;
 }
-
 .type-sunday {
-  background: #667eea;
-  color: white;
+  background: rgba(31, 157, 106, 0.10);
+  border: 1px solid rgba(31, 157, 106, 0.20);
+  color: var(--primary-2);
 }
-
-.message-header h3 {
-  color: #667eea;
-  font-size: 1.5rem;
-  margin: 0;
-  flex: 1;
-}
-
-.message-scripture,
-.message-speaker {
-  color: #666;
-  margin-bottom: 0.75rem;
-  line-height: 1.6;
-}
-
-.message-scripture strong,
-.message-speaker strong {
-  color: #333;
-}
-
-.message-content {
-  margin: 1rem 0;
-  line-height: 1.8;
-  color: #444;
-  white-space: pre-wrap;
-}
-
-.message-date {
-  position: absolute;
-  bottom: 1rem;
-  right: 1rem;
-  background: #667eea;
-  color: white;
-  padding: 0.25rem 0.75rem;
-  border-radius: 5px;
-  font-size: 0.9rem;
-  white-space: nowrap;
-  z-index: 1;
-}
-
-.loading,
-.no-messages {
-  text-align: center;
-  padding: 2rem;
-  color: #666;
-}
+.message-content { white-space: pre-wrap; }
 </style>
-
