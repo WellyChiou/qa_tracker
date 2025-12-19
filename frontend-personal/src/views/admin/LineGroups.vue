@@ -1,6 +1,6 @@
 <template>
-  <div class="admin-page">
-    <TopNavbar />
+  <AdminLayout>
+    <div class="admin-page">
     <div class="container-fluid px-4 py-4">
       <h1 class="mt-4">LINE 群組管理</h1>
 
@@ -198,12 +198,13 @@
     </div>
     </div>
   </div>
+  </AdminLayout>
 </template>
 
 <script setup>
+import AdminLayout from '@/components/AdminLayout.vue'
 import { ref, onMounted } from 'vue';
 import { Modal } from 'bootstrap';
-import TopNavbar from '@/components/TopNavbar.vue';
 import { apiService } from '@/composables/useApi';
 
 // Data
@@ -371,7 +372,7 @@ const deleteMemberInModal = async (member) => {
 <style scoped>
 .admin-page {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: var(--bg-primary);
   padding-bottom: 2rem;
 }
 

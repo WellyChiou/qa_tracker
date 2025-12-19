@@ -1,6 +1,7 @@
 <template>
   <div class="admin-layout">
     <TopNavbar />
+
     <main class="admin-main">
       <div class="admin-content">
         <slot />
@@ -16,17 +17,22 @@ import TopNavbar from '@/components/TopNavbar.vue'
 <style scoped>
 .admin-layout {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: var(--bg-primary);
 }
 
 .admin-main {
-  min-height: calc(100vh - 80px);
+  padding: var(--spacing-xl) 0;
 }
 
 .admin-content {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 0 var(--spacing-xl) var(--spacing-2xl);
+}
+
+@media (max-width: 768px) {
+  .admin-content {
+    padding: 0 var(--spacing-lg) var(--spacing-2xl);
+  }
 }
 </style>
-

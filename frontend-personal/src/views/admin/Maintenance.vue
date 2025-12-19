@@ -1,6 +1,6 @@
 <template>
-  <div class="admin-page">
-    <TopNavbar />
+  <AdminLayout>
+    <div class="admin-page">
     <header class="header">
       <div class="header-top">
         <h1>🔧 系統維護</h1>
@@ -245,12 +245,13 @@
       {{ notification.message }}
     </div>
   </div>
+  </AdminLayout>
 </template>
 
 <script setup>
+import AdminLayout from '@/components/AdminLayout.vue'
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import TopNavbar from '@/components/TopNavbar.vue'
 import { apiService } from '@/composables/useApi'
 
 const route = useRoute()
@@ -562,13 +563,13 @@ onMounted(() => {
 <style scoped>
 .admin-page {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: var(--bg-primary);
 }
 
 .header {
   padding: 2rem;
-  background: white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  background: var(--bg-card);
+  box-shadow: var(--shadow);
   margin-bottom: 2rem;
 }
 
@@ -624,10 +625,10 @@ onMounted(() => {
 }
 
 .tab-content {
-  background: white;
-  border-radius: 12px;
+  background: var(--bg-card);
+  border-radius: var(--border-radius);
   padding: 2rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
   animation: fadeIn 0.3s;
 }
 
@@ -697,7 +698,7 @@ onMounted(() => {
   padding: 1rem;
   background: #f9fafb;
   border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  border-radius: var(--border-radius);
   transition: transform 0.2s;
 }
 
@@ -735,10 +736,10 @@ onMounted(() => {
   width: 100%;
   padding: 0.75rem;
   border: 1px solid #d1d5db;
-  border-radius: 6px;
+  border-radius: var(--border-radius);
   font-size: 1rem;
   transition: all 0.2s;
-  background: white;
+  background: var(--bg-card);
   color: #1f2937;
 }
 
@@ -816,20 +817,20 @@ onMounted(() => {
   padding: 3rem;
   color: #6b7280;
   background: #f9fafb;
-  border-radius: 8px;
+  border-radius: var(--border-radius);
   border: 1px dashed #d1d5db;
 }
 
 .backups-table {
   overflow-x: auto;
   border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  border-radius: var(--border-radius);
 }
 
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  background: white;
+  background: var(--bg-card);
 }
 
 .data-table th,
@@ -872,7 +873,7 @@ onMounted(() => {
 
 .btn {
   padding: 0.6rem 1.2rem;
-  border-radius: 6px;
+  border-radius: var(--border-radius);
   font-weight: 600;
   cursor: pointer;
   border: none;
@@ -945,7 +946,7 @@ onMounted(() => {
   right: 2rem;
   left: auto;
   padding: 1rem 1.5rem;
-  border-radius: 8px;
+  border-radius: var(--border-radius);
   color: white;
   font-weight: 600;
   z-index: 10000;
@@ -988,8 +989,8 @@ onMounted(() => {
 }
 
 .modal-content {
-  background: white;
-  border-radius: 12px;
+  background: var(--bg-card);
+  border-radius: var(--border-radius);
   padding: 2rem;
   max-width: 600px;
   width: 90%;

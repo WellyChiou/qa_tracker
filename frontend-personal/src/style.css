@@ -113,3 +113,158 @@ body {
   background: var(--text-secondary);
 }
 
+
+/* ============================================
+   管理後台套版（不影響 API / 邏輯）
+   - 以現有 bootstrap class 為基礎做視覺統一
+   ============================================ */
+
+/* 讓 bootstrap card 更貼近目前設計系統 */
+.card {
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow);
+}
+
+.card-header {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.card-body {
+  background: var(--bg-card);
+}
+
+/* 表格視覺統一 */
+.table {
+  --bs-table-bg: transparent;
+}
+
+.table thead th {
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+}
+
+.table tbody tr:hover {
+  background: rgba(102, 126, 234, 0.06);
+}
+
+/* 統一表單欄位 */
+.form-control,
+.form-select {
+  border-radius: var(--border-radius);
+  border-color: var(--border-color);
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: rgba(102, 126, 234, 0.6);
+  box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
+}
+
+/* Modal 統一 */
+.modal-content {
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-xl);
+  box-shadow: var(--shadow-xl);
+}
+
+.modal-header {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-footer {
+  border-top: 1px solid var(--border-color);
+}
+
+/* Badge 統一（保留 bootstrap 色彩） */
+.badge {
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+
+/* =========================
+   Dual list picker (roles/permissions)
+   ========================= */
+.dual-pick{
+  display:flex;
+  gap:14px;
+  align-items:stretch;
+}
+.dual-col{
+  flex:1;
+  min-width:0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow:hidden;
+  box-shadow: var(--shadow-sm);
+}
+.dual-head{
+  padding:10px 12px;
+  font-weight:700;
+  font-size: 14px;
+  background: rgba(255,255,255,0.55);
+  border-bottom:1px solid var(--border);
+}
+.dual-list{
+  padding:10px 10px;
+  max-height: 380px;
+  overflow:auto;
+}
+.dual-item{
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+  padding:10px 10px;
+  border-radius: 10px;
+  border:1px solid transparent;
+  cursor:pointer;
+}
+.dual-item:hover{
+  background: rgba(255,255,255,0.55);
+  border-color: var(--border);
+}
+.dual-item-main{ min-width:0; flex:1; }
+.dual-item-title{
+  font-weight:700;
+  line-height:1.25;
+}
+.dual-item-sub{
+  margin-top:4px;
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dual-actions{
+  width: 96px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:10px;
+}
+.dual-empty{
+  padding:16px 10px;
+  color: var(--text-muted);
+  text-align:center;
+  font-size: 13px;
+}
+
+/* small screens: stack */
+@media (max-width: 760px){
+  .dual-pick{
+    flex-direction:column;
+  }
+  .dual-actions{
+    width:100%;
+    flex-direction:row;
+    justify-content:space-between;
+  }
+}

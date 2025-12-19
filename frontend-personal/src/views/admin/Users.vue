@@ -1,6 +1,6 @@
 <template>
-  <div class="admin-page">
-    <TopNavbar />
+  <AdminLayout>
+    <div class="admin-page">
     <header class="header">
       <div class="header-top">
         <h1>👥 用戶管理</h1>
@@ -117,16 +117,55 @@
         </div>
         <div class="modal-body">
           <div class="roles-list">
-            <label v-for="role in allRoles" :key="role.id" class="role-item">
-              <input 
-                type="checkbox" 
-                :value="role.id" 
-                v-model="selectedRoleIds"
-                class="checkbox-input" />
-              <span>{{ role.roleName }}</span>
-              <small v-if="role.description" class="role-description">{{ role.description }}</small>
-            </label>
+          <div class="dual-pick">
+            <div class="dual-col">
+              <div class="dual-head">未加入角色</div>
+              <div class="dual-list">
+                <label v-for="role in availableRoles" :key="role.id" class="dual-item">
+                  <input
+                    type="checkbox"
+                    :value="role.id"
+                    v-model="tmpAddRoleIds"
+                    class="checkbox-input"
+                  />
+                  <div class="dual-item-main">
+                    <div class="dual-item-title">{{ role.roleName }}</div>
+                    <div v-if="role.description" class="dual-item-sub">{{ role.description }}</div>
+                  </div>
+                </label>
+                <div v-if="availableRoles.length === 0" class="dual-empty">已全部加入</div>
+              </div>
+            </div>
+
+            <div class="dual-actions">
+              <button type="button" class="btn btn-outline-primary btn-sm" @click="addSelectedRoles" :disabled="tmpAddRoleIds.length === 0">
+                加入 →
+              </button>
+              <button type="button" class="btn btn-outline-danger btn-sm" @click="removeSelectedRoles" :disabled="tmpRemoveRoleIds.length === 0">
+                ← 移除
+              </button>
+            </div>
+
+            <div class="dual-col">
+              <div class="dual-head">已加入角色</div>
+              <div class="dual-list">
+                <label v-for="role in assignedRoles" :key="role.id" class="dual-item">
+                  <input
+                    type="checkbox"
+                    :value="role.id"
+                    v-model="tmpRemoveRoleIds"
+                    class="checkbox-input"
+                  />
+                  <div class="dual-item-main">
+                    <div class="dual-item-title">{{ role.roleName }}</div>
+                    <div v-if="role.description" class="dual-item-sub">{{ role.description }}</div>
+                  </div>
+                </label>
+                <div v-if="assignedRoles.length === 0" class="dual-empty">尚未加入任何角色</div>
+              </div>
+            </div>
           </div>
+</div>
           <div class="form-actions">
             <button type="button" class="btn btn-primary" @click="saveRoles">
               <i class="fas fa-save me-2"></i>儲存角色
@@ -152,15 +191,59 @@
         </div>
         <div class="modal-body">
           <div class="permissions-list">
-            <label v-for="permission in allPermissions" :key="permission.id" class="permission-item">
-              <input 
-                type="checkbox" 
-                :value="permission.id" 
-                v-model="selectedPermissionIds"
-                class="checkbox-input" />
-              <span>{{ permission.permissionName }} <code class="permission-code">({{ permission.permissionCode }})</code></span>
-            </label>
+          <div class="dual-pick">
+            <div class="dual-col">
+              <div class="dual-head">未加入權限</div>
+              <div class="dual-list">
+                <label v-for="permission in availablePermissions" :key="permission.id" class="dual-item">
+                  <input
+                    type="checkbox"
+                    :value="permission.id"
+                    v-model="tmpAddPermissionIds"
+                    class="checkbox-input"
+                  />
+                  <div class="dual-item-main">
+                    <div class="dual-item-title">{{ permission.permissionName }}</div>
+                    <div class="dual-item-sub">
+                      <code class="permission-code">{{ permission.permissionCode }}</code>
+                    </div>
+                  </div>
+                </label>
+                <div v-if="availablePermissions.length === 0" class="dual-empty">已全部加入</div>
+              </div>
+            </div>
+
+            <div class="dual-actions">
+              <button type="button" class="btn btn-outline-primary btn-sm" @click="addSelectedPermissions" :disabled="tmpAddPermissionIds.length === 0">
+                加入 →
+              </button>
+              <button type="button" class="btn btn-outline-danger btn-sm" @click="removeSelectedPermissions" :disabled="tmpRemovePermissionIds.length === 0">
+                ← 移除
+              </button>
+            </div>
+
+            <div class="dual-col">
+              <div class="dual-head">已加入權限</div>
+              <div class="dual-list">
+                <label v-for="permission in assignedPermissions" :key="permission.id" class="dual-item">
+                  <input
+                    type="checkbox"
+                    :value="permission.id"
+                    v-model="tmpRemovePermissionIds"
+                    class="checkbox-input"
+                  />
+                  <div class="dual-item-main">
+                    <div class="dual-item-title">{{ permission.permissionName }}</div>
+                    <div class="dual-item-sub">
+                      <code class="permission-code">{{ permission.permissionCode }}</code>
+                    </div>
+                  </div>
+                </label>
+                <div v-if="assignedPermissions.length === 0" class="dual-empty">尚未加入任何權限</div>
+              </div>
+            </div>
           </div>
+</div>
           <div class="form-actions">
             <button type="button" class="btn btn-primary" @click="savePermissions">
               <i class="fas fa-save me-2"></i>儲存權限
@@ -177,11 +260,12 @@
       {{ notification.message }}
     </div>
   </div>
+  </AdminLayout>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import TopNavbar from '@/components/TopNavbar.vue'
+import AdminLayout from '@/components/AdminLayout.vue'
+import { ref, onMounted, computed } from 'vue'
 import { apiService } from '@/composables/useApi'
 
 const users = ref([])
@@ -194,6 +278,52 @@ const allRoles = ref([])
 const allPermissions = ref([])
 const selectedRoleIds = ref([])
 const selectedPermissionIds = ref([])
+
+// ====== dual-list selection (UI only) ======
+const tmpAddRoleIds = ref([])
+const tmpRemoveRoleIds = ref([])
+const tmpAddPermissionIds = ref([])
+const tmpRemovePermissionIds = ref([])
+
+const availableRoles = computed(() =>
+  allRoles.value.filter(r => !selectedRoleIds.value.includes(r.id))
+)
+const assignedRoles = computed(() =>
+  allRoles.value.filter(r => selectedRoleIds.value.includes(r.id))
+)
+
+const availablePermissions = computed(() =>
+  allPermissions.value.filter(p => !selectedPermissionIds.value.includes(p.id))
+)
+const assignedPermissions = computed(() =>
+  allPermissions.value.filter(p => selectedPermissionIds.value.includes(p.id))
+)
+
+const addSelectedRoles = () => {
+  const next = new Set(selectedRoleIds.value)
+  tmpAddRoleIds.value.forEach(id => next.add(id))
+  selectedRoleIds.value = Array.from(next)
+  tmpAddRoleIds.value = []
+}
+
+const removeSelectedRoles = () => {
+  const removeSet = new Set(tmpRemoveRoleIds.value)
+  selectedRoleIds.value = selectedRoleIds.value.filter(id => !removeSet.has(id))
+  tmpRemoveRoleIds.value = []
+}
+
+const addSelectedPermissions = () => {
+  const next = new Set(selectedPermissionIds.value)
+  tmpAddPermissionIds.value.forEach(id => next.add(id))
+  selectedPermissionIds.value = Array.from(next)
+  tmpAddPermissionIds.value = []
+}
+
+const removeSelectedPermissions = () => {
+  const removeSet = new Set(tmpRemovePermissionIds.value)
+  selectedPermissionIds.value = selectedPermissionIds.value.filter(id => !removeSet.has(id))
+  tmpRemovePermissionIds.value = []
+}
 const notification = ref({ show: false, message: '', type: 'success' })
 
 const form = ref({
@@ -294,6 +424,8 @@ const editRoles = async (user) => {
   selectedUser.value = user
   // 載入用戶當前的角色 ID
   selectedRoleIds.value = user.roles ? user.roles.map(r => r.id) : []
+  tmpAddRoleIds.value = []
+  tmpRemoveRoleIds.value = []
   showRolesModal.value = true
 }
 
@@ -301,6 +433,8 @@ const closeRolesModal = () => {
   showRolesModal.value = false
   selectedUser.value = null
   selectedRoleIds.value = []
+  tmpAddRoleIds.value = []
+  tmpRemoveRoleIds.value = []
 }
 
 const saveRoles = async () => {
@@ -318,6 +452,8 @@ const editPermissions = async (user) => {
   selectedUser.value = user
   // 載入用戶當前的權限 ID
   selectedPermissionIds.value = user.permissions ? user.permissions.map(p => p.id) : []
+  tmpAddPermissionIds.value = []
+  tmpRemovePermissionIds.value = []
   showPermissionsModal.value = true
 }
 
@@ -325,6 +461,8 @@ const closePermissionsModal = () => {
   showPermissionsModal.value = false
   selectedUser.value = null
   selectedPermissionIds.value = []
+  tmpAddPermissionIds.value = []
+  tmpRemovePermissionIds.value = []
 }
 
 const savePermissions = async () => {
@@ -366,15 +504,15 @@ onMounted(() => {
 <style scoped>
 .admin-page {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: var(--bg-primary);
   padding-bottom: 2rem;
 }
 
 .header {
-  background: white;
+  background: var(--bg-card);
   padding: 2rem;
   margin-bottom: 2rem;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  box-shadow: var(--shadow);
 }
 
 .header-top {
@@ -401,10 +539,10 @@ onMounted(() => {
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  background: white;
-  border-radius: 8px;
+  background: var(--bg-card);
+  border-radius: var(--border-radius);
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
 }
 
 .data-table th,
@@ -457,7 +595,7 @@ onMounted(() => {
 
 .btn {
   padding: 0.6rem 1.2rem;
-  border-radius: 6px;
+  border-radius: var(--border-radius);
   font-weight: 600;
   cursor: pointer;
   border: none;
@@ -546,8 +684,8 @@ onMounted(() => {
 .modal-panel {
   width: 100%;
   max-width: 600px;
-  background: white;
-  border-radius: 12px;
+  background: var(--bg-card);
+  border-radius: var(--border-radius);
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
   margin: 2rem;
   max-height: 90vh;
@@ -618,10 +756,10 @@ onMounted(() => {
   width: 100%;
   padding: 0.625rem 0.875rem;
   border: 1px solid #d1d5db;
-  border-radius: 6px;
+  border-radius: var(--border-radius);
   font-size: 0.95rem;
   transition: all 0.2s;
-  background: white;
+  background: var(--bg-card);
   color: #1f2937;
 }
 
@@ -675,7 +813,7 @@ onMounted(() => {
   overflow-y: auto;
   padding: 0.75rem;
   border: 1px solid #e5e7eb;
-  border-radius: 6px;
+  border-radius: var(--border-radius);
   background: #f9fafb;
 }
 
@@ -685,7 +823,7 @@ onMounted(() => {
   gap: 0.75rem;
   padding: 0.5rem;
   border-radius: 4px;
-  background: white;
+  background: var(--bg-card);
   border: 1px solid #e5e7eb;
   cursor: pointer;
 }
@@ -734,7 +872,7 @@ onMounted(() => {
   right: 2rem;
   left: auto;
   padding: 1rem 1.5rem;
-  border-radius: 8px;
+  border-radius: var(--border-radius);
   color: white;
   font-weight: 600;
   z-index: 10000;

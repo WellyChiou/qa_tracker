@@ -1,6 +1,6 @@
 <template>
-  <div class="admin-page">
-    <TopNavbar />
+  <AdminLayout>
+    <div class="admin-page">
     <header class="header">
       <div class="header-top">
         <h1>🔗 URL 權限管理</h1>
@@ -144,11 +144,12 @@
       {{ notification.message }}
     </div>
   </div>
+  </AdminLayout>
 </template>
 
 <script setup>
+import AdminLayout from '@/components/AdminLayout.vue'
 import { ref, onMounted } from 'vue'
-import TopNavbar from '@/components/TopNavbar.vue'
 import { apiService } from '@/composables/useApi'
 
 const permissions = ref([])
@@ -267,15 +268,15 @@ onMounted(() => {
 <style scoped>
 .admin-page {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: var(--bg-primary);
   padding-bottom: 2rem;
 }
 
 .header {
-  background: white;
+  background: var(--bg-card);
   padding: 2rem;
   margin-bottom: 2rem;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  box-shadow: var(--shadow);
 }
 
 .header-top {
@@ -302,10 +303,10 @@ onMounted(() => {
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  background: white;
-  border-radius: 8px;
+  background: var(--bg-card);
+  border-radius: var(--border-radius);
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
 }
 
 .data-table th,
@@ -345,7 +346,7 @@ onMounted(() => {
 
 .btn {
   padding: 0.6rem 1.2rem;
-  border-radius: 6px;
+  border-radius: var(--border-radius);
   font-weight: 600;
   cursor: pointer;
   border: none;
@@ -423,8 +424,8 @@ onMounted(() => {
 .modal-panel {
   width: 100%;
   max-width: 600px;
-  background: white;
-  border-radius: 12px;
+  background: var(--bg-card);
+  border-radius: var(--border-radius);
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
   margin: 2rem;
   max-height: 90vh;
@@ -495,10 +496,10 @@ onMounted(() => {
   width: 100%;
   padding: 0.625rem 0.875rem;
   border: 1px solid #d1d5db;
-  border-radius: 6px;
+  border-radius: var(--border-radius);
   font-size: 0.95rem;
   transition: all 0.2s;
-  background: white;
+  background: var(--bg-card);
   color: #1f2937;
 }
 
@@ -554,7 +555,7 @@ onMounted(() => {
   right: 2rem;
   left: auto;
   padding: 1rem 1.5rem;
-  border-radius: 8px;
+  border-radius: var(--border-radius);
   color: white;
   font-weight: 600;
   z-index: 10000;
