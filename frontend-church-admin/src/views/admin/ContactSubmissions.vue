@@ -180,6 +180,7 @@
 </template>
 
 <script setup>
+import { toast } from '@/composables/useToast'
 import { ref, computed, onMounted, watch } from 'vue'
 import AdminLayout from '@/components/AdminLayout.vue'
 import { apiRequest } from '@/utils/api'
@@ -319,7 +320,7 @@ const loadSubmissions = async () => {
     }
   } catch (error) {
     console.error('載入聯絡表單失敗:', error)
-    alert('載入聯絡表單失敗: ' + error.message)
+    toast.error('載入聯絡表單失敗: ' + error.message)
   } finally {
     loading.value = false
   }
@@ -350,7 +351,7 @@ const markAsRead = async (id) => {
     if (response.ok) {
       const data = await response.json()
       if (data.success) {
-        alert('標記已讀成功')
+        toast.success('標記已讀成功')
         closeViewModal()
         loadSubmissions()
         // 重新載入統計
@@ -368,7 +369,7 @@ const markAsRead = async (id) => {
     }
   } catch (error) {
     console.error('標記已讀失敗:', error)
-    alert('標記已讀失敗: ' + error.message)
+    toast.error('標記已讀失敗: ' + error.message)
   }
 }
 
@@ -384,13 +385,13 @@ const deleteSubmission = async (id) => {
     if (response.ok) {
       const data = await response.json()
       if (data.success) {
-        alert('刪除成功')
+        toast.success('刪除成功')
         loadSubmissions()
       }
     }
   } catch (error) {
     console.error('刪除聯絡表單失敗:', error)
-    alert('刪除聯絡表單失敗: ' + error.message)
+    toast.error('刪除聯絡表單失敗: ' + error.message)
   }
 }
 
@@ -400,373 +401,62 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.admin-contact-submissions {
-  max-width: 1400px;
-  margin: 0 auto;
+.admin-contact-submissions{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
 }
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
+/* Header */
+.admin-contact-submissions .page-header{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-bottom:2px;
+}
+.admin-contact-submissions .page-header h2{
+  font-size:22px;
+  font-weight:900;
+  letter-spacing:-0.02em;
+}
+.admin-contact-submissions .page-header p,
+.admin-contact-submissions .subtitle,
+.admin-contact-submissions .description{
+  color:var(--muted);
+  font-weight:700;
+  font-size:14px;
+  margin-top:6px;
+}
+/* Lists / table wrap */
+.admin-contact-submissions .table-container,
+.admin-contact-submissions .list-container,
+.admin-contact-submissions .data-container{
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  overflow:auto;
+  background:var(--surface);
+  box-shadow:var(--shadow-sm);
+}
+.admin-contact-submissions .table-container{ padding:0; }
+
+/* Inline helpers */
+.admin-contact-submissions .hint,
+.admin-contact-submissions .muted{
+  color:var(--muted);
+  font-size:13px;
+  font-weight:700;
 }
 
-.page-header h2 {
-  font-size: 1.8rem;
-  color: #333;
-  margin: 0;
+.admin-contact-submissions .actions,
+.admin-contact-submissions .header-actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
 }
 
-.stats {
-  display: flex;
-  gap: 1.5rem;
-}
-
-.stat-item {
-  padding: 0.5rem 1rem;
-  background: #f7fafc;
-  border-radius: 6px;
-  font-weight: 600;
-  color: #4a5568;
-}
-
-.btn {
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 600;
-  transition: all 0.2s;
-  margin-right: 0.5rem;
-}
-
-.btn-view {
-  background: #667eea;
-  color: white;
-}
-
-.btn-view:hover {
-  background: #5568d3;
-}
-
-.btn-mark-read {
-  background: #48bb78;
-  color: white;
-}
-
-.btn-mark-read:hover {
-  background: #38a169;
-}
-
-.btn-delete {
-  background: #f56565;
-  color: white;
-}
-
-.btn-delete:hover {
-  background: #e53e3e;
-}
-
-.btn-primary {
-  background: #667eea;
-  color: white;
-}
-
-.btn-secondary {
-  background: #e2e8f0;
-  color: #4a5568;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 4rem 2rem;
-  color: #666;
-}
-
-.info-table {
-  background: white;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-thead {
-  background: #f7fafc;
-}
-
-th, td {
-  padding: 1rem;
-  text-align: left;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-th {
-  font-weight: 600;
-  color: #4a5568;
-  border-bottom: 2px solid #e2e8f0;
-}
-
-tr.unread {
-  background: #fef5e7;
-}
-
-.message-preview {
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.status-read {
-  color: #48bb78;
-  font-weight: 600;
-}
-
-.status-unread {
-  color: #f56565;
-  font-weight: 600;
-}
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-panel {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.modal-title {
-  font-size: 1.5rem;
-  color: #333;
-  margin: 0;
-}
-
-.btn-close {
-  background: none;
-  border: none;
-  font-size: 2rem;
-  color: #666;
-  cursor: pointer;
-  padding: 0;
-  width: 2rem;
-  height: 2rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-}
-
-.btn-close:hover {
-  background: #f7fafc;
-}
-
-.modal-body {
-  padding: 1.5rem;
-}
-
-.detail-item {
-  margin-bottom: 1rem;
-  display: flex;
-  gap: 1rem;
-}
-
-.detail-item.full-width {
-  flex-direction: column;
-}
-
-.detail-item label {
-  font-weight: 600;
-  color: #4a5568;
-  min-width: 100px;
-}
-
-.message-content {
-  padding: 1rem;
-  background: #f7fafc;
-  border-radius: 6px;
-  white-space: pre-wrap;
-  line-height: 1.6;
-}
-
-.form-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
-  margin-top: 2rem;
-}
-
-/* 查詢條件樣式 */
-.filters {
-  background: white;
-  border-radius: 8px;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.filters h3 {
-  margin: 0 0 1rem 0;
-  font-size: 1.2rem;
-  color: #333;
-}
-
-.filter-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  align-items: end;
-}
-
-.filter-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.filter-group label {
-  font-weight: 600;
-  color: #4a5568;
-  font-size: 0.9rem;
-}
-
-.filter-group select,
-.filter-group input {
-  padding: 0.5rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  font-size: 0.95rem;
-}
-
-.filter-group select:focus,
-.filter-group input:focus {
-  outline: none;
-  border-color: #667eea;
-}
-
-.table-header {
-  padding: 1rem;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.table-header h3 {
-  margin: 0;
-  font-size: 1.1rem;
-  color: #4a5568;
-}
-
-/* 分頁樣式 */
-.pagination {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem;
-  border-top: 1px solid #e2e8f0;
-  background: #f7fafc;
-}
-
-.pagination-left {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.pagination-right {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.pagination-label {
-  font-size: 0.9rem;
-  color: #4a5568;
-}
-
-.page-size-select {
-  padding: 0.5rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  font-size: 0.9rem;
-}
-
-.pagination-info {
-  font-size: 0.9rem;
-  color: #718096;
-}
-
-.page-jump {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.page-input {
-  width: 60px;
-  padding: 0.5rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  text-align: center;
-  font-size: 0.9rem;
-}
-
-.page-input:focus {
-  outline: none;
-  border-color: #667eea;
-}
-
-.btn-secondary {
-  background: #e2e8f0;
-  color: #4a5568;
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: all 0.2s;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: #cbd5e0;
-}
-
-.btn-secondary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.w-5 {
-  width: 1.25rem;
-  height: 1.25rem;
+/* Mobile tweaks */
+@media (max-width: 640px){
 }
 </style>

@@ -145,6 +145,7 @@
 </template>
 
 <script setup>
+import { toast } from '@/composables/useToast'
 import { ref, computed, onMounted, watch } from 'vue'
 import AdminLayout from '@/components/AdminLayout.vue'
 import MenuModal from '@/components/MenuModal.vue'
@@ -270,11 +271,11 @@ const editMenu = async (id) => {
       selectedMenu.value = data.data || data.menu || data
       showModal.value = true
     } else {
-      alert('載入菜單資料失敗')
+      toast.error('載入菜單資料失敗')
     }
   } catch (error) {
     console.error('載入菜單資料失敗:', error)
-    alert('載入菜單資料失敗: ' + error.message)
+    toast.error('載入菜單資料失敗: ' + error.message)
   }
 }
 
@@ -301,11 +302,11 @@ const deleteMenu = async (id) => {
     if (response.ok) {
       loadMenus()
     } else {
-      alert('刪除失敗')
+      toast.error('刪除失敗')
     }
   } catch (error) {
     console.error('刪除菜單失敗:', error)
-    alert('刪除失敗: ' + error.message)
+    toast.error('刪除失敗: ' + error.message)
   }
 }
 
@@ -315,257 +316,62 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.admin-menus {
-  max-width: 1400px;
-  margin: 0 auto;
+.admin-menus{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
 }
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
+/* Header */
+.admin-menus .page-header{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-bottom:2px;
+}
+.admin-menus .page-header h2{
+  font-size:22px;
+  font-weight:900;
+  letter-spacing:-0.02em;
+}
+.admin-menus .page-header p,
+.admin-menus .subtitle,
+.admin-menus .description{
+  color:var(--muted);
+  font-weight:700;
+  font-size:14px;
+  margin-top:6px;
+}
+/* Lists / table wrap */
+.admin-menus .table-container,
+.admin-menus .list-container,
+.admin-menus .data-container{
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  overflow:auto;
+  background:var(--surface);
+  box-shadow:var(--shadow-sm);
+}
+.admin-menus .table-container{ padding:0; }
+
+/* Inline helpers */
+.admin-menus .hint,
+.admin-menus .muted{
+  color:var(--muted);
+  font-size:13px;
+  font-weight:700;
 }
 
-.page-header h2 {
-  margin: 0;
-  font-size: 1.8rem;
-  color: #333;
+.admin-menus .actions,
+.admin-menus .header-actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
 }
 
-.btn {
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-}
-
-.btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-}
-
-.menus-list {
-  background: white;
-  border-radius: 12px;
-  padding: 2rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.empty-state {
-  text-align: center;
-  padding: 3rem;
-  color: #666;
-}
-
-.menus-table {
-  overflow-x: auto;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-thead {
-  background: #f5f5f5;
-}
-
-th, td {
-  padding: 1rem;
-  text-align: left;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-th {
-  font-weight: 600;
-  color: #333;
-}
-
-.status-active {
-  color: #10b981;
-  font-weight: 600;
-}
-
-.status-inactive {
-  color: #ef4444;
-  font-weight: 600;
-}
-
-.btn-edit {
-  background: #667eea;
-  color: white;
-  padding: 0.5rem 1rem;
-  margin-right: 0.5rem;
-}
-
-.btn-edit:hover {
-  background: #5568d3;
-}
-
-.btn-delete {
-  background: #ef4444;
-  color: white;
-  padding: 0.5rem 1rem;
-}
-
-.btn-delete:hover {
-  background: #dc2626;
-}
-
-/* 查詢條件樣式 */
-.filters {
-  background: white;
-  border-radius: 8px;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.filters h3 {
-  margin: 0 0 1rem 0;
-  font-size: 1.2rem;
-  color: #333;
-}
-
-.filter-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  align-items: end;
-}
-
-.filter-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.filter-group label {
-  font-weight: 600;
-  color: #4a5568;
-  font-size: 0.9rem;
-}
-
-.filter-group select,
-.filter-group input {
-  padding: 0.5rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  font-size: 0.95rem;
-}
-
-.filter-group select:focus,
-.filter-group input:focus {
-  outline: none;
-  border-color: #667eea;
-}
-
-.table-header {
-  padding: 1rem;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.table-header h3 {
-  margin: 0;
-  font-size: 1.1rem;
-  color: #4a5568;
-}
-
-/* 分頁樣式 */
-.pagination {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem;
-  border-top: 1px solid #e2e8f0;
-  background: #f7fafc;
-}
-
-.pagination-left {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.pagination-right {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.pagination-label {
-  font-size: 0.9rem;
-  color: #4a5568;
-}
-
-.page-size-select {
-  padding: 0.5rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  font-size: 0.9rem;
-}
-
-.pagination-info {
-  font-size: 0.9rem;
-  color: #718096;
-}
-
-.page-jump {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.page-input {
-  width: 60px;
-  padding: 0.5rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  text-align: center;
-  font-size: 0.9rem;
-}
-
-.page-input:focus {
-  outline: none;
-  border-color: #667eea;
-}
-
-.btn-secondary {
-  background: #e2e8f0;
-  color: #4a5568;
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: all 0.2s;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: #cbd5e0;
-}
-
-.btn-secondary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.w-5 {
-  width: 1.25rem;
-  height: 1.25rem;
+/* Mobile tweaks */
+@media (max-width: 640px){
 }
 </style>
-

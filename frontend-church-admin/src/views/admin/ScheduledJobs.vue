@@ -9,7 +9,10 @@
       </header>
 
       <main class="main-content">
-        <table class="data-table">
+        <div class="card">
+          <div class="card__body">
+            <div class="table-wrap">
+              <table class="table">
           <thead>
             <tr>
               <th>ID</th>
@@ -75,17 +78,20 @@
             </tr>
           </tbody>
         </table>
+            </div>
+          </div>
+        </div>
       </main>
 
       <!-- 執行記錄模態框 -->
       <div v-if="showExecutionModal" class="modal-overlay" @click="showExecutionModal = false">
-        <div class="modal-content execution-modal-content" @click.stop>
+        <div class="modal-card" @click.stop>
           <h2>執行記錄 - {{ selectedJobName }}</h2>
           <div v-if="executionHistory.length === 0" style="text-align: center; padding: 2rem; color: #94a3b8;">
             尚無執行記錄
           </div>
-          <div v-else class="execution-table-container">
-            <table class="execution-table">
+          <div v-else class="table-wrap">
+            <table class="table">
               <thead>
                 <tr>
                   <th class="execution-time-col">執行時間</th>
@@ -118,16 +124,23 @@
               </tbody>
             </table>
           </div>
-          <div class="form-actions">
+          <div class="modal-foot">
             <button type="button" class="btn btn-secondary" @click="showExecutionModal = false">關閉</button>
           </div>
         </div>
       </div>
 
       <!-- 新增/編輯模態框 -->
-      <div v-if="showAddModal || editingJob" class="modal-overlay" @click="closeModal">
-        <div class="modal-content" @click.stop>
-          <h2>{{ editingJob ? '編輯定時任務' : '新增定時任務' }}</h2>
+	      <div v-if="showAddModal || editingJob" class="modal-overlay" @click="closeModal">
+	        <div class="modal-card" @click.stop>
+	          <div class="modal-head">
+	            <div>
+	              <div class="modal-title">{{ editingJob ? '編輯定時任務' : '新增定時任務' }}</div>
+	              <div class="modal-sub">設定任務名稱、Job 類別與 Cron 表達式。</div>
+	            </div>
+	            <button class="modal-close" type="button" @click="closeModal">✕</button>
+	          </div>
+	          <div class="modal-body">
           <form @submit.prevent="handleSubmit">
             <div class="form-group">
               <label>任務名稱 <span class="required">*</span></label>
@@ -158,20 +171,22 @@
                 啟用此任務
               </label>
             </div>
-            <div class="form-actions">
+            <div class="modal-foot">
               <button type="submit" class="btn btn-primary" :disabled="saving">
                 {{ saving ? '儲存中...' : '儲存' }}
               </button>
               <button type="button" class="btn btn-secondary" @click="closeModal">取消</button>
             </div>
-          </form>
-        </div>
-      </div>
-    </div>
+	          </form>
+	          </div>
+	        </div>
+	      </div>
+	    </div>
   </AdminLayout>
 </template>
 
 <script setup>
+import { toast } from '@/composables/useToast'
 import { ref, onMounted, onUnmounted } from 'vue'
 import AdminLayout from '@/components/AdminLayout.vue'
 import { apiRequest } from '@/utils/api'
@@ -214,7 +229,7 @@ const loadJobs = async () => {
     }
   } catch (error) {
     console.error('載入任務失敗:', error)
-    alert('載入任務失敗: ' + error.message)
+    toast.error('載入任務失敗: ' + error.message)
   } finally {
     loading.value = false
   }
@@ -343,7 +358,7 @@ const handleSubmit = async () => {
     }
   } catch (error) {
     console.error('儲存任務失敗:', error)
-    alert('儲存失敗: ' + error.message)
+    toast.error('儲存失敗: ' + error.message)
   } finally {
     saving.value = false
   }
@@ -366,7 +381,7 @@ const deleteJob = async (id) => {
     }
   } catch (error) {
     console.error('刪除任務失敗:', error)
-    alert('刪除失敗: ' + error.message)
+    toast.error('刪除失敗: ' + error.message)
   }
 }
 
@@ -383,7 +398,7 @@ const toggleJob = async (id, enabled) => {
     }
   } catch (error) {
     console.error('切換任務狀態失敗:', error)
-    alert('切換狀態失敗: ' + error.message)
+    toast.error('切換狀態失敗: ' + error.message)
   }
 }
 
@@ -396,7 +411,7 @@ const executeJob = async (id) => {
     
     if (response.ok) {
       const result = await response.json()
-      alert(result?.message || '任務已開始執行')
+      toast.success(result?.message || '任務已開始執行')
       // 重新載入執行狀態
       await loadLatestExecution(id)
       // 開始輪詢
@@ -407,7 +422,7 @@ const executeJob = async (id) => {
     }
   } catch (error) {
     console.error('執行任務失敗:', error)
-    alert('執行失敗: ' + (error.message || '未知錯誤'))
+    toast.error('執行失敗: ' + (error.message || '未知錯誤'))
   } finally {
     executingJobId.value = null
   }
@@ -430,7 +445,7 @@ const viewExecutionHistory = async (jobId) => {
     }
   } catch (error) {
     console.error('載入執行記錄失敗:', error)
-    alert('載入執行記錄失敗: ' + error.message)
+    toast.error('載入執行記錄失敗: ' + error.message)
     executionHistory.value = []
   }
 }
@@ -626,400 +641,62 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.admin-page {
-  min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+.admin-page{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
 }
 
-.header {
-  padding: 2rem;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
+/* Header */
+.admin-page .page-header{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-bottom:2px;
+}
+.admin-page .page-header h2{
+  font-size:22px;
+  font-weight:900;
+  letter-spacing:-0.02em;
+}
+.admin-page .page-header p,
+.admin-page .subtitle,
+.admin-page .description{
+  color:var(--muted);
+  font-weight:700;
+  font-size:14px;
+  margin-top:6px;
+}
+/* Lists / table wrap */
+.admin-page .table-container,
+.admin-page .list-container,
+.admin-page .data-container{
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  overflow:auto;
+  background:var(--surface);
+  box-shadow:var(--shadow-sm);
+}
+.admin-page .table-container{ padding:0; }
+
+/* Inline helpers */
+.admin-page .hint,
+.admin-page .muted{
+  color:var(--muted);
+  font-size:13px;
+  font-weight:700;
 }
 
-.header-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.admin-page .actions,
+.admin-page .header-actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
 }
 
-.header h1 {
-  color: white;
-  margin: 0;
-}
-
-.main-content {
-  padding: 2rem;
-}
-
-.data-table {
-  width: 100%;
-  background: white;
-  border-radius: 0.75rem;
-  overflow: hidden;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  table-layout: fixed;
-}
-
-.data-table thead {
-  background: #f8fafc;
-}
-
-.data-table th {
-  padding: 1rem;
-  text-align: left;
-  font-weight: 600;
-  color: #475569;
-  border-bottom: 2px solid #e2e8f0;
-}
-
-.data-table th:nth-child(1) { width: 5%; }   /* ID */
-.data-table th:nth-child(2) { width: 20%; }  /* 任務名稱 */
-.data-table th:nth-child(3) { width: 20%; }  /* Cron 表達式 */
-.data-table th:nth-child(4) { width: 20%; }  /* 描述 */
-.data-table th:nth-child(5) { width: 8%; }    /* 啟用狀態 */
-.data-table th:nth-child(6) { width: 12%; }   /* 執行狀態 */
-.data-table th:nth-child(7) { width: 15%; }  /* 操作 */
-
-.data-table td {
-  padding: 1rem;
-  border-bottom: 1px solid #e2e8f0;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-}
-
-.data-table td:nth-child(4) {
-  max-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  position: relative;
-  cursor: help;
-}
-
-.data-table td:nth-child(4):hover {
-  white-space: normal;
-  overflow: visible;
-  z-index: 10;
-  background: white;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  padding: 1rem;
-  border-radius: 0.5rem;
-  max-width: 400px;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-}
-
-.data-table tbody tr:hover {
-  background: #f8fafc;
-}
-
-.actions {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.btn-sm {
-  padding: 0.375rem 0.75rem;
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  border: none;
-  transition: all 0.2s ease;
-}
-
-.btn-execute {
-  background: #10b981;
-  color: white;
-}
-
-.btn-execute:hover:not(:disabled) {
-  background: #059669;
-}
-
-.btn-toggle {
-  background: #f59e0b;
-  color: white;
-}
-
-.btn-toggle:hover {
-  background: #d97706;
-}
-
-.btn-edit {
-  background: #3b82f6;
-  color: white;
-  border: 1px solid #2563eb;
-}
-
-.btn-edit:hover {
-  background: #2563eb;
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-}
-
-.btn-delete {
-  background: #ef4444;
-  color: white;
-  border: 1px solid #dc2626;
-}
-
-.btn-delete:hover {
-  background: #dc2626;
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-}
-
-.btn-sm:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.status-active {
-  color: #10b981;
-  font-weight: 600;
-}
-
-.status-inactive {
-  color: #ef4444;
-  font-weight: 600;
-}
-
-.status-success {
-  color: #10b981;
-  font-weight: 600;
-}
-
-.status-failed {
-  color: #ef4444;
-  font-weight: 600;
-}
-
-.status-running {
-  color: #f59e0b;
-  font-weight: 600;
-  animation: pulse 2s infinite;
-}
-
-.status-pending {
-  color: #6b7280;
-  font-weight: 600;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-.btn-view {
-  background: #3b82f6;
-  color: white;
-  padding: 0.25rem 0.5rem;
-  font-size: 0.75rem;
-}
-
-.btn-view:hover {
-  background: #2563eb;
-}
-
-.execution-modal-content {
-  width: 90% !important;
-  max-width: 1800px !important;
-  min-width: 1200px !important;
-}
-
-.execution-table-container {
-  max-height: 500px;
-  overflow-y: auto;
-  margin-top: 1rem;
-}
-
-.execution-table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-}
-
-.execution-table th,
-.execution-table td {
-  padding: 1rem;
-  text-align: left;
-  border-bottom: 1px solid #e2e8f0;
-  vertical-align: top;
-}
-
-.execution-table th {
-  background: #f8fafc;
-  font-weight: 600;
-  color: #475569;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-.execution-table tbody tr:hover {
-  background: #f8fafc;
-}
-
-/* 欄位寬度分配 */
-.execution-time-col {
-  width: 12%;
-}
-
-.execution-status-col {
-  width: 8%;
-}
-
-.execution-result-col {
-  width: 56%;
-}
-
-/* 結果訊息樣式 */
-.result-message {
-  color: #059669;
-  font-size: 1rem;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  line-height: 1.8;
-  background: #ecfdf5;
-  padding: 1rem;
-  border-radius: 0.5rem;
-  border-left: 3px solid #10b981;
-  font-family: 'Courier New', monospace;
-}
-
-.error-message {
-  color: #dc2626;
-  font-size: 1rem;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  line-height: 1.8;
-  background: #fef2f2;
-  padding: 1rem;
-  border-radius: 0.5rem;
-  border-left: 3px solid #ef4444;
-  font-family: 'Courier New', monospace;
-}
-
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-}
-
-.modal-content {
-  background: white;
-  border-radius: 1rem;
-  padding: 2rem;
-  max-width: 600px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-}
-
-.modal-content h2 {
-  margin-top: 0;
-  margin-bottom: 1.5rem;
-  color: #1e293b;
-}
-
-.form-group {
-  margin-bottom: 1.5rem;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 600;
-  color: #475569;
-}
-
-.form-group input,
-.form-group textarea {
-  width: 100%;
-  padding: 0.625rem;
-  border: 1.5px solid #cbd5e1;
-  border-radius: 0.5rem;
-  font-size: 1rem;
-  box-sizing: border-box;
-}
-
-.form-group input:focus,
-.form-group textarea:focus {
-  outline: none;
-  border-color: #818cf8;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
-}
-
-.form-group small {
-  display: block;
-  margin-top: 0.25rem;
-  color: #64748b;
-  line-height: 1.5;
-}
-
-.required {
-  color: #ef4444;
-}
-
-.form-actions {
-  display: flex;
-  gap: 0.75rem;
-  margin-top: 2rem;
-  justify-content: flex-end;
-}
-
-.btn {
-  padding: 0.625rem 1.25rem;
-  border-radius: 0.5rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: none;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-}
-
-.btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-secondary {
-  background: #6c757d;
-  color: white;
-}
-
-.btn-secondary:hover {
-  background: #5a6268;
-}
-
-code {
-  background: #f1f5f9;
-  padding: 0.125rem 0.375rem;
-  border-radius: 0.25rem;
-  font-family: 'Courier New', monospace;
+/* Mobile tweaks */
+@media (max-width: 640px){
 }
 </style>
-

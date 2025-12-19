@@ -88,6 +88,7 @@
 </template>
 
 <script setup>
+import { toast } from '@/composables/useToast'
 import { ref, watch } from 'vue'
 import { apiRequest } from '@/utils/api'
 
@@ -129,12 +130,12 @@ const loadPersonData = () => {
 
 const handleSubmit = async () => {
   if (!form.value.personName.trim()) {
-    alert('請輸入姓名')
+    toast.info('請輸入姓名')
     return
   }
 
   if (!props.person?.id) {
-    alert('人員 ID 不存在')
+    toast.info('人員 ID 不存在')
     return
   }
 
@@ -152,11 +153,11 @@ const handleSubmit = async () => {
       closeModal()
     } else {
       console.error('更新失敗響應：', result)
-      alert('更新失敗：' + (result.error || '未知錯誤'))
+      toast.error('更新失敗：' + (result.error || '未知錯誤'))
     }
   } catch (error) {
     console.error('更新人員失敗：', error)
-    alert('更新失敗：' + (error.message || '網絡錯誤'))
+    toast.error('更新失敗：' + (error.message || '網絡錯誤'))
   } finally {
     saving.value = false
   }
@@ -196,6 +197,7 @@ watch(() => props.person, (newPerson) => {
 </script>
 
 <style scoped>
+
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -355,6 +357,20 @@ watch(() => props.person, (newPerson) => {
 .w-4 {
   width: 1rem;
   height: 1rem;
+}
+
+/* Improved scroll shadows (prevents fixed shadow overlay issue) */
+.modal-body{
+  overflow:auto;
+  background:
+    linear-gradient(#fff 30%, rgba(255,255,255,0)),
+    linear-gradient(rgba(255,255,255,0), #fff 70%),
+    radial-gradient(farthest-side at 50% 0, rgba(2,6,23,.16), rgba(2,6,23,0)),
+    radial-gradient(farthest-side at 50% 100%, rgba(2,6,23,.16), rgba(2,6,23,0));
+  background-repeat:no-repeat;
+  background-size:100% 40px, 100% 40px, 100% 14px, 100% 14px;
+  background-attachment:local, local, scroll, scroll;
+  background-position:0 0, 0 100%, 0 0, 0 100%;
 }
 </style>
 

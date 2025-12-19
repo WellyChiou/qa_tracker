@@ -91,6 +91,7 @@
 </template>
 
 <script setup>
+import { toast } from '@/composables/useToast'
 import { ref, computed, onMounted, watch } from 'vue'
 import AddPersonModal from './AddPersonModal.vue'
 import { apiRequest } from '@/utils/api'
@@ -135,7 +136,7 @@ const loadPositionPersons = async () => {
     sundayPersons.value = result.persons?.sunday || []
   } catch (error) {
     console.error('載入崗位人員失敗：', error)
-    alert('載入崗位人員失敗：' + error.message)
+    toast.error('載入崗位人員失敗：' + error.message)
   }
 }
 
@@ -174,13 +175,13 @@ const updateIncludeInAutoSchedule = async (dayType, person, includeInAutoSchedul
       emit('updated', props.position?.id)
     } else {
       console.error('更新失敗響應：', result)
-      alert('更新失敗：' + (result.error || '未知錯誤'))
+      toast.error('更新失敗：' + (result.error || '未知錯誤'))
       // 恢復 checkbox 狀態
       await loadPositionPersons()
     }
   } catch (error) {
     console.error('更新設定失敗：', error)
-    alert('更新失敗：' + (error.message || '網絡錯誤'))
+    toast.error('更新失敗：' + (error.message || '網絡錯誤'))
     // 恢復 checkbox 狀態
     await loadPositionPersons()
   }
@@ -206,11 +207,11 @@ const removePerson = async (dayType, person) => {
       emit('updated', props.position?.id)
     } else {
       console.error('移除失敗響應：', result)
-      alert('移除失敗：' + (result.error || '未知錯誤'))
+      toast.error('移除失敗：' + (result.error || '未知錯誤'))
     }
   } catch (error) {
     console.error('移除人員失敗：', error)
-    alert('移除失敗：' + (error.message || '網絡錯誤'))
+    toast.error('移除失敗：' + (error.message || '網絡錯誤'))
   }
 }
 
@@ -243,6 +244,7 @@ watch([() => props.show, () => props.position?.id], ([newShow, newPositionId]) =
 </script>
 
 <style scoped>
+
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -454,6 +456,20 @@ watch([() => props.show, () => props.position?.id], ([newShow, newPositionId]) =
 .w-4 {
   width: 1rem;
   height: 1rem;
+}
+
+/* Improved scroll shadows (prevents fixed shadow overlay issue) */
+.modal-body{
+  overflow:auto;
+  background:
+    linear-gradient(#fff 30%, rgba(255,255,255,0)),
+    linear-gradient(rgba(255,255,255,0), #fff 70%),
+    radial-gradient(farthest-side at 50% 0, rgba(2,6,23,.16), rgba(2,6,23,0)),
+    radial-gradient(farthest-side at 50% 100%, rgba(2,6,23,.16), rgba(2,6,23,0));
+  background-repeat:no-repeat;
+  background-size:100% 40px, 100% 40px, 100% 14px, 100% 14px;
+  background-attachment:local, local, scroll, scroll;
+  background-position:0 0, 0 100%, 0 0, 0 100%;
 }
 </style>
 

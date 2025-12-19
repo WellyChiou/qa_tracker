@@ -1,50 +1,72 @@
 <template>
   <AdminLayout>
-    <div class="admin-dashboard">
-    <div class="dashboard-header">
-      <h1>教會管理系統</h1>
-      <p>歡迎使用教會管理系統</p>
-    </div>
-    
-    <div class="dashboard-stats">
-      <div class="stat-card">
-        <div class="stat-icon">📋</div>
-        <div class="stat-info">
-          <div class="stat-value">{{ scheduleCount }}</div>
-          <div class="stat-label">服事表</div>
+    <div class="admin-page" data-ui="admin-v1">
+      <div class="container container--admin">
+        <div class="page-head">
+          <div>
+            <div class="page-title">教會管理系統</div>
+            <div class="page-desc">歡迎使用教會管理系統</div>
+          </div>
         </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">👥</div>
-        <div class="stat-info">
-          <div class="stat-value">{{ personCount }}</div>
-          <div class="stat-label">人員</div>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">🎯</div>
-        <div class="stat-info">
-          <div class="stat-value">{{ positionCount }}</div>
-          <div class="stat-label">崗位</div>
-        </div>
-      </div>
-    </div>
 
-    <div class="dashboard-actions">
-      <h2>快速操作</h2>
-      <div class="action-grid">
-        <router-link 
-          v-for="action in quickActions" 
-          :key="action.id"
-          :to="action.url" 
-          class="action-card"
-        >
-          <div class="action-icon">{{ action.icon || '📋' }}</div>
-          <div class="action-title">{{ action.menuName }}</div>
-          <div class="action-desc">{{ action.description || '快速訪問' }}</div>
-        </router-link>
+        <div class="dashboard-stats">
+          <div class="card stat-card">
+            <div class="stat-left">
+              <div class="stat-badge">📋</div>
+              <div>
+                <div class="stat-label">服事表</div>
+                <div class="stat-value">{{ scheduleCount }}</div>
+              </div>
+            </div>
+            <div class="stat-hint muted">近期待辦與排班</div>
+          </div>
+
+          <div class="card stat-card">
+            <div class="stat-left">
+              <div class="stat-badge">👥</div>
+              <div>
+                <div class="stat-label">人員</div>
+                <div class="stat-value">{{ personCount }}</div>
+              </div>
+            </div>
+            <div class="stat-hint muted">同工 / 會眾資料</div>
+          </div>
+
+          <div class="card stat-card">
+            <div class="stat-left">
+              <div class="stat-badge">🎯</div>
+              <div>
+                <div class="stat-label">崗位</div>
+                <div class="stat-value">{{ positionCount }}</div>
+              </div>
+            </div>
+            <div class="stat-hint muted">服事角色與分工</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card__head">
+            <div>
+              <div class="section-title">快速操作</div>
+              <div class="muted">常用功能快速入口</div>
+            </div>
+          </div>
+          <div class="card__body">
+            <div class="action-grid">
+              <router-link
+                v-for="action in quickActions"
+                :key="action.id"
+                :to="action.url"
+                class="action-tile"
+              >
+                <div class="tile-icon">{{ action.icon || '📋' }}</div>
+                <div class="tile-title">{{ action.menuName }}</div>
+                <div class="tile-desc">{{ action.description || '快速訪問' }}</div>
+              </router-link>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
     </div>
   </AdminLayout>
 </template>
@@ -114,108 +136,69 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.admin-dashboard {
-  max-width: 1200px;
-  margin: 0 auto;
+.dashboard-stats{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap:12px;
 }
-
-.dashboard-header {
-  margin-bottom: 2rem;
+.stat-card{
+  padding:14px 14px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
 }
-
-.dashboard-header h1 {
-  font-size: 2rem;
-  color: #333;
-  margin-bottom: 0.5rem;
+.stat-left{display:flex; align-items:center; gap:12px; min-width:0}
+.stat-badge{
+  width:42px;
+  height:42px;
+  display:grid;
+  place-items:center;
+  border-radius:14px;
+  background:rgba(2,6,23,.04);
+  border:1px solid rgba(2,6,23,.06);
+  font-size:18px;
+  flex:0 0 auto;
 }
+.stat-label{font-size:12px;color:rgba(2,6,23,.60);font-weight:800}
+.stat-value{font-size:26px;font-weight:900;letter-spacing:-0.02em;line-height:1.1}
+.stat-hint{font-size:12px;white-space:nowrap}
 
-.dashboard-header p {
-  color: #666;
-  font-size: 1.1rem;
+.section-title{font-size:14px;font-weight:900;letter-spacing:-0.01em}
+
+.action-grid{
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap:12px;
 }
-
-.dashboard-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 3rem;
+.action-tile{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  padding:14px;
+  border-radius:16px;
+  border:1px solid rgba(2,6,23,.10);
+  background:rgba(255,255,255,.85);
+  text-decoration:none;
+  color:inherit;
+  transition:transform .12s ease, box-shadow .12s ease;
 }
-
-.stat-card {
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  display: flex;
-  align-items: center;
-  gap: 1rem;
+.action-tile:hover{transform:translateY(-1px); box-shadow:var(--shadow-sm)}
+.tile-icon{
+  width:38px;
+  height:38px;
+  display:grid;
+  place-items:center;
+  border-radius:14px;
+  background:rgba(2,6,23,.04);
+  border:1px solid rgba(2,6,23,.06);
+  font-size:18px;
 }
+.tile-title{font-weight:900;letter-spacing:-0.01em}
+.tile-desc{font-size:12px;color:rgba(2,6,23,.60);font-weight:700;line-height:1.3}
 
-.stat-icon {
-  font-size: 3rem;
-}
-
-.stat-info {
-  flex: 1;
-}
-
-.stat-value {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #333;
-}
-
-.stat-label {
-  color: #666;
-  font-size: 0.9rem;
-}
-
-.dashboard-actions h2 {
-  font-size: 1.5rem;
-  color: #333;
-  margin-bottom: 1.5rem;
-}
-
-.action-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1.5rem;
-}
-
-.action-card {
-  background: white;
-  border-radius: 12px;
-  padding: 2rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  text-decoration: none;
-  color: inherit;
-  transition: transform 0.2s, box-shadow 0.2s;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
-
-.action-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-}
-
-.action-icon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-}
-
-.action-title {
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 0.5rem;
-}
-
-.action-desc {
-  color: #666;
-  font-size: 0.9rem;
+@media (max-width: 900px){
+  .dashboard-stats{grid-template-columns:1fr}
+  .stat-hint{display:none}
 }
 </style>
-

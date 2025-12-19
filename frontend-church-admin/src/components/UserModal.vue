@@ -201,6 +201,7 @@ const handleSubmit = async () => {
 </script>
 
 <style scoped>
+
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -365,6 +366,20 @@ const handleSubmit = async () => {
 .btn-submit:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Improved scroll shadows (prevents fixed shadow overlay issue) */
+.modal-body{
+  overflow:auto;
+  background:
+    linear-gradient(#fff 30%, rgba(255,255,255,0)),
+    linear-gradient(rgba(255,255,255,0), #fff 70%),
+    radial-gradient(farthest-side at 50% 0, rgba(2,6,23,.16), rgba(2,6,23,0)),
+    radial-gradient(farthest-side at 50% 100%, rgba(2,6,23,.16), rgba(2,6,23,0));
+  background-repeat:no-repeat;
+  background-size:100% 40px, 100% 40px, 100% 14px, 100% 14px;
+  background-attachment:local, local, scroll, scroll;
+  background-position:0 0, 0 100%, 0 0, 0 100%;
 }
 </style>
 

@@ -65,6 +65,7 @@
 </template>
 
 <script setup>
+import { toast } from '@/composables/useToast'
 import { ref, computed, watch, onMounted } from 'vue'
 import CreatePersonModal from './CreatePersonModal.vue'
 import { apiRequest } from '@/utils/api'
@@ -119,7 +120,7 @@ const loadPersons = async () => {
     persons.value = result.persons || []
   } catch (error) {
     console.error('載入人員列表失敗：', error)
-    alert('載入人員列表失敗：' + error.message)
+    toast.error('載入人員列表失敗：' + error.message)
   }
 }
 
@@ -141,11 +142,11 @@ const selectPerson = async (person) => {
       closeModal()
     } else {
       console.error('添加失敗響應：', result)
-      alert('添加失敗：' + (result.error || '未知錯誤'))
+      toast.error('添加失敗：' + (result.error || '未知錯誤'))
     }
   } catch (error) {
     console.error('添加人員失敗：', error)
-    alert('添加失敗：' + (error.message || '網絡錯誤'))
+    toast.error('添加失敗：' + (error.message || '網絡錯誤'))
   }
 }
 
@@ -182,6 +183,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
+
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -363,6 +365,20 @@ onMounted(() => {
 .w-4 {
   width: 1rem;
   height: 1rem;
+}
+
+/* Improved scroll shadows (prevents fixed shadow overlay issue) */
+.modal-body{
+  overflow:auto;
+  background:
+    linear-gradient(#fff 30%, rgba(255,255,255,0)),
+    linear-gradient(rgba(255,255,255,0), #fff 70%),
+    radial-gradient(farthest-side at 50% 0, rgba(2,6,23,.16), rgba(2,6,23,0)),
+    radial-gradient(farthest-side at 50% 100%, rgba(2,6,23,.16), rgba(2,6,23,0));
+  background-repeat:no-repeat;
+  background-size:100% 40px, 100% 40px, 100% 14px, 100% 14px;
+  background-attachment:local, local, scroll, scroll;
+  background-position:0 0, 0 100%, 0 0, 0 100%;
 }
 </style>
 

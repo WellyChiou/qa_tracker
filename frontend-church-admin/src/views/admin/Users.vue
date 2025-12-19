@@ -196,6 +196,7 @@
 </template>
 
 <script setup>
+import { toast } from '@/composables/useToast'
 import { ref, computed, onMounted, watch } from 'vue'
 import AdminLayout from '@/components/AdminLayout.vue'
 import UserModal from '@/components/UserModal.vue'
@@ -362,11 +363,11 @@ const editUser = async (uid) => {
       selectedUser.value = data.user || data
       showModal.value = true
     } else {
-      alert('載入用戶資料失敗')
+      toast.error('載入用戶資料失敗')
     }
   } catch (error) {
     console.error('載入用戶資料失敗:', error)
-    alert('載入用戶資料失敗: ' + error.message)
+    toast.error('載入用戶資料失敗: ' + error.message)
   }
 }
 
@@ -404,11 +405,11 @@ const saveRoles = async () => {
       loadUsers()
     } else {
       const data = await response.json()
-      alert(data.message || data.error || '更新角色失敗')
+      toast.error(data.message || data.error || '更新角色失敗')
     }
   } catch (error) {
     console.error('更新角色失敗:', error)
-    alert('更新角色失敗: ' + error.message)
+    toast.error('更新角色失敗: ' + error.message)
   }
 }
 
@@ -437,11 +438,11 @@ const savePermissions = async () => {
       loadUsers()
     } else {
       const data = await response.json()
-      alert(data.message || data.error || '更新權限失敗')
+      toast.error(data.message || data.error || '更新權限失敗')
     }
   } catch (error) {
     console.error('更新權限失敗:', error)
-    alert('更新權限失敗: ' + error.message)
+    toast.error('更新權限失敗: ' + error.message)
   }
 }
 
@@ -459,11 +460,11 @@ const deleteUser = async (uid) => {
     if (response.ok) {
       loadUsers()
     } else {
-      alert('刪除失敗')
+      toast.error('刪除失敗')
     }
   } catch (error) {
     console.error('刪除用戶失敗:', error)
-    alert('刪除失敗: ' + error.message)
+    toast.error('刪除失敗: ' + error.message)
   }
 }
 
@@ -475,402 +476,62 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.admin-users {
-  max-width: 1400px;
-  margin: 0 auto;
+.admin-users{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
 }
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
+/* Header */
+.admin-users .page-header{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-bottom:2px;
+}
+.admin-users .page-header h2{
+  font-size:22px;
+  font-weight:900;
+  letter-spacing:-0.02em;
+}
+.admin-users .page-header p,
+.admin-users .subtitle,
+.admin-users .description{
+  color:var(--muted);
+  font-weight:700;
+  font-size:14px;
+  margin-top:6px;
+}
+/* Lists / table wrap */
+.admin-users .table-container,
+.admin-users .list-container,
+.admin-users .data-container{
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  overflow:auto;
+  background:var(--surface);
+  box-shadow:var(--shadow-sm);
+}
+.admin-users .table-container{ padding:0; }
+
+/* Inline helpers */
+.admin-users .hint,
+.admin-users .muted{
+  color:var(--muted);
+  font-size:13px;
+  font-weight:700;
 }
 
-.page-header h2 {
-  margin: 0;
-  font-size: 1.8rem;
-  color: #333;
+.admin-users .actions,
+.admin-users .header-actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
 }
 
-.btn {
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-}
-
-.btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-}
-
-.users-list {
-  background: white;
-  border-radius: 12px;
-  padding: 2rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.empty-state {
-  text-align: center;
-  padding: 3rem;
-  color: #666;
-}
-
-.users-table {
-  overflow-x: auto;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-thead {
-  background: #f5f5f5;
-}
-
-th, td {
-  padding: 1rem;
-  text-align: left;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-th {
-  font-weight: 600;
-  color: #333;
-}
-
-.role-badge {
-  display: inline-block;
-  background: #667eea;
-  color: white;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.85rem;
-  margin-right: 0.25rem;
-}
-
-.status-active {
-  color: #10b981;
-  font-weight: 600;
-}
-
-.status-inactive {
-  color: #ef4444;
-  font-weight: 600;
-}
-
-.btn-edit {
-  background: #667eea;
-  color: white;
-  padding: 0.5rem 1rem;
-  margin-right: 0.5rem;
-}
-
-.btn-edit:hover {
-  background: #5568d3;
-}
-
-.btn-delete {
-  background: #ef4444;
-  color: white;
-  padding: 0.5rem 1rem;
-}
-
-.btn-delete:hover {
-  background: #dc2626;
-}
-
-.btn-roles {
-  background: #8b5cf6;
-  color: white;
-  padding: 0.5rem 1rem;
-  margin-right: 0.5rem;
-}
-
-.btn-roles:hover {
-  background: #7c3aed;
-}
-
-.btn-permissions {
-  background: #8b5cf6;
-  color: white;
-  padding: 0.5rem 1rem;
-  margin-right: 0.5rem;
-}
-
-.btn-permissions:hover {
-  background: #7c3aed;
-}
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-panel {
-  background: white;
-  border-radius: 12px;
-  width: 90%;
-  max-width: 700px;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.modal-title {
-  margin: 0;
-  font-size: 1.5rem;
-  color: #333;
-}
-
-.btn-close {
-  background: none;
-  border: none;
-  font-size: 2rem;
-  color: #666;
-  cursor: pointer;
-  padding: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  transition: background 0.2s;
-}
-
-.btn-close:hover {
-  background: #f0f0f0;
-}
-
-.modal-body {
-  padding: 1.5rem;
-}
-
-.roles-list,
-.permissions-list {
-  max-height: 400px;
-  overflow-y: auto;
-  margin-bottom: 1.5rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 1rem;
-  background: #f9fafb;
-}
-
-.role-item,
-.permission-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem;
-  margin-bottom: 0.5rem;
-  border-radius: 0.375rem;
-  transition: all 0.2s;
-  cursor: pointer;
-  border: 1px solid transparent;
-}
-
-.role-item:hover,
-.permission-item:hover {
-  background: #f3f4f6;
-  border-color: #e5e7eb;
-}
-
-.role-item:last-child,
-.permission-item:last-child {
-  margin-bottom: 0;
-}
-
-.checkbox-input {
-  width: 1.25rem;
-  height: 1.25rem;
-  cursor: pointer;
-  accent-color: #667eea;
-}
-
-.role-description {
-  font-size: 0.875rem;
-  color: #6b7280;
-  font-weight: normal;
-  margin-left: 0.5rem;
-}
-
-.permission-code {
-  font-size: 0.75rem;
-  color: #6b7280;
-  background: #e5e7eb;
-  padding: 0.125rem 0.375rem;
-  border-radius: 0.25rem;
-  font-family: 'Courier New', monospace;
-}
-
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  margin-top: 1rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid #e0e0e0;
-}
-
-.btn-secondary {
-  background: #f0f0f0;
-  color: #333;
-}
-
-.btn-secondary:hover {
-  background: #e0e0e0;
-}
-
-/* 查詢條件樣式 */
-.filters {
-  background: white;
-  border-radius: 8px;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.filters h3 {
-  margin: 0 0 1rem 0;
-  font-size: 1.2rem;
-  color: #333;
-}
-
-.filter-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  align-items: end;
-}
-
-.filter-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.filter-group label {
-  font-weight: 600;
-  color: #4a5568;
-  font-size: 0.9rem;
-}
-
-.filter-group select,
-.filter-group input {
-  padding: 0.5rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  font-size: 0.95rem;
-}
-
-.filter-group select:focus,
-.filter-group input:focus {
-  outline: none;
-  border-color: #667eea;
-}
-
-.table-header {
-  padding: 1rem;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.table-header h3 {
-  margin: 0;
-  font-size: 1.1rem;
-  color: #4a5568;
-}
-
-/* 分頁樣式 */
-.pagination {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem;
-  border-top: 1px solid #e2e8f0;
-  background: #f7fafc;
-}
-
-.pagination-left {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.pagination-right {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.pagination-label {
-  font-size: 0.9rem;
-  color: #4a5568;
-}
-
-.page-size-select {
-  padding: 0.5rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  font-size: 0.9rem;
-}
-
-.pagination-info {
-  font-size: 0.9rem;
-  color: #718096;
-}
-
-.page-jump {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.page-input {
-  width: 60px;
-  padding: 0.5rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  text-align: center;
-  font-size: 0.9rem;
-}
-
-.page-input:focus {
-  outline: none;
-  border-color: #667eea;
-}
-
-.w-5 {
-  width: 1.25rem;
-  height: 1.25rem;
+/* Mobile tweaks */
+@media (max-width: 640px){
 }
 </style>
-

@@ -1,38 +1,49 @@
 <template>
   <AdminLayout>
     <div class="admin-maintenance">
-      <div class="page-header">
-        <h2>系統維護</h2>
+      <div class="page-head">
+        <div>
+          <div class="page-title">系統維護</div>
+          <div class="page-desc">系統參數、備份管理與維護工具。</div>
+        </div>
       </div>
 
       <!-- 標籤頁 -->
-      <div class="tabs">
+      <div class="tabs-seg" role="tablist" aria-label="Maintenance tabs">
         <button 
           @click="activeTab = 'settings'" 
-          :class="['tab-button', { active: activeTab === 'settings' }]"
+          :class="['tab', { 'is-active': activeTab === 'settings' }]"
+          role="tab"
+          :aria-selected="activeTab === 'settings'"
         >
           系統參數
         </button>
         <button 
           @click="activeTab = 'backups'" 
-          :class="['tab-button', { active: activeTab === 'backups' }]"
+          :class="['tab', { 'is-active': activeTab === 'backups' }]"
+          role="tab"
+          :aria-selected="activeTab === 'backups'"
         >
           備份管理
         </button>
       </div>
 
       <!-- 系統參數標籤頁 -->
-      <div v-if="activeTab === 'settings'" class="tab-content">
+      <div v-if="activeTab === 'settings'" class="card"><div class="card__body">
         <div class="settings-section">
-          <div class="settings-actions">
+          <div class="section-actions">
             <button @click="refreshConfig" :disabled="refreshingConfig" class="btn btn-secondary">
               {{ refreshingConfig ? '刷新中...' : '刷新配置' }}
             </button>
             <button @click="loadSettings" class="btn btn-secondary">重新載入</button>
           </div>
           <div v-for="category in categories" :key="category" class="category-group">
-            <h3 class="category-title">{{ getCategoryName(category) }}</h3>
-            <div class="settings-grid">
+            <div class="category-card">
+              <div class="category-head">
+                <h3 class="category-title">{{ getCategoryName(category) }}</h3>
+              </div>
+              <div class="category-body">
+                <div class="settings-grid">
               <div 
                 v-for="setting in getSettingsByCategory(category)" 
                 :key="setting.id"
@@ -78,15 +89,17 @@
                   <code>{{ setting.settingKey }}</code>
                 </div>
               </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </div></div>
 
       <!-- 備份管理標籤頁 -->
-      <div v-if="activeTab === 'backups'" class="tab-content">
+      <div v-if="activeTab === 'backups'" class="card"><div class="card__body">
         <div class="backups-section">
-          <div class="backup-actions">
+          <div class="section-actions">
             <button @click="createBackup" :disabled="creatingBackup" class="btn btn-primary">
               {{ creatingBackup ? '備份中...' : '+ 手動備份' }}
             </button>
@@ -96,7 +109,7 @@
           <div v-if="backups.length === 0" class="empty-state">
             <p>尚無備份檔案</p>
           </div>
-          <div v-else class="backups-table">
+          <div v-else class="table-wrap backups-table">
             <table>
               <thead>
                 <tr>
@@ -118,17 +131,19 @@
                   <td>{{ backup.sizeFormatted }}</td>
                   <td>{{ formatDate(backup.modified) }}</td>
                   <td>
-                    <button @click="downloadBackup(backup.relativePath || backup.filename)" class="btn btn-download">下載</button>
-                    <button @click="deleteBackup(backup.relativePath || backup.filename)" class="btn btn-delete">刪除</button>
+                    <div class="row-actions">
+                      <button @click="downloadBackup(backup.relativePath || backup.filename)" class="btn btn-secondary btn-download">下載</button>
+                      <button @click="deleteBackup(backup.relativePath || backup.filename)" class="btn btn-danger btn-delete">刪除</button>
+                    </div>
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
         </div>
-      </div>
+	      </div></div>
 
-    </div>
+	    </div>
     <Notification ref="notificationRef" />
   </AdminLayout>
 </template>
@@ -383,282 +398,157 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.admin-maintenance {
-  max-width: 1400px;
-  margin: 0 auto;
+.admin-maintenance{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
 }
 
-.page-header {
-  margin-bottom: 2rem;
+/* Tabs */
+.tabs-seg{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:6px;
+  border-radius:999px;
+  border:1px solid var(--border);
+  background:rgba(2,6,23,.03);
+  width:max-content;
+}
+.tabs-seg .tab{
+  border:1px solid transparent;
+  background:transparent;
+  color:rgba(15,23,42,.78);
+  font-weight:800;
+  font-size:13px;
+  padding:8px 12px;
+  border-radius:999px;
+  cursor:pointer;
+  transition:background .12s ease, border-color .12s ease, transform .12s ease;
+}
+.tabs-seg .tab:hover{
+  background:rgba(255,255,255,.70);
+  border-color:rgba(2,6,23,.08);
+}
+.tabs-seg .tab.is-active{
+  background:var(--surface);
+  border-color:rgba(37,99,235,.20);
+  box-shadow:var(--shadow-sm);
+  color:rgba(15,23,42,.92);
 }
 
-.page-header h2 {
-  margin: 0;
-  font-size: 1.8rem;
-  color: #333;
+/* Section actions */
+.section-actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+  margin-bottom:10px;
 }
 
-.tabs {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 2rem;
-  border-bottom: 2px solid #e0e0e0;
+/* Category */
+.category-group{ margin-top:10px; }
+.category-card{
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  background:rgba(255,255,255,.60);
+  overflow:hidden;
 }
-
-.tab-button {
-  padding: 0.75rem 1.5rem;
-  border: none;
-  background: none;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #666;
-  cursor: pointer;
-  border-bottom: 3px solid transparent;
-  transition: all 0.2s;
+.category-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:12px 14px;
+  background:rgba(2,6,23,.02);
+  border-bottom:1px solid var(--border);
 }
-
-.tab-button:hover {
-  color: #667eea;
+.category-title{
+  font-size:13px;
+  font-weight:900;
+  letter-spacing:.02em;
+  color:rgba(15,23,42,.72);
 }
+.category-body{ padding:12px 14px 14px; }
 
-.tab-button.active {
-  color: #667eea;
-  border-bottom-color: #667eea;
+/* Settings grid */
+.settings-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));
+  gap:12px;
 }
-
-.tab-content {
-  background: white;
-  border-radius: 12px;
-  padding: 2rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+.setting-item{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:12px;
+  box-shadow:0 1px 0 rgba(2,6,23,.03);
 }
-
-/* 系統參數樣式 */
-.settings-actions {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 2rem;
-  padding-bottom: 1rem;
-  border-bottom: 2px solid #e0e0e0;
+.setting-header{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:8px; }
+.setting-label{ color:rgba(15,23,42,.78); font-weight:900; font-size:13px; }
+.readonly-badge{
+  display:inline-flex;
+  align-items:center;
+  padding:3px 8px;
+  border-radius:999px;
+  border:1px solid rgba(2,6,23,.10);
+  background:rgba(2,6,23,.04);
+  font-size:11px;
+  font-weight:800;
+  color:rgba(15,23,42,.60);
+  margin-left:8px;
 }
-
-.category-group {
-  margin-bottom: 2rem;
-}
-
-.category-title {
-  font-size: 1.3rem;
-  color: #333;
-  margin-bottom: 1rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 2px solid #e0e0e0;
-}
-
-.settings-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-  gap: 1.5rem;
-}
-
-.setting-item {
-  padding: 1rem;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  background: #f9fafb;
-}
-
-.setting-header {
-  margin-bottom: 0.5rem;
-}
-
-.setting-label {
-  font-weight: 600;
-  color: #333;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.readonly-badge {
-  background: #f0f0f0;
-  color: #666;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
-}
-
-.setting-input-group {
-  position: relative;
-}
-
-.form-input {
-  width: 100%;
-  padding: 0.75rem;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
-  font-size: 1rem;
-  transition: border-color 0.2s;
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: #667eea;
-}
-
-.form-input:disabled {
-  background: #f5f5f5;
-  cursor: not-allowed;
-}
-
-.setting-key {
-  margin-top: 0.5rem;
-  font-size: 0.85rem;
-  color: #666;
-}
-
-.setting-key code {
-  background: #e5e7eb;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-family: 'Courier New', monospace;
-}
-
+.setting-input-group{ position:relative; }
 .saving-indicator,
-.saved-indicator {
-  position: absolute;
-  right: 0.5rem;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 0.85rem;
+.saved-indicator{
+  display:inline-flex;
+  margin-top:6px;
+  font-size:12px;
+  font-weight:800;
+}
+.saving-indicator{ color:rgba(15,23,42,.55); }
+.saved-indicator{ color:var(--success); }
+.setting-key{ margin-top:8px; }
+.setting-key code{
+  font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
+  font-size:12px;
+  color:rgba(15,23,42,.55);
+  background:rgba(2,6,23,.04);
+  border:1px solid rgba(2,6,23,.08);
+  padding:3px 8px;
+  border-radius:999px;
+  display:inline-block;
 }
 
-.saving-indicator {
-  color: #667eea;
+/* Backups */
+.empty-state{
+  border:1px dashed rgba(2,6,23,.18);
+  border-radius:var(--radius);
+  padding:16px;
+  background:rgba(255,255,255,.55);
+  color:rgba(15,23,42,.65);
+  font-weight:800;
 }
-
-.saved-indicator {
-  color: #10b981;
+.backups-table td:last-child{
+  white-space:nowrap;
 }
-
-/* 備份管理樣式 */
-.backup-actions {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 2rem;
+.database-badge{
+  display:inline-flex;
+  align-items:center;
+  padding:4px 10px;
+  border-radius:999px;
+  border:1px solid rgba(2,6,23,.10);
+  background:rgba(2,6,23,.04);
+  font-size:12px;
+  font-weight:900;
+  color:rgba(15,23,42,.70);
 }
+.btn-download{ background:rgba(37,99,235,.08); border-color:rgba(37,99,235,.18); color:rgba(29,78,216,.95); }
+.btn-download:hover{ background:rgba(37,99,235,.12); }
+.btn-delete{ background:rgba(239,68,68,.10); border-color:rgba(239,68,68,.22); color:#b91c1c; }
+.btn-delete:hover{ background:rgba(239,68,68,.14); }
 
-.btn {
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-}
-
-.btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-secondary {
-  background: #f0f0f0;
-  color: #333;
-}
-
-.btn-secondary:hover {
-  background: #e0e0e0;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 3rem;
-  color: #666;
-}
-
-.backups-table {
-  overflow-x: auto;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-thead {
-  background: #f5f5f5;
-}
-
-th, td {
-  padding: 1rem;
-  text-align: left;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-th {
-  font-weight: 600;
-  color: #333;
-}
-
-.database-badge {
-  display: inline-block;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-.database-badge.qa_tracker {
-  background: #667eea;
-  color: white;
-}
-
-.database-badge.church {
-  background: #10b981;
-  color: white;
-}
-
-.btn-download {
-  background: #667eea;
-  color: white;
-  padding: 0.5rem 1rem;
-  margin-right: 0.5rem;
-  font-size: 0.9rem;
-}
-
-.btn-download:hover {
-  background: #5568d3;
-}
-
-.btn-delete {
-  background: #ef4444;
-  color: white;
-  padding: 0.5rem 1rem;
-  font-size: 0.9rem;
-}
-
-.btn-delete:hover {
-  background: #dc2626;
-}
-
-.error-message {
-  background: #fee2e2;
-  color: #ef4444;
-  padding: 0.75rem;
-  border-radius: 8px;
-  margin-top: 1rem;
-  border: 1px solid #ef4444;
+@media (max-width: 640px){
+  .section-actions{ justify-content:flex-start; }
+  .settings-grid{ grid-template-columns:1fr; }
 }
 </style>
-
