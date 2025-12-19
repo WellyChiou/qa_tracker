@@ -1,6 +1,6 @@
 <template>
   <div>
-    <section class="page-hero">
+    <section class="page-hero" data-hero="true">
       <div class="container hero-surface">
         <div class="hero-inner">
           <div class="badge">About</div>
@@ -9,6 +9,9 @@
         </div>
       </div>
     </section>
+
+    <div class="page-stack" v-reveal="{ mode: 'page', stagger: 70 }">
+
 
     <section class="section section--tight">
       <div class="container">
@@ -32,6 +35,7 @@
         </div>
       </div>
     </section>
+    </div>
   </div>
 </template>
 

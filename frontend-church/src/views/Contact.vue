@@ -1,6 +1,6 @@
 <template>
   <div>
-    <section class="page-hero">
+    <section class="page-hero" data-hero="true">
       <div class="container hero-surface">
         <div class="hero-inner">
           <div class="badge">Contact</div>
@@ -14,7 +14,8 @@
       <div class="container">
         <div class="grid grid-2">
           <article class="card" v-if="churchInfo">
-            <h2 class="h2" style="margin:0 0 10px">聯絡資訊</h2>
+            <h2 class="h2" v-reveal>
+              聯絡資訊</h2>
 
             <div class="info" v-if="churchInfo.address">
               <div class="info__label">地址</div>
@@ -46,7 +47,7 @@
           <article class="card">
             <h2 class="h2" style="margin:0 0 10px">留言給我們</h2>
 
-            <form class="form" @submit.prevent="submitForm">
+            <form class="form" data-reveal="off" @submit.prevent="submitForm">
               <div class="field">
                 <label for="name">姓名 <span class="req">*</span></label>
                 <input type="text" id="name" v-model="form.name" required />

@@ -1,6 +1,6 @@
 <template>
   <div>
-    <section class="page-hero">
+    <section class="page-hero" data-hero="true">
       <div class="container hero-surface">
         <div class="hero-inner">
           <div class="badge">Messages</div>

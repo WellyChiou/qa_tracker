@@ -1,6 +1,6 @@
 <template>
   <div class="service-schedule">
-    <section class="page-hero">
+    <section class="page-hero" data-hero="true">
       <div class="container hero-surface">
         <div class="hero-inner">
           <div class="badge">Schedule</div>
@@ -10,7 +10,7 @@
       </div>
     </section>
 
-    <section class="section section--tight">
+    <section class="section section--tight" v-reveal="{ mode: 'minimal' }">
       <div class="container">
 
         <!-- 崗位人員配置 -->

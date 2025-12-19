@@ -28,11 +28,11 @@
     </header>
 
     <main class="main">
-      <router-view v-slot="{ Component }">
-  <transition name="page" mode="out-in">
-    <component :is="Component" />
-  </transition>
-</router-view>
+      <router-view v-slot="{ Component, route }">
+        <transition :name="isMobile ? '' : 'page'" mode="out-in">
+          <component :is="Component" :key="route.fullPath" />
+        </transition>
+      </router-view>
     </main>
 
     <footer class="footer">
@@ -50,13 +50,20 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useLoading } from '@/composables/useLoading'
 import { apiRequest } from '@/utils/api'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const route = useRoute()
+
+// Mobile (<=768px): disable route transitions / reveal
+const isMobile = ref(false)
+const updateIsMobile = () => { isMobile.value = window.innerWidth <= 768 }
+updateIsMobile()
+window.addEventListener('resize', updateIsMobile)
+onUnmounted(() => window.removeEventListener('resize', updateIsMobile))
 const frontendMenus = ref([])
 const isMenuOpen = ref(false)
 

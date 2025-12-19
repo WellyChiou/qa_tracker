@@ -1,7 +1,7 @@
 <template>
   <div>
     <!-- Hero / 首屏：只換版面，不動資料來源 -->
-    <section class="page-hero" v-if="churchInfo">
+    <section class="page-hero" data-hero="true" v-if="churchInfo">
       <div class="container hero-surface">
         <div class="hero-inner">
           <div class="badge badge--accent">Welcome</div>
