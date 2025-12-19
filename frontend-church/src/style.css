@@ -201,6 +201,68 @@ a:hover { text-decoration: underline; }
   font-size: 13px;
 }
 
+/* Activity / list cards polish (comfortable density + alignment) */
+.card--activity{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+
+.card--activity .media{
+  width:100%;
+}
+
+
+/* Card footer stickiness: keep badges/CTA aligned */
+.card--activity{
+  display:flex;
+  flex-direction:column;
+}
+.card--activity .card__body{
+  flex: 1;
+}
+.card--activity .card__footer{
+  margin-top: auto;
+  padding-top: 6px;
+}
+.card--activity .card__body{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  padding-top:2px;
+}
+
+.card--activity .card__meta{
+  gap:12px;
+  row-gap:6px;
+  font-size: 13px;
+}
+
+.card--activity .card__desc{
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card--activity .card__tags{
+  margin-top: 2px;
+}
+
+.card--activity .card__footer{
+  margin-top: 2px;
+  display:flex;
+  justify-content:flex-start;
+}
+
+/* Better grid balance for lists */
+.grid.grid-3{
+  row-gap: 18px;
+}
+
 .card__content { margin-top: 10px; }
 
 /* Media */
@@ -268,9 +330,15 @@ a:hover { text-decoration: underline; }
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  min-height: 42px;
+  text-decoration: none;
+  user-select: none;
 }
 
 .btn:active { transform: translateY(1px); }
+
+.btn:hover{ text-decoration:none; transform: translateY(-1px); }
+.btn:focus-visible{ text-decoration:none; }
 
 .btn-primary {
   color: white;
@@ -290,7 +358,7 @@ a:hover { text-decoration: underline; }
   backdrop-filter: blur(10px);
 }
 
-.btn-ghost:hover { text-decoration: none; }
+.btn-ghost:hover { text-decoration: none; background: rgba(255,255,255,0.9); }
 
 /* Page header / hero */
 .page-hero {
@@ -498,6 +566,18 @@ a:hover { text-decoration: underline; }
 }
 
 
+@media (prefers-reduced-motion: reduce){
+  *{ scroll-behavior: auto !important; }
+  .page-enter-active, .page-leave-active{ transition: none !important; }
+  .hero-inner.hero-appear{ animation: none !important; opacity: 1 !important; transform: none !important; }
+  .reveal-init .reveal, .reveal-init .reveal-item{
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+
 
 /* Hero: immediate micro entrance (no scroll reveal) */
 .hero-inner.hero-appear{
@@ -513,3 +593,13 @@ a:hover { text-decoration: underline; }
 .page-hero{ padding-bottom: 12px; }
 .page-hero + .section{ margin-top: 10px; }
 
+
+/* Button disabled states */
+.btn:disabled,
+.btn[aria-disabled="true"]{
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none !important;
+  pointer-events: none;
+}

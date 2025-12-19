@@ -12,153 +12,177 @@
 
     <section class="section section--tight" v-reveal="{ mode: 'minimal' }">
       <div class="container">
-
-        <!-- 崗位人員配置 -->
-        <div class="card">
-          <div class="card-header">
-            <h2>崗位人員配置</h2>
-            <div class="header-buttons">
-            <button @click="openPositionManagement" class="btn btn-manage-positions">
-              檢視崗位
-            </button>
-            </div>
-          </div>
-          <div class="position-config-summary">
-            <p>點擊「顯示崗位」按鈕來查看各崗位的人員（週六/週日）</p>
-            <div class="position-summary-list">
-              <div v-for="(posData, posCode) in positionConfig" :key="posCode" class="position-summary-item">
-                <strong>{{ posData.positionName || posCode }}：</strong>
-                <span>週六 {{ (posData.saturday || []).length }} 人</span>
-                <span>週日 {{ (posData.sunday || []).length }} 人</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 崗位管理 Modal -->
-        <PositionManagementModal
-          :show="showPositionManagement"
-          @close="closePositionManagement"
-        />
-
-        <!-- 通知組件 -->
+        <!-- Modals / Notification (keep logic untouched) -->
+        <PositionManagementModal :show="showPositionManagement" @close="closePositionManagement" />
         <Notification ref="notificationRef" />
 
-        <!-- 本週服事人員 -->
-        <div class="card">
-          <div class="schedule-header">
-            <h2>本週服事人員</h2>
-          </div>
-          <div v-if="loadingCurrentWeek" class="loading-state">
-            <p>載入中...</p>
-          </div>
-          <div v-else-if="currentWeekSchedule.saturday || currentWeekSchedule.sunday" class="current-week-schedule">
-            <!-- 週六 -->
-            <div v-if="currentWeekSchedule.saturday" class="weekday-schedule">
-              <h3 class="weekday-title">週六 {{ formatWeekDate(currentWeekSchedule.saturday.date) }}</h3>
-              <div class="positions-grid-week">
-                <div v-for="(posData, posCode) in positionConfig" :key="`sat-${posCode}`" class="position-item-week">
-                  <div class="position-name-week">{{ posData.positionName || posCode }}</div>
-                  <div class="position-person-week">
-                    {{ getCurrentWeekPerson(currentWeekSchedule.saturday, posCode) || '-' }}
+        <div class="two-col">
+          <!-- 本週服事（重點呈現，閱讀優先） -->
+          <div class="card card--stack">
+            <div class="card-head">
+              <div>
+                <h2 class="h2" style="margin:0">本週服事</h2>
+                <p class="muted" style="margin:6px 0 0">快速查看週六 / 週日各崗位人員。</p>
+              </div>
+              <div class="pill" v-if="loadingCurrentWeek">載入中…</div>
+            </div>
+
+            <div v-if="currentWeekSchedule && (currentWeekSchedule.saturday || currentWeekSchedule.sunday)" class="week-grid">
+              <!-- 週六 -->
+              <div v-if="currentWeekSchedule.saturday" class="day-card">
+                <div class="day-head">
+                  <div class="day-left">
+                    <div class="day-title">週六</div>
+                    <div class="day-date">{{ formatWeekDate(currentWeekSchedule.saturday.date) }}</div>
+                  </div>
+                  <div class="day-right">
+                    <div class="day-kpi muted">已安排 {{ assignedCount('sat') }} / {{ totalPositionsCount }} 崗位</div>
+                    <button type="button" class="acc-toggle btn btn-ghost" @click="toggleDay('sat')">
+                      {{ dayOpen.sat ? '收合' : '展開' }}
+                    </button>
+                  </div>
+                </div>
+
+                <transition name="acc" v-if="!isMobile">
+                  <div v-show="dayOpen.sat" class="acc-body">
+                    <div class="pos-grid">
+                      <div v-for="(posData, posCode) in positionConfig" :key="`sat-${posCode}`" class="pos-row">
+                        <div class="pos-name">{{ posData.positionName || posCode }}</div>
+                        <div class="pos-person">{{ getCurrentWeekPerson(currentWeekSchedule.saturday, posCode) || '-' }}</div>
+                      </div>
+                    </div>
+                  </div>
+                </transition>
+                <div v-else v-show="dayOpen.sat" class="acc-body">
+                  <div class="pos-grid">
+                    <div v-for="(posData, posCode) in positionConfig" :key="`sat-m-${posCode}`" class="pos-row">
+                      <div class="pos-name">{{ posData.positionName || posCode }}</div>
+                      <div class="pos-person">{{ getCurrentWeekPerson(currentWeekSchedule.saturday, posCode) || '-' }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 週日 -->
+              <div v-if="currentWeekSchedule.sunday" class="day-card">
+                <div class="day-head">
+                  <div class="day-left">
+                    <div class="day-title">週日</div>
+                    <div class="day-date">{{ formatWeekDate(currentWeekSchedule.sunday.date) }}</div>
+                  </div>
+                  <div class="day-right">
+                    <div class="day-kpi muted">已安排 {{ assignedCount('sun') }} / {{ totalPositionsCount }} 崗位</div>
+                    <button type="button" class="acc-toggle btn btn-ghost" @click="toggleDay('sun')">
+                      {{ dayOpen.sun ? '收合' : '展開' }}
+                    </button>
+                  </div>
+                </div>
+
+                <transition name="acc" v-if="!isMobile">
+                  <div v-show="dayOpen.sun" class="acc-body">
+                    <div class="pos-grid">
+                      <div v-for="(posData, posCode) in positionConfig" :key="`sun-${posCode}`" class="pos-row">
+                        <div class="pos-name">{{ posData.positionName || posCode }}</div>
+                        <div class="pos-person">{{ getCurrentWeekPerson(currentWeekSchedule.sunday, posCode) || '-' }}</div>
+                      </div>
+                    </div>
+                  </div>
+                </transition>
+                <div v-else v-show="dayOpen.sun" class="acc-body">
+                  <div class="pos-grid">
+                    <div v-for="(posData, posCode) in positionConfig" :key="`sun-m-${posCode}`" class="pos-row">
+                      <div class="pos-name">{{ posData.positionName || posCode }}</div>
+                      <div class="pos-person">{{ getCurrentWeekPerson(currentWeekSchedule.sunday, posCode) || '-' }}</div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-            <!-- 週日 -->
-            <div v-if="currentWeekSchedule.sunday" class="weekday-schedule">
-              <h3 class="weekday-title">週日 {{ formatWeekDate(currentWeekSchedule.sunday.date) }}</h3>
-              <div class="positions-grid-week">
-                <div v-for="(posData, posCode) in positionConfig" :key="`sun-${posCode}`" class="position-item-week">
-                  <div class="position-name-week">{{ posData.positionName || posCode }}</div>
-                  <div class="position-person-week">
-                    {{ getCurrentWeekPerson(currentWeekSchedule.sunday, posCode) || '-' }}
-                  </div>
-                </div>
-              </div>
+
+            <div v-else class="empty">
+              <p class="muted" style="margin:0">本週尚無服事安排</p>
             </div>
           </div>
-          <div v-else class="empty-state">
-            <p>本週尚無服事安排</p>
+
+          <!-- 崗位人員配置（摘要 + 入口） -->
+          <div class="card card--stack">
+            <div class="card-head">
+              <div>
+                <h2 class="h2" style="margin:0">崗位人員配置</h2>
+                <p class="muted" style="margin:6px 0 0">查看每個崗位在週六 / 週日的人員設定。</p>
+              </div>
+              <button @click="openPositionManagement" class="btn btn-ghost">檢視崗位</button>
+            </div>
+
+            <div class="kv">
+              <div class="kv-item">
+                <div class="kv-label">崗位數</div>
+                <div class="kv-value">{{ Object.keys(positionConfig || {}).length }}</div>
+              </div>
+              <div class="kv-item">
+                <div class="kv-label">週六人員</div>
+                <div class="kv-value">{{ satPersonCount }}</div>
+              </div>
+              <div class="kv-item">
+                <div class="kv-label">週日人員</div>
+                <div class="kv-value">{{ sunPersonCount }}</div>
+              </div>
+            </div>
+
+            <div class="pos-summary">
+              <div v-for="(posData, posCode) in positionConfig" :key="posCode" class="pos-chip">
+                <span class="pos-chip__name">{{ posData.positionName || posCode }}</span>
+                <span class="pos-chip__meta">
+                  週六 {{ normalizePeople(posData.saturday).length }} / 週日 {{ normalizePeople(posData.sunday).length }}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- 服事表 -->
-        <div class="card">
-          <div class="schedule-header">
-            <h2>服事表</h2>
+        <!-- 歷史服事表（列表：可讀性優先，卡片化；操作固定位置） -->
+        <div class="card card--stack" style="margin-top:18px" v-reveal="{ mode: 'minimal' }">
+          <div class="card-head">
+            <div>
+              <h2 class="h2" style="margin:0">服事表</h2>
+              <p class="muted" style="margin:6px 0 0">按年度檢視已保存的服事表。</p>
+            </div>
+            <div class="filters-inline">
+              <label class="filters-label">年份</label>
+              <select v-model="filterYear" class="form-input filters-select">
+                <option value="">全部</option>
+                <option v-for="year in availableYears" :key="year" :value="year">{{ year }}年</option>
+              </select>
+              <button class="btn btn-ghost" @click="resetFilters" :disabled="!filterYear">清除</button>
+            </div>
           </div>
 
-          <!-- 查詢條件 -->
-          <section class="filters">
-            <h3>查詢條件</h3>
-            <div class="filter-grid">
-              <div class="filter-group">
-                <label>年份</label>
-                <select v-model="filterYear" class="form-input">
-                  <option value="">全部</option>
-                  <option v-for="year in availableYears" :key="year" :value="year">{{ year }}年</option>
-                </select>
+          <div v-if="filteredHistoryList.length > 0" class="history">
+            <div class="history-meta">
+              <div class="muted">共 {{ displayedHistoryList.length }} 筆</div>
             </div>
-                  </div>
-          </section>
 
-          <div v-if="filteredHistoryList.length > 0" class="schedule-list">
-            <div class="table-header">
-              <h3>服事表列表 (共 {{ filteredHistoryList.length }} 筆)</h3>
+            <div class="history-cards">
+              <div class="history-card" v-for="item in displayedHistoryList" :key="item.year">
+                <div class="history-card__top">
+                  <div>
+                    <div class="history-year">{{ item.year }}年</div>
+                    <div class="muted history-created">建立時間：{{ formatDateTime(item.createdAt) }}</div>
                   </div>
-            <table>
-              <thead>
-                <tr>
-                  <th>年度</th>
-                  <th>建立時間</th>
-                  <th>操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="item in paginatedHistoryList" :key="item.year">
-                  <td>{{ item.year }}年</td>
-                  <td>{{ formatDateTime(item.createdAt) }}</td>
-                  <td>
-                    <button @click="openViewModal(item.year)" class="btn btn-view">檢視</button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-            <div class="pagination">
-              <div class="pagination-left">
-                <label for="pageSize" class="pagination-label">顯示筆數：</label>
-                <select id="pageSize" v-model.number="recordsPerPage" class="page-size-select">
-                  <option :value="10">10</option>
-                  <option :value="20">20</option>
-                  <option :value="50">50</option>
-                  <option :value="100">100</option>
-                </select>
-                <span class="pagination-info">共 {{ filteredHistoryList.length }} 筆 (第 {{ currentPage }}/{{ totalPages }} 頁)</span>
-              </div>
-              <div class="pagination-right">
-                <button class="btn btn-secondary" @click="currentPage--" :disabled="currentPage === 1">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-                  </svg>
-                  上一頁
-                </button>
-                <div class="page-jump">
-                  <span class="pagination-label">到第</span>
-                  <input type="number" v-model.number="jumpPage" min="1" :max="totalPages" class="page-input" @keyup.enter="jumpToPage" />
-                  <span class="pagination-label">頁</span>
+                  <span class="badge">年度</span>
                 </div>
-                <button class="btn btn-secondary" @click="currentPage++" :disabled="currentPage === totalPages">
-                  下一頁
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                  </svg>
-                </button>
+
+                <div class="history-card__actions">
+                  <button @click="openViewModal(item.year)" class="btn btn-primary">檢視</button>
+                </div>
               </div>
             </div>
           </div>
-          <div v-else class="empty-state">
-            <p>{{ historyList.length === 0 ? '尚無服事表資料' : '沒有符合條件的資料' }}</p>
+
+          <div v-else class="empty">
+            <p class="muted" style="margin:0">
+              {{ historyList.length === 0 ? '尚無服事表資料' : '沒有符合條件的資料' }}
+            </p>
           </div>
         </div>
 
@@ -177,8 +201,9 @@
   </div>
 </template>
 
+
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import DateRangePicker from '@/components/DateRangePicker.vue'
 import PositionManagementModal from '@/components/PositionManagementModal.vue'
 import ServiceScheduleModal from '@/components/ServiceScheduleModal.vue'
@@ -188,6 +213,68 @@ import { apiRequest } from '@/utils/api'
 // 崗位人員配置（從新的 API 載入）
 const positionConfig = ref({})
 
+// UI only: responsive flags (do NOT touch data flow)
+const isMobile = ref(false)
+let _mq
+const _updateMobile = () => {
+  if (typeof window === 'undefined') return
+  if (!_mq) _mq = window.matchMedia('(max-width: 768px)')
+  isMobile.value = _mq.matches
+}
+
+const dayOpen = ref({ sat: true, sun: true })
+const toggleDay = (key) => {
+  dayOpen.value = { ...dayOpen.value, [key]: !dayOpen.value[key] }
+}
+
+
+
+// 週六/週日人員總數（僅用於摘要顯示，不影響資料流）
+const normalizePeople = (arr) => {
+  const list = Array.isArray(arr) ? arr : []
+  return list
+    .map((x) => {
+      if (x == null) return ''
+      if (typeof x === 'string') return x
+      if (typeof x === 'object') return x.personName || x.name || x.person || x.label || ''
+      return ''
+    })
+    .map((s) => String(s).trim())
+    .filter(Boolean)
+}
+
+const satPersonCount = computed(() => {
+  const cfg = positionConfig.value || {}
+  const s = new Set()
+  Object.values(cfg).forEach((p) => {
+    normalizePeople(p?.saturday).forEach((name) => s.add(name))
+  })
+  return s.size
+})
+
+const sunPersonCount = computed(() => {
+  const cfg = positionConfig.value || {}
+  const s = new Set()
+  Object.values(cfg).forEach((p) => {
+    normalizePeople(p?.sunday).forEach((name) => s.add(name))
+  })
+  return s.size
+})
+
+
+// 當週已指派崗位數（僅 UI 摘要用）
+const totalPositionsCount = computed(() => Object.keys(positionConfig.value || {}).length)
+const assignedCount = (dayKey) => {
+  const day = dayKey === 'sat' ? currentWeekSchedule.value?.saturday : currentWeekSchedule.value?.sunday
+  if (!day) return 0
+  const cfg = positionConfig.value || {}
+  let n = 0
+  Object.keys(cfg).forEach((posCode) => {
+    const p = getCurrentWeekPerson(day, posCode)
+    if (p && p !== '-') n += 1
+  })
+  return n
+}
 // 崗位管理 Modal 顯示狀態
 const showPositionManagement = ref(false)
 
@@ -207,6 +294,16 @@ const schedule = ref([])
 
 // 歷史記錄列表
 const historyList = ref([])
+const sortedHistoryList = computed(() => {
+  const list = Array.isArray(historyList.value) ? [...historyList.value] : []
+  // 依日期/年份排序：新的在前
+  return list.sort((a, b) => {
+    const ad = a?.dateRange?.[0] || a?.startDate || a?.createdAt || ''
+    const bd = b?.dateRange?.[0] || b?.startDate || b?.createdAt || ''
+    return String(bd).localeCompare(String(ad))
+  })
+})
+
 
 // 本週服事人員
 const currentWeekSchedule = ref({ saturday: null, sunday: null })
@@ -234,54 +331,19 @@ const filteredHistoryList = computed(() => {
   return historyList.value.filter(item => item.year === parseInt(filterYear.value))
 })
 
-// 分頁相關
-const currentPage = ref(1)
-const recordsPerPage = ref(10)
-const jumpPage = ref(1)
-
-// 計算分頁後的歷史記錄
-const paginatedHistoryList = computed(() => {
-  const start = (currentPage.value - 1) * recordsPerPage.value
-  const end = start + recordsPerPage.value
-  return filteredHistoryList.value.slice(start, end)
-})
-
-// 計算總頁數
-const totalPages = computed(() => {
-  return Math.ceil(filteredHistoryList.value.length / recordsPerPage.value)
-})
-
-// 清除篩選條件
-const resetFilters = () => {
-  filterYear.value = ''
-  currentPage.value = 1
-  jumpPage.value = 1
-}
-
-// 跳轉到指定頁面
-const jumpToPage = () => {
-  if (jumpPage.value >= 1 && jumpPage.value <= totalPages.value) {
-    currentPage.value = jumpPage.value
-  } else {
-    jumpPage.value = currentPage.value
-  }
-}
-
-// 監聽 currentPage 變化，同步 jumpPage
-watch(() => currentPage.value, (newVal) => {
-  jumpPage.value = newVal
-})
-
-// 監聽 recordsPerPage 變化，重置到第一頁
-watch(() => recordsPerPage.value, () => {
-  currentPage.value = 1
-  jumpPage.value = 1
-})
-
-// 監聽篩選條件變化，重置到第一頁
-watch(() => filterYear.value, () => {
-  currentPage.value = 1
-  jumpPage.value = 1
+// 顯示用歷史清單（已移除分頁，閱讀優先）
+const displayedHistoryList = computed(() => {
+  const list = Array.isArray(filteredHistoryList.value) ? [...filteredHistoryList.value] : []
+  // 新的在前：優先 createdAt，其次 year
+  return list.sort((a, b) => {
+    const ac = a?.createdAt || ''
+    const bc = b?.createdAt || ''
+    const by = b?.year ?? 0
+    const ay = a?.year ?? 0
+    if (bc && ac && String(bc) !== String(ac)) return String(bc).localeCompare(String(ac))
+    if (by != ay) return Number(by) - Number(ay)
+    return 0
+  })
 })
 
 // 保存狀態
@@ -1953,9 +2015,13 @@ const getCurrentWeekPerson = (scheduleItem, posCode) => {
     : 0
   const idCount = personIds && Array.isArray(personIds) ? personIds.length : 0
   
-  // 如果名稱完整且與 ID 數量一致，直接返回
-  if (personName && typeof personName === 'string' && personName.trim() !== '' && nameCount === idCount) {
-    return personName
+  // 如果有名稱：
+  // - 有 ID 時：名稱數量需與 ID 數量一致（確保不缺漏）
+  // - 沒有 ID 時：直接採用名稱（許多後端只回傳名稱字串）
+  if (personName && typeof personName === 'string' && personName.trim() !== '') {
+    if (idCount === 0 || nameCount === idCount) {
+      return personName
+    }
   }
   
   // 如果有 Ids 陣列但名稱不完整或不存在，嘗試從 positionConfig 中查找
@@ -2050,1175 +2116,257 @@ const loadCurrentWeekSchedule = async () => {
 
 // 組件掛載時載入配置和歷史記錄
 onMounted(async () => {
+  _updateMobile()
+  try {
+    if (typeof window !== 'undefined') {
+      _mq = window.matchMedia('(max-width: 768px)')
+      _mq.addEventListener?.('change', _updateMobile)
+      // Safari < 14
+      _mq.addListener?.(_updateMobile)
+    }
+  } catch {}
+
+  // Default accordion state: open on desktop, calm on mobile
+  dayOpen.value = { sat: !isMobile.value, sun: !isMobile.value }
+
   await loadPositionConfig()
   loadHistory()
   // 確保崗位配置載入完成後再載入本週服事人員
   loadCurrentWeekSchedule()
 })
+
+onBeforeUnmount(() => {
+  try {
+    _mq?.removeEventListener?.('change', _updateMobile)
+    _mq?.removeListener?.(_updateMobile)
+  } catch {}
+})
 </script>
 
 <style scoped>
-.service-schedule {
-  padding: 2rem 0;
+.service-schedule {}
+
+/* Layout */
+.two-col{
+  display:grid;
+  gap: 18px;
+}
+@media (min-width: 980px){
+  .two-col{ grid-template-columns: 1.25fr 1fr; align-items: start; }
 }
 
-.card {
-  margin-bottom: 2rem;
+.card--stack{
+  display:flex;
+  flex-direction:column;
+  gap: 14px;
 }
 
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
+/* Header row */
+.card-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap: 12px;
+}
+.pill{
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--muted);
+  white-space: nowrap;
 }
 
-.card-header h2 {
-  margin: 0;
+/* Week schedule */
+.week-grid{
+  display:grid;
+  gap: 12px;
+}
+@media (min-width: 980px){
+  .week-grid{ grid-template-columns: 1fr 1fr; }
 }
 
-.header-buttons {
-  display: flex;
-  gap: 0.75rem;
+.day-card{
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  border-radius: calc(var(--radius) - 6px);
+  padding: 14px;
 }
-
-.btn-manage-persons,
-.btn-manage-positions {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  font-size: 1rem;
-  font-weight: 500;
-  transition: all 0.2s;
+.day-head{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
 }
+.day-title{ font-weight: 700; }
+.day-date{ color: var(--muted); font-size: 13px; }
 
-.btn-manage-persons:hover,
-.btn-manage-positions:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+.day-left{
+  display:flex;
+  flex-direction:column;
+  gap: 2px;
 }
-
-.position-config-summary {
-  padding: 1.5rem;
-  background: #f8fafc;
-  border-radius: 0.5rem;
-  border: 1px solid #e2e8f0;
+.day-right{
+  display:flex;
+  align-items:center;
+  gap: 10px;
 }
-
-.position-config-summary p {
-  margin: 0 0 1rem 0;
-  color: #64748b;
-  font-size: 0.9rem;
+.day-kpi{
+  font-size: 12px;
+  white-space: nowrap;
 }
-
-.position-summary-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.position-summary-item {
-  padding: 0.75rem 1rem;
-  background: white;
-  border-radius: 0.5rem;
-  border: 1px solid #e2e8f0;
-  font-size: 0.9rem;
-  color: #475569;
-}
-
-.position-summary-item strong {
-  color: #1e293b;
-  margin-right: 0.5rem;
-}
-
-.position-summary-item span {
-  margin-right: 1rem;
-  color: #667eea;
-  font-weight: 500;
-}
-
-.card h2 {
-  color: #667eea;
-  margin-bottom: 1.5rem;
-  font-size: 1.5rem;
-}
-
-.position-config {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-}
-
-.position-group {
-  padding: 1.5rem;
-  background: #f8f9fa;
-  border-radius: 8px;
-  border-left: 4px solid #667eea;
-}
-
-.position-group h3 {
-  color: #667eea;
-  margin-bottom: 1rem;
-  font-size: 1.2rem;
-}
-
-.day-group {
-  margin-bottom: 1rem;
-}
-
-.day-group:last-child {
-  margin-bottom: 0;
-}
-
-.day-group label {
-  display: inline-block;
-  width: 60px;
-  font-weight: 500;
-  color: #333;
-}
-
-.person-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-  margin-top: 0.5rem;
-}
-
-.person-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.8rem;
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 20px;
-  font-size: 0.9rem;
-}
-
-.tag-edit {
-  background: none;
-  border: none;
-  color: #007bff;
-  cursor: pointer;
-  font-size: 0.9rem;
+.acc-toggle.btn{
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
   line-height: 1;
-  padding: 0;
-  width: 20px;
-  height: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  transition: background 0.2s;
-  margin-right: 2px;
 }
+.acc-body{ padding-top: 8px; }
 
-.tag-edit:hover {
-  background: #e7f3ff;
+.acc-enter-active, .acc-leave-active{
+  transition: opacity .22s ease, transform .22s ease;
 }
-
-.tag-remove {
-  background: none;
-  border: none;
-  color: #dc3545;
-  cursor: pointer;
-  font-size: 1.2rem;
-  line-height: 1;
-  padding: 0;
-  width: 18px;
-  height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  transition: background 0.2s;
-}
-
-.tag-remove:hover {
-  background: #f8d7da;
-}
-
-.tag-edit-input {
-  padding: 0.4rem 0.8rem;
-  border: 2px solid #007bff;
-  border-radius: 20px;
-  font-size: 0.9rem;
-  width: 120px;
-  outline: none;
-  background: white;
-  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
-}
-
-.tag-input {
-  padding: 0.4rem 0.8rem;
-  border: 1px solid #ddd;
-  border-radius: 20px;
-  font-size: 0.9rem;
-  width: 120px;
-}
-
-.tag-input:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
-}
-
-.date-range-group {
-  display: flex;
-  gap: 1rem;
-  align-items: flex-end;
-  flex-wrap: wrap;
-}
-
-.date-range-input-wrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  flex: 1;
-  min-width: 250px;
-}
-
-.date-range-input-wrapper label {
-  font-weight: 500;
-  color: #333;
-}
-
-.position-selection {
-  margin-top: 1.5rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid #e2e8f0;
-}
-
-.position-selection-label {
-  display: block;
-  font-weight: 500;
-  color: #333;
-  margin-bottom: 0.75rem;
-}
-
-.position-checkboxes {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 0.75rem;
-}
-
-.position-checkbox-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  justify-content: space-between;
-  padding: 0.5rem;
-  border-radius: 0.5rem;
-  transition: background-color 0.2s;
-}
-
-.position-checkbox-wrapper:hover {
-  background-color: #f8f9fa;
-}
-
-.position-checkbox-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  user-select: none;
-  flex: 1;
-}
-
-.position-checkbox-item input[type="checkbox"] {
-  width: 1.25rem;
-  height: 1.25rem;
-  cursor: pointer;
-  accent-color: #667eea;
-}
-
-.position-checkbox-item:has(input:disabled) {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.position-checkbox-item:has(input:disabled) input {
-  cursor: not-allowed;
-}
-
-.generate-button-wrapper {
-  margin-top: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.5rem;
-}
-
-.generate-hint {
-  color: #dc3545;
-  font-size: 0.875rem;
-}
-
-.btn-auto-assign {
-  padding: 0.375rem 0.75rem;
-  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-  color: white;
-  border: none;
-  border-radius: 0.375rem;
-  cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 500;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-
-.btn-auto-assign:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
-}
-
-.btn-auto-assign:active {
-  transform: translateY(0);
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 1rem;
-  font-weight: 500;
-}
-
-.btn-primary:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-}
-
-.btn-primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.schedule-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1.5rem;
-  gap: 1rem;
-}
-
-.schedule-title-section {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.schedule-name-section {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.schedule-name-label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-weight: 500;
-  color: #333;
-}
-
-.schedule-name-input {
-  padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 0.95rem;
-  min-width: 200px;
-}
-
-.schedule-name-input:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
-}
-
-.schedule-name-display {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.95rem;
-}
-
-.schedule-name-display strong {
-  color: #667eea;
-}
-
-.btn-edit-name {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  font-size: 1rem;
-  padding: 0.25rem;
-  opacity: 0.7;
-  transition: opacity 0.2s;
-}
-
-.btn-edit-name:hover {
-  opacity: 1;
-}
-
-.schedule-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.btn-save {
-  background: #007bff;
-  color: white;
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-
-.btn-save:hover:not(:disabled) {
-  background: #0056b3;
-}
-
-.btn-save:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-refresh {
-  background: #17a2b8;
-  color: white;
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-
-.btn-refresh:hover {
-  background: #138496;
-}
-
-.history-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.history-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem;
-  background: #f8f9fa;
-  border-radius: 5px;
-  border-left: 4px solid #667eea;
-}
-
-.history-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  flex: 1;
-}
-
-.history-name {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 0.25rem;
-}
-
-.history-details {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.history-time {
-  color: #999;
-  font-size: 0.85rem;
-}
-
-.history-date {
-  font-weight: 600;
-  color: #667eea;
-}
-
-.history-year {
-  background: #28a745;
-  color: white;
-  padding: 0.25rem 0.75rem;
-  border-radius: 15px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  margin-right: 0.5rem;
-}
-
-.history-version {
-  background: #667eea;
-  color: white;
-  padding: 0.25rem 0.75rem;
-  border-radius: 15px;
-  font-size: 0.85rem;
-}
-
-.history-range {
-  color: #666;
-  font-size: 0.9rem;
-}
-
-.history-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.btn-view {
-  background: #17a2b8;
-  color: white;
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 0.85rem;
-}
-
-.btn-view:hover {
-  background: #138496;
-}
-
-.btn-edit {
-  background: #ffc107;
-  color: #212529;
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 0.85rem;
-  font-weight: 500;
-}
-
-.btn-edit:hover {
-  background: #e0a800;
-}
-
-.btn-cancel {
-  background: #6c757d;
-  color: white;
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-
-.btn-cancel:hover {
-  background: #5a6268;
-}
-
-.btn-load:hover {
-  background: #218838;
-}
-
-.btn-delete {
-  background: #dc3545;
-  color: white;
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 0.85rem;
-}
-
-.btn-delete:hover {
-  background: #c82333;
-}
-
-.btn-export {
-  background: #28a745;
-  color: white;
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-
-.btn-export:hover {
-  background: #218838;
-}
-
-.btn-secondary {
-  background: white;
-  color: #475569;
-  padding: 0.625rem 1.25rem;
-  border: 1.5px solid #cbd5e1;
-  border-radius: 0.75rem;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 0.875rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: all 0.2s ease;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: #f8fafc;
-  border-color: #94a3b8;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.btn-secondary:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.pagination-info {
-  margin-bottom: 10px;
-  opacity: 0.8;
-  font-size: 0.9rem;
-  color: #666;
-}
-
-.pagination {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  margin-top: 1.5rem;
-  flex-wrap: wrap;
-}
-
-.pagination-left {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.pagination-right {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.page-size-select {
-  padding: 0.625rem 0.875rem;
-  border: 1.5px solid #cbd5e1;
-  border-radius: 0.75rem;
-  background: white;
-  color: #1e293b;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  min-width: 80px;
-}
-
-.page-size-select:hover {
-  border-color: #94a3b8;
-}
-
-.page-size-select:focus {
-  outline: none;
-  border-color: #818cf8;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
-}
-
-.page-size-select option {
-  background: white;
-  color: #1e293b;
-  padding: 8px;
-}
-
-.page-jump {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.page-input {
-  padding: 0.5rem 0.75rem;
-  border: 1.5px solid #cbd5e1;
-  border-radius: 0.5rem;
-  background: white;
-  color: #1e293b;
-  font-size: 0.875rem;
-  font-weight: 600;
-  width: 60px;
-  text-align: center;
-  transition: all 0.2s ease;
-}
-
-.page-input:focus {
-  outline: none;
-  border-color: #818cf8;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
-}
-
-.pagination-label {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #475569;
-  white-space: nowrap;
-}
-
-.w-5 {
-  width: 1.25rem;
-}
-
-.h-5 {
-  height: 1.25rem;
-}
-
-.schedule-table {
-  overflow-x: auto;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: white;
-}
-
-.edit-select {
-  width: 100%;
-  padding: 0.5rem;
-  border: 2px solid #667eea;
-  border-radius: 5px;
-  font-size: 0.9rem;
-  background: white;
-  cursor: pointer;
-}
-
-.edit-select:focus {
-  outline: none;
-  border-color: #764ba2;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.editing-badge {
-  display: inline-block;
-  background: #ffc107;
-  color: #212529;
-  padding: 0.25rem 0.75rem;
-  border-radius: 15px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  margin-left: 0.5rem;
-}
-
-thead {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-}
-
-th, td {
-  padding: 1rem;
-  text-align: left;
-  border-bottom: 1px solid #ddd;
-}
-
-th {
-  font-weight: 600;
-}
-
-/* 日期欄位樣式 */
-.date-column {
-  width: 150px;
-  min-width: 150px;
-  vertical-align: top;
-}
-
-/* 崗位欄位橫向排列 */
-.positions-header {
-  padding: 0 !important;
-}
-
-.positions-cell {
-  padding: 0 !important;
-  vertical-align: top;
-}
-
-.positions-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 0.5rem;
-  padding: 0.75rem;
-}
-
-.position-header-cell {
-  padding: 0.5rem;
-  text-align: center;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  font-weight: 600;
-}
-
-.position-header-content {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.position-header-name {
-  flex: 1;
-}
-
-.btn-auto-assign-header {
-  background: rgba(102, 126, 234, 0.2);
-  border: 1px solid rgba(102, 126, 234, 0.4);
-  color: #667eea;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: all 0.2s;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.btn-auto-assign-header:hover {
-  background: rgba(102, 126, 234, 0.3);
-  border-color: rgba(102, 126, 234, 0.6);
-  transform: scale(1.05);
-}
-
-.btn-auto-assign-header:active {
-  transform: scale(0.95);
-}
-
-.position-cell {
-  padding: 0.5rem;
-  text-align: center;
-  border-right: 1px solid #e0e0e0;
-}
-
-.position-cell:last-child {
-  border-right: none;
-}
-
-/* 編輯模式下的崗位選擇區域 */
-.edit-position-selection {
-  margin-top: 1rem;
-  padding: 1rem;
-  background: #f8f9fa;
-  border-radius: 8px;
-  border: 1px solid #e0e0e0;
-}
-
-.edit-position-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.75rem;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.edit-position-selection-label {
-  font-weight: 600;
-  color: #333;
-  margin: 0;
-}
-
-.random-assignment-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  cursor: pointer;
-  user-select: none;
-  font-size: 0.9rem;
-  color: #555;
-  position: relative;
-}
-
-.toggle-input {
-  position: absolute;
+.acc-enter-from, .acc-leave-to{
   opacity: 0;
-  width: 0;
-  height: 0;
+  transform: translateY(-4px);
 }
 
-.toggle-slider {
-  position: relative;
-  display: inline-block;
-  width: 44px;
-  height: 24px;
-  background-color: #ccc;
-  border-radius: 24px;
-  transition: background-color 0.3s;
-  flex-shrink: 0;
+.pos-grid{
+  display:flex;
+  flex-direction:column;
+  gap: 10px;
+  padding-top: 12px;
+}
+.pos-row{
+  display:flex;
+  justify-content:space-between;
+  gap: 12px;
+}
+.pos-name{ color: var(--muted); font-size: 13px; }
+.pos-person{ font-weight: 600; }
+
+/* KV summary */
+.kv{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.kv-item{
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  border-radius: calc(var(--radius) - 6px);
+  padding: 12px;
+}
+.kv-label{ color: var(--muted); font-size: 12px; }
+.kv-value{ font-weight: 800; font-size: 18px; margin-top: 6px; }
+
+/* Position chips */
+.pos-summary{
+  display:flex;
+  flex-wrap:wrap;
+  gap: 8px;
+}
+.pos-chip{
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  border-radius: 999px;
+  padding: 8px 10px;
+  display:flex;
+  gap: 8px;
+  align-items:center;
+}
+.pos-chip__name{ font-weight: 700; font-size: 13px; }
+.pos-chip__meta{ color: var(--muted); font-size: 12px; }
+
+/* History */
+.filters-inline{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content:flex-end;
+}
+.filters-label{ color: var(--muted); font-size: 13px; }
+.filters-select{ min-width: 150px; }
+
+.history{ display:flex; flex-direction:column; gap: 12px; }
+.history-meta{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 10px;
+}
+.history-meta__right{ display:flex; align-items:center; gap: 8px; }
+
+.history-cards{
+  display:grid;
+  gap: 12px;
+}
+@media (min-width: 860px){
+  .history-cards{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1160px){
+  .history-cards{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
-.toggle-slider::before {
-  content: "";
-  position: absolute;
-  width: 20px;
-  height: 20px;
-  left: 2px;
-  top: 2px;
-  background-color: white;
-  border-radius: 50%;
-  transition: transform 0.3s;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+.history-card{
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  border-radius: calc(var(--radius) - 6px);
+  padding: 14px;
+  display:flex;
+  flex-direction:column;
+  min-height: 120px;
+}
+.history-card__top{
+  display:flex;
+  justify-content:space-between;
+  gap: 10px;
+}
+.history-year{ font-weight: 800; font-size: 18px; }
+.history-created{ margin-top: 4px; font-size: 12px; }
+
+.history-card__actions{
+  margin-top: auto;
+  display:flex;
+  justify-content:flex-end;
+  padding-top: 10px;
 }
 
-.toggle-input:checked + .toggle-slider {
-  background-color: #667eea;
+/* Pagination */
+.polish-pagination{
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.jump{
+  display:flex;
+  align-items:center;
+  gap: 8px;
+}
+.jump-input{
+  width: 80px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
 }
 
-.toggle-input:checked + .toggle-slider::before {
-  transform: translateX(20px);
+/* Empty */
+.empty{
+  padding: 14px;
+  border: 1px dashed var(--border);
+  border-radius: calc(var(--radius) - 6px);
+  background: var(--surface-2);
 }
 
-.toggle-input:focus + .toggle-slider {
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
-}
-
-.toggle-label {
-  flex: 1;
-}
-
-.random-assignment-toggle:hover {
-  color: #333;
-}
-
-.random-assignment-toggle:hover .toggle-slider {
-  background-color: #bbb;
-}
-
-.random-assignment-toggle:hover .toggle-input:checked + .toggle-slider {
-  background-color: #5568d3;
-}
-
-.edit-position-selection .position-checkboxes {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 0.75rem;
-}
-
-tbody tr:hover {
-  background: #f8f9fa;
-}
-
-tbody tr:last-child td {
-  border-bottom: none;
-}
-
-/* 查詢條件樣式 */
-.filters {
-  background: white;
-  border-radius: 8px;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.filters h3 {
-  margin: 0 0 1rem 0;
-  font-size: 1.2rem;
-  color: #333;
-}
-
-.filter-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  align-items: end;
-}
-
-.filter-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.filter-group label {
-  font-weight: 600;
-  color: #4a5568;
-  font-size: 0.9rem;
-}
-
-.filter-group select,
-.filter-group input {
-  padding: 0.5rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  font-size: 0.95rem;
-}
-
-.filter-group select:focus,
-.filter-group input:focus {
-  outline: none;
-  border-color: #667eea;
-}
-
-.form-input {
-  padding: 0.5rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  font-size: 0.95rem;
-}
-
-/* 列表樣式 */
-.schedule-list {
-  background: white;
-  border-radius: 12px;
-  padding: 2rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.table-header {
-  padding: 1rem;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.table-header h3 {
-  margin: 0;
-  font-size: 1.1rem;
-  color: #4a5568;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 3rem;
-  color: #666;
-}
-
-.loading-state {
-  text-align: center;
-  padding: 2rem;
-  color: #666;
-}
-
-.current-week-schedule {
-  padding: 1.5rem;
-}
-
-.weekday-schedule {
-  margin-bottom: 2rem;
-  padding: 1.5rem;
-  background: #f8fafc;
-  border-radius: 0.75rem;
-  border: 1px solid #e2e8f0;
-}
-
-.weekday-schedule:last-child {
-  margin-bottom: 0;
-}
-
-.weekday-title {
-  margin: 0 0 1rem 0;
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: #667eea;
-  padding-bottom: 0.75rem;
-  border-bottom: 2px solid #667eea;
-}
-
-.positions-grid-week {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 1rem;
-}
-
-.position-item-week {
-  background: white;
-  padding: 1rem;
-  border-radius: 0.5rem;
-  border: 1px solid #e2e8f0;
-  transition: all 0.2s;
-}
-
-.position-item-week:hover {
-  border-color: #667eea;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
-}
-
-.position-name-week {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #475569;
-  margin-bottom: 0.5rem;
-}
-
-.position-person-week {
-  font-size: 1rem;
-  color: #1e293b;
-  font-weight: 500;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th, td {
-  padding: 1rem;
-  text-align: left;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-th {
-  background: #f5f5f5;
-  font-weight: 600;
-  color: #333;
-}
-
-tbody tr:hover {
-  background: #f9f9f9;
-}
-
-.text-muted {
-  color: #999;
-}
-
-@media (max-width: 768px) {
-  .date-range-group {
-    flex-direction: column;
-  }
-  
-  .date-input {
-    width: 100%;
-  }
-  
-  .schedule-header {
-    flex-direction: column;
-    gap: 1rem;
-    align-items: flex-start;
-  }
-  
-  table {
-    font-size: 0.9rem;
-  }
-  
-  .filter-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  th, td {
-    padding: 0.5rem;
-  }
-  
-  .position-group {
-    padding: 1rem;
-  }
-  
-  .person-tags {
-    gap: 0.3rem;
-  }
+/* Mobile: keep it calm */
+@media (max-width: 768px){
+  .filters-inline{ justify-content:flex-start; }
+  .kv{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 </style>

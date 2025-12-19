@@ -15,12 +15,12 @@
         <div v-if="isLoading" class="loading"><p>載入中...</p></div>
 
         <div v-else-if="activitiesWithFormattedData.length > 0" class="grid grid-3">
-          <article class="card card--hover" v-for="activity in activitiesWithFormattedData" :key="activity.id">
+          <article class="card card--hover card--activity" v-for="activity in activitiesWithFormattedData" :key="activity.id">
             <div v-if="activity.imageUrl" class="media" style="height:190px">
               <img :src="activity.imageUrl" :alt="activity.title" />
             </div>
 
-            <div style="margin-top:14px">
+            <div class="card__body">
               <h3 class="card__title h3">{{ activity.title }}</h3>
 
               <div class="card__meta" style="margin-top:6px">
@@ -28,15 +28,15 @@
                 <span v-if="activity.location">📍 {{ activity.location }}</span>
               </div>
 
-              <p class="muted" style="margin-top:10px; margin-bottom:0">
+              <p class="muted card__desc">
                 {{ activity.description }}
               </p>
 
-              <div style="margin-top:12px" class="tags" v-if="activity.tags && activity.tags.length">
+              <div class="tags card__tags" v-if="activity.tags && activity.tags.length">
                 <span class="tag" v-for="tag in activity.tags" :key="tag">{{ tag }}</span>
               </div>
 
-              <div style="margin-top:12px">
+              <div class="card__footer">
                 <span class="badge">📅 {{ activity.date }}</span>
               </div>
             </div>
