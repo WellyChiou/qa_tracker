@@ -1,13 +1,10 @@
 <template>
-  <div v-if="show" class="modal-overlay" @click="closeModal">
-    <div class="modal-panel service-schedule-modal" @click.stop>
-      <div class="modal-header">
+  <Teleport to="body">
+    <div v-if="show" class="modal-overlay" @click="closeModal">
+      <div class="modal-panel service-schedule-modal" @click.stop>
+        <div class="modal-header">
         <h2 class="modal-title">{{ modalTitle }}</h2>
-        <button class="btn-close" @click="closeModal">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-          </svg>
-        </button>
+        <button class="btn-close" @click="closeModal" aria-label="關閉">✕</button>
       </div>
       <div class="modal-body">
         <!-- 年份選擇和崗位選擇（僅在新增模式顯示） -->
@@ -111,7 +108,48 @@
               <button @click="exportSchedule" class="btn btn-export">匯出服事表</button>
             </div>
           </div>
-          <div class="schedule-table">
+          <div v-if="mode === 'view'" class="month-cards">
+            <div v-for="m in monthCards" :key="m.key" class="month-card">
+              <div class="month-card__header">
+                <div class="month-card__title">
+                  <span class="month-title">{{ m.title }}</span>
+                  <span class="month-meta">共 {{ m.weekCount }} 週</span>
+                </div>
+              </div>
+              <div class="month-card__weeks">
+                <details v-for="w in m.weeks" :key="w.id" class="week-card">
+                  <summary class="week-card__summary">
+                    <div class="week-card__left">
+                      <div class="week-title">{{ w.title }}</div>
+</div>
+                    <div class="week-card__right">查看明細 ▸</div>
+                  </summary>
+                  <div class="week-card__detail">
+                    <div v-if="w.sat" class="day-block">
+                      <div class="day-block__title">{{ String(w.sat.date).slice(0,10) }}（六）</div>
+                      <div class="day-grid">
+                        <div v-for="posCode in selectedPositionsList" :key="'sat-' + posCode" class="kv">
+                          <div class="k">{{ (props.positionConfig[posCode]?.positionName || posCode) }}</div>
+                          <div class="v">{{ w.sat[posCode] || '-' }}</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div v-if="w.sun" class="day-block">
+                      <div class="day-block__title">{{ String(w.sun.date).slice(0,10) }}（日）</div>
+                      <div class="day-grid">
+                        <div v-for="posCode in selectedPositionsList" :key="'sun-' + posCode" class="kv">
+                          <div class="k">{{ (props.positionConfig[posCode]?.positionName || posCode) }}</div>
+                          <div class="v">{{ w.sun[posCode] || '-' }}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </details>
+              </div>
+            </div>
+          </div>
+
+          <div v-else class="schedule-table">
             <table>
               <thead>
                 <tr>
@@ -179,15 +217,16 @@
             </table>
           </div>
         </div>
+        </div>
+        <!-- 通知組件 -->
+        <Notification ref="notificationRef" />
       </div>
-      <!-- 通知組件 -->
-      <Notification ref="notificationRef" />
     </div>
-  </div>
+  </Teleport>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { apiRequest } from '@/utils/api'
 import Notification from '@/components/Notification.vue'
 
@@ -246,6 +285,190 @@ const selectedPositionsList = computed(() => {
   return Object.keys(props.positionConfig).filter(
     posCode => localSelectedPositions.value[posCode] === true
   )
+})
+
+
+/**
+ * View 模式：月份卡片（方案 B）
+ * - 不改資料流：只用 localSchedule 做前端分組
+ * - 顯示：月份卡片 + 週卡（可展開）+ 缺人提示
+ */
+const isSat = (item) => {
+  const d = String(item?.dayOfWeek ?? '')
+  return d.includes('六') || d.toLowerCase().includes('sat')
+}
+const isSun = (item) => {
+  const d = String(item?.dayOfWeek ?? '')
+  return d.includes('日') || d.toLowerCase().includes('sun')
+}
+const parseDate = (dateStr) => {
+  if (!dateStr) return null
+  if (dateStr instanceof Date) {
+    return isNaN(dateStr.getTime()) ? null : dateStr
+  }
+  // support YYYY-MM-DD
+  let m = String(dateStr).match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (m) {
+    const y = Number(m[1])
+    const mm = Number(m[2]) - 1
+    const dd = Number(m[3])
+    const d = new Date(y, mm, dd)
+    return isNaN(d.getTime()) ? null : d
+  }
+  // support YYYY/MM/DD
+  m = String(dateStr).match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})/)
+  if (m) {
+    const y = Number(m[1])
+    const mm = Number(m[2]) - 1
+    const dd = Number(m[3])
+    const d = new Date(y, mm, dd)
+    return isNaN(d.getTime()) ? null : d
+  }
+  const d = new Date(String(dateStr))
+  return isNaN(d.getTime()) ? null : d
+}
+
+const monthKeyFromDate = (ymd) => {
+  const m = String(ymd).match(/^(\d{4})-(\d{2})-/)
+  return m ? `${m[1]}-${m[2]}` : ''
+}
+const monthTitleOf = (key) => {
+  const m = String(key).match(/^(\d{4})-(\d{2})$/)
+  if (!m) return key
+  return `${m[1]} 年 ${Number(m[2])} 月`
+}
+const startOfWeekMon = (dt) => {
+  const day = dt.getDay()
+  const diff = (day === 0 ? -6 : 1 - day)
+  const res = new Date(dt)
+  res.setDate(dt.getDate() + diff)
+  res.setHours(0,0,0,0)
+  return res
+}
+const weekKeyOfDate = (dt) => {
+  const mon = startOfWeekMon(dt)
+  const y = mon.getFullYear()
+  const m = String(mon.getMonth() + 1).padStart(2, '0')
+  const d = String(mon.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+const safeNamesFrom = (val) => {
+  if (!val) return []
+  if (Array.isArray(val)) return val.filter(Boolean).map(String)
+  if (typeof val === 'string') {
+    return val
+      .split(/[,、/\s]+/g)
+      .map(s => s.trim())
+      .filter(Boolean)
+  }
+  if (typeof val === 'object') {
+    const name = val.name || val.person || val.label
+    return name ? [String(name)] : []
+  }
+  return [String(val)]
+}
+const assignedCountForItem = (item) => {
+  const posCodes = selectedPositionsList.value || []
+  let assigned = 0
+  for (const pos of posCodes) {
+    const names = safeNamesFrom(item?.[pos])
+    if (names.length > 0 && names[0] !== '-') assigned += 1
+  }
+  return assigned
+}
+const totalPositions = computed(() => (selectedPositionsList.value || []).length)
+const missingPositionsForItem = (item) => {
+  const posCodes = selectedPositionsList.value || []
+  const missing = []
+  for (const pos of posCodes) {
+    const names = safeNamesFrom(item?.[pos])
+    if (!names.length || names[0] === '-') {
+      missing.push(props.positionConfig?.[pos]?.positionName || pos)
+    }
+  }
+  return missing
+}
+
+const monthCards = computed(() => {
+  const rows = Array.isArray(localSchedule.value) ? [...localSchedule.value] : []
+  rows.sort((a, b) => String(a?.date || '').localeCompare(String(b?.date || '')))
+
+  // week groups
+  const weeks = new Map()
+  for (const item of rows) {
+    const ymd = String(item?.date || '').slice(0, 10)
+    const dt = parseDate(ymd)
+    if (!dt) continue
+    const wk = weekKeyOfDate(dt)
+    if (!weeks.has(wk)) weeks.set(wk, [])
+    weeks.get(wk).push(item)
+  }
+
+  const weekList = []
+  for (const [wk, items] of weeks.entries()) {
+    const sorted = [...items].sort((a, b) => String(a?.date || '').localeCompare(String(b?.date || '')))
+    const sat = sorted.find(isSat) || null
+    const sun = sorted.find(isSun) || null
+    const anchor = sat || sun || sorted[0]
+    const anchorYMD = String(anchor?.date || '').slice(0,10)
+    const mk = monthKeyFromDate(anchorYMD)
+    weekList.push({ weekKey: wk, monthKey: mk || 'unknown', sat, sun })
+  }
+
+  const months = new Map()
+  for (const w of weekList) {
+    if (!months.has(w.monthKey)) months.set(w.monthKey, [])
+    months.get(w.monthKey).push(w)
+  }
+
+  const keys = [...months.keys()].filter(k => k !== 'unknown').sort()
+  if (months.has('unknown')) keys.push('unknown')
+
+  return keys.map((mk) => {
+    const ws = (months.get(mk) || []).sort((a,b) => a.weekKey.localeCompare(b.weekKey))
+    let monthAssigned = 0
+    let monthTotal = 0
+    for (const w of ws) {
+      for (const d of [w.sat, w.sun]) {
+        if (!d) continue
+        monthAssigned += assignedCountForItem(d)
+        monthTotal += totalPositions.value
+      }
+    }
+    const satAssigned = ws.reduce((acc, w) => acc + (w.sat ? assignedCountForItem(w.sat) : 0), 0)
+    const sunAssigned = ws.reduce((acc, w) => acc + (w.sun ? assignedCountForItem(w.sun) : 0), 0)
+    const satTotal = ws.reduce((acc, w) => acc + (w.sat ? totalPositions.value : 0), 0)
+    const sunTotal = ws.reduce((acc, w) => acc + (w.sun ? totalPositions.value : 0), 0)
+
+    return {
+      key: mk,
+      title: monthTitleOf(mk),
+      weekCount: ws.length,
+      assigned: monthAssigned,
+      total: monthTotal,
+      satAssigned,
+      sunAssigned,
+      satTotal,
+      sunTotal,
+      weeks: ws.map((w, idx) => {
+        const missing = []
+        if (w.sat) missing.push(...missingPositionsForItem(w.sat))
+        if (w.sun) missing.push(...missingPositionsForItem(w.sun))
+        const missingUniq = [...new Set(missing)]
+        const titleParts = []
+        if (w.sat) titleParts.push(`${String(w.sat.date).slice(0,10)}（六）`)
+        if (w.sun) titleParts.push(`${String(w.sun.date).slice(0,10)}（日）`)
+        return {
+          id: `${mk}-${w.weekKey}-${idx}`,
+          title: titleParts.join(' ・ '),
+          sat: w.sat,
+          sun: w.sun,
+          missing: missingUniq.slice(0, 3),
+          missingCount: missingUniq.length,
+        }
+      })
+    }
+  })
 })
 
 // 計算年度（從日期範圍的開始日期）
@@ -431,26 +654,6 @@ const showNotification = (message, type = 'info', duration = 3000) => {
   }
 }
 
-// 工具函數：解析日期
-const parseDate = (dateStr) => {
-  if (!dateStr) return null
-  if (dateStr instanceof Date) {
-    return isNaN(dateStr.getTime()) ? null : dateStr
-  }
-  let date = new Date(dateStr)
-  if (isNaN(date.getTime())) {
-    const match = String(dateStr).match(/^(\d{4})-(\d{2})-(\d{2})/)
-    if (match) {
-      date = new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]))
-    } else {
-      const match2 = String(dateStr).match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})/)
-      if (match2) {
-        date = new Date(parseInt(match2[1]), parseInt(match2[2]) - 1, parseInt(match2[3]))
-      }
-    }
-  }
-  return isNaN(date.getTime()) ? null : date
-}
 
 // 工具函數：格式化日期為 ISO 格式
 const formatDateISO = (date) => {
@@ -1644,6 +1847,54 @@ const getAvailablePersons = (item, posCode) => {
   return availablePersons
 }
 
+// 阻止背景滾動
+let scrollY = 0
+const lockBodyScroll = () => {
+  scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop
+  const body = document.body
+  const html = document.documentElement
+  
+  // 保存當前滾動位置
+  body.style.position = 'fixed'
+  body.style.top = `-${scrollY}px`
+  body.style.width = '100%'
+  body.style.overflow = 'hidden'
+  html.style.overflow = 'hidden'
+}
+
+const unlockBodyScroll = () => {
+  const body = document.body
+  const html = document.documentElement
+  
+  body.style.position = ''
+  body.style.top = ''
+  body.style.width = ''
+  body.style.overflow = ''
+  html.style.overflow = ''
+  
+  // 恢復滾動位置
+  if (scrollY !== undefined) {
+    window.scrollTo(0, scrollY)
+  }
+}
+
+// 監聽 show 變化，控制背景滾動
+watch(() => props.show, (newVal) => {
+  if (newVal) {
+    // 延遲一點確保 DOM 已更新
+    setTimeout(() => {
+      lockBodyScroll()
+    }, 0)
+  } else {
+    unlockBodyScroll()
+  }
+}, { immediate: true })
+
+// 組件卸載時確保恢復滾動
+onUnmounted(() => {
+  unlockBodyScroll()
+})
+
 onMounted(() => {
   initializePositionSelection()
 })
@@ -1652,16 +1903,28 @@ onMounted(() => {
 <style scoped>
 /* Modal 基礎樣式 */
 .modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  min-height: 100vh !important;
+  max-height: 100vh !important;
+  background: rgba(0, 0, 0, 0.5) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 99999 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  /* 確保覆蓋所有元素 */
+  pointer-events: auto !important;
 }
 
 .modal-panel {
@@ -1701,6 +1964,8 @@ onMounted(() => {
   border: none;
   cursor: pointer;
   padding: 0.5rem;
+  font-size: 20px;
+  line-height: 1;
   color: #666;
   display: flex;
   align-items: center;
@@ -1708,7 +1973,8 @@ onMounted(() => {
 }
 
 .btn-close:hover {
-  color: #333;
+  color: #333;  background: rgba(0,0,0,0.04);
+  border-radius: 8px;
 }
 
 .modal-body {
@@ -2220,5 +2486,361 @@ th {
 .btn-clear-day:active {
   transform: translateY(0);
 }
-</style>
 
+
+/* =============================
+   UI Refresh (Comfort/Polish A)
+   Beautify "檢視" 詳細資料（不動資料流）
+   ============================= */
+
+.modal-panel{
+  border-radius:24px;
+  box-shadow:0 24px 70px rgba(15,23,42,.18);
+  border:1px solid rgba(15,23,42,.08);
+}
+
+.modal-header{
+  padding:20px 22px;
+  background:linear-gradient(180deg, rgba(248,250,252,.96), rgba(255,255,255,.92));
+  border-bottom:1px solid rgba(15,23,42,.08);
+}
+
+.modal-title{
+  font-size:20px;
+  letter-spacing:.2px;
+  color:#0f172a;
+}
+
+.modal-body{
+  padding:18px 18px 22px;
+  background:
+    radial-gradient(1200px 600px at 20% -10%, rgba(16,185,129,.09), rgba(255,255,255,0)),
+    radial-gradient(900px 500px at 90% 0%, rgba(59,130,246,.06), rgba(255,255,255,0)),
+    #fff;
+}
+
+.card{
+  border-radius:18px;
+  box-shadow:0 10px 30px rgba(15,23,42,.08);
+  border:1px solid rgba(15,23,42,.06);
+}
+
+.schedule-header{
+  align-items:flex-start;
+  gap:14px;
+}
+
+.schedule-title-section h3{
+  font-size:18px;
+  margin:0;
+  color:#0f172a;
+}
+
+.year-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 10px;
+  border-radius:999px;
+  background:rgba(16,185,129,.10);
+  color:#065f46;
+  border:1px solid rgba(16,185,129,.18);
+  font-weight:700;
+}
+
+.editing-badge{
+  margin-left:10px;
+  font-size:12px;
+  padding:4px 8px;
+  border-radius:999px;
+  background:rgba(59,130,246,.10);
+  border:1px solid rgba(59,130,246,.16);
+  color:#1d4ed8;
+}
+
+.schedule-actions .btn-export{
+  background:linear-gradient(180deg, #0ea5e9, #0284c7);
+  border:none;
+  color:#fff;
+  box-shadow:0 10px 18px rgba(2,132,199,.22);
+}
+
+.schedule-actions .btn-save{
+  background:linear-gradient(180deg, #16a34a, #15803d);
+  border:none;
+  color:#fff;
+  box-shadow:0 10px 18px rgba(21,128,61,.20);
+}
+
+.schedule-actions .btn-cancel{
+  background:#fff;
+  border:1px solid rgba(15,23,42,.14);
+  color:#0f172a;
+}
+
+.schedule-table{
+  border-radius:16px;
+  overflow:hidden;
+  border:1px solid rgba(15,23,42,.08);
+  background:#fff;
+}
+
+.schedule-table table{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0;
+  font-size:14px;
+}
+
+.schedule-table thead th{
+  position:sticky;
+  top:0;
+  z-index:2;
+  background:linear-gradient(180deg, rgba(248,250,252,.98), rgba(241,245,249,.95));
+  color:#0f172a;
+  font-weight:700;
+  border-bottom:1px solid rgba(15,23,42,.08);
+}
+
+.schedule-table th,
+.schedule-table td{
+  padding:12px 12px;
+  border-bottom:1px solid rgba(15,23,42,.06);
+  vertical-align:top;
+}
+
+.schedule-table tbody tr:nth-child(even) td{
+  background:rgba(248,250,252,.65);
+}
+
+.date-column{
+  min-width:160px;
+  white-space:nowrap;
+}
+
+.position-cell{
+  min-width:140px;
+}
+
+.position-header-content{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+}
+
+.position-header-name{
+  line-height:1.1;
+}
+
+.btn-auto-assign-header{
+  border:1px solid rgba(15,23,42,.12);
+  background:#fff;
+  border-radius:10px;
+  padding:4px 8px;
+}
+
+.btn-auto-assign-header:hover{
+  background:rgba(15,23,42,.04);
+}
+
+.btn-clear-day{
+  border-radius:10px;
+  border:1px solid rgba(15,23,42,.12);
+  background:#fff;
+}
+
+.btn-clear-day:hover{
+  background:rgba(15,23,42,.04);
+}
+
+.person-multi-select .edit-select{
+  border-radius:14px;
+  border:1px solid rgba(15,23,42,.14);
+  padding:10px;
+  background:rgba(255,255,255,.9);
+}
+
+.selected-persons{
+  margin-top:8px;
+  border-radius:12px;
+  padding:8px 10px;
+  background:rgba(16,185,129,.08);
+  border:1px solid rgba(16,185,129,.12);
+}
+
+@media (max-width: 768px){
+  .service-schedule-modal{ width:96vw; }
+  .schedule-table{ overflow:auto; }
+  .schedule-table table{ min-width: 900px; }
+}
+
+
+
+/* ===== 月份卡片檢視（View 模式） ===== */
+.month-cards{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+.month-card{
+  border:1px solid #eef0f2;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfbfc 100%);
+  border-radius:14px;
+  padding:14px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+}
+.month-card__header{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  padding-bottom:10px;
+  border-bottom:1px dashed #e7e9ec;
+}
+.month-card__title{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.month-title{
+  font-size:1.05rem;
+  font-weight:700;
+  color:#1f2937;
+}
+.month-meta{
+  font-size:.85rem;
+  color:#6b7280;
+}
+.month-card__summary{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  justify-content:flex-end;
+}
+.pill{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  font-size:.85rem;
+  color:#374151;
+  background:#f3f4f6;
+  border:1px solid #e5e7eb;
+  padding:6px 10px;
+  border-radius:999px;
+}
+.month-card__weeks{
+  margin-top:12px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.week-card{
+  border:1px solid #eef0f2;
+  border-radius:12px;
+  background:#fff;
+  overflow:hidden;
+}
+.week-card__summary{
+  list-style:none;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:12px 12px;
+  cursor:pointer;
+}
+.week-card__summary::-webkit-details-marker{display:none;}
+.week-title{
+  font-weight:650;
+  color:#111827;
+}
+.week-missing{
+  margin-top:4px;
+  font-size:.85rem;
+  color:#b45309;
+}
+.week-ok{
+  margin-top:4px;
+  font-size:.85rem;
+  color:#047857;
+}
+.week-card__right{
+  font-size:.9rem;
+  color:#4b5563;
+  white-space:nowrap;
+}
+.week-card__detail{
+  padding:12px;
+  border-top:1px solid #f1f2f4;
+  background:#fcfcfd;
+}
+.day-block + .day-block{
+  margin-top:12px;
+}
+.day-block__title{
+  font-weight:700;
+  font-size:.9rem;
+  color:#1f2937;
+  margin-bottom:8px;
+}
+.day-grid{
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap:10px;
+}
+.kv{
+  border:1px solid #eef0f2;
+  background:#fff;
+  border-radius:10px;
+  padding:10px;
+}
+.k{
+  font-size:.8rem;
+  color:#6b7280;
+  margin-bottom:4px;
+}
+.v{
+  font-size:.95rem;
+  color:#111827;
+  font-weight:600;
+  word-break:break-word;
+}
+@media (max-width: 768px){
+  .month-card__header{flex-direction:column; align-items:flex-start;}
+  .month-card__summary{justify-content:flex-start;}
+  .day-grid{grid-template-columns: 1fr;}
+}
+
+
+/* ===== UI polish: month summary lines + week counts (screen) ===== */
+.month-card__summary{
+  display:grid;
+  gap:6px;
+  justify-items:end;
+  text-align:right;
+}
+.month-card__summary .sum-line{
+  font-size:.85rem;
+  color:#6b7280;
+  line-height:1.2;
+}
+
+/* ===== Print summary mode (print/PDF only) ===== */
+
+/* ===== Print summary mode (only in print/PDF) ===== */
+@media print {
+  .modal-overlay { background: transparent !important; padding: 0 !important; }
+  .service-schedule-modal { max-height: none !important; box-shadow: none !important; border-radius: 0 !important; }
+  .btn-close, .schedule-actions, .week-card__right { display: none !important; }
+  .week-card__detail { display: none !important; }
+  details.week-card { border: 1px solid #ddd !important; break-inside: avoid; }
+  summary.week-card__summary { padding: 10px 12px !important; }
+  .month-card { break-inside: avoid; page-break-inside: avoid; }
+  .month-card__header { border-bottom: 1px solid #ddd !important; padding-bottom: 8px !important; }
+  .month-card__summary { text-align: right !important; }
+  .month-card__summary .sum-line { display: block !important; color: #000 !important; }
+  .week-title { font-weight: 600 !important; }
+}
+
+</style>
