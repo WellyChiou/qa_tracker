@@ -188,6 +188,64 @@ body {
 }
 
 
+
+
+/* ============================================
+   Buttons (global polish)
+   - 不改 API / 邏輯，只統一視覺與互動
+   ============================================ */
+
+button, .btn {
+  font-family: inherit;
+}
+
+/* Bootstrap btn 微調（如果頁面用到 bootstrap btn） */
+.btn {
+  border-radius: 999px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  transition: var(--transition-fast);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+
+/* 讓常用的小按鈕也一致 */
+.btn-sm {
+  border-radius: 999px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+/* 角色 / 權限 pill（全域後備，避免其它頁面未定義） */
+.btn-roles, .btn-permissions {
+  border-radius: 999px;
+  border: 2px solid #e5e7eb;
+  background: #fff;
+  color: #0f172a;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  transition: var(--transition-fast);
+}
+
+.btn-roles:hover, .btn-permissions:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+
+.btn-permissions {
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.35);
+  color: #2f6d4a;
+}
+
+.btn-permissions:hover {
+  background: rgba(34, 197, 94, 0.16);
+  border-color: rgba(34, 197, 94, 0.45);
+}
+
 /* =========================
    Dual list picker (roles/permissions)
    ========================= */
@@ -200,7 +258,7 @@ body {
   flex:1;
   min-width:0;
   background: var(--bg-card);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   overflow:hidden;
   box-shadow: var(--shadow-sm);
@@ -210,7 +268,7 @@ body {
   font-weight:700;
   font-size: 14px;
   background: rgba(255,255,255,0.55);
-  border-bottom:1px solid var(--border);
+  border-bottom:1px solid var(--border-color);
 }
 .dual-list{
   padding:10px 10px;
@@ -228,7 +286,7 @@ body {
 }
 .dual-item:hover{
   background: rgba(255,255,255,0.55);
-  border-color: var(--border);
+  border-color: var(--border-color);
 }
 .dual-item-main{ min-width:0; flex:1; }
 .dual-item-title{
@@ -266,5 +324,132 @@ body {
     width:100%;
     flex-direction:row;
     justify-content:space-between;
+  }
+}
+
+
+/* =========================
+   Pickboard (role/permission editor)
+   ========================= */
+.pickboard{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.pick-col{
+  background: rgba(255,255,255,0.65);
+  border: 1px solid var(--border-color);
+  border-radius: 18px;
+  overflow:hidden;
+  box-shadow: var(--shadow-sm);
+}
+.pick-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-color);
+  background: rgba(255,255,255,0.55);
+}
+.pick-title{
+  font-weight: 900;
+  font-size: 22px;
+  letter-spacing: 0.5px;
+}
+.pick-search{
+  width: 52%;
+  min-width: 200px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border-color);
+  background: rgba(255,255,255,0.85);
+  outline: none;
+}
+.pick-search:focus{
+  box-shadow: 0 0 0 4px rgba(102,126,234,0.15);
+  border-color: rgba(102,126,234,0.55);
+}
+.pick-list{
+  padding: 14px;
+  max-height: 420px;
+  overflow: auto;
+}
+.pick-item{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 12px;
+  padding: 14px 14px;
+  margin-bottom: 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(17,24,39,0.08);
+  background: rgba(255,255,255,0.75);
+}
+.pick-item:last-child{
+  margin-bottom: 0;
+}
+.pick-main{
+  min-width:0;
+}
+.pick-name{
+  font-weight: 900;
+  font-size: 22px;
+  color: #111827;
+  line-height: 1.1;
+}
+.pick-code{
+  margin-top: 6px;
+  font-weight: 800;
+  font-size: 18px;
+  color: #64748b;
+}
+.pick-sub{
+  margin-top: 8px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+.pick-empty{
+  padding: 18px 10px;
+  text-align:center;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.btn-pill{
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-weight: 900;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all .18s ease;
+  white-space: nowrap;
+}
+.btn-pill-primary{
+  background: rgba(102,126,234,0.14);
+  border-color: rgba(102,126,234,0.25);
+  color: #3056d3;
+}
+.btn-pill-primary:hover{
+  background: rgba(102,126,234,0.20);
+  transform: translateY(-1px);
+}
+.btn-pill-danger{
+  background: rgba(239,68,68,0.12);
+  border-color: rgba(239,68,68,0.20);
+  color: #e11d48;
+}
+.btn-pill-danger:hover{
+  background: rgba(239,68,68,0.16);
+  transform: translateY(-1px);
+}
+
+@media (max-width: 900px){
+  .pickboard{
+    grid-template-columns: 1fr;
+  }
+  .pick-search{
+    width: 100%;
+    min-width: 0;
   }
 }

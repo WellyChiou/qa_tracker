@@ -360,22 +360,6 @@ onMounted(loadMenus)
   transition: all 0.2s;
 }
 
-.btn-edit {
-  background: #3b82f6;
-}
-
-.btn-edit:hover {
-  background: #2563eb;
-}
-
-.btn-delete {
-  background: #ef4444;
-}
-
-.btn-delete:hover {
-  background: #dc2626;
-}
-
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -535,4 +519,73 @@ onMounted(loadMenus)
   from { transform: translateY(100%); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
+/* ============================================
+   Icon buttons: 編輯 / 刪除（參考教會後台風格）
+   - 不影響 API / 邏輯，只統一視覺
+   ============================================ */
+.btn-edit, .btn-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.18s ease;
+  background: transparent;
+}
+
+.btn-sm.btn-edit, .btn-sm.btn-delete {
+  padding: 0.55rem 1.15rem;
+  font-size: 0.9rem;
+}
+
+.btn-edit {
+  color: #1d4ed8;
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.btn-edit:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  transform: translateY(-1px);
+}
+
+.btn-delete {
+  color: #b91c1c;
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.btn-delete:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  transform: translateY(-1px);
+}
+
+.btn-edit::before,
+.btn-delete::before {
+  content: "";
+  width: 20px;
+  height: 20px;
+  display: inline-block;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 20px 20px;
+  flex: 0 0 20px;
+}
+
+.btn-edit::before {
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%231d4ed8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M12%2020h9%22/%3E%3Cpath%20d%3D%22M16.5%203.5a2.121%202.121%200%200%201%203%203L7%2019l-4%201%201-4%2012.5-12.5z%22/%3E%3C/svg%3E");
+}
+
+.btn-delete::before {
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23b91c1c%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%223%206%205%206%2021%206%22/%3E%3Cpath%20d%3D%22M19%206l-1%2014a2%202%200%200%201-2%202H8a2%202%200%200%201-2-2L5%206%22/%3E%3Cpath%20d%3D%22M10%2011v6%22/%3E%3Cpath%20d%3D%22M14%2011v6%22/%3E%3Cpath%20d%3D%22M9%206V4a2%202%200%200%201%202-2h2a2%202%200%200%201%202%202v2%22/%3E%3C/svg%3E");
+}
+
 </style>
