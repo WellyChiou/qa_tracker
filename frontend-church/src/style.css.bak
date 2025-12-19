@@ -396,27 +396,3 @@ a:hover { text-decoration: underline; }
   padding: 32px;
   color: var(--muted);
 }
-
-/* --- UI bonus: fixed page background (avoid footer seam) --- */
-.page-bg{
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    radial-gradient(1200px 600px at 20% 0%, rgba(31, 157, 106, 0.10), transparent 60%),
-    radial-gradient(900px 500px at 90% 10%, rgba(244, 180, 0, 0.08), transparent 55%),
-    linear-gradient(180deg, rgba(15,23,42,.02), rgba(15,23,42,.00) 40%);
-}
-
-/* --- UI bonus: router page transition --- */
-.page-enter-active, .page-leave-active { transition: opacity .18s ease, transform .18s ease; }
-.page-enter-from { opacity: 0; transform: translateY(6px); }
-.page-leave-to   { opacity: 0; transform: translateY(-4px); }
-
-/* --- UI bonus: v-reveal scroll reveal --- */
-.reveal{ opacity: 0; transform: translateY(10px); transition: opacity .35s ease, transform .35s ease; will-change: opacity, transform; }
-.reveal.is-revealed{ opacity: 1; transform: translateY(0); }
-@media (prefers-reduced-motion: reduce){
-  .reveal, .reveal.is-revealed{ transition: none; transform: none; opacity: 1; }
-}

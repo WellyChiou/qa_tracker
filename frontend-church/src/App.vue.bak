@@ -1,6 +1,5 @@
 <template>
   <div id="app">
-    <div class="page-bg" aria-hidden="true"></div>
     <header class="topbar">
       <div class="container topbar__inner">
         <router-link to="/" class="brand" @click="closeMenu">
@@ -28,11 +27,7 @@
     </header>
 
     <main class="main">
-      <router-view v-slot="{ Component }">
-  <transition name="page" mode="out-in">
-    <component :is="Component" />
-  </transition>
-</router-view>
+      <router-view />
     </main>
 
     <footer class="footer">

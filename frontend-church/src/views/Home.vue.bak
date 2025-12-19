@@ -21,7 +21,7 @@
     </section>
 
     <!-- 聚會時間 -->
-    <section class="section" v-reveal v-if="churchInfo">
+    <section class="section" v-if="churchInfo">
       <div class="container">
         <div class="center" style="margin-bottom:18px">
           <h2 class="h2">聚會時間</h2>
@@ -51,7 +51,7 @@
     </section>
 
     <!-- 最新活動 -->
-    <section class="section section--tight" v-reveal v-if="upcomingActivities && upcomingActivities.length > 0">
+    <section class="section section--tight" v-if="upcomingActivities && upcomingActivities.length > 0">
       <div class="container">
         <div class="center" style="margin-bottom:18px">
           <h2 class="h2">最新活動</h2>

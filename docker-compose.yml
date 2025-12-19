@@ -41,7 +41,7 @@ services:
         tag: "{{.Name}}"
     volumes:
       #- /root/project/work/uploads/church:/app/uploads/church
-      - ../uploads/church:/app/uploads/church
+      - ../uploads:/app/uploads
       #- /root/project/work/backups:/app/backups
       - ../backups:/app/backups
       #- /root/project/work/logs/backend:/app/logs
