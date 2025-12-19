@@ -34,11 +34,8 @@ public class UploadController {
     @PostMapping("/upload")
     public ResponseEntity<Map<String, String>> uploadFile(@RequestParam("file") MultipartFile file) throws IOException {
 
-
         // 從資料庫讀取最新的 Max File Size
         long MAX_FILE_SIZE = personalConfigurationRefreshService.getConfigValueAsInt("public.max-file-size", 10);
-
-        log.info("🎯 MAX_FILE_SIZE: {}", MAX_FILE_SIZE);
 
         // 檢查檔案大小（MB 限制）
         if (file.getSize() > (MAX_FILE_SIZE * 1024 * 1024)) {
