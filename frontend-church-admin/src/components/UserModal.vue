@@ -48,20 +48,6 @@
         </div>
         
         <div class="form-group">
-          <label>角色</label>
-          <div class="checkbox-group">
-            <label v-for="role in availableRoles" :key="role.id" class="checkbox-label">
-              <input
-                type="checkbox"
-                :value="role.id"
-                v-model="formData.roleIds"
-              />
-              <span>{{ role.roleName }}</span>
-            </label>
-          </div>
-        </div>
-        
-        <div class="form-group">
           <label>狀態</label>
           <div class="radio-group">
             <label class="radio-label">
@@ -103,10 +89,6 @@ import { apiRequest } from '@/utils/api'
 const props = defineProps({
   show: Boolean,
   user: Object,
-  availableRoles: {
-    type: Array,
-    default: () => []
-  }
 })
 
 const emit = defineEmits(['close', 'saved'])
@@ -119,9 +101,7 @@ const formData = ref({
   username: '',
   password: '',
   email: '',
-  displayName: '',
-  roleIds: [],
-  isEnabled: true
+  displayName: '',  isEnabled: true
 })
 
 watch(() => props.show, (newVal) => {
@@ -132,9 +112,7 @@ watch(() => props.show, (newVal) => {
         username: props.user.username || '',
         password: '',
         email: props.user.email || '',
-        displayName: props.user.displayName || '',
-        roleIds: props.user.roles ? props.user.roles.map(r => r.id) : [],
-        isEnabled: props.user.isEnabled !== false
+        displayName: props.user.displayName || '',        isEnabled: props.user.isEnabled !== false
       }
     } else {
       isEdit.value = false
@@ -142,9 +120,7 @@ watch(() => props.show, (newVal) => {
         username: '',
         password: '',
         email: '',
-        displayName: '',
-        roleIds: [],
-        isEnabled: true
+        displayName: '',        isEnabled: true
       }
     }
     error.value = ''
@@ -170,11 +146,10 @@ const handleSubmit = async () => {
       username: formData.value.username,
       email: formData.value.email,
       displayName: formData.value.displayName,
-      isEnabled: formData.value.isEnabled,
-      roles: formData.value.roleIds.map(id => ({ id }))
+      isEnabled: formData.value.isEnabled
     }
     
-    if (formData.value.password) {
+    if (!isEdit.value && formData.value.password) {
       payload.password = formData.value.password
     }
     

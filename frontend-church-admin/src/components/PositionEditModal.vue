@@ -73,6 +73,10 @@
         </div>
       </div>
       <div class="modal-footer">
+        <button v-if="isDirty" @click="saveChanges" class="btn btn-primary" :disabled="saving">
+          <span v-if="saving" class="spinner" aria-hidden="true"></span>
+          {{ saving ? "儲存中..." : "儲存變更" }}
+        </button>
         <button @click="closeModal" class="btn btn-secondary">關閉</button>
       </div>
     </div>
@@ -115,6 +119,15 @@ const emit = defineEmits(['close', 'updated'])
 
 const saturdayPersons = ref([])
 const sundayPersons = ref([])
+const originalSaturdayPersons = ref([])
+const originalSundayPersons = ref([])
+const saving = ref(false)
+
+const clone = (v) => JSON.parse(JSON.stringify(v || []))
+const isDirty = computed(() => {
+  return JSON.stringify(saturdayPersons.value || []) !== JSON.stringify(originalSaturdayPersons.value || []) ||
+         JSON.stringify(sundayPersons.value || []) !== JSON.stringify(originalSundayPersons.value || [])
+})
 const showAddPersonModal = ref(false)
 const addingDayType = ref(null)
 
@@ -134,85 +147,26 @@ const loadPositionPersons = async () => {
     const result = await response.json()
     saturdayPersons.value = result.persons?.saturday || []
     sundayPersons.value = result.persons?.sunday || []
+    originalSaturdayPersons.value = clone(saturdayPersons.value)
+    originalSundayPersons.value = clone(sundayPersons.value)
   } catch (error) {
     console.error('載入崗位人員失敗：', error)
     toast.error('載入崗位人員失敗：' + error.message)
   }
 }
 
-const updateIncludeInAutoSchedule = async (dayType, person, includeInAutoSchedule) => {
-  if (!person.id) {
-    console.error('人員 ID 不存在')
-    return
-  }
-
-  try {
-    const response = await apiRequest(
-      `/church/positions/position-persons/${person.id}/include-in-auto-schedule`,
-      {
-        method: 'PUT',
-        body: JSON.stringify({ includeInAutoSchedule })
-      },
-      '更新設定中...'
-    )
-    
-    const result = await response.json()
-    
-    if (response.ok && result.success !== false) {
-      // 更新本地狀態
-      if (dayType === 'saturday') {
-        const index = saturdayPersons.value.findIndex(p => p.id === person.id)
-        if (index !== -1) {
-          saturdayPersons.value[index].includeInAutoSchedule = includeInAutoSchedule
-        }
-      } else {
-        const index = sundayPersons.value.findIndex(p => p.id === person.id)
-        if (index !== -1) {
-          sundayPersons.value[index].includeInAutoSchedule = includeInAutoSchedule
-        }
-      }
-      // 傳遞 position.id 給父組件，讓它只更新該崗位的人數
-      emit('updated', props.position?.id)
-    } else {
-      console.error('更新失敗響應：', result)
-      toast.error('更新失敗：' + (result.error || '未知錯誤'))
-      // 恢復 checkbox 狀態
-      await loadPositionPersons()
-    }
-  } catch (error) {
-    console.error('更新設定失敗：', error)
-    toast.error('更新失敗：' + (error.message || '網絡錯誤'))
-    // 恢復 checkbox 狀態
-    await loadPositionPersons()
+const updateIncludeInAutoSchedule = (dayType, person, includeInAutoSchedule) => {
+  const list = dayType === 'saturday' ? saturdayPersons.value : sundayPersons.value
+  const idx = list.findIndex(p => p.id === person.id)
+  if (idx >= 0) {
+    list[idx].includeInAutoSchedule = includeInAutoSchedule
   }
 }
 
-const removePerson = async (dayType, person) => {
-  if (!confirm(`確定要從${dayType === 'saturday' ? '週六' : '週日'}移除 ${person.personName || person.displayName} 嗎？`)) {
-    return
-  }
-
-  try {
-    const response = await apiRequest(
-      `/church/positions/${props.position.id}/persons/${person.personId}?dayType=${dayType}`,
-      { method: 'DELETE' },
-      '移除人員中...'
-    )
-    
-    const result = await response.json()
-    
-    if (response.ok && result.success !== false) {
-      await loadPositionPersons()
-      // 傳遞 position.id 給父組件，讓它只更新該崗位的人數
-      emit('updated', props.position?.id)
-    } else {
-      console.error('移除失敗響應：', result)
-      toast.error('移除失敗：' + (result.error || '未知錯誤'))
-    }
-  } catch (error) {
-    console.error('移除人員失敗：', error)
-    toast.error('移除失敗：' + (error.message || '網絡錯誤'))
-  }
+const removePerson = (dayType, person) => {
+  const list = dayType === 'saturday' ? saturdayPersons.value : sundayPersons.value
+  const idx = list.findIndex(p => p.personId === person.personId)
+  if (idx >= 0) list.splice(idx, 1)
 }
 
 const openAddPersonModal = (dayType) => {
@@ -229,6 +183,64 @@ const handlePersonAdded = async () => {
   await loadPositionPersons()
   // 傳遞 position.id 給父組件，讓它只更新該崗位的人數
   emit('updated', props.position?.id)
+}
+
+
+const saveChanges = async () => {
+  if (!isDirty.value || !props.position?.id) return
+  saving.value = true
+  try {
+    const positionId = props.position.id
+
+    const syncDay = async (dayType, draftList, origList) => {
+      const draftIds = new Set((draftList || []).map(p => p.personId))
+      const origIds = new Set((origList || []).map(p => p.personId))
+
+      // 新增
+      for (const p of (draftList || [])) {
+        if (!origIds.has(p.personId)) {
+          await apiRequest(`/church/positions/${positionId}/persons/${p.personId}?dayType=${dayType}`, { method: 'POST' })
+        }
+      }
+
+      // 移除
+      for (const p of (origList || [])) {
+        if (!draftIds.has(p.personId)) {
+          await apiRequest(`/church/positions/${positionId}/persons/${p.personId}?dayType=${dayType}`, { method: 'DELETE' })
+        }
+      }
+    }
+
+    await syncDay('saturday', saturdayPersons.value, originalSaturdayPersons.value)
+    await syncDay('sunday', sundayPersons.value, originalSundayPersons.value)
+
+    // includeInAutoSchedule（只對已存在的關係 id 生效）
+    const updateInclude = async (draftList, origList) => {
+      const origById = new Map((origList || []).filter(p => p.id).map(p => [p.id, p]))
+      for (const p of (draftList || [])) {
+        if (!p.id) continue
+        const o = origById.get(p.id)
+        if (o && o.includeInAutoSchedule !== p.includeInAutoSchedule) {
+          await apiRequest(`/church/positions/position-persons/${p.id}/include-in-auto-schedule`, {
+            method: 'PATCH',
+            body: JSON.stringify({ includeInAutoSchedule: p.includeInAutoSchedule }),
+            credentials: 'include'
+          })
+        }
+      }
+    }
+    await updateInclude(saturdayPersons.value, originalSaturdayPersons.value)
+    await updateInclude(sundayPersons.value, originalSundayPersons.value)
+
+    toast.success('人員設定已儲存')
+    await loadPositionPersons()
+    closeModal()
+  } catch (e) {
+    console.error(e)
+    toast.error('儲存失敗：' + (e?.message || '未知錯誤'))
+  } finally {
+    saving.value = false
+  }
 }
 
 const closeModal = () => {
@@ -472,4 +484,3 @@ watch([() => props.show, () => props.position?.id], ([newShow, newPositionId]) =
   background-position:0 0, 0 100%, 0 0, 0 100%;
 }
 </style>
-

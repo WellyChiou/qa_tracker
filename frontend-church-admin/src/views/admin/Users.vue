@@ -7,8 +7,19 @@
       </div>
 
       <!-- 查詢條件 -->
-      <section class="filters">
-        <h3>查詢條件</h3>
+      <details class="filters filters--collapsible" open>
+        <summary>
+          <div class="filters__title">
+            <h3>查詢條件</h3>
+            <span class="filters__badge">點擊可收合</span>
+          </div>
+          <div class="filters__chev" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 9l6 6 6-6"/>
+            </svg>
+          </div>
+        </summary>
+        <div class="filters__content">
         <div class="filter-grid">
           <div class="filter-group">
             <label>用戶名</label>
@@ -49,7 +60,8 @@
             <button @click="resetFilters" class="btn btn-secondary">清除條件</button>
           </div>
         </div>
-      </section>
+        </div>
+      </details>
 
       <div class="users-list">
         <div v-if="filteredList.length === 0" class="empty-state">
@@ -67,7 +79,7 @@
                 <th>電子郵件</th>
                 <th>角色</th>
                 <th>狀態</th>
-                <th>操作</th>
+                <th class="col-actions">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -86,12 +98,10 @@
                     {{ user.isEnabled ? '啟用' : '停用' }}
                   </span>
                 </td>
-                <td>
-                  <button @click="editUser(user.uid)" class="btn btn-edit">編輯</button>
+                <td><div class="table-actions"><button @click="editUser(user.uid)" class="btn btn-edit"><span class="btn__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></span><span>編輯</span></button>
                   <button @click="editRoles(user)" class="btn btn-roles">角色</button>
                   <button @click="editPermissions(user)" class="btn btn-permissions">權限</button>
-                  <button @click="deleteUser(user.uid)" class="btn btn-delete">刪除</button>
-                </td>
+                  <button @click="deleteUser(user.uid)" class="btn btn-delete"><span class="btn__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span><span>刪除</span></button></div></td>
               </tr>
             </tbody>
           </table>
@@ -135,7 +145,6 @@
     <UserModal
       :show="showModal"
       :user="selectedUser"
-      :available-roles="availableRoles"
       @close="closeModal"
       @saved="handleSaved"
     />
@@ -148,16 +157,40 @@
           <button class="btn-close" @click="closeRolesModal">×</button>
         </div>
         <div class="modal-body">
-          <div class="roles-list">
-            <label v-for="role in availableRoles" :key="role.id" class="role-item">
-              <input 
-                type="checkbox" 
-                :value="role.id" 
-                v-model="selectedRoleIds"
-                class="checkbox-input" />
-              <span>{{ role.roleName }}</span>
-              <small v-if="role.description" class="role-description">{{ role.description }}</small>
-            </label>
+          <div class="transfer">
+            <div class="transfer-col">
+              <div class="transfer-head">
+                <span>未加入</span>
+                <input v-model="roleSearchLeft" class="transfer-search" placeholder="搜尋角色…" />
+              </div>
+              <div class="transfer-list">
+                <div v-for="r in filteredAvailableRoles" :key="r.id" class="transfer-item">
+                  <div class="transfer-item-main">
+                    <div class="transfer-title">{{ r.roleName }}</div>
+                    <div class="transfer-sub" v-if="r.description">{{ r.description }}</div>
+                  </div>
+                  <button type="button" class="mini-btn" @click="addRole(r.id)">加入</button>
+                </div>
+                <div v-if="filteredAvailableRoles.length === 0" class="transfer-empty">沒有可加入的角色</div>
+              </div>
+            </div>
+
+            <div class="transfer-col">
+              <div class="transfer-head">
+                <span>已加入</span>
+                <input v-model="roleSearchRight" class="transfer-search" placeholder="搜尋已加入…" />
+              </div>
+              <div class="transfer-list">
+                <div v-for="r in filteredSelectedRoles" :key="r.id" class="transfer-item">
+                  <div class="transfer-item-main">
+                    <div class="transfer-title">{{ r.roleName }}</div>
+                    <div class="transfer-sub" v-if="r.description">{{ r.description }}</div>
+                  </div>
+                  <button type="button" class="mini-btn mini-btn--danger" @click="removeRole(r.id)">移除</button>
+                </div>
+                <div v-if="filteredSelectedRoles.length === 0" class="transfer-empty">尚未加入任何角色</div>
+              </div>
+            </div>
           </div>
           <div class="form-actions">
             <button type="button" class="btn btn-primary" @click="saveRoles">儲存角色</button>
@@ -175,15 +208,40 @@
           <button class="btn-close" @click="closePermissionsModal">×</button>
         </div>
         <div class="modal-body">
-          <div class="permissions-list">
-            <label v-for="permission in availablePermissions" :key="permission.id" class="permission-item">
-              <input 
-                type="checkbox" 
-                :value="permission.id" 
-                v-model="selectedPermissionIds"
-                class="checkbox-input" />
-              <span>{{ permission.permissionName }} <code class="permission-code">({{ permission.permissionCode }})</code></span>
-            </label>
+          <div class="transfer">
+            <div class="transfer-col">
+              <div class="transfer-head">
+                <span>未加入</span>
+                <input v-model="permSearchLeft" class="transfer-search" placeholder="搜尋權限…" />
+              </div>
+              <div class="transfer-list">
+                <div v-for="p in filteredAvailablePerms" :key="p.id" class="transfer-item">
+                  <div class="transfer-item-main">
+                    <div class="transfer-title">{{ p.permissionName }}</div>
+                    <div class="transfer-sub"><code class="permission-code">{{ p.permissionCode }}</code></div>
+                  </div>
+                  <button type="button" class="mini-btn" @click="addPerm(p.id)">加入</button>
+                </div>
+                <div v-if="filteredAvailablePerms.length === 0" class="transfer-empty">沒有可加入的權限</div>
+              </div>
+            </div>
+
+            <div class="transfer-col">
+              <div class="transfer-head">
+                <span>已加入</span>
+                <input v-model="permSearchRight" class="transfer-search" placeholder="搜尋已加入…" />
+              </div>
+              <div class="transfer-list">
+                <div v-for="p in filteredSelectedPerms" :key="p.id" class="transfer-item">
+                  <div class="transfer-item-main">
+                    <div class="transfer-title">{{ p.permissionName }}</div>
+                    <div class="transfer-sub"><code class="permission-code">{{ p.permissionCode }}</code></div>
+                  </div>
+                  <button type="button" class="mini-btn mini-btn--danger" @click="removePerm(p.id)">移除</button>
+                </div>
+                <div v-if="filteredSelectedPerms.length === 0" class="transfer-empty">尚未加入任何權限</div>
+              </div>
+            </div>
           </div>
           <div class="form-actions">
             <button type="button" class="btn btn-primary" @click="savePermissions">儲存權限</button>
@@ -210,7 +268,66 @@ const selectedUser = ref(null)
 const showRolesModal = ref(false)
 const showPermissionsModal = ref(false)
 const selectedRoleIds = ref([])
+const roleSearchLeft = ref('')
+const roleSearchRight = ref('')
+
+const selectedRoleSet = computed(() => new Set(selectedRoleIds.value || []))
+const unselectedRoles = computed(() => (availableRoles.value || []).filter(r => !selectedRoleSet.value.has(r.id)))
+const selectedRoles = computed(() => (availableRoles.value || []).filter(r => selectedRoleSet.value.has(r.id)))
+
+const filteredAvailableRoles = computed(() => {
+  const q = roleSearchLeft.value.trim().toLowerCase()
+  if (!q) return unselectedRoles.value
+  return unselectedRoles.value.filter(r => `${r.roleName} ${r.description || ''}`.toLowerCase().includes(q))
+})
+
+const filteredSelectedRoles = computed(() => {
+  const q = roleSearchRight.value.trim().toLowerCase()
+  if (!q) return selectedRoles.value
+  return selectedRoles.value.filter(r => `${r.roleName} ${r.description || ''}`.toLowerCase().includes(q))
+})
+
+const addRole = (id) => {
+  const s = new Set(selectedRoleIds.value || [])
+  s.add(id)
+  selectedRoleIds.value = Array.from(s)
+}
+
+const removeRole = (id) => {
+  selectedRoleIds.value = (selectedRoleIds.value || []).filter(x => x !== id)
+}
 const selectedPermissionIds = ref([])
+
+// permissions transfer
+const permSearchLeft = ref('')
+const permSearchRight = ref('')
+
+const selectedPermSet = computed(() => new Set(selectedPermissionIds.value || []))
+const unselectedPerms = computed(() => (availablePermissions.value || []).filter(p => !selectedPermSet.value.has(p.id)))
+const selectedPerms = computed(() => (availablePermissions.value || []).filter(p => selectedPermSet.value.has(p.id)))
+
+const filteredAvailablePerms = computed(() => {
+  const q = permSearchLeft.value.trim().toLowerCase()
+  if (!q) return unselectedPerms.value
+  return unselectedPerms.value.filter(p => `${p.permissionName} ${p.permissionCode}`.toLowerCase().includes(q))
+})
+
+const filteredSelectedPerms = computed(() => {
+  const q = permSearchRight.value.trim().toLowerCase()
+  if (!q) return selectedPerms.value
+  return selectedPerms.value.filter(p => `${p.permissionName} ${p.permissionCode}`.toLowerCase().includes(q))
+})
+
+const addPerm = (id) => {
+  const s = new Set(selectedPermissionIds.value || [])
+  s.add(id)
+  selectedPermissionIds.value = Array.from(s)
+}
+
+const removePerm = (id) => {
+  selectedPermissionIds.value = (selectedPermissionIds.value || []).filter(x => x !== id)
+}
+
 
 // 查詢條件
 const filters = ref({
@@ -416,6 +533,8 @@ const saveRoles = async () => {
 const editPermissions = async (user) => {
   selectedUser.value = user
   selectedPermissionIds.value = user.permissions ? user.permissions.map(p => p.id) : []
+  permSearchLeft.value = ''
+  permSearchRight.value = ''
   showPermissionsModal.value = true
 }
 
@@ -423,6 +542,8 @@ const closePermissionsModal = () => {
   showPermissionsModal.value = false
   selectedUser.value = null
   selectedPermissionIds.value = []
+  permSearchLeft.value = ''
+  permSearchRight.value = ''
 }
 
 const savePermissions = async () => {
@@ -534,4 +655,77 @@ onMounted(() => {
 /* Mobile tweaks */
 @media (max-width: 640px){
 }
+
+.transfer{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.transfer-col{
+  border:1px solid rgba(2,6,23,.08);
+  background: rgba(255,255,255,.7);
+  border-radius: 14px;
+  overflow:hidden;
+}
+.transfer-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:10px 12px;
+  border-bottom:1px solid rgba(2,6,23,.06);
+  background: rgba(2,6,23,.02);
+  font-weight: 900;
+}
+.transfer-search{
+  width: 52%;
+  min-width: 160px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border:1px solid rgba(2,6,23,.10);
+  background: #fff;
+  font-weight: 700;
+  outline: none;
+}
+.transfer-list{
+  max-height: 320px;
+  overflow:auto;
+  padding: 10px;
+}
+.transfer-item{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:10px;
+  border:1px solid rgba(2,6,23,.08);
+  border-radius: 12px;
+  background:#fff;
+  margin-bottom: 10px;
+}
+.transfer-item-main{ min-width:0; }
+.transfer-title{ font-weight: 900; color:#0f172a; line-height:1.2; }
+.transfer-sub{ margin-top:4px; color:#64748b; font-weight:700; font-size:12px; }
+.mini-btn{
+  padding: 8px 10px;
+  border-radius: 10px;
+  border:1px solid rgba(2,6,23,.12);
+  background: rgba(37,99,235,.10);
+  color:#2563eb;
+  font-weight: 900;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.mini-btn--danger{ background: rgba(239,68,68,.10); color:#ef4444; }
+.transfer-empty{ padding: 14px 8px; text-align:center; color:#94a3b8; font-weight: 800; }
+@media (max-width: 980px){
+  .transfer{ grid-template-columns: 1fr; }
+  .transfer-search{ width: 100%; }
+}
+
+
+/* Table column widths */
+:deep(.table){ table-layout: fixed; width: 100%; }
+:deep(.table th.col-actions), :deep(.table td.col-actions){ width: 280px; min-width: 280px; }
+
 </style>

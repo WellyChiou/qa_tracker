@@ -7,8 +7,19 @@
       </div>
 
       <!-- 查詢條件 -->
-      <section class="filters">
-        <h3>查詢條件</h3>
+      <details class="filters filters--collapsible" open>
+        <summary>
+          <div class="filters__title">
+            <h3>查詢條件</h3>
+            <span class="filters__badge">點擊可收合</span>
+          </div>
+          <div class="filters__chev" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 9l6 6 6-6"/>
+            </svg>
+          </div>
+        </summary>
+        <div class="filters__content">
         <div class="filter-grid">
           <div class="filter-group">
             <label>角色名稱</label>
@@ -23,7 +34,8 @@
             <button @click="resetFilters" class="btn btn-secondary">清除條件</button>
           </div>
         </div>
-      </section>
+        </div>
+      </details>
 
       <div class="roles-list">
         <div v-if="filteredList.length === 0" class="empty-state">
@@ -39,7 +51,7 @@
                 <th>角色名稱</th>
                 <th>描述</th>
                 <th>權限數量</th>
-                <th>操作</th>
+                <th class="col-actions">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -47,11 +59,8 @@
                 <td>{{ role.roleName }}</td>
                 <td>{{ role.description || '-' }}</td>
                 <td>{{ role.permissions ? role.permissions.length : 0 }}</td>
-                <td>
-                  <button @click="editRole(role.id)" class="btn btn-edit">編輯</button>
-                  <button @click="editPermissions(role)" class="btn btn-permissions">權限</button>
-                  <button @click="deleteRole(role.id)" class="btn btn-delete">刪除</button>
-                </td>
+                <td><div class="table-actions"><button @click="editRole(role.id)" class="btn btn-edit"><span class="btn__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></span><span>編輯</span></button>
+<button @click="deleteRole(role.id)" class="btn btn-delete"><span class="btn__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span><span>刪除</span></button></div></td>
               </tr>
             </tbody>
           </table>
@@ -99,39 +108,6 @@
       @close="closeModal"
       @saved="handleSaved"
     />
-    
-    <!-- 權限管理模態框 -->
-    <div v-if="showPermissionsModal" class="modal-overlay" @click="closePermissionsModal">
-      <div class="modal-panel" @click.stop style="max-width: 700px;">
-        <div class="modal-header">
-          <h2 class="modal-title">管理角色權限: {{ selectedRole?.roleName }}</h2>
-          <button class="btn-close" @click="closePermissionsModal">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
-        <div class="modal-body">
-          <div class="permissions-list">
-            <label v-for="permission in availablePermissions" :key="permission.id" class="permission-item">
-              <input type="checkbox" 
-                :value="permission.id" 
-                v-model="selectedPermissionIds"
-                class="checkbox-input" />
-              <span>{{ permission.permissionName }} <code class="permission-code">({{ permission.permissionCode }})</code></span>
-            </label>
-          </div>
-          <div class="form-actions">
-            <button type="button" class="btn btn-primary" @click="savePermissions">
-              <i class="fas fa-save me-2"></i>儲存權限
-            </button>
-            <button type="button" class="btn btn-secondary" @click="closePermissionsModal">
-              <i class="fas fa-times me-2"></i>取消
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
   </AdminLayout>
 </template>
 
@@ -146,8 +122,6 @@ const roles = ref([])
 const availablePermissions = ref([])
 const showModal = ref(false)
 const selectedRole = ref(null)
-const showPermissionsModal = ref(false)
-const selectedPermissionIds = ref([])
 
 // 查詢條件
 const filters = ref({
@@ -279,38 +253,8 @@ const handleSaved = () => {
   loadRoles()
 }
 
-const editPermissions = async (role) => {
-  selectedRole.value = role
-  selectedPermissionIds.value = role.permissions ? role.permissions.map(p => p.id) : []
-  showPermissionsModal.value = true
-}
 
-const savePermissions = async () => {
-  try {
-    const response = await apiRequest(`/church/admin/roles/${selectedRole.value.id}/permissions`, {
-      method: 'POST',
-      body: JSON.stringify({ permissionIds: selectedPermissionIds.value }),
-      credentials: 'include'
-    })
-    
-    if (response.ok) {
-      closePermissionsModal()
-      loadRoles()
-    } else {
-      const data = await response.json()
-      toast.error(data.message || data.error || '更新權限失敗')
-    }
-  } catch (error) {
-    console.error('更新權限失敗:', error)
-    toast.error('更新權限失敗: ' + error.message)
-  }
-}
 
-const closePermissionsModal = () => {
-  showPermissionsModal.value = false
-  selectedRole.value = null
-  selectedPermissionIds.value = []
-}
 
 const deleteRole = async (id) => {
   if (!confirm('確定要刪除此角色嗎？')) {
@@ -399,4 +343,9 @@ onMounted(() => {
 /* Mobile tweaks */
 @media (max-width: 640px){
 }
+
+/* Table column widths */
+:deep(.table){ table-layout: fixed; width: 100%; }
+:deep(.table th.col-actions), :deep(.table td.col-actions){ width: 240px; min-width: 240px; }
+
 </style>

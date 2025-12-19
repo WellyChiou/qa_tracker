@@ -114,6 +114,58 @@ a:hover{ text-decoration:none; }
 .btn-danger{ background:rgba(239,68,68,.10); border-color:rgba(239,68,68,.25); color:#b91c1c; }
 .btn-danger:hover{ background:rgba(239,68,68,.14); }
 
+/* Action buttons (edit / delete) */
+.btn-edit{
+  background:rgba(37,99,235,.08);
+  border-color:rgba(37,99,235,.20);
+  color:rgba(29,78,216,.92);
+}
+.btn-edit:hover{ background:rgba(37,99,235,.12); border-color:rgba(37,99,235,.30); }
+
+.btn-delete{
+  background:rgba(239,68,68,.08);
+  border-color:rgba(239,68,68,.22);
+  color:#b91c1c;
+}
+.btn-delete:hover{ background:rgba(239,68,68,.12); border-color:rgba(239,68,68,.32); }
+
+.btn .btn__icon{
+  width:16px;
+  height:16px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+}
+.btn .btn__icon svg{width:16px; height:16px}
+
+.table-actions{display:flex; gap:8px; align-items:center; justify-content:flex-start; flex-wrap:wrap}
+
+/* Small buttons used in ScheduledJobs */
+.btn-sm{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 10px;
+  border-radius:12px;
+  border:1px solid rgba(2,6,23,.12);
+  background:#fff;
+  color:rgba(2,6,23,.82);
+  font-weight:800;
+  font-size:12px;
+  cursor:pointer;
+  transition:transform .12s ease, box-shadow .12s ease, background .12s ease, border-color .12s ease, opacity .12s ease;
+}
+.btn-sm:hover{transform:translateY(-1px); box-shadow:var(--shadow-sm); border-color:rgba(2,6,23,.18)}
+.btn-sm:active{transform:translateY(0); box-shadow:none}
+.btn-sm:disabled{opacity:.55; cursor:not-allowed; transform:none; box-shadow:none}
+
+.btn-sm.btn-execute{background:rgba(34,197,94,.10); border-color:rgba(34,197,94,.22); color:rgba(22,163,74,1)}
+.btn-sm.btn-toggle{background:rgba(59,130,246,.10); border-color:rgba(59,130,246,.22); color:rgba(37,99,235,1)}
+.btn-sm.btn-view{background:rgba(2,6,23,.04); border-color:rgba(2,6,23,.12); color:rgba(2,6,23,.78)}
+.btn-sm.btn-edit{background:rgba(37,99,235,.10); border-color:rgba(37,99,235,.22); color:rgba(29,78,216,.92)}
+.btn-sm.btn-delete{background:rgba(239,68,68,.10); border-color:rgba(239,68,68,.24); color:#b91c1c}
+
 
 /* Inputs */
 .input,
@@ -366,6 +418,38 @@ svg{flex:0 0 auto}
   box-shadow:var(--shadow-sm);
   padding:14px 14px 12px;
 }
+.filters.filters--collapsible{padding:0}
+.filters.filters--collapsible > summary{
+  list-style:none;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:14px 14px 12px;
+  user-select:none;
+}
+.filters.filters--collapsible > summary::-webkit-details-marker{display:none}
+.filters__title{display:flex; align-items:center; gap:10px; min-width:0}
+.filters__title h3{margin:0; font-size:13px; letter-spacing:.02em; color:var(--muted)}
+.filters__badge{
+  font-size:12px;
+  color:rgba(2,6,23,.55);
+  background:rgba(2,6,23,.05);
+  border:1px solid rgba(2,6,23,.08);
+  padding:4px 8px;
+  border-radius:999px;
+  white-space:nowrap;
+}
+.filters__chev{
+  width:34px; height:34px;
+  border-radius:12px;
+  border:1px solid rgba(2,6,23,.10);
+  background:rgba(255,255,255,.8);
+  display:grid; place-items:center;
+}
+.filters[open] .filters__chev svg{transform:rotate(180deg)}
+.filters__content{padding:0 14px 14px}
 .filters > h3{
   margin:0 0 10px;
   font-size:13px;
@@ -401,6 +485,72 @@ svg{flex:0 0 auto}
   justify-content:flex-end;
   align-items:center;
 }
+
+/* Empty state */
+.empty-state{
+  border:1px dashed rgba(2,6,23,.18);
+  border-radius:var(--radius);
+  background:rgba(255,255,255,.75);
+  padding:24px 16px;
+  text-align:center;
+  color:rgba(2,6,23,.60);
+}
+.empty-state::before{
+  content:"";
+  display:block;
+  width:44px; height:44px;
+  margin:0 auto 10px;
+  border-radius:14px;
+  background:rgba(2,6,23,.06);
+}
+.empty-state p{margin:0; font-size:14px; font-weight:600}
+
+/* Table action buttons */
+.table-actions{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+.btn-icon{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+}
+.btn-icon svg{width:16px; height:16px}
+.btn-edit{
+  background:rgba(59,130,246,.10);
+  border-color:rgba(59,130,246,.22);
+  color:#1d4ed8;
+}
+.btn-edit:hover{background:rgba(59,130,246,.14)}
+.btn-delete{
+  background:rgba(239,68,68,.10);
+  border-color:rgba(239,68,68,.22);
+  color:#b91c1c;
+}
+.btn-delete:hover{background:rgba(239,68,68,.14)}
+.btn-permissions{
+  background:rgba(34,197,94,.10);
+  border-color:rgba(34,197,94,.22);
+  color:#15803d;
+}
+.btn-permissions:hover{background:rgba(34,197,94,.14)}
+
+/* Skeleton */
+.skeleton{
+  position:relative;
+  overflow:hidden;
+  background:rgba(2,6,23,.06);
+  border-radius:10px;
+}
+.skeleton::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  transform:translateX(-100%);
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent);
+  animation:skeleton-shimmer 1.2s infinite;
+}
+@keyframes skeleton-shimmer{100%{transform:translateX(100%)}}
+
+tr.skeleton-row td{padding:14px 12px}
+tr.skeleton-row .skeleton{height:14px}
 
 /* =========================================================
    Pagination (Admin list)
@@ -518,6 +668,56 @@ svg{flex:0 0 auto}
   .pagination-right{width:100%; justify-content:space-between}
   .page-jump{flex:1; justify-content:center}
 }
+
+
+/* =========================================================
+   Empty state
+   ========================================================= */
+.empty-state{
+  border:1px dashed rgba(2,6,23,.16);
+  background:rgba(255,255,255,.72);
+  border-radius:var(--radius);
+  padding:28px 18px;
+  text-align:center;
+  color:rgba(2,6,23,.70);
+  box-shadow:var(--shadow-sm);
+}
+.empty-state:before{
+  content:"";
+  display:block;
+  width:44px;
+  height:44px;
+  margin:0 auto 10px;
+  border-radius:14px;
+  background:rgba(2,6,23,.06);
+  border:1px solid rgba(2,6,23,.08);
+}
+.empty-state p{margin:0; font-weight:800;}
+.empty-state .muted{margin-top:6px; font-size:13px; color:rgba(2,6,23,.55)}
+
+
+/* =========================================================
+   Skeleton (loading placeholders)
+   ========================================================= */
+.skeleton{
+  position:relative;
+  overflow:hidden;
+  background:rgba(2,6,23,.06);
+  border-radius:12px;
+}
+.skeleton::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  transform:translateX(-100%);
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent);
+  animation:skeleton-shimmer 1.25s infinite;
+}
+@keyframes skeleton-shimmer{
+  100%{transform:translateX(100%)}
+}
+.skeleton-row td{padding:14px 12px}
+.skeleton-row .skeleton{height:14px}
 
 
 

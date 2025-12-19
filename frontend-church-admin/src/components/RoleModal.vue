@@ -26,17 +26,44 @@
           ></textarea>
         </div>
         
+        
         <div class="form-group">
           <label>權限</label>
-          <div class="checkbox-group">
-            <label v-for="permission in availablePermissions" :key="permission.id" class="checkbox-label">
-              <input
-                type="checkbox"
-                :value="permission.id"
-                v-model="formData.permissionIds"
-              />
-              <span>{{ permission.permissionName }} ({{ permission.permissionCode }})</span>
-            </label>
+
+          <div class="transfer">
+            <div class="transfer-col">
+              <div class="transfer-head">
+                <span>未加入</span>
+                <input v-model="permSearchLeft" class="transfer-search" placeholder="搜尋權限…" />
+              </div>
+              <div class="transfer-list">
+                <div v-for="p in filteredAvailablePerms" :key="p.id" class="transfer-item">
+                  <div class="transfer-item-main">
+                    <div class="transfer-title">{{ p.permissionName }}</div>
+                    <div class="transfer-sub"><code>({{ p.permissionCode }})</code></div>
+                  </div>
+                  <button type="button" class="mini-btn" @click="addPerm(p.id)">加入</button>
+                </div>
+                <div v-if="filteredAvailablePerms.length === 0" class="transfer-empty">沒有可加入的權限</div>
+              </div>
+            </div>
+
+            <div class="transfer-col">
+              <div class="transfer-head">
+                <span>已加入</span>
+                <input v-model="permSearchRight" class="transfer-search" placeholder="搜尋已加入…" />
+              </div>
+              <div class="transfer-list">
+                <div v-for="p in filteredSelectedPerms" :key="p.id" class="transfer-item">
+                  <div class="transfer-item-main">
+                    <div class="transfer-title">{{ p.permissionName }}</div>
+                    <div class="transfer-sub"><code>({{ p.permissionCode }})</code></div>
+                  </div>
+                  <button type="button" class="mini-btn mini-btn--danger" @click="removePerm(p.id)">移除</button>
+                </div>
+                <div v-if="filteredSelectedPerms.length === 0" class="transfer-empty">尚未加入任何權限</div>
+              </div>
+            </div>
           </div>
         </div>
         
@@ -54,7 +81,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { apiRequest } from '@/utils/api'
 
 const props = defineProps({
@@ -77,6 +104,41 @@ const formData = ref({
   description: '',
   permissionIds: []
 })
+
+// 權限（左右分欄）
+const permSearchLeft = ref('')
+const permSearchRight = ref('')
+
+const selectedPermSet = computed(() => new Set(formData.value.permissionIds || []))
+const availablePerms = computed(() => props.availablePermissions || [])
+const unselectedPerms = computed(() => availablePerms.value.filter(p => !selectedPermSet.value.has(p.id)))
+const selectedPerms = computed(() => availablePerms.value.filter(p => selectedPermSet.value.has(p.id)))
+
+const filteredAvailablePerms = computed(() => {
+  const q = permSearchLeft.value.trim().toLowerCase()
+  if (!q) return unselectedPerms.value
+  return unselectedPerms.value.filter(p =>
+    `${p.permissionName} ${p.permissionCode}`.toLowerCase().includes(q)
+  )
+})
+
+const filteredSelectedPerms = computed(() => {
+  const q = permSearchRight.value.trim().toLowerCase()
+  if (!q) return selectedPerms.value
+  return selectedPerms.value.filter(p =>
+    `${p.permissionName} ${p.permissionCode}`.toLowerCase().includes(q)
+  )
+})
+
+const addPerm = (id) => {
+  const ids = new Set(formData.value.permissionIds || [])
+  ids.add(id)
+  formData.value.permissionIds = Array.from(ids)
+}
+
+const removePerm = (id) => {
+  formData.value.permissionIds = (formData.value.permissionIds || []).filter(x => x !== id)
+}
 
 watch(() => props.show, (newVal) => {
   if (newVal) {
@@ -326,5 +388,91 @@ const handleSubmit = async () => {
   background-attachment:local, local, scroll, scroll;
   background-position:0 0, 0 100%, 0 0, 0 100%;
 }
-</style>
 
+.transfer{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 10px;
+}
+.transfer-col{
+  border:1px solid rgba(2,6,23,.08);
+  background: rgba(255,255,255,.7);
+  border-radius: 14px;
+  overflow:hidden;
+}
+.transfer-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:10px 12px;
+  border-bottom:1px solid rgba(2,6,23,.06);
+  background: rgba(2,6,23,.02);
+  font-weight: 900;
+}
+.transfer-search{
+  width: 52%;
+  min-width: 160px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border:1px solid rgba(2,6,23,.10);
+  background: #fff;
+  font-weight: 700;
+  outline: none;
+}
+.transfer-list{
+  max-height: 260px;
+  overflow:auto;
+  padding: 10px;
+}
+.transfer-item{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:10px;
+  border:1px solid rgba(2,6,23,.08);
+  border-radius: 12px;
+  background:#fff;
+  margin-bottom: 10px;
+}
+.transfer-item-main{ min-width:0; }
+.transfer-title{
+  font-weight: 900;
+  color: #0f172a;
+  line-height: 1.2;
+}
+.transfer-sub{
+  margin-top: 4px;
+  color: #64748b;
+  font-weight: 700;
+  font-size: 12px;
+}
+.mini-btn{
+  padding: 8px 10px;
+  border-radius: 10px;
+  border:1px solid rgba(2,6,23,.12);
+  background: rgba(37,99,235,.10);
+  color:#2563eb;
+  font-weight: 900;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.mini-btn:hover{ filter: brightness(.98); }
+.mini-btn--danger{
+  background: rgba(239,68,68,.10);
+  color:#ef4444;
+}
+.transfer-empty{
+  padding: 14px 8px;
+  text-align:center;
+  color:#94a3b8;
+  font-weight: 800;
+}
+@media (max-width: 980px){
+  .transfer{ grid-template-columns: 1fr; }
+  .transfer-search{ width: 100%; }
+}
+
+</style>

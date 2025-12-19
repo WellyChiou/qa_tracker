@@ -15,65 +15,76 @@
               <table class="table">
           <thead>
             <tr>
-              <th>ID</th>
-              <th>任務名稱</th>
-              <th>Cron 表達式</th>
-              <th>描述</th>
-              <th>啟用狀態</th>
-              <th>執行狀態</th>
-              <th>操作</th>
+              <th class="col-id">ID</th>
+              <th class="col-name">任務名稱</th>
+              <th class="col-cron">Cron 表達式</th>
+              <th class="col-desc">描述</th>
+              <th class="col-enabled">啟用狀態</th>
+              <th class="col-exec">執行狀態</th>
+              <th class="col-actions">操作</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-if="loading">
-              <td colspan="7" style="text-align: center; padding: 20px;">載入中...</td>
+            <tr v-if="loading" class="skeleton-row">
+              <td colspan="7">
+                <div class="skeleton" style="height:14px; width:42%; margin:6px auto;"></div>
+              </td>
             </tr>
             <tr v-else-if="jobs.length === 0">
               <td colspan="7" style="text-align: center; padding: 20px;">尚無任務</td>
             </tr>
-            <tr v-for="job in jobs" :key="job.id">
-              <td>{{ job.id }}</td>
-              <td>{{ job.jobName }}</td>
-              <td>
-                <div style="font-weight: 500; color: #1e293b; margin-bottom: 0.25rem;">
-                  {{ formatCronExpression(job.cronExpression) }}
+            <tr v-for="job in jobs" :key="job.id" >
+              <td class="col-id">{{ job.id }}</td>
+              <td class="col-name">{{ job.jobName }}</td>
+              <td class="col-cron">
+                <div class="cron-wrap">
+                  <span class="badge badge--cron" :title="cronTooltip(job)">
+                    {{ formatCronExpression(job.cronExpression) }}
+                  </span>
+                  <code class="cron-code" :title="job.cronExpression">{{ job.cronExpression }}</code>
                 </div>
-                <code style="font-size: 0.75em; color: #94a3b8; background: #f1f5f9; padding: 0.125rem 0.375rem; border-radius: 0.25rem;">
-                  {{ job.cronExpression }}
-                </code>
               </td>
-              <td :title="job.description || '-'">
+              <td class="col-desc" :title="job.description || '-'">
                 {{ job.description || '-' }}
               </td>
-              <td>
+              <td class="col-enabled">
                 <span :class="job.enabled ? 'status-active' : 'status-inactive'">
                   {{ job.enabled ? '啟用' : '停用' }}
                 </span>
               </td>
-              <td>
-                <div v-if="jobExecutions[job.id]">
-                  <span :class="getStatusClass(jobExecutions[job.id].status)">
-                    {{ getStatusText(jobExecutions[job.id].status) }}
+              <td class="col-exec">
+                <div v-if="jobExecutions[job.id]" class="exec-cell">
+                  <span class="status-icon-only" :class="getStatusClass(jobExecutions[job.id].status)" :title="getStatusText(jobExecutions[job.id].status)">
+                    <svg v-if="jobExecutions[job.id].status === 'SUCCESS'" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+                    <svg v-else-if="jobExecutions[job.id].status === 'FAILED'" viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01"/><path d="M10.29 3.86l-8.17 14.14A2 2 0 0 0 3.83 21h16.34a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+                    <svg v-else-if="jobExecutions[job.id].status === 'CANCELLED'" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                    <svg v-else-if="jobExecutions[job.id].status === 'RUNNING'" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/></svg>
+                    <svg v-else viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                   </span>
                   <button 
                     class="btn-sm btn-view" 
                     @click="viewExecutionHistory(job.id)"
-                    style="margin-left: 0.5rem;"
+
                   >
                     查看記錄
                   </button>
                 </div>
-                <span v-else style="color: #94a3b8;">未執行</span>
+                <div v-else class="exec-cell exec-cell--empty">
+                  <span class="status-icon-only status--none" title="未執行"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></span>
+                </div>
               </td>
-              <td class="actions">
-                <button class="btn-sm btn-execute" @click="executeJob(job.id)" :disabled="executingJobId === job.id">
+              <td class="col-actions actions">
+                <div class="action-grid">
+<button class="btn-sm btn-execute" @click="onExecute(job.id)" :disabled="executingJobId === job.id || !isActionAllowed(job.id, 'execute')">
+                  <span v-if="executingJobId === job.id" class="spinner" aria-hidden="true"></span>
                   {{ executingJobId === job.id ? '執行中...' : '立即執行' }}
                 </button>
-                <button class="btn-sm btn-toggle" @click="toggleJob(job.id, !job.enabled)">
+                <button class="btn-sm btn-toggle" @click="onToggle(job.id, !job.enabled)" :disabled="!isActionAllowed(job.id, 'toggle')">
                   {{ job.enabled ? '停用' : '啟用' }}
                 </button>
-                <button class="btn-sm btn-edit" @click="editJob(job)">編輯</button>
-                <button class="btn-sm btn-delete" @click="deleteJob(job.id)">刪除</button>
+                <button class="btn-sm btn-edit" @click="editJob(job)"><span class="btn__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></span><span>編輯</span></button>
+                <button class="btn-sm btn-delete" @click="deleteJob(job.id)"><span class="btn__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span><span>刪除</span></button>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -84,53 +95,73 @@
       </main>
 
       <!-- 執行記錄模態框 -->
-      <div v-if="showExecutionModal" class="modal-overlay" @click="showExecutionModal = false">
-        <div class="modal-card" @click.stop>
-          <h2>執行記錄 - {{ selectedJobName }}</h2>
-          <div v-if="executionHistory.length === 0" style="text-align: center; padding: 2rem; color: #94a3b8;">
-            尚無執行記錄
-          </div>
-          <div v-else class="table-wrap">
-            <table class="table">
-              <thead>
-                <tr>
-                  <th class="execution-time-col">執行時間</th>
-                  <th class="execution-status-col">狀態</th>
-                  <th class="execution-time-col">開始時間</th>
-                  <th class="execution-time-col">完成時間</th>
-                  <th class="execution-result-col">結果/錯誤</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="execution in executionHistory" :key="execution.id">
-                  <td>{{ formatDateTime(execution.createdAt) }}</td>
-                  <td>
-                    <span :class="getStatusClass(execution.status)">
-                      {{ getStatusText(execution.status) }}
-                    </span>
-                  </td>
-                  <td>{{ execution.startedAt ? formatDateTime(execution.startedAt) : '-' }}</td>
-                  <td>{{ execution.completedAt ? formatDateTime(execution.completedAt) : '-' }}</td>
-                  <td>
-                    <div v-if="execution.resultMessage" class="result-message">
-                      {{ execution.resultMessage }}
-                    </div>
-                    <div v-if="execution.errorMessage" class="error-message">
-                      {{ execution.errorMessage }}
-                    </div>
-                    <span v-if="!execution.resultMessage && !execution.errorMessage" style="color: #94a3b8;">-</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="modal-foot">
-            <button type="button" class="btn btn-secondary" @click="showExecutionModal = false">關閉</button>
-          </div>
+<div v-if="showExecutionModal" class="modal-overlay" @click="showExecutionModal = false">
+  <div class="modal-card modal-card--wide" @click.stop>
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">執行記錄</div>
+        <div class="modal-sub">
+          {{ selectedJobName }} <span class="dot">•</span> 共 {{ executionHistory.length }} 筆
         </div>
       </div>
+      <button class="modal-close" type="button" @click="showExecutionModal = false">✕</button>
+    </div>
 
-      <!-- 新增/編輯模態框 -->
+    <div class="modal-body">
+      <div v-if="executionHistory.length === 0" class="empty-state">
+        尚無執行記錄
+      </div>
+
+      <div v-else class="table-wrap">
+        <table class="table exec-table">
+          <thead>
+            <tr>
+              <th class="col-created">執行時間</th>
+              <th class="col-status">狀態</th>
+              <th class="col-start">開始時間</th>
+              <th class="col-end">完成時間</th>
+              <th class="col-msg">結果 / 錯誤</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="execution in executionHistory" :key="execution.id">
+              <td class="mono">{{ formatDateTime(execution.createdAt) }}</td>
+              <td>
+                <span class="status-pill" :class="getStatusClass(execution.status)">
+                  <span class="status-icon" aria-hidden="true">
+                    <svg v-if="execution.status === 'SUCCESS'" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+                    <svg v-else-if="execution.status === 'FAILED'" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                    <svg v-else-if="execution.status === 'RUNNING'" viewBox="0 0 24 24"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+                    <svg v-else viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                  </span>
+                  {{ getStatusText(execution.status) }}
+                </span>
+              </td>
+              <td class="mono">{{ execution.startedAt ? formatDateTime(execution.startedAt) : '-' }}</td>
+              <td class="mono">{{ execution.completedAt ? formatDateTime(execution.completedAt) : '-' }}</td>
+              <td>
+                <div v-if="execution.resultMessage" class="msg msg--ok">
+                  {{ execution.resultMessage }}
+                </div>
+                <div v-if="execution.errorMessage" class="msg msg--err">
+                  {{ execution.errorMessage }}
+                </div>
+                <span v-if="!execution.resultMessage && !execution.errorMessage" class="muted">-</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="modal-foot">
+      <button type="button" class="btn btn-secondary" @click="showExecutionModal = false">關閉</button>
+    </div>
+  </div>
+  </div>
+
+<!-- 新增/編輯模態框 -->
+
 	      <div v-if="showAddModal || editingJob" class="modal-overlay" @click="closeModal">
 	        <div class="modal-card" @click.stop>
 	          <div class="modal-head">
@@ -144,29 +175,29 @@
           <form @submit.prevent="handleSubmit">
             <div class="form-group">
               <label>任務名稱 <span class="required">*</span></label>
-              <input v-model="form.jobName" placeholder="例如：週二服事人員通知" required />
+              <input class="input" v-model="form.jobName" placeholder="例如：週二服事人員通知" required />
             </div>
             <div class="form-group">
               <label>任務類別（完整類名） <span class="required">*</span></label>
-              <input v-model="form.jobClass" placeholder="例如：com.example.helloworld.scheduler.church.ServiceScheduleNotificationScheduler$WeeklyServiceNotificationJob" required />
-              <small style="color: #666; font-size: 0.875rem; margin-top: 0.25rem; display: block;">
+              <input class="input mono-input" v-model="form.jobClass" placeholder="例如：com.example.helloworld.scheduler.church.ServiceScheduleNotificationScheduler$WeeklyServiceNotificationJob" required />
+              <small class="help">
                 必須是已註冊的 Job 執行器類別
               </small>
             </div>
             <div class="form-group">
               <label>Cron 表達式 <span class="required">*</span></label>
-              <input v-model="form.cronExpression" placeholder="例如：0 0 10 ? * TUE" required />
-              <small style="color: #666; font-size: 0.875rem; margin-top: 0.25rem; display: block;">
+              <input class="input mono-input" v-model="form.cronExpression" placeholder="例如：0 0 10 ? * TUE" required />
+              <small class="help">
                 格式：秒 分 時 日 月 星期<br>
                 範例：0 0 10 ? * TUE (每週二 10:00) | 0 0 7 * * ? (每天 7:00) | 0 0 12 * * MON-FRI (週一到週五 12:00)
               </small>
             </div>
             <div class="form-group">
               <label>描述</label>
-              <textarea v-model="form.description" rows="3" placeholder="任務描述..."></textarea>
+              <textarea class="textarea" v-model="form.description" rows="3" placeholder="任務描述..."></textarea>
             </div>
             <div class="form-group">
-              <label>
+              <label class="check-row">
                 <input type="checkbox" v-model="form.enabled" />
                 啟用此任務
               </label>
@@ -202,6 +233,39 @@ const showExecutionModal = ref(false)
 const executionHistory = ref([])
 const selectedJobName = ref('')
 const pollingIntervals = ref({})
+
+// UI helpers
+const actionThrottle = ref({}) // prevent double click spam
+
+
+const isActionAllowed = (jobId, actionKey, cooldownMs = 800) => {
+  const key = `${jobId}:${actionKey}`
+  const now = Date.now()
+  const last = actionThrottle.value[key] || 0
+  return now - last >= cooldownMs
+}
+
+const markAction = (jobId, actionKey) => {
+  const key = `${jobId}:${actionKey}`
+  actionThrottle.value[key] = Date.now()
+}
+
+const onExecute = (jobId) => {
+  if (!isActionAllowed(jobId, 'execute')) return
+  markAction(jobId, 'execute')
+  executeJob(jobId)
+}
+
+const onToggle = (jobId, nextEnabled) => {
+  if (!isActionAllowed(jobId, 'toggle')) return
+  markAction(jobId, 'toggle')
+  toggleJob(jobId, nextEnabled)
+}
+
+const cronTooltip = (job) => {
+  const pretty = formatCronExpression(job.cronExpression)
+  return `${pretty}\n${job.cronExpression}`
+}
 
 const form = ref({
   jobName: '',
@@ -675,7 +739,8 @@ onUnmounted(() => {
 .admin-page .data-container{
   border:1px solid var(--border);
   border-radius:var(--radius);
-  overflow:auto;
+  overflow-x:auto;
+  overflow-y:visible;
   background:var(--surface);
   box-shadow:var(--shadow-sm);
 }
@@ -698,5 +763,296 @@ onUnmounted(() => {
 
 /* Mobile tweaks */
 @media (max-width: 640px){
+}
+
+
+/* --- Scheduled jobs: description clamp & nicer execution modal --- */
+
+/* Table layout + column widths (desktop-first) */
+:deep(.table){ table-layout: fixed; width: 100%; }
+
+/* Fixed columns (th/td 100% sync) - 參考個人網站，使用百分比寬度 */
+:deep(.table th.col-id), :deep(.table td.col-id){ width: 5%; min-width: 60px; text-align: left; }
+:deep(.table th.col-name), :deep(.table td.col-name){ width: 15%; min-width: 150px; }
+:deep(.table th.col-cron), :deep(.table td.col-cron){ width: 15%; min-width: 170px; }
+:deep(.table th.col-desc), :deep(.table td.col-desc){ width: 24%; min-width: 250px; }
+:deep(.table th.col-enabled), :deep(.table td.col-enabled){ width: 8%; min-width: 100px; text-align: center; }
+:deep(.table th.col-exec), :deep(.table td.col-exec){ width: 18%; min-width: 180px; text-align: center; }
+:deep(.table th.col-actions), :deep(.table td.col-actions){ width: 15%; min-width: 220px; }
+
+/* Description: hover 漂浮效果（參考個人網站） */
+:deep(.table td.col-desc){
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  position: relative;
+  cursor: help;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+:deep(.table td.col-desc):hover{
+  white-space: normal;
+  overflow: visible;
+  z-index: 10;
+  background: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  max-width: 400px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Actions: two buttons per row */
+.action-grid{
+  display:grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px 10px;
+}
+.action-grid .btn-sm{ width:100%; white-space:nowrap; }
+@media (max-width: 640px){
+  .action-grid{ grid-template-columns: 1fr; }
+}
+
+.exec-cell{ display:flex; align-items:center; justify-content:center; gap:10px; }
+.exec-cell--empty{ justify-content:center; }
+.exec-cell .status-icon-only{ flex: 0 0 auto; }
+
+/* Responsive width tuning */
+@media (max-width: 900px){
+  :deep(.table th.col-id), :deep(.table td.col-id){ width: 56px; min-width: 56px; }
+  :deep(.table th.col-name), :deep(.table td.col-name){ width: 150px; min-width: 150px; }
+  :deep(.table th.col-cron), :deep(.table td.col-cron){ width: 180px; min-width: 180px; }
+  :deep(.table th.col-enabled), :deep(.table td.col-enabled){ width: 104px; min-width: 104px; }
+  :deep(.table th.col-exec), :deep(.table td.col-exec){ width: 180px; min-width: 180px; }
+  :deep(.table th.col-actions), :deep(.table td.col-actions){ width: 230px; min-width: 230px; }
+  :deep(.table th.col-desc), :deep(.table td.col-desc){ min-width: 400px; }
+}
+
+@media (max-width: 640px){
+  :deep(.table th.col-id), :deep(.table td.col-id){ width: 52px; min-width: 52px; }
+  :deep(.table th.col-name), :deep(.table td.col-name){ width: 140px; min-width: 140px; }
+  :deep(.table th.col-cron), :deep(.table td.col-cron){ width: 180px; min-width: 180px; }
+  :deep(.table th.col-enabled), :deep(.table td.col-enabled){ width: 96px; min-width: 96px; }
+  :deep(.table th.col-exec), :deep(.table td.col-exec){ width: 160px; min-width: 160px; }
+  :deep(.table th.col-actions), :deep(.table td.col-actions){ width: 220px; min-width: 220px; }
+
+  :deep(.table th.col-desc), :deep(.table td.col-desc){ min-width: 320px; }
+
+  .exec-cell{ flex-direction: column; gap: 6px; }
+  .exec-cell .btn-view{ width: 100%; padding: 6px 10px; }
+}
+
+/* Cron: badge + code */
+.cron-wrap{ display:flex; flex-direction:column; gap:6px; }
+.badge{
+  display:inline-flex;
+  align-items:center;
+  padding:6px 10px;
+  border-radius:999px;
+  border:1px solid rgba(2,6,23,.10);
+  background: rgba(2,6,23,.02);
+  font-weight: 900;
+  font-size: 13px;
+  color: rgba(15,23,42,.92);
+  width: fit-content;
+}
+.badge--cron{ border-color: rgba(59,130,246,.18); background: rgba(59,130,246,.06); }
+.cron-code{
+  font-size: 12px;
+  color: rgba(15,23,42,.55);
+  background: rgba(2,6,23,.03);
+  padding: 3px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(2,6,23,.08);
+  width: fit-content;
+}
+
+/* Status pill + icons */
+.status-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 10px;
+  border-radius:999px;
+  border:1px solid rgba(2,6,23,.10);
+  background: rgba(2,6,23,.02);
+  font-weight: 900;
+  font-size: 13px;
+}
+
+.status-icon-only{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:30px;
+  height:30px;
+  border-radius:999px;
+  border:1px solid rgba(2,6,23,.12);
+  background: rgba(2,6,23,.03);
+}
+.status-icon-only svg{
+  width:18px;
+  height:18px;
+  fill:none;
+  stroke: currentColor;
+  stroke-width:2.2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.status-icon-only.status--none{
+  color:#94a3b8;
+}
+.status-success{ color:#16a34a; border-color: rgba(22,163,74,.25); background: rgba(22,163,74,.10); }
+.status-failed{ color:#ef4444; border-color: rgba(239,68,68,.25); background: rgba(239,68,68,.10); }
+.status-running{ color:#2563eb; border-color: rgba(37,99,235,.25); background: rgba(37,99,235,.10); }
+.status-pending{ color:#f59e0b; border-color: rgba(245,158,11,.25); background: rgba(245,158,11,.10); }
+.status-inactive{ color:#64748b; border-color: rgba(100,116,139,.22); background: rgba(100,116,139,.08); }
+.status-icon svg{ width:16px; height:16px; fill:none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Small spinner for execute */
+.spinner{
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 2px solid rgba(255,255,255,.35);
+  border-top-color: rgba(255,255,255,.95);
+  display:inline-block;
+  animation: spin .9s linear infinite;
+  margin-right: 8px;
+}
+@keyframes spin{ to{ transform: rotate(360deg); } }
+
+.modal-card--wide{
+  width:min(980px, calc(100vw - 36px));
+}
+
+.empty-state{
+  text-align:center;
+  padding: 28px 10px;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.exec-table{ width:100%; }
+.exec-table th.col-created,
+.exec-table th.col-start,
+.exec-table th.col-end{
+  min-width: 170px; min-width: 170px;
+}
+.exec-table th.col-status{ min-width: 96px; }
+.exec-table th.col-msg{ min-width: 340px; }
+
+.mono{
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12.5px;
+  color: rgba(15,23,42,.78);
+}
+
+.dot{ margin:0 6px; color: rgba(15,23,42,.35); }
+
+.msg{
+  border:1px solid rgba(2,6,23,.10);
+  background: rgba(2,6,23,.02);
+  border-radius: 12px;
+  padding: 10px 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.4;
+  font-size: 13px;
+}
+.msg + .msg{ margin-top: 8px; }
+.msg--ok{
+  border-color: rgba(34,197,94,.22);
+  background: rgba(34,197,94,.06);
+}
+.msg--err{
+  border-color: rgba(239,68,68,.22);
+  background: rgba(239,68,68,.06);
+}
+
+
+
+/* --- Add/Edit modal form (套版) --- */
+.form-group{ margin-bottom: 14px; }
+.form-group label{
+  display:flex;
+  align-items:baseline;
+  gap:8px;
+  margin-bottom:8px;
+  font-weight:900;
+  color: rgba(15,23,42,.82);
+  letter-spacing:-0.01em;
+}
+.required{ color:#ef4444; font-weight:900; }
+
+.input, .textarea{
+  width:100%;
+  border:1px solid rgba(2,6,23,.14);
+  background: rgba(255,255,255,.92);
+  border-radius: 14px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(15,23,42,.92);
+  transition: box-shadow .12s ease, border-color .12s ease, transform .12s ease;
+}
+.textarea{ resize: vertical; min-height: 92px; line-height: 1.45; }
+
+.mono-input{
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12.5px;
+}
+
+.help{
+  display:block;
+  margin-top:6px;
+  color: rgba(15,23,42,.55);
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.check-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding: 10px 12px;
+  border: 1px dashed rgba(2,6,23,.14);
+  border-radius: 14px;
+  background: rgba(2,6,23,.02);
+  font-weight: 800;
+  color: rgba(15,23,42,.78);
+}
+.check-row input[type="checkbox"]{
+  width: 18px;
+  height: 18px;
+  accent-color: rgba(37,99,235,.9);
+}
+
+/* Responsive tweaks */
+@media (max-width: 1024px){
+  :deep(.table th.col-actions), :deep(.table td.col-actions){ width: 300px; min-width: 300px; }
+  :deep(.table th.col-exec), :deep(.table td.col-exec){ width: 160px; min-width: 160px; }
+  :deep(.table th.col-enabled), :deep(.table td.col-enabled){ width: 130px; min-width: 130px; }
+}
+@media (max-width: 640px){
+  :deep(.table th.col-actions), :deep(.table td.col-actions){ width: 220px; min-width: 220px; }
+  :deep(.table th.col-exec), :deep(.table td.col-exec){ width: 130px; min-width: 130px; }
+  :deep(.table th.col-enabled), :deep(.table td.col-enabled){ width: 110px; min-width: 110px; }
+  .action-grid{ grid-template-columns: 1fr; }
+  .exec-cell{ flex-direction: column; }
+}
+
+
+@media (max-width: 900px){
+  :deep(.table th.col-desc), :deep(.table td.col-desc){ min-width: 360px; }
+}
+@media (max-width: 640px){
+  :deep(.table th.col-desc), :deep(.table td.col-desc){ min-width: 280px; }
 }
 </style>

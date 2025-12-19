@@ -6,15 +6,27 @@ const state = reactive({
 
 let idSeq = 1
 
-function pushToast({ type = 'info', title = '', message = '', duration = 2400 } = {}) {
+function defaultDurationByType(type) {
+  // UX: error 預設不要自動消失（避免使用者來不及看到）
+  if (type === 'error') return 0
+  if (type === 'warning') return 3200
+  return 2400
+}
+
+function pushToast({ type = 'info', title = '', message = '', duration } = {}) {
   const id = idSeq++
   const toast = { id, type, title, message }
   state.toasts.push(toast)
 
-  if (duration && duration > 0) {
+  // keep toast stack tidy
+  if (state.toasts.length > 5) state.toasts.splice(0, state.toasts.length - 5)
+
+  const finalDuration = (duration === undefined) ? defaultDurationByType(type) : duration
+
+  if (finalDuration && finalDuration > 0) {
     setTimeout(() => {
       removeToast(id)
-    }, duration)
+    }, finalDuration)
   }
   return id
 }

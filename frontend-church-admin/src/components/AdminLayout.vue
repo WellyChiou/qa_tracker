@@ -6,6 +6,14 @@
           <img src="/images/logo.png" alt="極光教會 Logo" class="logo-image" />
           <span class="logo-text">極光教會-PLC</span>
         </router-link>
+        <button
+          class="mobile-menu-btn"
+          type="button"
+          @click="mobileMenuOpen = !mobileMenuOpen"
+          aria-label="開啟選單"
+        >
+          ☰
+        </button>
         <div class="navbar-menu">
           <template v-for="menu in adminMenus" :key="menu.id">
             <div v-if="menu.children && menu.children.length > 0" class="menu-item-wrapper">
@@ -51,6 +59,70 @@
         </div>
       </div>
     </nav>
+    <!-- Mobile Drawer -->
+    <div
+      v-if="isMobile && mobileMenuOpen"
+      class="mobile-drawer-overlay"
+      @click.self="mobileMenuOpen = false"
+    >
+      <div class="mobile-drawer">
+        <div class="mobile-drawer-top">
+          <div class="mobile-brand">
+            <img src="/images/logo.png" alt="極光教會 Logo" class="logo-image" />
+            <span class="logo-text">極光教會-PLC</span>
+          </div>
+          <button class="mobile-close" type="button" @click="mobileMenuOpen = false">×</button>
+        </div>
+
+        <div class="mobile-user">
+          <div class="mobile-user-name">{{ currentUser?.displayName || currentUser?.username }}</div>
+          <button @click="handleLogout" class="logout-button">登出</button>
+        </div>
+
+        <div class="mobile-menu">
+          <template v-for="menu in adminMenus" :key="'m-' + menu.id">
+            <div v-if="menu.children && menu.children.length > 0" class="mobile-menu-group">
+              <button
+                class="mobile-menu-item"
+                type="button"
+                @click.stop="toggleMenu(menu.id)"
+                :class="{ active: expandedMenus.includes(menu.id) }"
+              >
+                <span class="menu-icon">{{ menu.icon }}</span>
+                <span class="menu-text">{{ menu.menuName }}</span>
+                <span class="arrow" :class="{ open: expandedMenus.includes(menu.id) }">▼</span>
+              </button>
+
+              <div v-if="expandedMenus.includes(menu.id)" class="mobile-submenu">
+                <router-link
+                  v-for="child in menu.children"
+                  :key="'m-' + child.id"
+                  :to="child.url"
+                  class="mobile-submenu-item"
+                  :class="{ active: $route.path === child.url }"
+                  @click="handleMobileSubmenuClick(menu.id, $event)"
+                >
+                  <span class="submenu-icon">{{ child.icon }}</span>
+                  {{ child.menuName }}
+                </router-link>
+              </div>
+            </div>
+
+            <router-link
+              v-else
+              :to="menu.url"
+              class="mobile-menu-item"
+              :class="{ active: $route.path === menu.url }"
+              @click="closeMobileMenu"
+            >
+              <span class="menu-icon">{{ menu.icon }}</span>
+              <span class="menu-text">{{ menu.menuName }}</span>
+            </router-link>
+          </template>
+        </div>
+      </div>
+    </div>
+
     <main class="admin-main">
       <div class="admin-content">
         <slot />
@@ -71,6 +143,18 @@ const { currentUser, logout } = useAuth()
 
 const adminMenus = ref([])
 const expandedMenus = ref([])
+
+const mobileMenuOpen = ref(false)
+const isMobile = ref(typeof window !== 'undefined' ? window.innerWidth <= 860 : false)
+
+const closeMobileMenu = () => {
+  mobileMenuOpen.value = false
+}
+
+const handleMobileSubmenuClick = (menuId, event) => {
+  handleSubmenuClick(menuId, event)
+  mobileMenuOpen.value = false
+}
 
 // 模組級變量：記錄被用戶手動關閉的子菜單 ID（永久記錄，直到用戶手動展開）
 // 使用 sessionStorage 確保在組件重新創建時不會丟失
@@ -97,6 +181,7 @@ let manuallyClosedMenus = getManuallyClosedMenus()
 let isUserClicking = false
 let justNavigatedFromSubmenu = false
 let clickTimeout = null
+let _resizeHandler = null
 
 const pageTitle = computed(() => {
   // 先查找子菜單
@@ -314,11 +399,28 @@ watch(() => route.path, (newPath, oldPath) => {
 
 onMounted(() => {
   loadAdminMenus()
+
+  const handleResize = () => {
+    isMobile.value = window.innerWidth <= 860
+    if (!isMobile.value) {
+      mobileMenuOpen.value = false
+    }
+  }
+
+  window.addEventListener('resize', handleResize, { passive: true })
+  handleResize()
+
+  // 保存到 closure，供 unmounted 移除
+  _resizeHandler = handleResize
 })
 
 onUnmounted(() => {
   if (clickTimeout) {
     clearTimeout(clickTimeout)
+  }
+  if (_resizeHandler) {
+    window.removeEventListener('resize', _resizeHandler)
+    _resizeHandler = null
   }
 })
 </script>
@@ -506,10 +608,152 @@ onUnmounted(() => {
   padding:18px 16px 32px;
 }
 
+
+/* Mobile menu toggle */
+.mobile-menu-btn{
+  display:none;
+  align-items:center;
+  justify-content:center;
+  width:40px;
+  height:40px;
+  border-radius:14px;
+  border:1px solid rgba(2,6,23,.10);
+  background:rgba(255,255,255,.75);
+  box-shadow:0 6px 18px rgba(2,6,23,.06);
+  cursor:pointer;
+  font-size:18px;
+  font-weight:900;
+  color:rgba(15,23,42,.85);
+}
+
+/* Mobile Drawer */
+.mobile-drawer-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(2,6,23,.45);
+  z-index:80;
+  display:flex;
+  align-items:stretch;
+}
+
+.mobile-drawer{
+  width:min(86vw, 360px);
+  height:100%;
+  background:rgba(255,255,255,.98);
+  border-right:1px solid rgba(2,6,23,.10);
+  box-shadow: 0 20px 60px rgba(2,6,23,.30);
+  padding:14px 12px 18px;
+  overflow:auto;
+}
+
+.mobile-drawer-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:6px 6px 12px;
+  border-bottom:1px solid rgba(2,6,23,.08);
+}
+.mobile-brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.mobile-close{
+  width:36px;
+  height:36px;
+  border-radius:12px;
+  border:1px solid rgba(2,6,23,.10);
+  background:rgba(2,6,23,.04);
+  cursor:pointer;
+  font-size:20px;
+  line-height:1;
+}
+
+.mobile-user{
+  margin:12px 6px 10px;
+  padding:10px 10px;
+  border-radius:16px;
+  border:1px solid rgba(2,6,23,.08);
+  background:rgba(2,6,23,.02);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.mobile-user-name{
+  font-weight:900;
+  color:rgba(15,23,42,.85);
+  font-size:13px;
+}
+
+.mobile-menu{
+  padding:8px 6px 0;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.mobile-menu-item{
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:12px 12px;
+  border-radius:16px;
+  border:1px solid rgba(2,6,23,.08);
+  background:rgba(255,255,255,.85);
+  font-weight:900;
+  font-size:13px;
+  color:rgba(15,23,42,.84);
+  cursor:pointer;
+}
+
+.mobile-menu-item.active{
+  background:rgba(37,99,235,.10);
+  border-color:rgba(37,99,235,.22);
+  color:var(--primary);
+}
+
+.mobile-submenu{
+  margin-top:6px;
+  margin-left:8px;
+  padding-left:10px;
+  border-left:2px solid rgba(2,6,23,.08);
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+.mobile-submenu-item{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:10px 12px;
+  border-radius:14px;
+  border:1px solid rgba(2,6,23,.08);
+  background:rgba(255,255,255,.80);
+  font-weight:800;
+  font-size:13px;
+  color:rgba(15,23,42,.80);
+}
+.mobile-submenu-item.active{
+  background:rgba(37,99,235,.10);
+  border-color:rgba(37,99,235,.22);
+  color:var(--primary);
+}
+
+.arrow.open{ transform:rotate(180deg); }
+
 /* Responsive */
 @media (max-width: 860px){
-  .navbar-container{ align-items:flex-start; flex-wrap:wrap; }
-  .navbar-menu{ order:3; width:100%; }
-  .submenu{ position:relative; top:0; margin-top:8px; }
+  .navbar-container{ align-items:center; }
+  .navbar-menu{ display:none; }
+  .mobile-menu-btn{ display:inline-flex; }
+  .navbar-user{ margin-left:auto; }
+  .navbar-user .user-name{ display:none; }
+  .user-info{ padding:6px 6px; }
+  .logout-button{ padding:8px 10px; }
 }
 </style>

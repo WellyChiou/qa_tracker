@@ -10,8 +10,19 @@
       </div>
 
       <!-- 查詢條件 -->
-      <section class="filters">
-        <h3>查詢條件</h3>
+      <details class="filters filters--collapsible" open>
+        <summary>
+          <div class="filters__title">
+            <h3>查詢條件</h3>
+            <span class="filters__badge">點擊可收合</span>
+          </div>
+          <div class="filters__chev" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 9l6 6 6-6"/>
+            </svg>
+          </div>
+        </summary>
+        <div class="filters__content">
         <div class="filter-grid">
           <div class="filter-group">
             <label>姓名</label>
@@ -59,14 +70,16 @@
             <button @click="resetFilters" class="btn btn-secondary">清除條件</button>
           </div>
         </div>
-      </section>
+        </div>
+      </details>
 
       <div class="submissions-list">
         <div v-if="filteredList.length === 0 && !loading" class="empty-state">
           <p>{{ submissionsList.length === 0 ? '尚無聯絡表單記錄' : '沒有符合條件的資料' }}</p>
         </div>
         <div v-else-if="loading" class="empty-state">
-          <p>載入中...</p>
+          <div class="skeleton" style="height:14px; width:42%; margin:6px auto;"></div>
+          <div class="skeleton" style="height:14px; width:68%; margin:10px auto 0;"></div>
         </div>
         <div v-else class="info-table">
           <div class="table-header">
@@ -96,11 +109,9 @@
                     {{ submission.isRead ? '已讀' : '未讀' }}
                   </span>
                 </td>
-                <td>
-                  <button @click="viewSubmission(submission)" class="btn btn-view">查看</button>
+                <td><div class="table-actions"><button @click="viewSubmission(submission)" class="btn btn-view">查看</button>
                   <button v-if="!submission.isRead" @click="markAsRead(submission.id)" class="btn btn-mark-read">標記已讀</button>
-                  <button @click="deleteSubmission(submission.id)" class="btn btn-delete">刪除</button>
-                </td>
+                  <button @click="deleteSubmission(submission.id)" class="btn btn-delete"><span class="btn__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span><span>刪除</span></button></div></td>
               </tr>
             </tbody>
           </table>
