@@ -267,13 +267,14 @@ public class GoogleSheetsRosterService {
 
     private int findUniqueRowByDate(String spreadsheetId, String sheet, int startRow1, int col0, String target) throws Exception {
         ValueRange vr = sheets.spreadsheets().values().get(spreadsheetId, sheet + "!" + toA1Col(col0) + startRow1 + ":" + toA1Col(col0)).setValueRenderOption("FORMATTED_VALUE").execute();
-
         if (vr.getValues() == null) return -1;
-
+        log.info(" 傳入日期 : {}", target);
         List<Integer> hits = new ArrayList<>();
         for (int i = 0; i < vr.getValues().size(); i++) {
+            log.info(" 第 {} 行，值 ：{}", i, String.valueOf(vr.getValues().get(i).get(0)).trim());
             if (!vr.getValues().get(i).isEmpty() && target.equals(String.valueOf(vr.getValues().get(i).get(0)).trim())) {
                 hits.add(startRow1 + i);
+                log.info("符合 -> 第 {} 行，值 ：{}", i, String.valueOf(vr.getValues().get(i).get(0)).trim());
             }
         }
         return hits.size() == 1 ? hits.get(0) : -1;
