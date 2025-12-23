@@ -437,20 +437,18 @@ const jumpToPage = () => {
 }
 
 const monthlyIncome = computed(() => {
-  const now = new Date()
   return filteredRecords.value
     .filter(r => r.type === '收入' && 
-      new Date(r.date).getFullYear() === now.getFullYear() &&
-      new Date(r.date).getMonth() === now.getMonth())
+      new Date(r.date).getFullYear() === filters.value.year &&
+      new Date(r.date).getMonth() + 1 === filters.value.month)
     .reduce((sum, r) => sum + (r.amount || 0), 0)
 })
 
 const monthlyExpense = computed(() => {
-  const now = new Date()
   return filteredRecords.value
     .filter(r => r.type === '支出' && 
-      new Date(r.date).getFullYear() === now.getFullYear() &&
-      new Date(r.date).getMonth() === now.getMonth())
+      new Date(r.date).getFullYear() === filters.value.year &&
+      new Date(r.date).getMonth() + 1 === filters.value.month)
     .reduce((sum, r) => sum + (r.amount || 0), 0)
 })
 
