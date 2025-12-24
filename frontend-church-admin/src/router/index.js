@@ -102,6 +102,30 @@ const routes = [
     name: 'AdminMaintenance',
     component: () => import('@/views/admin/Maintenance.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/checkin/admin/sessions',
+    name: 'CheckinSessionList',
+    component: () => import('@/views/checkin/SessionList.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/checkin/admin/sessions/:id',
+    name: 'CheckinSessionDetail',
+    component: () => import('@/views/checkin/SessionDetail.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/checkin/admin/manual',
+    name: 'CheckinAdminManual',
+    component: () => import('@/views/checkin/ManualView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/:code',
+    name: 'Checkin',
+    component: () => import('@/views/checkin/CheckinView.vue'),
+    meta: { requiresAuth: false }
   }
 ]
 

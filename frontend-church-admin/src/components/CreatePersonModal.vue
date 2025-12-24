@@ -33,6 +33,16 @@
           </div>
 
           <div class="form-group">
+            <label class="form-label">會員編號</label>
+            <input
+              type="text"
+              v-model="form.memberNo"
+              class="form-input"
+              placeholder="請輸入會員編號"
+            />
+          </div>
+
+          <div class="form-group">
             <label class="form-label">電話</label>
             <input
               type="text"
@@ -49,6 +59,16 @@
               v-model="form.email"
               class="form-input"
               placeholder="請輸入電子郵件"
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">生日</label>
+            <input
+              type="date"
+              v-model="form.birthday"
+              class="form-input"
+              placeholder="請選擇生日"
             />
           </div>
 
@@ -94,8 +114,10 @@ const saving = ref(false)
 const form = ref({
   personName: '',
   displayName: '',
+  memberNo: '',
   phone: '',
   email: '',
+  birthday: '',
   notes: ''
 })
 
@@ -134,8 +156,10 @@ const resetForm = () => {
   form.value = {
     personName: '',
     displayName: '',
+    memberNo: '',
     phone: '',
     email: '',
+    birthday: '',
     notes: ''
   }
 }

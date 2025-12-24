@@ -193,10 +193,11 @@ export async function apiRequest(url, options = {}, loadingMessage = '載入中.
     }
     
     // 對於 401/403，不拋出異常，讓調用者處理
-    // 對於其他錯誤，拋出異常
+    // 對於其他錯誤，拋出異常，但保留 response 對象以便調用者可以讀取錯誤詳情
     if (!response.ok && response.status !== 401 && response.status !== 403) {
-      const errorText = await response.text().catch(() => '無法讀取錯誤信息')
-      throw new Error(`API 請求失敗: ${response.status} ${response.statusText} - ${errorText}`)
+      const error = new Error(`API 請求失敗: ${response.status} ${response.statusText}`)
+      error.response = response // 保留 response 對象以便調用者可以讀取 JSON
+      throw error
     }
     
     return response

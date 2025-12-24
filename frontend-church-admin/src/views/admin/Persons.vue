@@ -68,8 +68,12 @@
               <tr>
                 <th>姓名</th>
                 <th>顯示名稱</th>
+                <th>會員編號</th>
                 <th>電話</th>
                 <th>電子郵件</th>
+                <th>生日</th>
+                <th>建立時間</th>
+                <th>更新時間</th>
                 <th>操作</th>
               </tr>
             </thead>
@@ -77,8 +81,12 @@
               <tr v-for="person in paginatedList" :key="person.id">
                 <td>{{ person.personName }}</td>
                 <td>{{ person.displayName || '-' }}</td>
+                <td>{{ person.memberNo || '-' }}</td>
                 <td>{{ person.phone || '-' }}</td>
                 <td>{{ person.email || '-' }}</td>
+                <td>{{ formatDate(person.birthday) }}</td>
+                <td>{{ formatDateTime(person.createdAt) }}</td>
+                <td>{{ formatDateTime(person.updatedAt) }}</td>
                 <td><div class="table-actions"><button @click="editPerson(person.id)" class="btn btn-edit"><span class="btn__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></span><span>編輯</span></button>
                   <button @click="deletePerson(person.id)" class="btn btn-delete"><span class="btn__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span><span>刪除</span></button></div></td>
               </tr>
@@ -277,6 +285,29 @@ const closeModal = () => {
 const handleSaved = () => {
   loadPersons()
   closeModal()
+}
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return '-'
+  const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return dateStr
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const formatDateTime = (dateTimeStr) => {
+  if (!dateTimeStr) return '-'
+  const date = new Date(dateTimeStr)
+  if (isNaN(date.getTime())) return dateTimeStr
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  const seconds = String(date.getSeconds()).padStart(2, '0')
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 }
 
 const deletePerson = async (id) => {

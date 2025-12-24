@@ -80,6 +80,18 @@ case "$MODE" in
     echo "▶ Suitable for daily development"
     echo ""
     docker compose up -d
+    
+    # 等待前端容器完全啟動
+    echo ""
+    echo "⏳ 等待前端容器啟動..."
+    sleep 3
+    
+    # 檢查前端容器是否正常運行
+    if docker compose ps | grep -q "frontend-church-admin.*Up"; then
+      echo "✅ 前端容器已啟動"
+    else
+      echo "⚠️  前端容器可能還在啟動中，請稍候..."
+    fi
     ;;
 
   build)
@@ -89,6 +101,18 @@ case "$MODE" in
     echo ""
     docker compose build
     docker compose up -d
+    
+    # 等待前端容器完全啟動
+    echo ""
+    echo "⏳ 等待前端容器啟動..."
+    sleep 5
+    
+    # 檢查前端容器是否正常運行
+    if docker compose ps | grep -q "frontend-church-admin.*Up"; then
+      echo "✅ 前端容器已啟動"
+    else
+      echo "⚠️  前端容器可能還在啟動中，請稍候..."
+    fi
     ;;
 
   clean)
@@ -99,6 +123,18 @@ case "$MODE" in
     docker compose down
     docker compose build --no-cache
     docker compose up -d
+    
+    # 等待前端容器完全啟動
+    echo ""
+    echo "⏳ 等待前端容器啟動..."
+    sleep 5
+    
+    # 檢查前端容器是否正常運行
+    if docker compose ps | grep -q "frontend-church-admin.*Up"; then
+      echo "✅ 前端容器已啟動"
+    else
+      echo "⚠️  前端容器可能還在啟動中，請稍候..."
+    fi
     ;;
 
   *)
@@ -115,7 +151,39 @@ case "$MODE" in
 esac
 
 # -----------------------------------------------------
-# 3. Show container status
+# 3. Wait for containers to be healthy
+# -----------------------------------------------------
+echo ""
+echo "⏳ 等待容器完全啟動..."
+
+# 等待前端容器完全啟動（最多等待 30 秒）
+MAX_WAIT=30
+WAIT_COUNT=0
+while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
+  if docker compose ps | grep -q "frontend-church-admin.*Up"; then
+    # 檢查容器是否真的可以訪問
+    if docker compose exec -T frontend-church-admin wget -q --spider http://localhost/ 2>/dev/null || \
+       docker compose exec -T frontend-church-admin test -f /usr/share/nginx/html/index.html 2>/dev/null; then
+      echo "✅ 前端容器已完全啟動"
+      break
+    fi
+  fi
+  sleep 1
+  WAIT_COUNT=$((WAIT_COUNT + 1))
+  echo -n "."
+done
+echo ""
+
+if [ $WAIT_COUNT -ge $MAX_WAIT ]; then
+  echo "⚠️  前端容器啟動超時，但部署繼續進行"
+  echo "   如果遇到 404 錯誤，請稍候片刻後重新整理頁面"
+fi
+
+# 等待 Nginx 容器啟動
+sleep 2
+
+# -----------------------------------------------------
+# 4. Show container status
 # -----------------------------------------------------
 echo ""
 echo "📦 Container status:"
@@ -123,3 +191,8 @@ docker compose ps
 
 echo ""
 echo "✅ Local deploy completed successfully"
+echo ""
+echo "💡 提示：如果遇到 404 錯誤，請嘗試："
+echo "   1. 清除瀏覽器快取（Ctrl+Shift+R 或 Cmd+Shift+R）"
+echo "   2. 等待 10-20 秒後重新整理頁面"
+echo "   3. 檢查容器日誌：docker compose logs frontend-church-admin"

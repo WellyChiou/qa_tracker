@@ -23,7 +23,34 @@
 ##### 崗位和人員管理
 - **`church-init.sql`** - 崗位和人員管理系統初始化
   - 包含：positions, persons, position_persons 表結構
+  - **注意**：persons 表已包含 `member_no` 和 `birthday` 欄位（用於簽到系統）
 - **`church-data.sql`** - 崗位和人員初始數據（可選）
+
+##### 簽到系統
+- **`checkin-system-complete-setup.sql`** ⭐ **推薦使用** - 簽到系統完整配置（整合所有配置）
+  - 包含：member_no 和 birthday 欄位檢查、URL 權限、菜單配置
+  - 可一次性執行完成所有配置
+  - 使用 `INSERT IGNORE` 可安全重複執行
+  - 適用於全新安裝或現有系統更新
+- **`add-member-no-to-persons.sql`** ⚠️ **已整合** - 為 persons 表添加 member_no 欄位
+  - **狀態**：已整合到 `church-init.sql` 和 `checkin-system-complete-setup.sql`
+  - 此檔案保留僅作為歷史記錄，新安裝請使用整合版本
+- **`add-birthday-to-persons.sql`** ⚠️ **已整合** - 為 persons 表添加 birthday 欄位
+  - **狀態**：已整合到 `church-init.sql` 和 `checkin-system-complete-setup.sql`
+  - 此檔案保留僅作為歷史記錄，新安裝請使用整合版本
+- **`add-checkin-url-permissions.sql`** - 簽到系統 URL 權限配置（包含所有 API 權限）
+  - 公開 API（3 個）
+  - 場次管理 API（5 個）
+  - 場次查詢和統計 API（7 個，包含 CSV 和 Excel 匯出）
+  - 補登管理 API（5 個，包含 CSV 和 Excel 匯出）
+  - 總計：20 個 URL 權限配置
+- **`add-checkin-session-management-permissions.sql`** - 場次管理 CRUD 操作的 URL 權限配置（可選）
+  - 此文件已包含在 `add-checkin-url-permissions.sql` 中
+- **`add-checkin-menu-items.sql`** - 簽到系統後台菜單項目
+- **`update-checkin-menu-items.sql`** - 更新簽到系統菜單結構（將主菜單改為父菜單）
+- **`update-checkin-menu-sessions-url.sql`** - 更新「管理場次」菜單的 URL
+
+**詳細說明請參考**：`mysql/README_CHECKIN_SQL.md`
 
 ### 🔄 遷移和更新文件
 
@@ -54,6 +81,8 @@
 以下文件已整合到主要文件中，可以安全移除：
 
 ### 崗位和人員相關（已整合到 church-init.sql 和 church-migrations.sql）
+- ⚠️ `add-member-no-to-persons.sql` → 已整合到 `church-init.sql` 和 `checkin-system-complete-setup.sql`（保留作為歷史記錄）
+- ⚠️ `add-birthday-to-persons.sql` → 已整合到 `church-init.sql` 和 `checkin-system-complete-setup.sql`（保留作為歷史記錄）
 - ❌ `church-positions-schema.sql` → 已整合到 `church-init.sql`
 - ❌ `add-include-in-auto-schedule.sql` → 已整合到 `church-migrations.sql`
 - ❌ `fix-positions-is-active.sql` → 已整合到 `church-migrations.sql`
@@ -120,10 +149,19 @@ mysql -u root -p church < mysql/church-security-tables.sql
 # 4. 創建崗位和人員管理表
 mysql -u root -p church < mysql/church-init.sql
 
-# 5. 插入初始數據（可選）
+# 5. 為 persons 表添加 member_no 欄位（簽到系統需要）
+mysql -u root -p church < mysql/add-member-no-to-persons.sql
+
+# 6. 插入初始數據（可選）
 mysql -u root -p church < mysql/church-data.sql
 
-# 6. 創建管理員帳號
+# 7. 配置簽到系統 URL 權限
+mysql -u root -p church < mysql/add-checkin-url-permissions.sql
+
+# 8. 添加簽到系統後台菜單
+mysql -u root -p church < mysql/add-checkin-menu-items.sql
+
+# 9. 創建管理員帳號
 mysql -u root -p church < mysql/church-admin-setup.sql
 ```
 

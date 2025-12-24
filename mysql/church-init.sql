@@ -35,6 +35,8 @@ CREATE TABLE IF NOT EXISTS persons (
     id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主鍵 ID',
     person_name VARCHAR(100) NOT NULL COMMENT '人員姓名',
     display_name VARCHAR(100) COMMENT '顯示名稱（可選）',
+    member_no VARCHAR(32) UNIQUE COMMENT '會員編號（用於簽到系統）',
+    birthday DATE COMMENT '生日（非必填）',
     phone VARCHAR(20) COMMENT '電話',
     email VARCHAR(255) COMMENT '電子郵件',
     notes TEXT COMMENT '備註',
@@ -42,6 +44,7 @@ CREATE TABLE IF NOT EXISTS persons (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '建立時間',
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新時間',
     INDEX idx_person_name (person_name),
+    INDEX idx_member_no (member_no),
     INDEX idx_is_active (is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='人員表';
 

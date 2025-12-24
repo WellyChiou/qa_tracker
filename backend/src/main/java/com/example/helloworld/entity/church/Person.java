@@ -2,6 +2,7 @@ package com.example.helloworld.entity.church;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -11,6 +12,9 @@ public class Person {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "member_no", unique = true, length = 32)
+    private String memberNo;
 
     @Column(name = "person_name", nullable = false, length = 100)
     private String personName;
@@ -23,6 +27,9 @@ public class Person {
 
     @Column(name = "email", length = 255)
     private String email;
+
+    @Column(name = "birthday")
+    private LocalDate birthday;
 
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
@@ -60,6 +67,14 @@ public class Person {
         this.id = id;
     }
 
+    public String getMemberNo() {
+        return memberNo;
+    }
+
+    public void setMemberNo(String memberNo) {
+        this.memberNo = memberNo;
+    }
+
     public String getPersonName() {
         return personName;
     }
@@ -90,6 +105,14 @@ public class Person {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public LocalDate getBirthday() {
+        return birthday;
+    }
+
+    public void setBirthday(LocalDate birthday) {
+        this.birthday = birthday;
     }
 
     public String getNotes() {

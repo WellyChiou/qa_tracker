@@ -33,6 +33,16 @@
           </div>
 
           <div class="form-group">
+            <label class="form-label">會員編號</label>
+            <input
+              type="text"
+              v-model="form.memberNo"
+              class="form-input"
+              placeholder="請輸入會員編號"
+            />
+          </div>
+
+          <div class="form-group">
             <label class="form-label">電話</label>
             <input
               type="text"
@@ -49,6 +59,16 @@
               v-model="form.email"
               class="form-input"
               placeholder="請輸入電子郵件"
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">生日</label>
+            <input
+              type="date"
+              v-model="form.birthday"
+              class="form-input"
+              placeholder="請選擇生日"
             />
           </div>
 
@@ -109,8 +129,10 @@ const saving = ref(false)
 const form = ref({
   personName: '',
   displayName: '',
+  memberNo: '',
   phone: '',
   email: '',
+  birthday: '',
   notes: '',
   isActive: true
 })
@@ -120,12 +142,24 @@ const loadPersonData = () => {
     form.value = {
       personName: props.person.personName || '',
       displayName: props.person.displayName || '',
+      memberNo: props.person.memberNo || '',
       phone: props.person.phone || '',
       email: props.person.email || '',
+      birthday: props.person.birthday ? formatDateForInput(props.person.birthday) : '',
       notes: props.person.notes || '',
       isActive: props.person.isActive !== false
     }
   }
+}
+
+const formatDateForInput = (dateStr) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return dateStr
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 const handleSubmit = async () => {
@@ -167,8 +201,10 @@ const resetForm = () => {
   form.value = {
     personName: '',
     displayName: '',
+    memberNo: '',
     phone: '',
     email: '',
+    birthday: '',
     notes: '',
     isActive: true
   }
