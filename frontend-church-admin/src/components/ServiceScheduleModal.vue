@@ -3,6 +3,14 @@
     <div class="modal-panel service-schedule-modal" @click.stop>
       <div class="modal-header">
         <h2 class="modal-title">{{ modalTitle }}</h2>
+        <!-- 操作按鈕：只在有服事表資料時顯示 -->
+        <div v-if="localSchedule && localSchedule.length > 0" class="modal-actions">
+          <button v-if="isEditing" @click="cancelEdit" class="btn btn-cancel">取消</button>
+          <!-- 編輯模式：如果有 editingScheduleYear，顯示「更新」按鈕；否則顯示「新增」按鈕 -->
+          <button v-if="isEditing && editingScheduleYear" @click="updateSchedule" class="btn btn-save" :disabled="saving">更新</button>
+          <button v-else-if="isEditing && !editingScheduleYear && mode === 'add'" @click="saveSchedule" class="btn btn-save" :disabled="saving">新增</button>
+          <button @click="exportSchedule" class="btn btn-export">匯出服事表</button>
+        </div>
         <button class="btn-close" @click="closeModal">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -102,13 +110,6 @@
                   </div>
                 </div>
               </div>
-            </div>
-            <div class="schedule-actions">
-              <button v-if="isEditing" @click="cancelEdit" class="btn btn-cancel">取消</button>
-              <!-- 編輯模式：如果有 editingScheduleYear，顯示「更新」按鈕；否則顯示「新增」按鈕 -->
-              <button v-if="isEditing && editingScheduleYear" @click="updateSchedule" class="btn btn-save" :disabled="saving">更新</button>
-              <button v-else-if="isEditing && !editingScheduleYear && mode === 'add'" @click="saveSchedule" class="btn btn-save" :disabled="saving">新增</button>
-              <button @click="exportSchedule" class="btn btn-export">匯出服事表</button>
             </div>
           </div>
           <div class="schedule-table">
@@ -1693,6 +1694,24 @@ onMounted(() => {
   align-items: center;
   padding: 1.5rem;
   border-bottom: 1px solid #e0e0e0;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.modal-header .modal-title {
+  flex: 0 0 auto;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.modal-header .btn-close {
+  flex: 0 0 auto;
 }
 
 .modal-title {
@@ -1796,12 +1815,7 @@ onMounted(() => {
 }
 
 .schedule-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
   margin-bottom: 1rem;
-  flex-wrap: wrap;
-  gap: 1rem;
 }
 
 .schedule-title-section {
@@ -1963,11 +1977,6 @@ onMounted(() => {
   gap: 0.75rem;
 }
 
-.schedule-actions {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
 
 .schedule-table {
   overflow-x: auto;
