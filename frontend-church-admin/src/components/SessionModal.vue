@@ -33,13 +33,23 @@
 
         <div class="form-group">
           <label>類型</label>
-          <select v-model="form.sessionType" class="form-input">
+          <select v-model="form.sessionType" class="form-input" @change="onSessionTypeChange">
             <option value="">請選擇</option>
             <option value="SATURDAY">週六晚崇</option>
             <option value="SUNDAY">週日早崇</option>
             <option value="WEEKDAY">小組</option>
             <option value="SPECIAL">活動</option>
           </select>
+        </div>
+
+        <div class="form-group" v-if="form.sessionType === 'WEEKDAY'">
+          <label>參與小組</label>
+          <select v-model="form.groupIds" multiple class="form-input" style="min-height: 120px;">
+            <option v-for="group in activeGroups" :key="group.id" :value="group.id">
+              {{ group.groupName }}
+            </option>
+          </select>
+          <div class="form-hint">可選擇多個小組（支援聯合小組），按住 Ctrl (Windows) 或 Cmd (Mac) 進行多選</div>
         </div>
 
         <div class="form-group">
@@ -93,7 +103,7 @@
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onMounted } from 'vue'
 import { toast } from '@/composables/useToast'
 import { apiRequest } from '@/utils/api'
 
@@ -117,10 +127,12 @@ const form = ref({
   sessionDate: '',
   openAt: '',
   closeAt: '',
-  status: 'DRAFT'
+  status: 'DRAFT',
+  groupIds: []
 })
 
 const saving = ref(false)
+const activeGroups = ref([])
 
 // 生成 UUID 作為 session code（不帶連字符，URL 友好）
 function generateUUID() {
@@ -135,7 +147,45 @@ function generateSessionCode() {
   form.value.sessionCode = generateUUID()
 }
 
-watch(() => props.session, (newSession) => {
+const loadActiveGroups = async () => {
+  try {
+    const response = await apiRequest('/church/groups/active', {
+      method: 'GET',
+      credentials: 'include'
+    })
+    
+    if (response.ok) {
+      const data = await response.json()
+      activeGroups.value = data.groups || []
+    }
+  } catch (error) {
+    console.error('載入小組列表失敗:', error)
+  }
+}
+
+const loadSessionGroups = async (sessionId) => {
+  try {
+    const response = await apiRequest(`/church/checkin/admin/sessions/${sessionId}/groups`, {
+      method: 'GET',
+      credentials: 'include'
+    })
+    
+    if (response.ok) {
+      const data = await response.json()
+      form.value.groupIds = (data.groups || []).map(g => g.id)
+    }
+  } catch (error) {
+    console.error('載入場次關聯的小組失敗:', error)
+  }
+}
+
+const onSessionTypeChange = () => {
+  if (form.value.sessionType !== 'WEEKDAY') {
+    form.value.groupIds = []
+  }
+}
+
+watch(() => props.session, async (newSession) => {
   if (newSession) {
     // 編輯模式：載入現有資料
     form.value = {
@@ -145,7 +195,12 @@ watch(() => props.session, (newSession) => {
       sessionDate: newSession.sessionDate ? formatDateForInput(newSession.sessionDate) : '',
       openAt: newSession.openAt ? formatDateTimeForInput(newSession.openAt) : '',
       closeAt: newSession.closeAt ? formatDateTimeForInput(newSession.closeAt) : '',
-      status: newSession.status || 'DRAFT'
+      status: newSession.status || 'DRAFT',
+      groupIds: []
+    }
+    // 載入場次關聯的小組
+    if (newSession.id) {
+      await loadSessionGroups(newSession.id)
     }
   } else if (props.show) {
     // 新增模式：自動生成 UUID
@@ -154,13 +209,20 @@ watch(() => props.session, (newSession) => {
 }, { immediate: true })
 
 watch(() => props.show, (newVal) => {
-  if (newVal && !props.session) {
-    // 打開新增模式時，自動生成 session code
-    resetForm()
+  if (newVal) {
+    loadActiveGroups()
+    if (!props.session) {
+      // 打開新增模式時，自動生成 session code
+      resetForm()
+    }
   } else if (!newVal) {
     // 關閉時重置表單
     resetForm()
   }
+})
+
+onMounted(() => {
+  loadActiveGroups()
 })
 
 const editingSession = computed(() => props.session)
@@ -173,7 +235,8 @@ function resetForm() {
     sessionDate: '',
     openAt: '',
     closeAt: '',
-    status: 'DRAFT'
+    status: 'DRAFT',
+    groupIds: []
   }
 }
 
@@ -212,20 +275,54 @@ async function save() {
       status: form.value.status || 'DRAFT'
     }
 
+    let sessionId
     if (props.session && props.session.id) {
       // 更新
-      await apiRequest(`/church/checkin/admin/sessions/${props.session.id}`, {
+      const response = await apiRequest(`/church/checkin/admin/sessions/${props.session.id}`, {
         method: 'PUT',
         body: JSON.stringify(payload)
       }, '儲存中...', true)
+      sessionId = props.session.id
       toast.success('場次已更新')
     } else {
       // 新增
-      await apiRequest('/church/checkin/admin/sessions', {
+      const response = await apiRequest('/church/checkin/admin/sessions', {
         method: 'POST',
         body: JSON.stringify(payload)
       }, '儲存中...', true)
-      toast.success('場次已新增')
+      
+      if (response.ok) {
+        const data = await response.json()
+        // 後端返回的是 Session 對象，直接包含 id
+        sessionId = data.id
+        if (!sessionId) {
+          console.error('新增場次成功但未返回 ID:', data)
+          throw new Error('新增場次成功但未返回 ID')
+        }
+        toast.success('場次已新增')
+      } else {
+        throw new Error('新增場次失敗')
+      }
+    }
+
+    // 更新場次關聯的小組（僅當類型為小組時）
+    if (sessionId) {
+      if (form.value.sessionType === 'WEEKDAY' && form.value.groupIds && form.value.groupIds.length > 0) {
+        // 確保 groupIds 是數字數組
+        const groupIds = form.value.groupIds.map(id => typeof id === 'string' ? parseInt(id) : id)
+        await apiRequest(`/church/checkin/admin/sessions/${sessionId}/groups`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ groupIds: groupIds })
+        }, '更新小組關聯中...', true)
+      } else {
+        // 如果類型不是小組，或沒有選擇小組，清除所有小組關聯
+        await apiRequest(`/church/checkin/admin/sessions/${sessionId}/groups`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ groupIds: [] })
+        }, '更新小組關聯中...', true)
+      }
     }
 
     emit('saved')

@@ -26,6 +26,18 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/groups',
+    name: 'AdminGroups',
+    component: () => import('@/views/admin/Groups.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/attendance-rate',
+    name: 'AdminAttendanceRate',
+    component: () => import('@/views/admin/AttendanceRate.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/positions',
     name: 'AdminPositions',
     component: () => import('@/views/admin/Positions.vue'),

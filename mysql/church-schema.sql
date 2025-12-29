@@ -107,6 +107,51 @@ CREATE TABLE IF NOT EXISTS checkins (
   INDEX idx_manual (manual, canceled, checked_in_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='簽到記錄表';
 
+-- =====================
+-- 小組管理系統資料表
+-- =====================
+
+-- 小組表
+CREATE TABLE IF NOT EXISTS groups (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主鍵 ID',
+  group_name VARCHAR(100) NOT NULL UNIQUE COMMENT '小組名稱',
+  description TEXT COMMENT '小組描述',
+  is_active TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否啟用（1=是，0=否）',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '建立時間',
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新時間',
+  INDEX idx_group_name (group_name),
+  INDEX idx_is_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='小組表';
+
+-- 小組人員關聯表
+CREATE TABLE IF NOT EXISTS group_persons (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主鍵 ID',
+  group_id BIGINT NOT NULL COMMENT '小組 ID',
+  person_id BIGINT NOT NULL COMMENT '人員 ID',
+  joined_at DATE NOT NULL COMMENT '加入時間（用於計算出席率時過濾場次）',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '建立時間',
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新時間',
+  FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
+  FOREIGN KEY (person_id) REFERENCES persons(id) ON DELETE CASCADE,
+  UNIQUE KEY uk_group_person (group_id, person_id),
+  INDEX idx_group_id (group_id),
+  INDEX idx_person_id (person_id),
+  INDEX idx_joined_at (joined_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='小組人員關聯表';
+
+-- 場次小組關聯表（支援聯合小組）
+CREATE TABLE IF NOT EXISTS session_groups (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主鍵 ID',
+  session_id BIGINT NOT NULL COMMENT '場次 ID',
+  group_id BIGINT NOT NULL COMMENT '小組 ID',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '建立時間',
+  FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
+  FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
+  UNIQUE KEY uk_session_group (session_id, group_id),
+  INDEX idx_session_id (session_id),
+  INDEX idx_group_id (group_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='場次小組關聯表';
+
 -- ============================================
 -- 資料庫結構變更（Migration）
 -- ============================================
@@ -147,7 +192,60 @@ PREPARE alterIfNotExists FROM @preparedStatement;
 EXECUTE alterIfNotExists;
 DEALLOCATE PREPARE alterIfNotExists;
 
--- 2. 為 service_schedules 表添加 year 欄位和唯一約束（如果不存在）
+-- 2. 為 persons 表添加 group_id 欄位（如果不存在）
+SET @tablename = "persons";
+SET @columnname = "group_id";
+SET @preparedStatement = (SELECT IF(
+  (
+    SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE
+      (table_name = @tablename)
+      AND (table_schema = @dbname)
+      AND (column_name = @columnname)
+  ) > 0,
+  "SELECT 1",
+  CONCAT("ALTER TABLE ", @tablename, " ADD COLUMN ", @columnname, " BIGINT COMMENT '所屬小組 ID（用於快速查詢，主要關係通過 group_persons 表維護）'")
+));
+PREPARE alterIfNotExists FROM @preparedStatement;
+EXECUTE alterIfNotExists;
+DEALLOCATE PREPARE alterIfNotExists;
+
+-- 添加外鍵（如果不存在）
+SET @constraintname = "fk_persons_group_id";
+SET @preparedStatement = (SELECT IF(
+  (
+    SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+    WHERE
+      (table_name = @tablename)
+      AND (table_schema = @dbname)
+      AND (constraint_name = @constraintname)
+  ) > 0,
+  "SELECT 1",
+  CONCAT("ALTER TABLE ", @tablename, " ADD CONSTRAINT ", @constraintname, " FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE SET NULL")
+));
+PREPARE alterIfNotExists FROM @preparedStatement;
+EXECUTE alterIfNotExists;
+DEALLOCATE PREPARE alterIfNotExists;
+
+-- 添加索引（如果不存在）
+SET @indexname = "idx_group_id";
+SET @preparedStatement = (SELECT IF(
+  (
+    SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS
+    WHERE
+      (table_name = @tablename)
+      AND (table_schema = @dbname)
+      AND (index_name = @indexname)
+      AND (column_name = @columnname)
+  ) > 0,
+  "SELECT 1",
+  CONCAT("ALTER TABLE ", @tablename, " ADD INDEX ", @indexname, " (", @columnname, ")")
+));
+PREPARE alterIfNotExists FROM @preparedStatement;
+EXECUTE alterIfNotExists;
+DEALLOCATE PREPARE alterIfNotExists;
+
+-- 3. 為 service_schedules 表添加 year 欄位和唯一約束（如果不存在）
 SET @columnname = "year";
 SET @preparedStatement = (SELECT IF(
   (

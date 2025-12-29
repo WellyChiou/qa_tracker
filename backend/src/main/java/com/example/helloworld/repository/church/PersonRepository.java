@@ -20,5 +20,8 @@ public interface PersonRepository extends JpaRepository<Person, Long> {
     
     @Query("SELECT p FROM Person p WHERE p.isActive = true AND p.personName LIKE %:keyword% ORDER BY p.personName ASC")
     List<Person> searchActivePersons(String keyword);
+    
+    List<Person> findByGroupId(Long groupId);
+    List<Person> findByGroupIdAndIsActiveTrue(Long groupId);
 }
 

@@ -26,6 +26,12 @@
   - **注意**：persons 表已包含 `member_no` 和 `birthday` 欄位（用於簽到系統）
 - **`church-data.sql`** - 崗位和人員初始數據（可選）
 
+##### 資料清理工具
+- **`cleanup-duplicate-url-permissions.sql`** - 清理 url_permissions 表中的重複資料
+  - 檢查基於 `url_pattern` 和 `http_method` 的重複記錄
+  - 移除重複資料（保留 id 最小的記錄）
+  - 使用前請先備份資料庫
+
 ##### 簽到系統
 - **`checkin-system-complete-setup.sql`** ⭐ **推薦使用** - 簽到系統完整配置（整合所有配置）
   - 包含：member_no 和 birthday 欄位檢查、URL 權限、菜單配置

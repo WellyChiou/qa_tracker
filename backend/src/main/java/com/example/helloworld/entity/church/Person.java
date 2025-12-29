@@ -37,6 +37,9 @@ public class Person {
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 
+    @Column(name = "group_id")
+    private Long groupId;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
@@ -46,6 +49,10 @@ public class Person {
     @OneToMany(mappedBy = "person", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JsonIgnore // 避免 JSON 序列化時觸發懶加載
     private List<PositionPerson> positionPersons;
+
+    @OneToMany(mappedBy = "person", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
+    private List<GroupPerson> groupPersons;
 
     @PrePersist
     protected void onCreate() {
@@ -131,6 +138,14 @@ public class Person {
         this.isActive = isActive;
     }
 
+    public Long getGroupId() {
+        return groupId;
+    }
+
+    public void setGroupId(Long groupId) {
+        this.groupId = groupId;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -153,6 +168,28 @@ public class Person {
 
     public void setPositionPersons(List<PositionPerson> positionPersons) {
         this.positionPersons = positionPersons;
+    }
+
+    public List<GroupPerson> getGroupPersons() {
+        return groupPersons;
+    }
+
+    public void setGroupPersons(List<GroupPerson> groupPersons) {
+        this.groupPersons = groupPersons;
+    }
+
+    /**
+     * 從 groupPersons 關聯中提取所有活躍的小組 ID
+     * @return 小組 ID 列表
+     */
+    public List<Long> getGroupIds() {
+        if (groupPersons == null) {
+            return java.util.Collections.emptyList();
+        }
+        return groupPersons.stream()
+                .filter(gp -> gp.getIsActive() != null && gp.getIsActive())
+                .map(gp -> gp.getGroup().getId())
+                .collect(java.util.stream.Collectors.toList());
     }
 }
 

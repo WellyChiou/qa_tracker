@@ -662,7 +662,9 @@ const loadRecords = async () => {
       status: filters.value.status,
       category: filters.value.category,
       issueNumber: filters.value.issueNumber,
-      keyword: filters.value.keyword || undefined
+      keyword: filters.value.keyword || undefined,
+      testPlan: filters.value.testPlan || undefined,
+      bugFound: filters.value.bugFound
     }
     
     // 處理開始測試日期範圍

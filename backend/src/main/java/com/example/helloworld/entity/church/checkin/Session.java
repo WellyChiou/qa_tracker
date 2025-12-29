@@ -1,7 +1,9 @@
 package com.example.helloworld.entity.church.checkin;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.*;
+import java.util.List;
 
 @Entity
 @Table(name = "sessions")
@@ -29,6 +31,10 @@ public class Session {
     @Column(name="session_code", unique = true)
     private String sessionCode;
 
+    @OneToMany(mappedBy = "session", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
+    private List<SessionGroup> sessionGroups;
+
     public Long getId() { return id; }
     public String getSessionType() { return sessionType; }
     public void setSessionType(String sessionType) { this.sessionType = sessionType; }
@@ -44,5 +50,7 @@ public class Session {
     public void setStatus(String status) { this.status = status; }
     public String getSessionCode() { return sessionCode; }
     public void setSessionCode(String sessionCode) { this.sessionCode = sessionCode; }
+    public List<SessionGroup> getSessionGroups() { return sessionGroups; }
+    public void setSessionGroups(List<SessionGroup> sessionGroups) { this.sessionGroups = sessionGroups; }
 }
 

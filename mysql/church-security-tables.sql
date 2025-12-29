@@ -133,12 +133,17 @@ INSERT IGNORE INTO permissions (permission_code, permission_name, resource, acti
 ('SERVICE_SCHEDULE_EDIT', '編輯服事表', 'service_schedule', 'edit', '可以新增、修改、刪除服事表'),
 ('PERSON_READ', '查看人員', 'person', 'read', '可以查看人員列表'),
 ('PERSON_EDIT', '編輯人員', 'person', 'edit', '可以新增、修改、刪除人員'),
+('GROUP_READ', '查看小組', 'group', 'read', '可以查看小組列表'),
+('GROUP_EDIT', '編輯小組', 'group', 'edit', '可以新增、修改、刪除小組'),
+('ATTENDANCE_READ', '查看出席率', 'attendance', 'read', '可以查看出席率統計'),
 ('POSITION_READ', '查看崗位', 'position', 'read', '可以查看崗位列表'),
 ('POSITION_EDIT', '編輯崗位', 'position', 'edit', '可以新增、修改、刪除崗位'),
 ('CHURCH_ADMIN', '教會管理員權限', 'church', 'admin', '教會後台管理權限'),
 ('SUNDAY_MESSAGE_READ', '查看主日信息', 'sunday_message', 'read', '可以查看主日信息'),
 ('SUNDAY_MESSAGE_EDIT', '編輯主日信息', 'sunday_message', 'edit', '可以新增、修改、刪除主日信息'),
-('ACTIVITY_EDIT', '編輯活動', 'activity', 'edit', '可以新增、修改、刪除活動');
+('ACTIVITY_EDIT', '編輯活動', 'activity', 'edit', '可以新增、修改、刪除活動'),
+('CHECKIN_READ', '查看簽到', 'checkin', 'read', '可以查看簽到記錄和場次'),
+('CHECKIN_EDIT', '編輯簽到', 'checkin', 'edit', '可以新增、修改、刪除簽到記錄和場次');
 
 -- 11. 將所有權限分配給 ADMIN 角色
 INSERT IGNORE INTO role_permissions (role_id, permission_id)
@@ -177,7 +182,9 @@ INSERT IGNORE INTO menu_items (menu_code, menu_name, icon, url, parent_id, order
 ('ADMIN_DASHBOARD', '儀表板', '📊', '/admin', NULL, 1, 'admin', NULL, 1),
 ('ADMIN_SERVICE_SCHEDULE', '服事表管理', '📋', '/admin/service-schedule', NULL, 2, 'admin', 'SERVICE_SCHEDULE_READ', 1),
 ('ADMIN_PERSONS', '人員管理', '👥', '/admin/persons', NULL, 3, 'admin', 'PERSON_READ', 1),
-('ADMIN_POSITIONS', '崗位管理', '🎯', '/admin/positions', NULL, 4, 'admin', 'POSITION_READ', 1),
+('ADMIN_GROUPS', '小組管理', '👨‍👩‍👧‍👦', '/admin/groups', NULL, 4, 'admin', 'GROUP_READ', 1),
+('ADMIN_ATTENDANCE_RATE', '出席率查詢', '📊', '/admin/attendance-rate', NULL, 5, 'admin', 'ATTENDANCE_READ', 1),
+('ADMIN_POSITIONS', '崗位管理', '🎯', '/admin/positions', NULL, 6, 'admin', 'POSITION_READ', 1),
 ('ADMIN_SETTINGS', '系統設定', '⚙️', '#', NULL, 99, 'admin', 'CHURCH_ADMIN', 1);
 
 -- 插入設定子菜單
@@ -270,6 +277,8 @@ INSERT IGNORE INTO url_permissions (
 ) VALUES
 ('/api/church/service-schedules', 'GET', 1, NULL, NULL, '教會服事表查詢 - 公開訪問', 1, 0),
 ('/api/church/persons', 'GET', 1, NULL, NULL, '教會人員查詢 - 公開訪問', 1, 0),
+('/api/church/groups', 'GET', 1, NULL, NULL, '教會小組查詢 - 公開訪問', 1, 0),
+('/api/church/groups/active', 'GET', 1, NULL, NULL, '教會啟用小組查詢 - 公開訪問', 1, 0),
 ('/api/church/positions', 'GET', 1, NULL, NULL, '教會崗位查詢 - 公開訪問', 1, 0),
 ('/api/church/menus/frontend', 'GET', 1, NULL, NULL, '教會前台菜單 - 公開訪問', 1, 0),
 ('/api/church/auth/**', NULL, 1, NULL, NULL, '教會認證 API - 公開訪問', 1, 0);
@@ -285,6 +294,15 @@ INSERT IGNORE INTO url_permissions (
 ('/api/church/persons', 'POST', 0, NULL, 'PERSON_EDIT', '教會人員新增 - 需要編輯權限', 1, 10),
 ('/api/church/persons/**', 'PUT', 0, NULL, 'PERSON_EDIT', '教會人員修改 - 需要編輯權限', 1, 10),
 ('/api/church/persons/**', 'DELETE', 0, NULL, 'PERSON_EDIT', '教會人員刪除 - 需要編輯權限', 1, 10),
+('/api/church/groups', 'POST', 0, NULL, 'GROUP_EDIT', '教會小組新增 - 需要編輯權限', 1, 10),
+('/api/church/groups/**', 'GET', 0, NULL, 'GROUP_READ', '教會小組詳情查詢 - 需要查看權限', 1, 10),
+('/api/church/groups/**', 'PUT', 0, NULL, 'GROUP_EDIT', '教會小組修改 - 需要編輯權限', 1, 10),
+('/api/church/groups/**', 'DELETE', 0, NULL, 'GROUP_EDIT', '教會小組刪除 - 需要編輯權限', 1, 10),
+('/api/church/groups/**/members', 'GET', 0, NULL, 'GROUP_READ', '教會小組成員查詢 - 需要查看權限', 1, 10),
+('/api/church/groups/**/non-members', 'GET', 0, NULL, 'GROUP_READ', '教會小組未加入人員查詢 - 需要查看權限', 1, 10),
+('/api/church/groups/**/members', 'POST', 0, NULL, 'GROUP_EDIT', '教會小組添加成員 - 需要編輯權限', 1, 10),
+('/api/church/groups/**/members/**', 'DELETE', 0, NULL, 'GROUP_EDIT', '教會小組移除成員 - 需要編輯權限', 1, 10),
+('/api/church/attendance/**', 'GET', 0, NULL, 'ATTENDANCE_READ', '教會出席率查詢 - 需要查看權限', 1, 10),
 ('/api/church/positions', 'POST', 0, NULL, 'POSITION_EDIT', '教會崗位新增 - 需要編輯權限', 1, 10),
 ('/api/church/positions/**', 'PUT', 0, NULL, 'POSITION_EDIT', '教會崗位修改 - 需要編輯權限', 1, 10),
 ('/api/church/positions/**', 'DELETE', 0, NULL, 'POSITION_EDIT', '教會崗位刪除 - 需要編輯權限', 1, 10),
@@ -390,7 +408,10 @@ INSERT IGNORE INTO url_permissions (
 ('/api/church/admin/backups', 'GET', 0, NULL, 'CHURCH_ADMIN', 1, 310, '獲取所有備份檔案列表（需教會管理員權限）'),
 ('/api/church/admin/backups/create', 'POST', 0, NULL, 'CHURCH_ADMIN', 1, 311, '手動創建備份（需教會管理員權限）'),
 ('/api/church/admin/backups/download/*', 'GET', 0, NULL, 'CHURCH_ADMIN', 1, 312, '下載備份檔案（需教會管理員權限）'),
-('/api/church/admin/backups/*', 'DELETE', 0, NULL, 'CHURCH_ADMIN', 1, 313, '刪除備份檔案（需教會管理員權限）');
+('/api/church/admin/backups/*', 'DELETE', 0, NULL, 'CHURCH_ADMIN', 1, 313, '刪除備份檔案（需教會管理員權限）'),
+-- 場次小組關聯 API
+('/api/church/checkin/admin/sessions/*/groups', 'GET', 0, NULL, 'CHECKIN_READ', '獲取場次關聯的小組 - 需要查看簽到權限', 1, 220),
+('/api/church/checkin/admin/sessions/*/groups', 'PUT', 0, NULL, 'CHECKIN_EDIT', '更新場次關聯的小組 - 需要編輯簽到權限', 1, 221);
 
 -- 19. 更新現有配置（確保一致性）
 UPDATE url_permissions 

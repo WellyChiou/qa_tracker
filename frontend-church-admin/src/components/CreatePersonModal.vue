@@ -73,6 +73,16 @@
           </div>
 
           <div class="form-group">
+            <label class="form-label">所屬小組</label>
+            <select v-model="form.groupIds" multiple class="form-input" style="min-height: 120px;">
+              <option v-for="group in activeGroups" :key="group.id" :value="group.id">
+                {{ group.groupName }}
+              </option>
+            </select>
+            <div class="form-hint">可選擇多個小組，按住 Ctrl (Windows) 或 Cmd (Mac) 進行多選</div>
+          </div>
+
+          <div class="form-group">
             <label class="form-label">備註</label>
             <textarea
               v-model="form.notes"
@@ -98,7 +108,7 @@
 
 <script setup>
 import { toast } from '@/composables/useToast'
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { apiRequest } from '@/utils/api'
 
 const props = defineProps({
@@ -111,6 +121,7 @@ const props = defineProps({
 const emit = defineEmits(['close', 'created'])
 
 const saving = ref(false)
+const activeGroups = ref([])
 const form = ref({
   personName: '',
   displayName: '',
@@ -118,7 +129,34 @@ const form = ref({
   phone: '',
   email: '',
   birthday: '',
-  notes: ''
+  notes: '',
+  groupIds: []
+})
+
+const loadActiveGroups = async () => {
+  try {
+    const response = await apiRequest('/church/groups/active', {
+      method: 'GET',
+      credentials: 'include'
+    })
+    
+    if (response.ok) {
+      const data = await response.json()
+      activeGroups.value = data.groups || []
+    }
+  } catch (error) {
+    console.error('載入小組列表失敗:', error)
+  }
+}
+
+onMounted(() => {
+  loadActiveGroups()
+})
+
+watch(() => props.show, (newVal) => {
+  if (newVal) {
+    loadActiveGroups()
+  }
 })
 
 const handleSubmit = async () => {
@@ -129,14 +167,35 @@ const handleSubmit = async () => {
 
   saving.value = true
   try {
+    // 先創建人員
+    const personData = { ...form.value }
+    delete personData.groupIds
+    
     const response = await apiRequest('/church/persons', {
       method: 'POST',
-      body: JSON.stringify(form.value)
+      body: JSON.stringify(personData)
     })
 
     const result = await response.json()
     
     if (response.ok && result.success !== false) {
+      const personId = result.person.id
+      
+      // 如果有選擇小組，設置小組關聯
+      if (form.value.groupIds && form.value.groupIds.length > 0) {
+        try {
+          await apiRequest(`/church/persons/${personId}/groups`, {
+            method: 'PUT',
+            body: JSON.stringify({
+              groupIds: form.value.groupIds
+            })
+          })
+        } catch (groupError) {
+          console.error('設置小組關聯失敗:', groupError)
+          toast.warning('人員創建成功，但設置小組關聯失敗')
+        }
+      }
+      
       emit('created', result.person)
       resetForm()
       closeModal()
@@ -160,7 +219,8 @@ const resetForm = () => {
     phone: '',
     email: '',
     birthday: '',
-    notes: ''
+    notes: '',
+    groupIds: []
   }
 }
 
@@ -276,6 +336,12 @@ watch(() => props.show, (newVal) => {
 
 .form-input::placeholder {
   color: #9ca3af;
+}
+
+.form-hint {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 0.25rem;
 }
 
 .form-actions {

@@ -69,6 +69,7 @@
                 <th>姓名</th>
                 <th>顯示名稱</th>
                 <th>會員編號</th>
+                <th>所屬小組</th>
                 <th>電話</th>
                 <th>電子郵件</th>
                 <th>生日</th>
@@ -82,6 +83,7 @@
                 <td>{{ person.personName }}</td>
                 <td>{{ person.displayName || '-' }}</td>
                 <td>{{ person.memberNo || '-' }}</td>
+                <td>{{ getGroupNames(person.id) || '-' }}</td>
                 <td>{{ person.phone || '-' }}</td>
                 <td>{{ person.email || '-' }}</td>
                 <td>{{ formatDate(person.birthday) }}</td>
@@ -157,6 +159,8 @@ import EditPersonModal from '@/components/EditPersonModal.vue'
 import { apiRequest } from '@/utils/api'
 
 const persons = ref([])
+const groups = ref([])
+const personGroupsMap = ref({}) // 存儲每個人員的小組列表
 const showModal = ref(false)
 const editingPerson = ref(null)
 
@@ -251,10 +255,63 @@ const loadPersons = async () => {
       const data = await response.json()
       // 後端返回格式：{ "persons": [...], "message": "..." }
       persons.value = data.persons || data || []
+      // 載入所有人員的小組列表
+      await loadAllPersonGroups()
     }
   } catch (error) {
     console.error('載入人員失敗:', error)
   }
+}
+
+const loadGroups = async () => {
+  try {
+    const response = await apiRequest('/church/groups', {
+      method: 'GET',
+      credentials: 'include'
+    })
+    
+    if (response.ok) {
+      const data = await response.json()
+      groups.value = data.groups || []
+    }
+  } catch (error) {
+    console.error('載入小組失敗:', error)
+  }
+}
+
+const getGroupNames = (personId) => {
+  if (!personId) return null
+  const personGroups = personGroupsMap.value[personId] || []
+  if (personGroups.length === 0) return null
+  // 只顯示活躍的小組
+  const activeGroups = personGroups.filter(g => g.isActive)
+  if (activeGroups.length === 0) return null
+  return activeGroups.map(g => {
+    const group = groups.value.find(gr => gr.id === g.groupId)
+    return group ? group.groupName : null
+  }).filter(Boolean).join(', ')
+}
+
+const loadPersonGroups = async (personId) => {
+  try {
+    const response = await apiRequest(`/church/persons/${personId}/groups`, {
+      method: 'GET',
+      credentials: 'include'
+    })
+    
+    if (response.ok) {
+      const data = await response.json()
+      personGroupsMap.value[personId] = data.groups || []
+    }
+  } catch (error) {
+    console.error(`載入人員 ${personId} 的小組列表失敗:`, error)
+  }
+}
+
+const loadAllPersonGroups = async () => {
+  // 為所有人員載入小組列表
+  const promises = persons.value.map(person => loadPersonGroups(person.id))
+  await Promise.all(promises)
 }
 
 const openAddModal = () => {
@@ -276,6 +333,10 @@ const closeEditModal = () => {
 const handleUpdated = () => {
   loadPersons()
   closeEditModal()
+  // 清除該人員的小組緩存，下次載入時會重新獲取
+  if (editingPerson.value?.id) {
+    delete personGroupsMap.value[editingPerson.value.id]
+  }
 }
 
 const closeModal = () => {
@@ -334,6 +395,7 @@ const deletePerson = async (id) => {
 
 onMounted(() => {
   loadPersons()
+  loadGroups()
 })
 </script>
 

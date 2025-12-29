@@ -76,29 +76,16 @@
           <button type="button" class="btn btn-primary" :disabled="selectedPersons.length===0" @click="confirmAdd">
             加入所選 ({{ selectedPersons.length }})
           </button>
-          <button type="button" class="btn btn-secondary" @click="openCreatePersonModal">
-            + 新增人員
-          </button>
           <button type="button" class="btn btn-secondary" @click="closeModal">取消</button>
         </div>
       </div>
     </div>
   </div>
-
-  <!-- 新增人員 Modal -->
-  <CreatePersonModal
-    v-if="showCreatePersonModal"
-    :show="showCreatePersonModal"
-    @close="closeCreatePersonModal"
-    @created="handlePersonCreated"
-  />
-
 </template>
 
 <script setup>
 import { toast } from '@/composables/useToast'
 import { ref, computed, watch, onMounted } from 'vue'
-import CreatePersonModal from './CreatePersonModal.vue'
 import { apiRequest } from '@/utils/api'
 
 const props = defineProps({
@@ -138,12 +125,38 @@ const selectedPersons = computed(() => {
   return (persons.value || []).filter(p => s.has(p.id))
 })
 
-const confirmAdd = () => {
-  emit('added', { dayType: props.dayType, persons: selectedPersons.value })
-  closeModal()
+const confirmAdd = async () => {
+  if (selectedPersons.value.length === 0) {
+    toast.error('請至少選擇一個人員')
+    return
+  }
+
+  try {
+    // 調用 API 添加每個選中的人員
+    for (const person of selectedPersons.value) {
+      const response = await apiRequest(
+        `/church/positions/${props.positionId}/persons/${person.id}?dayType=${props.dayType}`,
+        {
+          method: 'POST',
+          credentials: 'include'
+        }
+      )
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || `添加 ${person.personName} 失敗`)
+      }
+    }
+
+    toast.success(`成功添加 ${selectedPersons.value.length} 位人員`)
+    emit('added', { dayType: props.dayType, persons: selectedPersons.value })
+    closeModal()
+  } catch (error) {
+    console.error('添加人員失敗：', error)
+    toast.error('添加人員失敗：' + (error.message || '未知錯誤'))
+  }
 }
 const searchKeyword = ref('')
-const showCreatePersonModal = ref(false)
 
 const filteredPersons = computed(() => {
   let filtered = persons.value.filter(p => 
@@ -176,21 +189,6 @@ const loadPersons = async () => {
 
 const searchPersons = () => {
   // 搜尋邏輯已在 computed 中處理
-}
-
-
-const openCreatePersonModal = () => {
-  showCreatePersonModal.value = true
-}
-
-const closeCreatePersonModal = () => {
-  showCreatePersonModal.value = false
-  loadPersons() // 重新載入人員列表
-}
-
-const handlePersonCreated = async () => {
-  await loadPersons()
-  closeCreatePersonModal()
 }
 
 const closeModal = () => {

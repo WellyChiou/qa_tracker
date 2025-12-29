@@ -72,6 +72,8 @@ public class ChurchDataSourceConfig {
         // 確保使用 UTF-8 編碼
         properties.setProperty("hibernate.connection.characterEncoding", "utf8");
         properties.setProperty("hibernate.connection.useUnicode", "true");
+        // 使用自定義命名策略，自動為所有表名和列名添加反引號，處理 MySQL 保留字（如 groups）
+        properties.setProperty("hibernate.physical_naming_strategy", "com.example.helloworld.config.MySQLPhysicalNamingStrategy");
         em.setJpaProperties(properties);
         
         return em;

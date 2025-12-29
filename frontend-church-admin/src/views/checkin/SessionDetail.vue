@@ -67,6 +67,17 @@
               </select>
             </div>
           </div>
+          <div class="form-row" v-if="editForm.sessionType === 'WEEKDAY'">
+            <div class="form-group" style="width: 100%;">
+              <label>參與小組</label>
+              <select v-model="editForm.groupIds" multiple class="form-input" style="min-height: 120px;">
+                <option v-for="group in activeGroups" :key="group.id" :value="group.id">
+                  {{ group.groupName }}
+                </option>
+              </select>
+              <div class="form-hint">可選擇多個小組（支援聯合小組），按住 Ctrl (Windows) 或 Cmd (Mac) 進行多選</div>
+            </div>
+          </div>
           <div class="form-actions">
             <button type="submit" class="btn btn-primary" :disabled="saving">
               {{ saving ? '儲存中...' : '儲存' }}
@@ -84,6 +95,12 @@
         <div>
           <div class="title">{{ s.title || ('Session #' + s.id) }}</div>
           <div class="sub">{{ s.sessionDate }} ｜ {{ s.sessionCode }}</div>
+          <div v-if="sessionGroups[s.id] && sessionGroups[s.id].length > 0" class="session-groups">
+            <span class="groups-label">參與小組：</span>
+            <span v-for="(group, idx) in sessionGroups[s.id]" :key="group.id" class="group-tag">
+              {{ group.groupName }}<span v-if="idx < sessionGroups[s.id].length - 1">, </span>
+            </span>
+          </div>
         </div>
         <div class="right">
           <div class="stat">已簽：<strong>{{ stats[s.id]?.checked ?? '-' }}</strong></div>
@@ -253,6 +270,7 @@ const route = useRoute()
 const sessions = ref([])
 const stats = ref({})
 const checkins = ref({})
+const sessionGroups = ref({}) // 場次關聯的小組 { sessionId: [groups] }
 const currentSession = ref(null)
 const showEditForm = ref(false)
 const saving = ref(false)
@@ -268,8 +286,11 @@ const editForm = ref({
   sessionDate: '',
   openAt: '',
   closeAt: '',
-  status: 'DRAFT'
+  status: 'DRAFT',
+  groupIds: []
 })
+
+const activeGroups = ref([]) // 活躍的小組列表
 
 const showCanceled = ref({}) // 控制是否顯示已取消的補登記錄
 const uncheckedPersons = ref({}) // 尚未簽到的人員列表
@@ -371,9 +392,13 @@ async function loadSession() {
         sessionDate: formatDateForInput(currentSession.value.sessionDate),
         openAt: formatDateTimeForInput(currentSession.value.openAt),
         closeAt: formatDateTimeForInput(currentSession.value.closeAt),
-        status: currentSession.value.status || 'DRAFT'
+        status: currentSession.value.status || 'DRAFT',
+        groupIds: []
       }
       showEditForm.value = true
+      
+      // 載入場次關聯的小組
+      await loadSessionGroups(sessionId)
       
       // 載入該場次的統計和簽到資料
       sessions.value = [currentSession.value]
@@ -428,6 +453,24 @@ async function saveSession() {
       body: JSON.stringify(payload)
     }, '儲存中...', true)
     
+    // 更新場次關聯的小組
+    if (editForm.value.sessionType === 'WEEKDAY') {
+      // 確保 groupIds 是數字數組，即使為空也要傳遞
+      const groupIds = (editForm.value.groupIds || []).map(id => typeof id === 'string' ? parseInt(id) : id)
+      await apiRequest(`/church/checkin/admin/sessions/${sessionId}/groups`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ groupIds: groupIds })
+      }, '更新小組關聯中...', true)
+    } else {
+      // 如果類型不是小組，清除所有小組關聯
+      await apiRequest(`/church/checkin/admin/sessions/${sessionId}/groups`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ groupIds: [] })
+      }, '更新小組關聯中...', true)
+    }
+    
     toast.success('場次已更新')
     await loadSession()
   } catch (error) {
@@ -445,6 +488,51 @@ function goBack() {
 async function refreshAll(){
   for(const s of sessions.value){
     await refreshCheckins(s.id)
+    await loadSessionGroups(s.id)
+  }
+}
+
+async function loadSessionGroups(sessionId) {
+  try {
+    const response = await apiRequest(`/church/checkin/admin/sessions/${sessionId}/groups`, {
+      method: 'GET'
+    })
+    
+    if (response.ok) {
+      const data = await response.json()
+      sessionGroups.value[sessionId] = data.groups || []
+      // 如果是編輯模式，更新編輯表單中的 groupIds
+      if (isEditMode.value && route.params.id === String(sessionId)) {
+        // 確保 groupIds 是數字數組
+        editForm.value.groupIds = (data.groups || []).map(g => {
+          const id = g.id
+          return typeof id === 'string' ? parseInt(id) : id
+        })
+        console.log('載入場次關聯的小組:', editForm.value.groupIds)
+      }
+    }
+  } catch (error) {
+    console.error('載入場次關聯的小組失敗:', error)
+    sessionGroups.value[sessionId] = []
+    if (isEditMode.value && route.params.id === String(sessionId)) {
+      editForm.value.groupIds = []
+    }
+  }
+}
+
+async function loadActiveGroups() {
+  try {
+    const response = await apiRequest('/church/groups/active', {
+      method: 'GET'
+    })
+    
+    if (response.ok) {
+      const data = await response.json()
+      activeGroups.value = data.groups || []
+    }
+  } catch (error) {
+    console.error('載入活躍小組失敗:', error)
+    activeGroups.value = []
   }
 }
 
@@ -781,7 +869,8 @@ function startPolling(){
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await loadActiveGroups()
   load().then(startPolling)
 })
 
@@ -1263,6 +1352,21 @@ onBeforeUnmount(() => { if(timer) clearInterval(timer) })
   opacity: 0.7;
   font-size: 13px;
   color: var(--text-muted);
+}
+
+.session-groups {
+  margin-top: 8px;
+  font-size: 14px;
+  color: #666;
+}
+
+.groups-label {
+  font-weight: 500;
+  color: #333;
+}
+
+.group-tag {
+  color: #0066cc;
 }
 </style>
 

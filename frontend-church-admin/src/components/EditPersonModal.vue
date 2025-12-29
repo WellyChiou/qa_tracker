@@ -73,6 +73,16 @@
           </div>
 
           <div class="form-group">
+            <label class="form-label">所屬小組</label>
+            <select v-model="form.groupIds" multiple class="form-input" style="min-height: 120px;">
+              <option v-for="group in activeGroups" :key="group.id" :value="group.id">
+                {{ group.groupName }}
+              </option>
+            </select>
+            <div class="form-hint">可選擇多個小組，按住 Ctrl (Windows) 或 Cmd (Mac) 進行多選</div>
+          </div>
+
+          <div class="form-group">
             <label class="form-label">備註</label>
             <textarea
               v-model="form.notes"
@@ -109,7 +119,7 @@
 
 <script setup>
 import { toast } from '@/composables/useToast'
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { apiRequest } from '@/utils/api'
 
 const props = defineProps({
@@ -126,6 +136,7 @@ const props = defineProps({
 const emit = defineEmits(['close', 'updated'])
 
 const saving = ref(false)
+const activeGroups = ref([])
 const form = ref({
   personName: '',
   displayName: '',
@@ -134,10 +145,57 @@ const form = ref({
   email: '',
   birthday: '',
   notes: '',
-  isActive: true
+  isActive: true,
+  groupIds: []
 })
 
-const loadPersonData = () => {
+const loadActiveGroups = async () => {
+  try {
+    const response = await apiRequest('/church/groups/active', {
+      method: 'GET',
+      credentials: 'include'
+    })
+    
+    if (response.ok) {
+      const data = await response.json()
+      activeGroups.value = data.groups || []
+    }
+  } catch (error) {
+    console.error('載入小組列表失敗:', error)
+  }
+}
+
+onMounted(() => {
+  loadActiveGroups()
+})
+
+watch(() => props.show, (newVal) => {
+  if (newVal) {
+    loadActiveGroups()
+  }
+})
+
+const loadPersonGroups = async (personId) => {
+  try {
+    const response = await apiRequest(`/church/persons/${personId}/groups`, {
+      method: 'GET',
+      credentials: 'include'
+    })
+    
+    if (response.ok) {
+      const data = await response.json()
+      // 只獲取活躍的小組
+      const activeGroupIds = (data.groups || [])
+        .filter(g => g.isActive)
+        .map(g => g.groupId)
+      form.value.groupIds = activeGroupIds
+    }
+  } catch (error) {
+    console.error('載入人員小組列表失敗:', error)
+  }
+}
+
+const loadPersonData = async () => {
   if (props.person) {
     form.value = {
       personName: props.person.personName || '',
@@ -147,7 +205,13 @@ const loadPersonData = () => {
       email: props.person.email || '',
       birthday: props.person.birthday ? formatDateForInput(props.person.birthday) : '',
       notes: props.person.notes || '',
-      isActive: props.person.isActive !== false
+      isActive: props.person.isActive !== false,
+      groupIds: []
+    }
+    
+    // 載入人員所屬的小組列表
+    if (props.person.id) {
+      await loadPersonGroups(props.person.id)
     }
   }
 }
@@ -175,14 +239,31 @@ const handleSubmit = async () => {
 
   saving.value = true
   try {
+    // 先更新人員基本信息
+    const personData = { ...form.value }
+    delete personData.groupIds
+    
     const response = await apiRequest(`/church/persons/${props.person.id}`, {
       method: 'PUT',
-      body: JSON.stringify(form.value)
+      body: JSON.stringify(personData)
     })
 
     const result = await response.json()
     
     if (response.ok && result.success !== false) {
+      // 更新小組關聯
+      try {
+        await apiRequest(`/church/persons/${props.person.id}/groups`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            groupIds: form.value.groupIds || []
+          })
+        })
+      } catch (groupError) {
+        console.error('更新小組關聯失敗:', groupError)
+        toast.warning('人員更新成功，但更新小組關聯失敗')
+      }
+      
       emit('updated', result.person)
       closeModal()
     } else {
@@ -206,7 +287,8 @@ const resetForm = () => {
     email: '',
     birthday: '',
     notes: '',
-    isActive: true
+    isActive: true,
+    groupIds: []
   }
 }
 
@@ -335,6 +417,12 @@ watch(() => props.person, (newPerson) => {
 
 .form-input::placeholder {
   color: #9ca3af;
+}
+
+.form-hint {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 0.25rem;
 }
 
 .form-checkbox {

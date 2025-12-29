@@ -1,20 +1,29 @@
 package com.example.helloworld.controller.church.checkin;
 
+import com.example.helloworld.entity.church.Group;
 import com.example.helloworld.entity.church.checkin.Session;
+import com.example.helloworld.entity.church.checkin.SessionGroup;
+import com.example.helloworld.repository.church.GroupRepository;
 import com.example.helloworld.repository.church.checkin.CheckinRepository;
 import com.example.helloworld.repository.church.checkin.SessionRepository;
+import com.example.helloworld.repository.church.checkin.SessionGroupRepository;
 import com.example.helloworld.service.church.checkin.CheckinService;
 import com.example.helloworld.service.church.checkin.CsvService;
 import com.example.helloworld.service.church.checkin.ExcelService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/church/checkin/admin/sessions")
@@ -24,19 +33,99 @@ public class AdminSessionController {
     private final CsvService csvService;
     private final ExcelService excelService;
     private final CheckinService checkinService;
+    private final SessionGroupRepository sessionGroupRepository;
+    private final GroupRepository groupRepository;
 
-    public AdminSessionController(SessionRepository sessionRepo, CheckinRepository checkinRepo, CsvService csvService, ExcelService excelService, CheckinService checkinService) {
+    public AdminSessionController(SessionRepository sessionRepo, CheckinRepository checkinRepo, CsvService csvService, ExcelService excelService, CheckinService checkinService, SessionGroupRepository sessionGroupRepository, GroupRepository groupRepository) {
         this.sessionRepo = sessionRepo;
         this.checkinRepo = checkinRepo;
         this.csvService = csvService;
         this.excelService = excelService;
         this.checkinService = checkinService;
+        this.sessionGroupRepository = sessionGroupRepository;
+        this.groupRepository = groupRepository;
     }
 
-    // 獲取所有場次列表
+    // 獲取所有場次列表（支援篩選）
     @GetMapping
-    public List<Session> listAll() {
-        return sessionRepo.findAll();
+    public List<Session> listAll(
+            @RequestParam(required = false) String sessionCode,
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String sessionType,
+            @RequestParam(required = false) Long groupId,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        List<Session> allSessions = sessionRepo.findAll();
+        
+        // 前端篩選
+        List<Session> filtered = new ArrayList<>();
+        for (Session session : allSessions) {
+            // 場次代碼篩選
+            if (sessionCode != null && !sessionCode.isBlank()) {
+                if (session.getSessionCode() == null || 
+                    !session.getSessionCode().toLowerCase().contains(sessionCode.toLowerCase())) {
+                    continue;
+                }
+            }
+            
+            // 標題篩選
+            if (title != null && !title.isBlank()) {
+                if (session.getTitle() == null || 
+                    !session.getTitle().toLowerCase().contains(title.toLowerCase())) {
+                    continue;
+                }
+            }
+            
+            // 狀態篩選
+            if (status != null && !status.isBlank()) {
+                if (!status.equals(session.getStatus())) {
+                    continue;
+                }
+            }
+            
+            // 類型篩選
+            if (sessionType != null && !sessionType.isBlank()) {
+                if (!sessionType.equals(session.getSessionType())) {
+                    continue;
+                }
+            }
+            
+            // 小組篩選（只對小組類型場次有效）
+            if (groupId != null && "WEEKDAY".equals(session.getSessionType())) {
+                List<SessionGroup> sessionGroups = sessionGroupRepository.findBySessionId(session.getId());
+                boolean found = false;
+                for (SessionGroup sg : sessionGroups) {
+                    if (sg.getGroupId().equals(groupId)) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    continue;
+                }
+            }
+            
+            // 開始日期篩選（基於 sessionDate）
+            if (startDate != null && !startDate.isBlank()) {
+                LocalDate start = LocalDate.parse(startDate);
+                if (session.getSessionDate() == null || session.getSessionDate().isBefore(start)) {
+                    continue;
+                }
+            }
+            
+            // 結束日期篩選（基於 sessionDate）
+            if (endDate != null && !endDate.isBlank()) {
+                LocalDate end = LocalDate.parse(endDate);
+                if (session.getSessionDate() == null || session.getSessionDate().isAfter(end)) {
+                    continue;
+                }
+            }
+            
+            filtered.add(session);
+        }
+        
+        return filtered;
     }
 
     // 獲取單一場次
@@ -148,6 +237,105 @@ public class AdminSessionController {
     public ResponseEntity<?> batchCheckin(@PathVariable Long id, @RequestBody List<Map<String, String>> requests) {
         checkinService.batchManualCheckin(id, requests);
         return ResponseEntity.ok().build();
+    }
+
+    // 獲取場次關聯的小組
+    @GetMapping("/{id}/groups")
+    @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
+    public ResponseEntity<Map<String, Object>> getSessionGroups(@PathVariable Long id) {
+        try {
+            Session session = sessionRepo.findById(id)
+                    .orElseThrow(() -> new RuntimeException("場次不存在：" + id));
+            
+            List<SessionGroup> sessionGroups = sessionGroupRepository.findBySessionId(id);
+            // 使用 Set 來去重，避免重複的小組
+            Set<Long> uniqueGroupIds = new HashSet<>();
+            List<Map<String, Object>> groups = new ArrayList<>();
+            
+            for (SessionGroup sg : sessionGroups) {
+                // 使用 groupId 直接欄位，避免懶加載問題
+                Long groupId = sg.getGroupId();
+                
+                // 如果已經處理過這個 groupId，跳過
+                if (uniqueGroupIds.contains(groupId)) {
+                    continue;
+                }
+                uniqueGroupIds.add(groupId);
+                
+                Group group = groupRepository.findById(groupId)
+                        .orElseThrow(() -> new RuntimeException("小組不存在：" + groupId));
+                
+                Map<String, Object> groupInfo = new HashMap<>();
+                groupInfo.put("id", group.getId());
+                groupInfo.put("groupName", group.getGroupName());
+                groupInfo.put("description", group.getDescription());
+                groups.add(groupInfo);
+            }
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("groups", groups);
+            response.put("message", "獲取場次關聯的小組成功");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "獲取場次關聯的小組失敗：" + e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    // 更新場次關聯的小組（批量）
+    @PutMapping("/{id}/groups")
+    @Transactional(transactionManager = "churchTransactionManager")
+    public ResponseEntity<Map<String, Object>> updateSessionGroups(@PathVariable Long id, @RequestBody Map<String, Object> request) {
+        try {
+            Session session = sessionRepo.findById(id)
+                    .orElseThrow(() -> new RuntimeException("場次不存在：" + id));
+            
+            @SuppressWarnings("unchecked")
+            List<Object> groupIdsRaw = (List<Object>) request.get("groupIds");
+            Set<Long> groupIdsSet = new HashSet<>(); // 使用 Set 去重
+            
+            if (groupIdsRaw != null) {
+                // 安全地將 Integer 或 Long 轉換為 Long，並去重
+                for (Object item : groupIdsRaw) {
+                    Long groupId;
+                    if (item instanceof Long) {
+                        groupId = (Long) item;
+                    } else if (item instanceof Integer) {
+                        groupId = ((Integer) item).longValue();
+                    } else if (item instanceof Number) {
+                        groupId = ((Number) item).longValue();
+                    } else {
+                        groupId = Long.parseLong(item.toString());
+                    }
+                    groupIdsSet.add(groupId);
+                }
+            }
+            
+            // 刪除現有的關聯
+            sessionGroupRepository.deleteBySessionId(id);
+            sessionGroupRepository.flush(); // 確保立即執行刪除
+            
+            // 創建新的關聯（去重後）
+            for (Long groupId : groupIdsSet) {
+                if (!groupRepository.existsById(groupId)) {
+                    throw new RuntimeException("小組不存在：" + groupId);
+                }
+                
+                SessionGroup sessionGroup = new SessionGroup();
+                sessionGroup.setSessionId(id);
+                sessionGroup.setGroupId(groupId);
+                sessionGroupRepository.save(sessionGroup);
+            }
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "更新場次關聯的小組成功");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "更新場次關聯的小組失敗：" + e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
     }
 }
 

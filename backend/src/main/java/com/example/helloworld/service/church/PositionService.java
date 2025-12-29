@@ -3,13 +3,18 @@ package com.example.helloworld.service.church;
 import com.example.helloworld.entity.church.Position;
 import com.example.helloworld.entity.church.Person;
 import com.example.helloworld.entity.church.PositionPerson;
+import com.example.helloworld.entity.church.Group;
+import com.example.helloworld.entity.church.GroupPerson;
 import com.example.helloworld.repository.church.PositionRepository;
 import com.example.helloworld.repository.church.PersonRepository;
 import com.example.helloworld.repository.church.PositionPersonRepository;
+import com.example.helloworld.repository.church.GroupRepository;
+import com.example.helloworld.repository.church.GroupPersonRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -24,6 +29,12 @@ public class PositionService {
 
     @Autowired
     private PositionPersonRepository positionPersonRepository;
+
+    @Autowired
+    private GroupPersonRepository groupPersonRepository;
+
+    @Autowired
+    private GroupRepository groupRepository;
 
     // ========== 崗位相關方法 ==========
 
@@ -118,20 +129,29 @@ public class PositionService {
     }
 
     /**
-     * 創建人員
+     * 創建人員（支援多小組）
      */
-    @Transactional
+    @Transactional(transactionManager = "churchTransactionManager")
     public Person createPerson(Person person) {
-        return personRepository.save(person);
+        Person saved = personRepository.save(person);
+        
+        // 如果指定了 group_id（向後兼容），創建 group_persons 關聯
+        if (saved.getGroupId() != null) {
+            updatePersonGroupRelation(saved.getId(), saved.getGroupId());
+        }
+        
+        return saved;
     }
 
     /**
-     * 更新人員
+     * 更新人員（支援多小組）
      */
-    @Transactional
+    @Transactional(transactionManager = "churchTransactionManager")
     public Person updatePerson(Long id, Person personData) {
         Person person = personRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("人員不存在：ID = " + id));
+        
+        Long oldGroupId = person.getGroupId();
         
         person.setPersonName(personData.getPersonName());
         person.setDisplayName(personData.getDisplayName());
@@ -139,8 +159,137 @@ public class PositionService {
         person.setEmail(personData.getEmail());
         person.setNotes(personData.getNotes());
         person.setIsActive(personData.getIsActive());
+        person.setMemberNo(personData.getMemberNo());
+        person.setBirthday(personData.getBirthday());
+        person.setGroupId(personData.getGroupId()); // 保留用於向後兼容
         
-        return personRepository.save(person);
+        Person saved = personRepository.save(person);
+        
+        // 如果 group_id 發生變化（向後兼容），更新 group_persons 關聯
+        if (!Objects.equals(oldGroupId, saved.getGroupId())) {
+            // 移除舊的關聯（標記為非活躍）
+            if (oldGroupId != null) {
+                Optional<GroupPerson> oldGp = groupPersonRepository.findByGroupIdAndPersonIdAndIsActiveTrue(oldGroupId, id);
+                if (oldGp.isPresent()) {
+                    GroupPerson gp = oldGp.get();
+                    gp.setIsActive(false);
+                    gp.setLeftAt(LocalDate.now());
+                    groupPersonRepository.save(gp);
+                }
+            }
+            // 創建新的關聯
+            if (saved.getGroupId() != null) {
+                updatePersonGroupRelation(id, saved.getGroupId());
+            }
+        }
+        
+        return saved;
+    }
+    
+    /**
+     * 更新人員與小組的關聯（支援多小組，保留歷史記錄）
+     */
+    @Transactional(transactionManager = "churchTransactionManager")
+    private void updatePersonGroupRelation(Long personId, Long groupId) {
+        if (groupId == null) {
+            return;
+        }
+        
+        // 檢查是否已經存在活躍的關聯
+        Optional<GroupPerson> existing = groupPersonRepository.findByGroupIdAndPersonIdAndIsActiveTrue(groupId, personId);
+        if (existing.isPresent()) {
+            return; // 已經存在，不需要重複創建
+        }
+        
+        // 檢查是否有歷史記錄
+        Optional<GroupPerson> historical = groupPersonRepository.findByGroupIdAndPersonId(groupId, personId);
+        if (historical.isPresent()) {
+            // 恢復歷史記錄
+            GroupPerson gp = historical.get();
+            gp.setIsActive(true);
+            gp.setLeftAt(null);
+            gp.setJoinedAt(LocalDate.now());
+            groupPersonRepository.save(gp);
+            return;
+        }
+        
+        // 創建新的關聯
+        Person person = personRepository.findById(personId)
+                .orElseThrow(() -> new RuntimeException("人員不存在：" + personId));
+        Group group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new RuntimeException("小組不存在：" + groupId));
+        
+        GroupPerson groupPerson = new GroupPerson();
+        groupPerson.setPerson(person);
+        groupPerson.setGroup(group);
+        groupPerson.setJoinedAt(LocalDate.now());
+        groupPerson.setIsActive(true);
+        groupPersonRepository.save(groupPerson);
+    }
+
+    /**
+     * 批量設置人員的小組關聯（支援多小組和指定加入時間）
+     */
+    @Transactional(transactionManager = "churchTransactionManager")
+    public void setPersonGroups(Long personId, List<Long> groupIds, LocalDate joinedAt) {
+        if (joinedAt == null) {
+            joinedAt = LocalDate.now();
+        }
+        
+        Person person = personRepository.findById(personId)
+                .orElseThrow(() -> new RuntimeException("人員不存在：" + personId));
+        
+        // 獲取該人員目前所有活躍的小組關聯
+        List<GroupPerson> currentGroupPersons = groupPersonRepository.findByPersonIdAndIsActiveTrue(personId);
+        List<Long> currentGroupIds = currentGroupPersons.stream()
+                .map(gp -> gp.getGroupId() != null ? gp.getGroupId() : gp.getGroup().getId())
+                .collect(Collectors.toList());
+        
+        // 找出需要移除的小組（目前有但不在新列表中的）
+        List<Long> toRemove = currentGroupIds.stream()
+                .filter(id -> !groupIds.contains(id))
+                .collect(Collectors.toList());
+        
+        // 找出需要添加的小組（在新列表中但目前沒有的）
+        List<Long> toAdd = groupIds.stream()
+                .filter(id -> !currentGroupIds.contains(id))
+                .collect(Collectors.toList());
+        
+        // 移除不再屬於的小組（標記為非活躍）
+        for (Long groupId : toRemove) {
+            Optional<GroupPerson> gp = groupPersonRepository.findByGroupIdAndPersonIdAndIsActiveTrue(groupId, personId);
+            if (gp.isPresent()) {
+                GroupPerson groupPerson = gp.get();
+                groupPerson.setIsActive(false);
+                groupPerson.setLeftAt(LocalDate.now());
+                groupPersonRepository.save(groupPerson);
+            }
+        }
+        
+        // 添加新的小組關聯
+        for (Long groupId : toAdd) {
+            Group group = groupRepository.findById(groupId)
+                    .orElseThrow(() -> new RuntimeException("小組不存在：" + groupId));
+            
+            // 檢查是否有歷史記錄
+            Optional<GroupPerson> existing = groupPersonRepository.findByGroupIdAndPersonId(groupId, personId);
+            if (existing.isPresent()) {
+                // 恢復歷史記錄
+                GroupPerson gp = existing.get();
+                gp.setIsActive(true);
+                gp.setLeftAt(null);
+                gp.setJoinedAt(joinedAt);
+                groupPersonRepository.save(gp);
+            } else {
+                // 創建新記錄
+                GroupPerson groupPerson = new GroupPerson();
+                groupPerson.setGroup(group);
+                groupPerson.setPerson(person);
+                groupPerson.setJoinedAt(joinedAt);
+                groupPerson.setIsActive(true);
+                groupPersonRepository.save(groupPerson);
+            }
+        }
     }
 
     /**

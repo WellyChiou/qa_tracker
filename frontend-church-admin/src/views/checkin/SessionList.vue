@@ -51,6 +51,42 @@
               </select>
             </div>
             <div class="filter-group">
+              <label>類型</label>
+              <select v-model="filters.sessionType" class="form-input" @change="onSessionTypeChange">
+                <option value="">全部</option>
+                <option value="SATURDAY">週六晚崇</option>
+                <option value="SUNDAY">週日早崇</option>
+                <option value="WEEKDAY">小組</option>
+                <option value="SPECIAL">活動</option>
+              </select>
+            </div>
+            <div class="filter-group" v-if="filters.sessionType === 'WEEKDAY'">
+              <label>小組</label>
+              <select v-model="filters.groupId" class="form-input">
+                <option value="">全部小組</option>
+                <option v-for="group in activeGroups" :key="group.id" :value="group.id">
+                  {{ group.groupName }}
+                </option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>開始日期</label>
+              <input
+                type="date"
+                v-model="filters.startDate"
+                class="form-input"
+              />
+            </div>
+            <div class="filter-group">
+              <label>結束日期</label>
+              <input
+                type="date"
+                v-model="filters.endDate"
+                class="form-input"
+              />
+            </div>
+            <div class="filter-group">
+              <button @click="load" class="btn btn-primary">查詢</button>
               <button @click="resetFilters" class="btn btn-secondary">清除條件</button>
             </div>
           </div>
@@ -183,35 +219,22 @@ const editingSession = ref(null)
 const filters = ref({
   sessionCode: '',
   title: '',
-  status: ''
+  status: '',
+  sessionType: '',
+  groupId: '',
+  startDate: '',
+  endDate: ''
 })
+
+const activeGroups = ref([])
 
 const recordsPerPage = ref(20)
 const currentPage = ref(1)
 const jumpPage = ref(1)
 
+// 前端不再需要篩選，因為後端已經處理了
 const filteredList = computed(() => {
-  let result = sessions.value
-
-  if (filters.value.sessionCode) {
-    const code = filters.value.sessionCode.toLowerCase()
-    result = result.filter(s => 
-      s.sessionCode && s.sessionCode.toLowerCase().includes(code)
-    )
-  }
-
-  if (filters.value.title) {
-    const title = filters.value.title.toLowerCase()
-    result = result.filter(s => 
-      s.title && s.title.toLowerCase().includes(title)
-    )
-  }
-
-  if (filters.value.status) {
-    result = result.filter(s => s.status === filters.value.status)
-  }
-
-  return result.sort((a, b) => {
+  return sessions.value.sort((a, b) => {
     if (a.sessionDate && b.sessionDate) {
       return new Date(b.sessionDate) - new Date(a.sessionDate)
     }
@@ -229,7 +252,7 @@ const paginatedList = computed(() => {
   return filteredList.value.slice(start, end)
 })
 
-watch([filters, () => filteredList.value.length], () => {
+watch([() => filters.value.sessionCode, () => filters.value.title, () => filters.value.status, () => filters.value.sessionType, () => filters.value.groupId], () => {
   currentPage.value = 1
   jumpPage.value = 1
 })
@@ -240,7 +263,20 @@ watch(currentPage, (newVal) => {
 
 async function load() {
   try {
-    const res = await apiRequest('/church/checkin/admin/sessions', {
+    // 構建查詢參數
+    const params = new URLSearchParams()
+    if (filters.value.sessionCode) params.append('sessionCode', filters.value.sessionCode)
+    if (filters.value.title) params.append('title', filters.value.title)
+    if (filters.value.status) params.append('status', filters.value.status)
+    if (filters.value.sessionType) params.append('sessionType', filters.value.sessionType)
+    if (filters.value.groupId) params.append('groupId', filters.value.groupId)
+    if (filters.value.startDate) params.append('startDate', filters.value.startDate)
+    if (filters.value.endDate) params.append('endDate', filters.value.endDate)
+    
+    const queryString = params.toString()
+    const url = queryString ? `/church/checkin/admin/sessions?${queryString}` : '/church/checkin/admin/sessions'
+    
+    const res = await apiRequest(url, {
       method: 'GET'
     }, '載入中...', true)
     const data = await res.json() || []
@@ -256,7 +292,32 @@ function resetFilters() {
   filters.value = {
     sessionCode: '',
     title: '',
-    status: ''
+    status: '',
+    sessionType: '',
+    groupId: '',
+    startDate: '',
+    endDate: ''
+  }
+  load()
+}
+
+function onSessionTypeChange() {
+  // 當類型不是「小組」時，清除小組篩選
+  if (filters.value.sessionType !== 'WEEKDAY') {
+    filters.value.groupId = ''
+  }
+  // 不自動載入，讓用戶點擊查詢按鈕
+}
+
+async function loadActiveGroups() {
+  try {
+    const res = await apiRequest('/church/groups/active', {
+      method: 'GET'
+    }, '', true)
+    const data = await res.json()
+    activeGroups.value = data.groups || []
+  } catch (error) {
+    console.error('載入小組列表失敗:', error)
   }
 }
 
@@ -353,6 +414,7 @@ function getStatusClass(status) {
 }
 
 onMounted(() => {
+  loadActiveGroups()
   load()
 })
 </script>
