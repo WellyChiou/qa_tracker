@@ -2,7 +2,17 @@
   <div v-if="show" class="modal-overlay" @click="closeModal">
     <div class="modal-panel service-schedule-modal" @click.stop>
       <div class="modal-header">
-        <h2 class="modal-title">{{ modalTitle }}</h2>
+        <div class="modal-title-section">
+          <!-- 有服事表資料時：顯示「服事表 編輯模式」和年度 -->
+          <h2 v-if="localSchedule && localSchedule.length > 0" class="modal-title">
+            服事表 
+            <span v-if="isEditing" class="editing-badge">編輯模式</span>
+            <span v-if="calculatedYear || localScheduleYear" class="year-badge">{{ calculatedYear || localScheduleYear }}年</span>
+            <span v-if="yearWarning" class="year-warning">⚠️ 該年度已存在服事表</span>
+          </h2>
+          <!-- 沒有服事表資料時：顯示原本的 modalTitle -->
+          <h2 v-else class="modal-title">{{ modalTitle }}</h2>
+        </div>
         <!-- 操作按鈕：只在有服事表資料時顯示 -->
         <div v-if="localSchedule && localSchedule.length > 0" class="modal-actions">
           <button v-if="isEditing" @click="cancelEdit" class="btn btn-cancel">取消</button>
@@ -70,12 +80,6 @@
         <div v-if="localSchedule && localSchedule.length > 0" class="card">
           <div class="schedule-header">
             <div class="schedule-title-section">
-              <h3>服事表 <span v-if="isEditing" class="editing-badge">編輯模式</span></h3>
-              <!-- 年度顯示 -->
-              <div v-if="calculatedYear || localScheduleYear" class="schedule-year-section">
-                <span class="year-badge">{{ calculatedYear || localScheduleYear }}年</span>
-                <span v-if="yearWarning" class="year-warning">⚠️ 該年度已存在服事表</span>
-              </div>
               <!-- 編輯模式下的崗位選擇（用於新增崗位） -->
               <div v-if="isEditing" class="edit-position-selection">
                 <div class="edit-position-header">
@@ -1692,14 +1696,26 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.5rem;
+  padding: 1rem 3rem 1rem 1.5rem;
   border-bottom: 1px solid #e0e0e0;
   gap: 1rem;
   flex-wrap: wrap;
+  position: relative;
 }
 
-.modal-header .modal-title {
+.modal-title-section {
   flex: 0 0 auto;
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #333;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .modal-actions {
@@ -1712,28 +1728,31 @@ onMounted(() => {
 
 .modal-header .btn-close {
   flex: 0 0 auto;
-}
-
-.modal-title {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #333;
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 10;
 }
 
 .btn-close {
-  background: none;
+  background: rgba(0, 0, 0, 0.05);
   border: none;
+  border-radius: 50%;
   cursor: pointer;
   padding: 0.5rem;
   color: #666;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 32px;
+  height: 32px;
+  transition: all 0.2s;
 }
 
 .btn-close:hover {
+  background: rgba(0, 0, 0, 0.1);
   color: #333;
+  transform: scale(1.1);
 }
 
 .modal-body {
@@ -1848,10 +1867,13 @@ onMounted(() => {
 }
 
 .schedule-year-section {
-  margin-top: 0.5rem;
   display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+
+.modal-header .schedule-year-section {
+  margin-top: 0;
 }
 
 .year-badge {
@@ -1875,7 +1897,7 @@ onMounted(() => {
   padding: 0.25rem 0.75rem;
   border-radius: 12px;
   font-size: 0.85rem;
-  margin-left: 0.5rem;
+  margin-left: 0;
 }
 
 .edit-position-selection {
