@@ -284,7 +284,6 @@ docker compose exec mysql mysql -u appuser -papppassword qa_tracker -e "SELECT 1
 
 如果遇到問題，請檢查：
 - `TROUBLESHOOTING.md` - 故障排除指南
-- `migrate/README.md` - 遷移腳本說明
 - Docker 容器日誌
 
 祝遷移順利！🚀
