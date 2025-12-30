@@ -1,5 +1,8 @@
-package com.example.helloworld.dto.church;
+package com.example.helloworld.dto.church.admin;
 
+import lombok.Getter;
+
+@Getter
 public class GoogleSyncResult {
     private final boolean success;
     private final String message;
@@ -7,14 +10,6 @@ public class GoogleSyncResult {
     public GoogleSyncResult(boolean success, String message) {
         this.success = success;
         this.message = message;
-    }
-
-    public boolean isSuccess() {
-        return success;
-    }
-
-    public String getMessage() {
-        return message;
     }
 
     public static GoogleSyncResult ok(String msg) {

@@ -1,6 +1,6 @@
 package com.example.helloworld.service.church;
 
-import com.example.helloworld.dto.church.GoogleSyncResult;
+import com.example.helloworld.dto.church.admin.GoogleSyncResult;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.HttpRequest;
 import com.google.api.client.http.HttpRequestInitializer;

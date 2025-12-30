@@ -1,5 +1,8 @@
-package com.example.helloworld.dto.church;
+package com.example.helloworld.dto.church.admin;
 
+import lombok.Getter;
+
+@Getter
 public class ReplyResult {
     private final boolean ok;
     private final String text;
@@ -14,11 +17,6 @@ public class ReplyResult {
         this.type = type;
         this.payload = payload;
     }
-
-    public boolean isOk() { return ok; }
-    public String getText() { return text; }
-    public String getType() { return type; }
-    public Object getPayload() { return payload; }
 
     public static ReplyResult ok(String text) {
         return new ReplyResult(true, text, null, null);

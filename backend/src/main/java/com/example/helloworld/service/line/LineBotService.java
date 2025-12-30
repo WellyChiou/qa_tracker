@@ -1,9 +1,8 @@
 package com.example.helloworld.service.line;
 
-import com.example.helloworld.config.PersonalLineBotConfig;
-import com.example.helloworld.dto.church.GoogleSyncResult;
-import com.example.helloworld.dto.church.ReplyResult;
-import com.example.helloworld.dto.church.ServiceUpdatePayload;
+import com.example.helloworld.dto.church.admin.GoogleSyncResult;
+import com.example.helloworld.dto.church.admin.ReplyResult;
+import com.example.helloworld.dto.church.admin.ServiceUpdatePayload;
 import com.example.helloworld.entity.personal.Expense;
 import com.example.helloworld.entity.personal.LineGroup;
 import com.example.helloworld.entity.personal.LineGroupMember;

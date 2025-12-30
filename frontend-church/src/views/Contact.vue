@@ -13,37 +13,59 @@
     <section class="section section--tight">
       <div class="container">
         <div class="grid grid-2">
-          <article class="card" v-if="churchInfo">
-            <h2 class="h2" v-reveal>
-              聯絡資訊</h2>
+          <!-- 左側：聯絡資訊 -->
+          <article class="card">
+            <h2 class="h2" v-reveal>聯絡資訊</h2>
 
-            <div class="info" v-if="churchInfo.address">
-              <div class="info__label">地址</div>
-              <div class="info__value">{{ churchInfo.address }}</div>
+            <!-- Loading / Error -->
+            <div v-if="isSiteLoading" class="loading"><p>載入中...</p></div>
+            <div v-else-if="siteLoadError" class="loading">
+              <p>{{ siteLoadError }}</p>
             </div>
-            <div class="info" v-if="churchInfo.phone">
-              <div class="info__label">電話</div>
-              <div class="info__value">{{ churchInfo.phone }}</div>
-            </div>
-            <div class="info" v-if="churchInfo.email">
-              <div class="info__label">電子郵件</div>
-              <div class="info__value">{{ churchInfo.email }}</div>
-            </div>
-            <div class="info" v-if="churchInfo.service_hours_weekday || churchInfo.service_hours_weekend">
-              <div class="info__label">服務時間</div>
-              <div class="info__value">
-                <div v-if="churchInfo.service_hours_weekday">{{ churchInfo.service_hours_weekday }}</div>
-                <div v-if="churchInfo.service_hours_weekend">{{ churchInfo.service_hours_weekend }}</div>
+
+            <!-- Content -->
+            <template v-else>
+              <div class="info" v-if="site?.contact?.address">
+                <div class="info__label">地址</div>
+                <div class="info__value">{{ site.contact.address }}</div>
               </div>
-            </div>
 
-            <div style="margin-top:14px" class="muted text-sm">
-              也歡迎在聚會後當面與我們聊聊，我們很樂意認識你。
-            </div>
+              <div class="info" v-if="site?.contact?.phone">
+                <div class="info__label">電話</div>
+                <div class="info__value">{{ site.contact.phone }}</div>
+              </div>
+
+              <div class="info" v-if="site?.contact?.email">
+                <div class="info__label">電子郵件</div>
+                <div class="info__value">{{ site.contact.email }}</div>
+              </div>
+
+              <div
+                class="info"
+                v-if="site?.officeHours?.weekday || site?.officeHours?.weekend"
+              >
+                <div class="info__label">服務時間</div>
+                <div class="info__value">
+                  <div v-if="site?.officeHours?.weekday">{{ site.officeHours.weekday }}</div>
+                  <div v-if="site?.officeHours?.weekend">{{ site.officeHours.weekend }}</div>
+                </div>
+              </div>
+
+              <div
+                v-if="!hasAnyContactInfo"
+                class="muted text-sm"
+                style="margin-top:10px"
+              >
+                目前尚未設定聯絡資訊。
+              </div>
+
+              <div style="margin-top:14px" class="muted text-sm">
+                也歡迎在聚會後當面與我們聊聊，我們很樂意認識你。
+              </div>
+            </template>
           </article>
 
-          <div v-else class="loading"><p>載入中...</p></div>
-
+          <!-- 右側：留言表單 -->
           <article class="card">
             <h2 class="h2" style="margin:0 0 10px">留言給我們</h2>
 
@@ -68,8 +90,8 @@
                 <textarea id="message" v-model="form.message" rows="5" required />
               </div>
 
-              <button type="submit" class="btn btn-primary" :disabled="isLoading">
-                {{ isLoading ? '提交中...' : '送出' }}
+              <button type="submit" class="btn btn-primary" :disabled="isSubmitting">
+                {{ isSubmitting ? '提交中...' : '送出' }}
               </button>
 
               <div v-if="submitStatus" class="notice" :class="submitStatus">
@@ -84,10 +106,18 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { apiRequest } from '@/utils/api'
 
-const churchInfo = ref(null)
+/**
+ * site 期望結構（對應 SiteResult）：
+ * site.contact.address/phone/email
+ * site.officeHours.weekday/weekend
+ */
+const site = ref(null)
+const isSiteLoading = ref(true)
+const siteLoadError = ref('')
+
 const form = ref({
   name: '',
   email: '',
@@ -97,20 +127,46 @@ const form = ref({
 
 const submitStatus = ref('')
 const submitMessage = ref('')
-const isLoading = ref(false)
+const isSubmitting = ref(false)
+
+const hasAnyContactInfo = computed(() => {
+  const c = site.value?.contact
+  const oh = site.value?.officeHours
+  return Boolean(
+    (c?.address && c.address.trim()) ||
+      (c?.phone && c.phone.trim()) ||
+      (c?.email && c.email.trim()) ||
+      (oh?.weekday && oh.weekday.trim()) ||
+      (oh?.weekend && oh.weekend.trim())
+  )
+})
 
 const loadChurchInfo = async () => {
+  isSiteLoading.value = true
+  siteLoadError.value = ''
+
   try {
     const response = await apiRequest('/church/public/church-info', { method: 'GET' }, '載入聯絡資訊', false)
 
-    if (response.ok) {
-      const data = await response.json()
-      if (data.success && data.data) {
-        churchInfo.value = data.data
-      }
+    if (!response?.ok) {
+      site.value = null
+      siteLoadError.value = '載入失敗，請稍後再試。'
+      return
+    }
+
+    const data = await response.json()
+    if (data?.success && data?.data) {
+      site.value = data.data
+    } else {
+      site.value = null
+      siteLoadError.value = data?.message || '載入失敗，資料格式不正確。'
     }
   } catch (error) {
-    console.error('載入教會資訊失敗:', error)
+    console.error('載入站台資訊失敗:', error)
+    site.value = null
+    siteLoadError.value = '載入失敗：' + (error?.message || '未知錯誤')
+  } finally {
+    isSiteLoading.value = false
   }
 }
 

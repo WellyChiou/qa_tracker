@@ -1,8 +1,13 @@
 package com.example.helloworld.entity.church.checkin;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
 import java.time.*;
 
+@Getter
+@Setter
 @Entity
 @Table(name = "session_tokens")
 public class SessionToken {
@@ -19,12 +24,5 @@ public class SessionToken {
     @Column(name="expires_at", nullable = false)
     private LocalDateTime expiresAt;
 
-    public Long getId() { return id; }
-    public Long getSessionId() { return sessionId; }
-    public void setSessionId(Long sessionId) { this.sessionId = sessionId; }
-    public String getToken() { return token; }
-    public void setToken(String token) { this.token = token; }
-    public LocalDateTime getExpiresAt() { return expiresAt; }
-    public void setExpiresAt(LocalDateTime expiresAt) { this.expiresAt = expiresAt; }
 }
 

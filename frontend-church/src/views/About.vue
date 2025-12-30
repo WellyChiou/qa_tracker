@@ -1,5 +1,6 @@
 <template>
   <div>
+    <!-- Hero -->
     <section class="page-hero" data-hero="true">
       <div class="container hero-surface">
         <div class="hero-inner">
@@ -11,30 +12,37 @@
     </section>
 
     <div class="page-stack" v-reveal="{ mode: 'page', stagger: 70 }">
+      <section class="section section--tight">
+        <div class="container">
+          <!-- Loading -->
+          <div v-if="isLoading" class="loading">
+            <p>載入中...</p>
+          </div>
 
+          <!-- Empty -->
+          <div v-else-if="aboutInfoList.length === 0" class="loading">
+            <p>目前沒有內容</p>
+          </div>
 
-    <section class="section section--tight">
-      <div class="container">
-        <div v-if="aboutInfoList && aboutInfoList.length > 0" class="grid">
-          <article class="card" v-for="info in aboutInfoList" :key="info.id">
-            <h2 class="h2" style="margin:0 0 10px">{{ info.title }}</h2>
+          <!-- Content -->
+          <div v-else class="grid">
+            <article class="card" v-for="info in aboutInfoList" :key="info.key">
+              <h2 class="h2" style="margin:0 0 10px">{{ info.title }}</h2>
 
-            <p v-if="info.sectionKey !== 'values'" class="content-text muted">{{ info.content }}</p>
+              <p v-if="info.key !== 'values'" class="content-text muted">
+                {{ info.content }}
+              </p>
 
-            <ul v-else class="values-list">
-              <li v-for="(line, index) in parseValuesContent(info.content)" :key="index">
-                <span class="badge" style="margin-right:8px">{{ line.label }}</span>
-                <span class="muted">{{ line.value }}</span>
-              </li>
-            </ul>
-          </article>
+              <ul v-else class="values-list">
+                <li v-for="(line, index) in parseValuesContent(info.content)" :key="index">
+                  <span class="badge" style="margin-right:8px">{{ line.label }}</span>
+                  <span class="muted">{{ line.value }}</span>
+                </li>
+              </ul>
+            </article>
+          </div>
         </div>
-
-        <div v-else class="loading">
-          <p>載入中...</p>
-        </div>
-      </div>
-    </section>
+      </section>
     </div>
   </div>
 </template>
@@ -62,12 +70,20 @@ const parseValuesContent = (content) => {
 const loadAboutInfo = async () => {
   try {
     const response = await apiRequest('/church/public/about-info', { method: 'GET' }, '載入關於我們資訊', false)
-
-    if (response.ok) {
+    if (response?.ok) {
       const data = await response.json()
-      if (data.success && data.data) {
-        aboutInfoList.value = data.data
+      const sections = data?.success ? data?.data?.sections : null
+
+      if (Array.isArray(sections)) {
+        // ✅ 確保順序穩定（order 小到大）
+        aboutInfoList.value = sections
+          .slice()
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      } else {
+        aboutInfoList.value = []
       }
+    } else {
+      aboutInfoList.value = []
     }
   } catch (error) {
     console.error('載入關於我們資訊失敗:', error)
