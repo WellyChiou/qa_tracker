@@ -156,31 +156,88 @@ esac
 echo ""
 echo "⏳ 等待容器完全啟動..."
 
-# 等待前端容器完全啟動（最多等待 30 秒）
-MAX_WAIT=30
-WAIT_COUNT=0
-while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
-  if docker compose ps | grep -q "frontend-church-admin.*Up"; then
-    # 檢查容器是否真的可以訪問
-    if docker compose exec -T frontend-church-admin wget -q --spider http://localhost/ 2>/dev/null || \
-       docker compose exec -T frontend-church-admin test -f /usr/share/nginx/html/index.html 2>/dev/null; then
-      echo "✅ 前端容器已完全啟動"
-      break
-    fi
+# 檢查前端容器是否就緒的函數
+check_frontend_ready() {
+  local container_name=$1
+  
+  # 檢查容器是否運行
+  if ! docker compose ps | grep -q "${container_name}.*Up"; then
+    return 1
   fi
+  
+  # 檢查容器內的 index.html 是否存在（表示構建完成且檔案已就緒）
+  if docker compose exec -T "${container_name}" test -f /usr/share/nginx/html/index.html 2>/dev/null; then
+    return 0
+  fi
+  
+  return 1
+}
+
+# 等待所有前端容器完全啟動（最多等待 60 秒）
+MAX_WAIT=60
+WAIT_COUNT=0
+FRONTENDS_READY=0
+
+echo "檢查前端容器狀態..."
+
+while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
+  FRONTENDS_READY=0
+  
+  # 檢查三個前端容器
+  if check_frontend_ready "frontend-personal"; then
+    FRONTENDS_READY=$((FRONTENDS_READY + 1))
+  fi
+  
+  if check_frontend_ready "frontend-church"; then
+    FRONTENDS_READY=$((FRONTENDS_READY + 1))
+  fi
+  
+  if check_frontend_ready "frontend-church-admin"; then
+    FRONTENDS_READY=$((FRONTENDS_READY + 1))
+  fi
+  
+  if [ $FRONTENDS_READY -eq 3 ]; then
+    echo ""
+    echo "✅ 所有前端容器檔案已就緒，等待服務完全啟動..."
+    # 額外等待 3 秒確保容器內的 nginx 服務完全啟動
+    sleep 3
+    echo "✅ 所有前端容器已完全啟動"
+    break
+  fi
+  
   sleep 1
   WAIT_COUNT=$((WAIT_COUNT + 1))
-  echo -n "."
+  if [ $((WAIT_COUNT % 5)) -eq 0 ]; then
+    echo -n " [${FRONTENDS_READY}/3]"
+  else
+    echo -n "."
+  fi
 done
 echo ""
 
 if [ $WAIT_COUNT -ge $MAX_WAIT ]; then
-  echo "⚠️  前端容器啟動超時，但部署繼續進行"
+  echo "⚠️  前端容器啟動超時（${FRONTENDS_READY}/3 就緒），但部署繼續進行"
   echo "   如果遇到 404 錯誤，請稍候片刻後重新整理頁面"
 fi
 
-# 等待 Nginx 容器啟動
-sleep 2
+# 等待 Nginx 容器啟動並重載配置
+echo "⏳ 等待 Nginx 容器啟動..."
+sleep 3
+
+# 檢查 nginx 容器是否運行
+if docker compose ps | grep -q "nginx.*Up\|nginx_proxy.*Up"; then
+  echo "🔄 重載 Nginx 配置以確保路由正確..."
+  # 等待一下確保 nginx 完全啟動
+  sleep 2
+  docker compose exec -T nginx nginx -s reload 2>/dev/null || {
+    echo "⚠️  Nginx 重載失敗，將重啟容器..."
+    docker compose restart nginx
+    sleep 3
+  }
+  echo "✅ Nginx 配置已更新"
+else
+  echo "⚠️  Nginx 容器未運行，請檢查日誌"
+fi
 
 # -----------------------------------------------------
 # 4. Show container status
