@@ -89,8 +89,8 @@
             <tbody>
               <tr v-for="group in paginatedList" :key="group.id">
                 <td>{{ group.groupName || '-' }}</td>
-                <td>{{ group.description || '-' }}</td>
-                <td>{{ getMemberCount(group.id) }}</td>
+                <td class="col-desc" :title="group.description || '-'">{{ group.description || '-' }}</td>
+                <td>{{ group.memberCount || 0 }}</td>
                 <td>
                   <span :class="['status-badge', group.isActive ? 'status-active' : 'status-inactive']">
                     {{ group.isActive ? '啟用' : '停用' }}
@@ -182,7 +182,6 @@ import GroupModal from '@/components/GroupModal.vue'
 import { apiRequest } from '@/utils/api'
 
 const groups = ref([])
-const memberCounts = ref({})
 const showModal = ref(false)
 const editingGroup = ref(null)
 
@@ -286,11 +285,7 @@ const loadGroups = async () => {
     if (response.ok) {
       const data = await response.json()
       groups.value = data.groups || data || []
-      
-      // 載入每個小組的成員數量
-      for (const group of groups.value) {
-        await loadMemberCount(group.id)
-      }
+      // 成員數量已經在後端查詢時包含，不需要逐一查詢
     }
   } catch (error) {
     console.error('載入小組失敗:', error)
@@ -298,26 +293,6 @@ const loadGroups = async () => {
   }
 }
 
-const loadMemberCount = async (groupId) => {
-  try {
-    const response = await apiRequest(`/church/groups/${groupId}/members`, {
-      method: 'GET',
-      credentials: 'include'
-    })
-    
-    if (response.ok) {
-      const data = await response.json()
-      memberCounts.value[groupId] = (data.members || []).length
-    }
-  } catch (error) {
-    console.error('載入成員數量失敗:', error)
-    memberCounts.value[groupId] = 0
-  }
-}
-
-const getMemberCount = (groupId) => {
-  return memberCounts.value[groupId] || 0
-}
 
 const openAddModal = () => {
   editingGroup.value = null
@@ -433,6 +408,7 @@ onMounted(() => {
 table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
 }
 
 thead {
@@ -510,6 +486,31 @@ th {
 .pagination-label {
   font-size: 14px;
   color: #666;
+}
+
+/* 描述列：hover 顯示完整內容（參考定時任務管理） */
+td.col-desc {
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  position: relative;
+  cursor: help;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+td.col-desc:hover {
+  white-space: normal;
+  overflow: visible;
+  z-index: 10;
+  background: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  max-width: 400px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 </style>
 

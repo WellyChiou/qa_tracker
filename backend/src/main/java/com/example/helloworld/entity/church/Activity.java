@@ -26,8 +26,14 @@ public class Activity {
     @Column(name = "activity_date")
     private LocalDate activityDate;
 
-    @Column(name = "activity_time", length = 100)
-    private String activityTime;
+    @Column(name = "start_time", length = 100)
+    private String startTime;  // 活動開始時間
+
+    @Column(name = "end_time", length = 100)
+    private String endTime;  // 活動結束時間
+
+    @Column(name = "activity_sessions", columnDefinition = "JSON")
+    private String activitySessions;  // JSON 格式的多個時間段
 
     @Column(name = "location", length = 200)
     private String location;

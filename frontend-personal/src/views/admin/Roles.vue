@@ -90,14 +90,18 @@
                 <input v-model="searchAvailable" class="pick-search" placeholder="搜尋權限..." />
               </div>
               <div class="pick-list">
-                <div v-for="permission in availablePermissionsFiltered" :key="permission.id" class="pick-item">
+                <div v-for="permission in availablePermissionsFiltered" :key="permission.id" class="pick-item" @click="addPermission(permission.id)">
                   <div class="pick-main">
                     <div class="pick-name">{{ permission.permissionName }}</div>
                     <div class="pick-code">({{ permission.permissionCode }})</div>
                   </div>
-                  <button type="button" class="btn-pill btn-pill-primary" @click="addPermission(permission.id)">加入</button>
                 </div>
                 <div v-if="availablePermissionsFiltered.length === 0" class="pick-empty">已全部加入</div>
+              </div>
+              <div class="pick-actions">
+                <button type="button" class="btn-action-full" @click="addAllPermissions" :disabled="availablePermissionsFiltered.length === 0">
+                  全部加入
+                </button>
               </div>
             </div>
 
@@ -107,14 +111,18 @@
                 <input v-model="searchAssigned" class="pick-search" placeholder="搜尋已加入..." />
               </div>
               <div class="pick-list">
-                <div v-for="permission in assignedPermissionsFiltered" :key="permission.id" class="pick-item">
+                <div v-for="permission in assignedPermissionsFiltered" :key="permission.id" class="pick-item" @click="removePermission(permission.id)">
                   <div class="pick-main">
                     <div class="pick-name">{{ permission.permissionName }}</div>
                     <div class="pick-code">({{ permission.permissionCode }})</div>
                   </div>
-                  <button type="button" class="btn-pill btn-pill-danger" @click="removePermission(permission.id)">移除</button>
                 </div>
                 <div v-if="assignedPermissionsFiltered.length === 0" class="pick-empty">尚未加入任何權限</div>
+              </div>
+              <div class="pick-actions">
+                <button type="button" class="btn-action-full" @click="removeAllPermissions" :disabled="assignedPermissionsFiltered.length === 0">
+                  全部移除
+                </button>
               </div>
             </div>
           </div>
@@ -183,6 +191,17 @@ const addPermission = (id) => {
 const removePermission = (id) => {
   if (id == null) return
   selectedPermissionIds.value = selectedPermissionIds.value.filter(x => x !== id)
+}
+
+const addAllPermissions = () => {
+  const ids = availablePermissionsFiltered.value.map(p => p.id)
+  const set = new Set(selectedPermissionIds.value)
+  ids.forEach(id => set.add(id))
+  selectedPermissionIds.value = Array.from(set)
+}
+
+const removeAllPermissions = () => {
+  selectedPermissionIds.value = []
 }
 
 const assignedPermissions = computed(() => {
@@ -703,4 +722,39 @@ onMounted(async () => {
   background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23b91c1c%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%223%206%205%206%2021%206%22/%3E%3Cpath%20d%3D%22M19%206l-1%2014a2%202%200%200%201-2%202H8a2%202%200%200%201-2-2L5%206%22/%3E%3Cpath%20d%3D%22M10%2011v6%22/%3E%3Cpath%20d%3D%22M14%2011v6%22/%3E%3Cpath%20d%3D%22M9%206V4a2%202%200%200%201%202-2h2a2%202%200%200%201%202%202v2%22/%3E%3C/svg%3E");
 }
 
+.pick-item {
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.pick-item:hover {
+  background: #f0f0f0;
+}
+
+.pick-actions {
+  padding: 8px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.btn-action-full {
+  width: 100%;
+  padding: 8px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.btn-action-full:hover:not(:disabled) {
+  background: #f0f0f0;
+  border-color: #d1d5db;
+}
+
+.btn-action-full:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 </style>

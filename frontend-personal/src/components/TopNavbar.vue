@@ -108,9 +108,23 @@ const activeSubmenu = ref(null)
 const showUserMenu = ref(false)
 const showProfileModal = ref(false)
 
-// 點擊外部關閉用戶選單
+// 點擊外部關閉用戶選單和子菜單
 const handleClickOutside = (event) => {
-  const userMenuWrapper = event.target.closest('.user-menu-wrapper')
+  // 檢查點擊的目標是否在菜單相關元素內
+  const target = event.target
+  const menuWrapper = target.closest('.menu-item-wrapper')
+  const submenu = target.closest('.submenu')
+  const menuItem = target.closest('.menu-item.has-submenu')
+  const navbarMenu = target.closest('.navbar-menu')
+  const userMenuWrapper = target.closest('.user-menu-wrapper')
+  
+  // 如果點擊的不是菜單相關元素，關閉所有子菜單
+  if (!menuWrapper && !submenu && !menuItem && !navbarMenu) {
+    // 關閉所有展開的子菜單（但保留被手動關閉的記錄）
+    activeSubmenu.value = null
+  }
+  
+  // 處理用戶選單
   if (!userMenuWrapper && showUserMenu.value) {
     showUserMenu.value = false
   }

@@ -84,7 +84,7 @@
               <tr v-for="activity in paginatedList" :key="activity.id">
                 <td>{{ activity.title }}</td>
                 <td>{{ formatDate(activity.activityDate) }}</td>
-                <td>{{ activity.activityTime || '-' }}</td>
+                <td>{{ formatTimeRange(activity.startTime, activity.endTime) }}</td>
                 <td>{{ activity.location || '-' }}</td>
                 <td>
                   <span :class="activity.isActive ? 'status-active' : 'status-inactive'">
@@ -167,8 +167,12 @@
                     <input type="date" v-model="formData.activityDate" required class="form-input" />
                   </div>
                   <div class="form-group">
-                    <label>活動時間</label>
-                    <input type="text" v-model="formData.activityTime" placeholder="例如：10:00am" class="form-input" />
+                    <label>開始時間</label>
+                    <input type="text" v-model="formData.startTime" placeholder="例如：10:00am 或 13:00" class="form-input" />
+                  </div>
+                  <div class="form-group">
+                    <label>結束時間</label>
+                    <input type="text" v-model="formData.endTime" placeholder="例如：12:00pm 或 16:00" class="form-input" />
                   </div>
                 </div>
                 <div class="form-group">
@@ -241,7 +245,8 @@ const formData = ref({
   title: '',
   description: '',
   activityDate: '',
-  activityTime: '',
+  startTime: '',
+  endTime: '',
   location: '',
   imageUrl: '',
   isActive: true
@@ -345,6 +350,17 @@ const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString('zh-TW')
 }
 
+const formatTimeRange = (startTime, endTime) => {
+  if (startTime && endTime) {
+    return `${startTime} ~ ${endTime}`
+  } else if (startTime) {
+    return startTime
+  } else if (endTime) {
+    return endTime
+  }
+  return '-'
+}
+
 const loadActivities = async () => {
   try {
     const response = await apiRequest('/church/admin/activities', {
@@ -376,7 +392,8 @@ const openAddModal = () => {
     title: '',
     description: '',
     activityDate: '',
-    activityTime: '',
+    startTime: '',
+    endTime: '',
     location: '',
     imageUrl: '',
     isActive: true
@@ -396,7 +413,8 @@ const editActivity = (activity) => {
     title: activity.title || '',
     description: activity.description || '',
     activityDate: activity.activityDate || '',
-    activityTime: activity.activityTime || '',
+    startTime: activity.startTime || '',
+    endTime: activity.endTime || '',
     location: activity.location || '',
     imageUrl: activity.imageUrl || '',
     isActive: activity.isActive !== undefined ? activity.isActive : true

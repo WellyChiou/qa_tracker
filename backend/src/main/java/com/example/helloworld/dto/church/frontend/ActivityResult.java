@@ -13,7 +13,11 @@ public class ActivityResult {
     private String title;
     private String description;
     private String location;
-    private LocalDate activityDate;   // ✅ 只有活動日
+    private LocalDate activityDate;
+    private String startTime;     // 活動開始時間
+    private String endTime;       // 活動結束時間
+    private String activitySessions;  // 活動時間段（JSON 字串，用於多個上課時間）
+    private String tags;          // 活動標籤（JSON 字串）
     private String imageUrl;
     private Boolean active;
 }

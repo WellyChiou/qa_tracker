@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class GroupService {
@@ -30,12 +31,45 @@ public class GroupService {
     // CRUD 操作
     @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
     public List<Group> getAllGroups() {
-        return groupRepository.findAll();
+        List<Group> groups = groupRepository.findAll();
+        // 批量查詢所有小組的成員數量
+        setMemberCountsForGroups(groups);
+        return groups;
     }
 
     @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
     public List<Group> getActiveGroups() {
-        return groupRepository.findByIsActiveTrue();
+        List<Group> groups = groupRepository.findByIsActiveTrue();
+        // 批量查詢所有小組的成員數量
+        setMemberCountsForGroups(groups);
+        return groups;
+    }
+
+    // 批量設置小組的成員數量（優化查詢）
+    @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
+    private void setMemberCountsForGroups(List<Group> groups) {
+        if (groups == null || groups.isEmpty()) {
+            return;
+        }
+
+        // 獲取所有小組 ID
+        List<Long> groupIds = groups.stream().map(Group::getId).toList();
+
+        // 批量查詢所有小組的活躍成員數量
+        List<GroupPerson> allGroupPersons = groupPersonRepository.findByGroupIdInAndIsActiveTrue(groupIds);
+
+        // 按小組 ID 分組統計
+        Map<Long, Long> memberCountMap = allGroupPersons.stream()
+                .collect(Collectors.groupingBy(
+                        GroupPerson::getGroupId,
+                        Collectors.counting()
+                ));
+
+        // 設置每個小組的成員數量
+        for (Group group : groups) {
+            Long count = memberCountMap.getOrDefault(group.getId(), 0L);
+            group.setMemberCount(count.intValue());
+        }
     }
 
     @Transactional(transactionManager = "churchTransactionManager", readOnly = true)

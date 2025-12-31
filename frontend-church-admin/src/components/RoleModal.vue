@@ -37,14 +37,18 @@
                 <input v-model="permSearchLeft" class="transfer-search" placeholder="搜尋權限…" />
               </div>
               <div class="transfer-list">
-                <div v-for="p in filteredAvailablePerms" :key="p.id" class="transfer-item">
+                <div v-for="p in filteredAvailablePerms" :key="p.id" class="transfer-item" @click="addPerm(p.id)">
                   <div class="transfer-item-main">
                     <div class="transfer-title">{{ p.permissionName }}</div>
                     <div class="transfer-sub"><code>({{ p.permissionCode }})</code></div>
                   </div>
-                  <button type="button" class="mini-btn" @click="addPerm(p.id)">加入</button>
                 </div>
                 <div v-if="filteredAvailablePerms.length === 0" class="transfer-empty">沒有可加入的權限</div>
+              </div>
+              <div class="transfer-actions">
+                <button type="button" class="btn-action-full" @click="addAllPerms" :disabled="filteredAvailablePerms.length === 0">
+                  全部加入
+                </button>
               </div>
             </div>
 
@@ -54,14 +58,18 @@
                 <input v-model="permSearchRight" class="transfer-search" placeholder="搜尋已加入…" />
               </div>
               <div class="transfer-list">
-                <div v-for="p in filteredSelectedPerms" :key="p.id" class="transfer-item">
+                <div v-for="p in filteredSelectedPerms" :key="p.id" class="transfer-item" @click="removePerm(p.id)">
                   <div class="transfer-item-main">
                     <div class="transfer-title">{{ p.permissionName }}</div>
                     <div class="transfer-sub"><code>({{ p.permissionCode }})</code></div>
                   </div>
-                  <button type="button" class="mini-btn mini-btn--danger" @click="removePerm(p.id)">移除</button>
                 </div>
                 <div v-if="filteredSelectedPerms.length === 0" class="transfer-empty">尚未加入任何權限</div>
+              </div>
+              <div class="transfer-actions">
+                <button type="button" class="btn-action-full" @click="removeAllPerms" :disabled="filteredSelectedPerms.length === 0">
+                  全部移除
+                </button>
               </div>
             </div>
           </div>
@@ -138,6 +146,17 @@ const addPerm = (id) => {
 
 const removePerm = (id) => {
   formData.value.permissionIds = (formData.value.permissionIds || []).filter(x => x !== id)
+}
+
+const addAllPerms = () => {
+  const ids = filteredAvailablePerms.value.map(p => p.id)
+  const s = new Set(formData.value.permissionIds || [])
+  ids.forEach(id => s.add(id))
+  formData.value.permissionIds = Array.from(s)
+}
+
+const removeAllPerms = () => {
+  formData.value.permissionIds = []
 }
 
 watch(() => props.show, (newVal) => {
@@ -436,8 +455,13 @@ const handleSubmit = async () => {
   border-radius: 12px;
   background:#fff;
   margin-bottom: 10px;
+  cursor: pointer;
+  transition: background 0.2s;
 }
-.transfer-item-main{ min-width:0; }
+.transfer-item:hover{
+  background:#f0f0f0;
+}
+.transfer-item-main{ min-width:0; flex: 1; }
 .transfer-title{
   font-weight: 900;
   color: #0f172a;
@@ -449,20 +473,28 @@ const handleSubmit = async () => {
   font-weight: 700;
   font-size: 12px;
 }
-.mini-btn{
-  padding: 8px 10px;
-  border-radius: 10px;
-  border:1px solid rgba(2,6,23,.12);
-  background: rgba(37,99,235,.10);
-  color:#2563eb;
-  font-weight: 900;
-  cursor:pointer;
-  white-space:nowrap;
+.transfer-actions{
+  padding: 8px;
+  border-top: 1px solid rgba(2,6,23,.08);
 }
-.mini-btn:hover{ filter: brightness(.98); }
-.mini-btn--danger{
-  background: rgba(239,68,68,.10);
-  color:#ef4444;
+.btn-action-full{
+  width: 100%;
+  padding: 8px 16px;
+  border: 1px solid rgba(2,6,23,.12);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  font-weight: 600;
+}
+.btn-action-full:hover:not(:disabled){
+  background: #f0f0f0;
+  border-color: rgba(2,6,23,.2);
+}
+.btn-action-full:disabled{
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 .transfer-empty{
   padding: 14px 8px;

@@ -35,5 +35,12 @@ public interface GroupPersonRepository extends JpaRepository<GroupPerson, Long> 
     
     @Query("SELECT gp FROM GroupPerson gp JOIN FETCH gp.group WHERE gp.person.id = :personId AND gp.group.isActive = true")
     List<GroupPerson> findAllGroupsByPersonId(@Param("personId") Long personId);
+
+    // 批量查詢多個小組的活躍成員
+    List<GroupPerson> findByGroupIdInAndIsActiveTrue(List<Long> groupIds);
+
+    // 批量查詢多個人員的所有小組（包括歷史記錄）
+    @Query("SELECT gp FROM GroupPerson gp JOIN FETCH gp.group WHERE gp.person.id IN :personIds AND gp.group.isActive = true")
+    List<GroupPerson> findAllGroupsByPersonIds(@Param("personIds") List<Long> personIds);
 }
 

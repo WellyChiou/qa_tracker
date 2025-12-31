@@ -24,8 +24,18 @@
               <h3 class="card__title h3">{{ activity.title }}</h3>
 
               <div class="card__meta" style="margin-top:6px">
-                <span v-if="activity.time">🕒 {{ activity.time }}</span>
-                <span v-if="activity.location">📍 {{ activity.location }}</span>
+                <!-- 顯示多個時間段（課程） -->
+                <div v-if="activity.sessions && activity.sessions.length > 0" style="margin-bottom:8px">
+                  <div v-for="(session, index) in activity.sessions" :key="index" style="margin-bottom:4px">
+                    <span>🕒 {{ formatSessionTime(session) }}</span>
+                    <span v-if="activity.location && index === 0" style="margin-left:12px">📍 {{ activity.location }}</span>
+                  </div>
+                </div>
+                <!-- 顯示單一時間（一般活動） -->
+                <div v-else>
+                  <span v-if="activity.timeDisplay">🕒 {{ activity.timeDisplay }}</span>
+                  <span v-if="activity.location" :style="activity.timeDisplay ? 'margin-left:12px' : ''">📍 {{ activity.location }}</span>
+                </div>
               </div>
 
               <p class="muted card__desc">
@@ -37,7 +47,14 @@
               </div>
 
               <div class="card__footer">
-                <span class="badge">📅 {{ activity.date }}</span>
+                <!-- 多個時間段顯示所有日期 -->
+                <div v-if="activity.sessions && activity.sessions.length > 0">
+                  <span class="badge" v-for="(session, index) in activity.sessions" :key="index" :style="index > 0 ? 'margin-left:8px' : ''">
+                    📅 {{ formatSessionDate(session) }}
+                  </span>
+                </div>
+                <!-- 單一日期顯示 -->
+                <span v-else class="badge">📅 {{ activity.date }}</span>
               </div>
             </div>
           </article>
@@ -76,14 +93,61 @@ const parseTags = (tagsJson) => {
   }
 }
 
+const parseSessions = (sessionsJson) => {
+  if (!sessionsJson) return []
+  try {
+    return JSON.parse(sessionsJson)
+  } catch (e) {
+    return []
+  }
+}
+
+const formatSessionTime = (session) => {
+  if (!session) return ''
+  if (session.startTime && session.endTime) {
+    return `${session.startTime} ~ ${session.endTime}`
+  } else if (session.startTime) {
+    return session.startTime
+  }
+  return ''
+}
+
+const formatSessionDate = (session) => {
+  if (!session || !session.date) return ''
+  const date = new Date(session.date)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const dayOfWeek = date.getDay()
+  const weekdays = ['日', '一', '二', '三', '四', '五', '六']
+  return `${year}/${month}/${day}(${weekdays[dayOfWeek]})`
+}
+
+const formatTimeRange = (startTime, endTime) => {
+  if (startTime && endTime) {
+    return `${startTime} ~ ${endTime}`
+  } else if (startTime) {
+    return startTime
+  } else if (endTime) {
+    return endTime
+  }
+  return ''
+}
+
 const activitiesWithFormattedData = computed(() => {
-  return activities.value.map((activity) => ({
-    ...activity,
-    date: formatDate(activity.activityDate),
-    time: activity.activityTime || '',
-    location: activity.location || '',
-    tags: parseTags(activity.tags)
-  }))
+  return activities.value.map((activity) => {
+    const sessions = parseSessions(activity.activitySessions)
+    const hasMultipleSessions = sessions && sessions.length > 0
+    
+    return {
+      ...activity,
+      date: formatDate(activity.activityDate),
+      timeDisplay: formatTimeRange(activity.startTime, activity.endTime),
+      location: activity.location || '',
+      tags: parseTags(activity.tags),
+      sessions: hasMultipleSessions ? sessions : null
+    }
+  })
 })
 
 const loadActivities = async () => {

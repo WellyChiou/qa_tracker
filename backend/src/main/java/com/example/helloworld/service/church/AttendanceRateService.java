@@ -1,6 +1,8 @@
 package com.example.helloworld.service.church;
 
 import com.example.helloworld.dto.church.checkin.AttendanceRateDto;
+import com.example.helloworld.dto.church.checkin.SessionDetailResult;
+import com.example.helloworld.entity.church.Group;
 import com.example.helloworld.entity.church.Person;
 import com.example.helloworld.entity.church.checkin.Checkin;
 import com.example.helloworld.entity.church.checkin.Session;
@@ -409,6 +411,136 @@ public class AttendanceRateService {
                 joinedAt,
                 leftAt
         );
+    }
+
+    /**
+     * 獲取指定人員在指定年度某個類別下的所有場次詳細資訊
+     * @param personId 人員ID
+     * @param category 類別（SATURDAY, SUNDAY, WEEKDAY, SPECIAL 或小組名稱）
+     * @param year 年度
+     * @param includeHistorical 是否包含歷史記錄
+     * @return 場次詳細資訊列表
+     */
+    @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
+    public List<SessionDetailResult> getSessionDetails(Long personId, String category, Integer year, Boolean includeHistorical) {
+        if (includeHistorical == null) {
+            includeHistorical = false;
+        }
+        Person person = personRepository.findById(personId)
+                .orElseThrow(() -> new RuntimeException("人員不存在：" + personId));
+
+        LocalDate yearStart = LocalDate.of(year, 1, 1);
+        LocalDate yearEnd = LocalDate.of(year, 12, 31);
+        LocalDate today = LocalDate.now();
+        LocalDate endDate = yearEnd.isAfter(today) ? today : yearEnd;
+
+        List<SessionDetailResult> results = new ArrayList<>();
+
+        // 判斷 category 是主日類型、活動類型還是小組名稱
+        if ("SATURDAY".equals(category) || "SUNDAY".equals(category) || "SPECIAL".equals(category)) {
+            // 主日類型或活動類型：查詢該類別的所有場次
+            List<Session> sessions = sessionRepository.findAll().stream()
+                    .filter(s -> category.equals(s.getSessionType()))
+                    .filter(s -> s.getSessionDate() != null)
+                    .filter(s -> !s.getSessionDate().isBefore(yearStart))
+                    .filter(s -> !s.getSessionDate().isAfter(endDate))
+                    .sorted((s1, s2) -> s1.getSessionDate().compareTo(s2.getSessionDate()))
+                    .collect(Collectors.toList());
+
+            for (Session session : sessions) {
+                Optional<Checkin> checkin = checkinRepository.findBySessionIdAndMemberId(session.getId(), personId);
+                Boolean checkedIn = checkin.isPresent();
+                Boolean canceled = checkin.map(c -> c.getCanceled() != null && c.getCanceled()).orElse(false);
+                
+                // 如果已取消，則視為未簽到
+                if (canceled) {
+                    checkedIn = false;
+                }
+
+                results.add(new SessionDetailResult(
+                        session.getId(),
+                        session.getSessionCode(),
+                        session.getTitle(),
+                        session.getSessionDate(),
+                        checkedIn,
+                        canceled
+                ));
+            }
+        } else {
+            // 小組類型：根據小組名稱查找對應的 groupId
+            com.example.helloworld.entity.church.Group group = null;
+            List<com.example.helloworld.entity.church.GroupPerson> groupPersons;
+            if (includeHistorical) {
+                groupPersons = groupPersonRepository.findAllGroupsByPersonId(personId);
+            } else {
+                groupPersons = groupPersonRepository.findActiveGroupsByPersonId(personId);
+            }
+
+            for (com.example.helloworld.entity.church.GroupPerson gp : groupPersons) {
+                String groupName = gp.getGroup() != null ? gp.getGroup().getGroupName() : null;
+                if (category.equals(groupName)) {
+                    group = gp.getGroup();
+                    Long groupId = group.getId();
+                    LocalDate joinedAt = gp.getJoinedAt();
+                    LocalDate leftAt = gp.getLeftAt();
+
+                    // 確定有效的日期範圍
+                    final LocalDate effectiveStart = joinedAt.isAfter(yearStart) ? joinedAt : yearStart;
+                    final LocalDate effectiveEnd = (leftAt != null && leftAt.isBefore(endDate)) ? leftAt : endDate;
+
+                    // 獲取所有與該小組關聯的場次ID
+                    List<com.example.helloworld.entity.church.checkin.SessionGroup> sessionGroups = 
+                            sessionGroupRepository.findByGroupId(groupId);
+                    final List<Long> associatedSessionIds = sessionGroups.stream()
+                            .map(sg -> sg.getSessionId())
+                            .collect(Collectors.toList());
+
+                    // 查詢該小組的所有小組類型場次（在有效日期範圍內）
+                    List<Session> groupSessions = sessionRepository.findAll().stream()
+                            .filter(s -> "WEEKDAY".equals(s.getSessionType()))
+                            .filter(s -> s.getSessionDate() != null)
+                            .filter(s -> !s.getSessionDate().isBefore(effectiveStart))
+                            .filter(s -> !s.getSessionDate().isAfter(effectiveEnd))
+                            .filter(s -> {
+                                if (associatedSessionIds.contains(s.getId())) {
+                                    return true;
+                                }
+                                // 如果場次沒有關聯到任何小組，則根據人員所屬的小組判斷（用於處理舊數據）
+                                List<com.example.helloworld.entity.church.checkin.SessionGroup> sessionGroupList = 
+                                        sessionGroupRepository.findBySessionId(s.getId());
+                                if (sessionGroupList.isEmpty()) {
+                                    return true;
+                                }
+                                return false;
+                            })
+                            .sorted((s1, s2) -> s1.getSessionDate().compareTo(s2.getSessionDate()))
+                            .collect(Collectors.toList());
+
+                    for (Session session : groupSessions) {
+                        Optional<Checkin> checkin = checkinRepository.findBySessionIdAndMemberId(session.getId(), personId);
+                        Boolean checkedIn = checkin.isPresent();
+                        Boolean canceled = checkin.map(c -> c.getCanceled() != null && c.getCanceled()).orElse(false);
+                        
+                        // 如果已取消，則視為未簽到
+                        if (canceled) {
+                            checkedIn = false;
+                        }
+
+                        results.add(new SessionDetailResult(
+                                session.getId(),
+                                session.getSessionCode(),
+                                session.getTitle(),
+                                session.getSessionDate(),
+                                checkedIn,
+                                canceled
+                        ));
+                    }
+                    break; // 找到對應的小組後就退出
+                }
+            }
+        }
+
+        return results;
     }
 }
 

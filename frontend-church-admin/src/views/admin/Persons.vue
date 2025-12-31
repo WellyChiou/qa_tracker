@@ -309,9 +309,36 @@ const loadPersonGroups = async (personId) => {
 }
 
 const loadAllPersonGroups = async () => {
-  // 為所有人員載入小組列表
-  const promises = persons.value.map(person => loadPersonGroups(person.id))
-  await Promise.all(promises)
+  // 批量載入所有人員的小組列表
+  if (persons.value.length === 0) {
+    return
+  }
+  
+  try {
+    const personIds = persons.value.map(person => person.id)
+    const response = await apiRequest('/church/persons/groups/batch', {
+      method: 'POST',
+      body: JSON.stringify({ personIds }),
+      credentials: 'include'
+    })
+    
+    if (response.ok) {
+      const data = await response.json()
+      const personGroups = data.personGroups || {}
+      
+      // 將批量查詢結果存入 personGroupsMap
+      // 注意：JSON 中的數字 key 會被轉換為字符串，需要轉換回數字
+      for (const [personIdStr, groups] of Object.entries(personGroups)) {
+        const personId = typeof personIdStr === 'string' ? parseInt(personIdStr, 10) : personIdStr
+        personGroupsMap.value[personId] = Array.isArray(groups) ? groups : []
+      }
+    }
+  } catch (error) {
+    console.error('批量載入人員小組列表失敗:', error)
+    // 如果批量查詢失敗，回退到逐一查詢
+    const promises = persons.value.map(person => loadPersonGroups(person.id))
+    await Promise.all(promises)
+  }
 }
 
 const openAddModal = () => {

@@ -3,10 +3,16 @@
     <div class="modal-content group-modal">
       <div class="modal-header">
         <h3>{{ editingGroup ? '編輯小組' : '新增小組' }}</h3>
-        <button @click="close" class="close-btn">×</button>
+        <div class="header-actions">
+          <button type="button" @click="close" class="btn btn-secondary">取消</button>
+          <button type="submit" form="group-form" class="btn btn-primary" :disabled="saving">
+            {{ saving ? '儲存中...' : '儲存' }}
+          </button>
+          <button @click="close" class="close-btn">×</button>
+        </div>
       </div>
 
-      <form @submit.prevent="save" class="modal-body">
+      <form id="group-form" @submit.prevent="save" class="modal-body">
         <!-- 基本資訊 -->
         <div class="form-section">
           <h4>基本資訊</h4>
@@ -78,6 +84,16 @@
             <div class="person-box">
               <div class="person-box-header">
                 <h5>尚未加入人員</h5>
+                <div class="person-box-header-actions">
+                  <button
+                    type="button"
+                    @click="addAll"
+                    class="btn-action-header"
+                    :disabled="filteredLeftPersons.length === 0"
+                  >
+                    全部加入
+                  </button>
+                </div>
                 <input
                   v-model="leftSearch"
                   type="text"
@@ -90,15 +106,8 @@
                   v-for="person in filteredLeftPersons"
                   :key="person.id"
                   class="person-item"
-                  :class="{ selected: isLeftSelected(person.id) }"
-                  @click="toggleLeftSelection(person.id)"
+                  @click="addPerson(person)"
                 >
-                  <input
-                    type="checkbox"
-                    :checked="isLeftSelected(person.id)"
-                    @change="toggleLeftSelection(person.id)"
-                    @click.stop
-                  />
                   <span>{{ person.personName || person.displayName || '-' }}</span>
                   <span class="member-no" v-if="person.memberNo">({{ person.memberNo }})</span>
                 </div>
@@ -108,56 +117,20 @@
               </div>
             </div>
 
-            <!-- 中間按鈕 -->
-            <div class="person-actions">
-              <button
-                type="button"
-                @click="addSelected"
-                class="btn-action"
-                :disabled="leftSelected.length === 0"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M12 5v14M5 12h14"/>
-                </svg>
-              </button>
-              <button
-                type="button"
-                @click="removeSelected"
-                class="btn-action"
-                :disabled="rightSelected.length === 0"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M5 12h14"/>
-                </svg>
-              </button>
-              <button
-                type="button"
-                @click="addAll"
-                class="btn-action"
-                :disabled="filteredLeftPersons.length === 0"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M12 5v14M5 12h14"/>
-                </svg>
-                <span>全部</span>
-              </button>
-              <button
-                type="button"
-                @click="removeAll"
-                class="btn-action"
-                :disabled="rightPersons.length === 0"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M5 12h14"/>
-                </svg>
-                <span>全部</span>
-              </button>
-            </div>
-
             <!-- 右框：已加入小組的人員 -->
             <div class="person-box">
               <div class="person-box-header">
                 <h5>已加入人員 ({{ rightPersons.length }})</h5>
+                <div class="person-box-header-actions">
+                  <button
+                    type="button"
+                    @click="removeAll"
+                    class="btn-action-header"
+                    :disabled="rightPersons.length === 0"
+                  >
+                    全部移除
+                  </button>
+                </div>
                 <input
                   v-model="rightSearch"
                   type="text"
@@ -170,21 +143,15 @@
                   v-for="person in filteredRightPersons"
                   :key="person.id"
                   class="person-item"
-                  :class="{ selected: isRightSelected(person.id) }"
-                  @click="toggleRightSelection(person.id)"
+                  @click.stop="removePerson(person)"
                 >
-                  <input
-                    type="checkbox"
-                    :checked="isRightSelected(person.id)"
-                    @change="toggleRightSelection(person.id)"
-                    @click.stop
-                  />
-                  <span>{{ person.personName || person.displayName || '-' }}</span>
-                  <span class="member-no" v-if="person.memberNo">({{ person.memberNo }})</span>
+                  <div class="person-info">
+                    <span>{{ person.personName || person.displayName || '-' }}</span>
+                    <span class="member-no" v-if="person.memberNo">({{ person.memberNo }})</span>
+                  </div>
                   <select
                     v-model="person.role"
                     @click.stop
-                    @change="updatePersonRole(person.id, person.role)"
                     class="role-select"
                   >
                     <option value="MEMBER">一般成員</option>
@@ -198,13 +165,6 @@
               </div>
             </div>
           </div>
-        </div>
-
-        <div class="modal-footer">
-          <button type="button" @click="close" class="btn btn-secondary">取消</button>
-          <button type="submit" class="btn btn-primary" :disabled="saving">
-            {{ saving ? '儲存中...' : '儲存' }}
-          </button>
         </div>
       </form>
     </div>
@@ -240,11 +200,10 @@ const form = ref({
 
 const leftPersons = ref([])
 const rightPersons = ref([])
-const leftSelected = ref([])
-const rightSelected = ref([])
 const leftSearch = ref('')
 const rightSearch = ref('')
 const saving = ref(false)
+const initialMemberIds = ref([]) // 保存初始載入時的成員 ID 列表
 
 const editingGroup = computed(() => props.group)
 
@@ -276,78 +235,64 @@ const filteredRightPersons = computed(() => {
   return filtered
 })
 
-const isLeftSelected = (personId) => {
-  return leftSelected.value.includes(personId)
-}
-
-const isRightSelected = (personId) => {
-  return rightSelected.value.includes(personId)
-}
-
-const toggleLeftSelection = (personId) => {
-  const index = leftSelected.value.indexOf(personId)
-  if (index > -1) {
-    leftSelected.value.splice(index, 1)
-  } else {
-    leftSelected.value.push(personId)
+// 加入單個人員
+const addPerson = (person) => {
+  if (!person.role) {
+    person.role = 'MEMBER'
   }
+  rightPersons.value.push(person)
+  leftPersons.value = leftPersons.value.filter(p => p.id !== person.id)
 }
 
-const toggleRightSelection = (personId) => {
-  const index = rightSelected.value.indexOf(personId)
-  if (index > -1) {
-    rightSelected.value.splice(index, 1)
-  } else {
-    rightSelected.value.push(personId)
-  }
-}
-
-const addSelected = () => {
-  const selected = leftPersons.value.filter(p => leftSelected.value.includes(p.id))
-  // 為新加入的成員設定預設角色
-  selected.forEach(p => {
-    if (!p.role) {
-      p.role = 'MEMBER'
-    }
-  })
-  rightPersons.value.push(...selected)
-  leftPersons.value = leftPersons.value.filter(p => !leftSelected.value.includes(p.id))
-  leftSelected.value = []
-}
-
-const removeSelected = () => {
-  const selected = rightPersons.value.filter(p => rightSelected.value.includes(p.id))
-  leftPersons.value.push(...selected)
-  rightPersons.value = rightPersons.value.filter(p => !rightSelected.value.includes(p.id))
-  rightSelected.value = []
+// 移除單個人員
+const removePerson = (person) => {
+  leftPersons.value.push(person)
+  rightPersons.value = rightPersons.value.filter(p => p.id !== person.id)
 }
 
 const addAll = () => {
   const toAdd = filteredLeftPersons.value.map(p => ({ ...p, role: p.role || 'MEMBER' }))
   rightPersons.value.push(...toAdd)
   leftPersons.value = leftPersons.value.filter(p => !toAdd.find(fp => fp.id === p.id))
-  leftSelected.value = []
 }
 
 const removeAll = () => {
   leftPersons.value.push(...rightPersons.value)
   rightPersons.value = []
-  rightSelected.value = []
 }
 
 const loadNonMembers = async (groupId) => {
   try {
-    const response = await apiRequest(`/church/groups/${groupId}/non-members`, {
+    // 載入所有人員，然後過濾掉已經在該小組的成員
+    const allPersonsResponse = await apiRequest('/church/persons', {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      leftPersons.value = data.nonMembers || []
+    if (allPersonsResponse.ok) {
+      const allPersonsData = await allPersonsResponse.json()
+      const allPersons = allPersonsData.persons || []
+      
+      // 獲取該小組的成員 ID 列表
+      const membersResponse = await apiRequest(`/church/groups/${groupId}/members`, {
+        method: 'GET',
+        credentials: 'include'
+      })
+      
+      if (membersResponse.ok) {
+        const membersData = await membersResponse.json()
+        const memberIds = (membersData.members || []).map(m => m.id)
+        
+        // 過濾掉已經在該小組的成員
+        leftPersons.value = allPersons.filter(p => !memberIds.includes(p.id))
+      } else {
+        // 如果獲取成員失敗，仍顯示所有人員
+        leftPersons.value = allPersons
+      }
     }
   } catch (error) {
     console.error('載入未加入人員失敗:', error)
+    toast.error('載入人員失敗', '錯誤')
   }
 }
 
@@ -365,47 +310,30 @@ const loadMembers = async (groupId) => {
         ...m,
         role: m.role || 'MEMBER'
       }))
+      // 保存初始成員 ID 列表，用於後續比較
+      initialMemberIds.value = rightPersons.value.map(p => p.id)
     }
   } catch (error) {
     console.error('載入成員失敗:', error)
   }
 }
 
-const updatePersonRole = async (personId, role) => {
-  if (!editingGroup.value) return
-  
-  try {
-    const response = await apiRequest(`/church/groups/${editingGroup.value.id}/members/${personId}/role`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ role })
-    })
-    
-    if (response.ok) {
-      // 角色已更新，不需要額外處理
-    }
-  } catch (error) {
-    console.error('更新成員角色失敗:', error)
-    toast.error('更新成員角色失敗', '錯誤')
-  }
-}
-
 const loadAllPersons = async () => {
   try {
-    // 使用新的 API 端點，只獲取未加入任何小組的人員
-    const response = await apiRequest('/church/groups/non-members', {
+    // 載入所有人員（不排除已有小組的人員，因為每個人可以參加多個小組）
+    const response = await apiRequest('/church/persons', {
       method: 'GET',
       credentials: 'include'
     })
     
     if (response.ok) {
       const data = await response.json()
-      leftPersons.value = data.nonMembers || []
+      leftPersons.value = data.persons || []
       rightPersons.value = []
     }
   } catch (error) {
     console.error('載入人員失敗:', error)
+    toast.error('載入人員失敗', '錯誤')
   }
 }
 
@@ -454,24 +382,44 @@ const save = async () => {
       }
     }
 
-    // 更新成員（包含角色）
-    if (groupId && rightPersons.value.length > 0) {
-      const personIds = rightPersons.value.map(p => p.id)
-      const personRoles = {}
-      rightPersons.value.forEach(p => {
-        if (p.role) {
-          personRoles[p.id] = p.role
+    // 更新成員（包含新增、移除和角色更新）
+    if (groupId) {
+      const currentMemberIds = rightPersons.value.map(p => p.id)
+      
+      // 計算需要移除的成員（在初始列表中但不在當前列表中的）
+      const membersToRemove = initialMemberIds.value.filter(id => !currentMemberIds.includes(id))
+      
+      // 移除成員
+      for (const personId of membersToRemove) {
+        try {
+          await apiRequest(`/church/groups/${groupId}/members/${personId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+          })
+        } catch (error) {
+          console.error(`移除成員 ${personId} 失敗:`, error)
         }
-      })
-      await apiRequest(`/church/groups/${groupId}/members`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ 
-          personIds,
-          personRoles: Object.keys(personRoles).length > 0 ? personRoles : null
+      }
+      
+      // 新增成員並更新角色（POST API 會處理新增和角色設定）
+      if (currentMemberIds.length > 0) {
+        const personRoles = {}
+        rightPersons.value.forEach(p => {
+          if (p.role) {
+            personRoles[p.id] = p.role
+          }
         })
-      }, '更新成員中...', true)
+        
+        await apiRequest(`/church/groups/${groupId}/members`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ 
+            personIds: currentMemberIds,
+            personRoles: Object.keys(personRoles).length > 0 ? personRoles : null
+          })
+        }, '更新成員中...', true)
+      }
     }
 
     emit('saved')
@@ -497,10 +445,9 @@ const close = () => {
   }
   leftPersons.value = []
   rightPersons.value = []
-  leftSelected.value = []
-  rightSelected.value = []
   leftSearch.value = ''
   rightSearch.value = ''
+  initialMemberIds.value = []
 }
 
 // 當 modal 顯示或 group 資料變化時，載入資料
@@ -587,6 +534,7 @@ onMounted(() => {
   align-items: center;
   padding: 20px 24px;
   border-bottom: 1px solid #eee;
+  gap: 16px;
 }
 
 .modal-header h3 {
@@ -594,6 +542,13 @@ onMounted(() => {
   font-size: 20px;
   font-weight: 600;
   color: #333;
+  flex: 1;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .close-btn {
@@ -611,6 +566,7 @@ onMounted(() => {
   justify-content: center;
   border-radius: 4px;
   transition: all 0.2s;
+  margin-left: 8px;
 }
 
 .close-btn:hover {
@@ -663,12 +619,41 @@ onMounted(() => {
   padding: 12px;
   background: #f5f5f5;
   border-bottom: 1px solid #ddd;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .person-box-header h5 {
-  margin: 0 0 8px 0;
+  margin: 0;
   font-size: 14px;
   font-weight: 600;
+}
+
+.person-box-header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-action-header {
+  padding: 6px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.btn-action-header:hover:not(:disabled) {
+  background: #f0f0f0;
+  border-color: #999;
+}
+
+.btn-action-header:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .search-input {
@@ -687,6 +672,7 @@ onMounted(() => {
 
 .person-item {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   padding: 8px;
@@ -699,16 +685,16 @@ onMounted(() => {
   background: #f0f0f0;
 }
 
-.person-item.selected {
-  background: #e3f2fd;
-}
-
-.person-item input[type="checkbox"] {
-  cursor: pointer;
+.person-info {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
 }
 
 .person-item span {
-  flex: 1;
+  flex-shrink: 0;
 }
 
 .member-no {
@@ -717,13 +703,14 @@ onMounted(() => {
 }
 
 .role-select {
-  margin-left: auto;
+  width: 100%;
   padding: 4px 8px;
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 12px;
   background: white;
   cursor: pointer;
+  margin-left: 0;
 }
 
 .role-select:hover {
@@ -773,13 +760,43 @@ onMounted(() => {
   height: 16px;
 }
 
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  padding-top: 16px;
-  border-top: 1px solid #eee;
-  margin-top: 24px;
+
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background: #5a6268;
+  transform: translateY(-2px);
 }
 </style>
 

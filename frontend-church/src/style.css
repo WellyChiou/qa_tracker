@@ -329,6 +329,13 @@ a:hover { text-decoration: underline; }
   display: block;
 }
 
+/* 活動卡片圖片完整顯示，不被截斷 */
+.card--activity .media img {
+  object-fit: contain;
+  object-position: center;
+  background: var(--surface-2);
+}
+
 /* Badges / tags */
 .badge {
   display: inline-flex;

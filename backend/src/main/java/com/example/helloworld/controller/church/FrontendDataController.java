@@ -128,6 +128,10 @@ public class FrontendDataController {
                             a.getDescription(),
                             a.getLocation(),
                             a.getActivityDate(),
+                            a.getStartTime(),         // 活動開始時間
+                            a.getEndTime(),           // 活動結束時間
+                            a.getActivitySessions(),  // 活動時間段（多個上課時間）
+                            a.getTags(),
                             a.getImageUrl(),
                             a.getIsActive()
                     ))
@@ -180,7 +184,12 @@ public class FrontendDataController {
             List<GroupResult> results = groups.stream()
                     .map(group -> {
                         List<GroupPerson> groupPersons = groupService.getGroupMembersWithRole(group.getId());
+                        // 只返回小組長和實習小組長
                         List<GroupResult.MemberInfo> memberInfos = groupPersons.stream()
+                                .filter(gp -> {
+                                    String role = gp.getRole() != null ? gp.getRole() : "MEMBER";
+                                    return role.equals("LEADER") || role.equals("ASSISTANT_LEADER");
+                                })
                                 .map(gp -> new GroupResult.MemberInfo(
                                         gp.getPerson().getId(),
                                         gp.getPerson().getPersonName(),
@@ -220,7 +229,12 @@ public class FrontendDataController {
                     .orElseThrow(() -> new RuntimeException("小組不存在: " + id));
 
             List<GroupPerson> groupPersons = groupService.getGroupMembersWithRole(id);
+            // 只返回小組長和實習小組長
             List<GroupResult.MemberInfo> memberInfos = groupPersons.stream()
+                    .filter(gp -> {
+                        String role = gp.getRole() != null ? gp.getRole() : "MEMBER";
+                        return role.equals("LEADER") || role.equals("ASSISTANT_LEADER");
+                    })
                     .map(gp -> new GroupResult.MemberInfo(
                             gp.getPerson().getId(),
                             gp.getPerson().getPersonName(),

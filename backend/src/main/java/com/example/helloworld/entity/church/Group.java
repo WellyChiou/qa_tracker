@@ -40,6 +40,9 @@ public class Group {
     @JsonIgnore
     private List<GroupPerson> groupPersons;
 
+    @Transient
+    private Integer memberCount;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
@@ -130,6 +133,14 @@ public class Group {
 
     public void setGroupPersons(List<GroupPerson> groupPersons) {
         this.groupPersons = groupPersons;
+    }
+
+    public Integer getMemberCount() {
+        return memberCount;
+    }
+
+    public void setMemberCount(Integer memberCount) {
+        this.memberCount = memberCount;
     }
 }
 

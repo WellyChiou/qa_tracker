@@ -89,7 +89,9 @@ public class ActivityService {
         existing.setTitle(activity.getTitle());
         existing.setDescription(activity.getDescription());
         existing.setActivityDate(activity.getActivityDate());
-        existing.setActivityTime(activity.getActivityTime());
+        existing.setStartTime(activity.getStartTime());
+        existing.setEndTime(activity.getEndTime());
+        existing.setActivitySessions(activity.getActivitySessions());
         existing.setLocation(activity.getLocation());
         existing.setTags(activity.getTags());
         existing.setImageUrl(activity.getImageUrl());

@@ -1,6 +1,7 @@
 package com.example.helloworld.controller.church;
 
 import com.example.helloworld.dto.church.checkin.AttendanceRateDto;
+import com.example.helloworld.dto.church.checkin.SessionDetailResult;
 import com.example.helloworld.service.church.AttendanceRateService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -78,6 +79,28 @@ public class AttendanceRateController {
         } catch (Exception e) {
             Map<String, Object> error = new HashMap<>();
             error.put("error", "獲取所有出席率失敗：" + e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    /**
+     * 獲取指定人員在指定年度某個類別下的所有場次詳細資訊
+     */
+    @GetMapping("/person/{personId}/sessions")
+    public ResponseEntity<Map<String, Object>> getPersonSessionDetails(
+            @PathVariable Long personId,
+            @RequestParam String category,
+            @RequestParam Integer year,
+            @RequestParam(required = false, defaultValue = "false") Boolean includeHistorical) {
+        try {
+            List<SessionDetailResult> results = attendanceRateService.getSessionDetails(personId, category, year, includeHistorical);
+            Map<String, Object> response = new HashMap<>();
+            response.put("sessionDetails", results);
+            response.put("message", "獲取場次詳細資訊成功");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "獲取場次詳細資訊失敗：" + e.getMessage());
             return ResponseEntity.badRequest().body(error);
         }
     }

@@ -137,7 +137,7 @@
               <h3 class="card__title h3">{{ activity.title }}</h3>
 
               <div class="card__meta" style="margin-top:6px">
-                <span v-if="activity.activityTime">🕒 {{ activity.activityTime }}</span>
+                <span v-if="activity.startTime || activity.endTime">🕒 {{ formatActivityTime(activity.startTime, activity.endTime) }}</span>
                 <span v-if="activity.location">📍 {{ activity.location }}</span>
               </div>
 
@@ -225,6 +225,17 @@ const truncateText = (text, maxLength) => {
   if (!text) return ''
   if (text.length <= maxLength) return text
   return text.substring(0, maxLength) + '...'
+}
+
+const formatActivityTime = (startTime, endTime) => {
+  if (startTime && endTime) {
+    return `${startTime} ~ ${endTime}`
+  } else if (startTime) {
+    return startTime
+  } else if (endTime) {
+    return endTime
+  }
+  return ''
 }
 
 const loadChurchInfo = async () => {

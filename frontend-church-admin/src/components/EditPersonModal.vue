@@ -119,7 +119,7 @@
 
 <script setup>
 import { toast } from '@/composables/useToast'
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, nextTick } from 'vue'
 import { apiRequest } from '@/utils/api'
 
 const props = defineProps({
@@ -167,11 +167,13 @@ const loadActiveGroups = async () => {
 
 onMounted(() => {
   loadActiveGroups()
-})
-
-watch(() => props.show, (newVal) => {
-  if (newVal) {
-    loadActiveGroups()
+  // 如果組件創建時 Modal 已經顯示且有 person，立即載入資料
+  // 注意：由於使用了 v-if，組件會在每次打開時重新創建，所以這裡會執行
+  if (props.show && props.person && props.person.id && !isLoadingPersonData.value) {
+    isLoadingPersonData.value = true
+    loadPersonData().finally(() => {
+      isLoadingPersonData.value = false
+    })
   }
 })
 
@@ -196,7 +198,15 @@ const loadPersonGroups = async (personId) => {
 }
 
 const loadPersonData = async () => {
-  if (props.person) {
+  console.log('loadPersonData 被調用', { person: props.person, personId: props.person?.id })
+  
+  if (!props.person || !props.person.id) {
+    console.warn('loadPersonData: person 或 person.id 不存在', props.person)
+    return
+  }
+  
+  try {
+    // 先設置基本資訊
     form.value = {
       personName: props.person.personName || '',
       displayName: props.person.displayName || '',
@@ -209,10 +219,14 @@ const loadPersonData = async () => {
       groupIds: []
     }
     
+    console.log('表單資料已設置', form.value)
+    
     // 載入人員所屬的小組列表
-    if (props.person.id) {
-      await loadPersonGroups(props.person.id)
-    }
+    await loadPersonGroups(props.person.id)
+    
+    console.log('人員資料載入完成', form.value)
+  } catch (error) {
+    console.error('loadPersonData 發生錯誤:', error)
   }
 }
 
@@ -297,21 +311,42 @@ const closeModal = () => {
   emit('close')
 }
 
-watch(() => props.show, (newVal) => {
-  if (newVal && props.person) {
-    // 當 Modal 顯示時，立即載入資料
-    loadPersonData()
-  } else if (!newVal) {
+// 使用 watch 來處理 Modal 顯示和 person 變化
+// 避免重複調用 API
+const isLoadingPersonData = ref(false)
+
+// 監聽 Modal 顯示狀態變化
+watch(() => props.show, async (newVal, oldVal) => {
+  if (newVal && !oldVal) {
+    // Modal 剛打開時，載入資料
+    if (props.person && props.person.id && !isLoadingPersonData.value) {
+      isLoadingPersonData.value = true
+      try {
+        await loadPersonData()
+      } finally {
+        isLoadingPersonData.value = false
+      }
+    }
+    // 載入活躍小組列表
+    loadActiveGroups()
+  } else if (!newVal && oldVal) {
+    // Modal 關閉時，重置表單
     resetForm()
   }
 })
 
-watch(() => props.person, (newPerson) => {
-  // 當 person prop 變化時，如果 Modal 正在顯示，重新載入資料
-  if (props.show && newPerson) {
-    loadPersonData()
+// 監聽 person 變化（當切換不同的人員時）
+watch(() => props.person?.id, async (newPersonId, oldPersonId) => {
+  // 如果 Modal 正在顯示，且 person ID 改變了，重新載入資料
+  if (props.show && newPersonId && newPersonId !== oldPersonId && !isLoadingPersonData.value) {
+    isLoadingPersonData.value = true
+    try {
+      await loadPersonData()
+    } finally {
+      isLoadingPersonData.value = false
+    }
   }
-}, { immediate: true })
+})
 </script>
 
 <style scoped>

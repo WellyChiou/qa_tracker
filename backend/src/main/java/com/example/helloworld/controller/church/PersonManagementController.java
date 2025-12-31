@@ -246,6 +246,71 @@ public class PersonManagementController {
     }
 
     /**
+     * 批量獲取多個人員的小組列表
+     */
+    @PostMapping("/groups/batch")
+    @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
+    public ResponseEntity<Map<String, Object>> getPersonsGroupsBatch(@RequestBody Map<String, Object> request) {
+        try {
+            @SuppressWarnings("unchecked")
+            List<Object> personIdsRaw = (List<Object>) request.get("personIds");
+            List<Long> personIds = new ArrayList<>();
+            
+            if (personIdsRaw != null && !personIdsRaw.isEmpty()) {
+                for (Object item : personIdsRaw) {
+                    if (item instanceof Long) {
+                        personIds.add((Long) item);
+                    } else if (item instanceof Integer) {
+                        personIds.add(((Integer) item).longValue());
+                    } else if (item instanceof Number) {
+                        personIds.add(((Number) item).longValue());
+                    }
+                }
+            }
+            
+            if (personIds.isEmpty()) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("personGroups", new HashMap<>());
+                response.put("message", "沒有提供人員 ID");
+                return ResponseEntity.ok(response);
+            }
+            
+            // 批量查詢所有相關的 GroupPerson 記錄
+            List<GroupPerson> allGroupPersons = groupPersonRepository.findAllGroupsByPersonIds(personIds);
+            
+            // 按人員 ID 分組
+            Map<Long, List<Map<String, Object>>> personGroupsMap = new HashMap<>();
+            
+            for (GroupPerson gp : allGroupPersons) {
+                Long personId = gp.getPersonId() != null ? gp.getPersonId() : gp.getPerson().getId();
+                
+                Map<String, Object> groupInfo = new HashMap<>();
+                groupInfo.put("groupId", gp.getGroup().getId());
+                groupInfo.put("groupName", gp.getGroup().getGroupName());
+                groupInfo.put("joinedAt", gp.getJoinedAt());
+                groupInfo.put("leftAt", gp.getLeftAt());
+                groupInfo.put("isActive", gp.getIsActive());
+                
+                personGroupsMap.computeIfAbsent(personId, k -> new ArrayList<>()).add(groupInfo);
+            }
+            
+            // 確保所有人員 ID 都有對應的列表（即使是空的）
+            for (Long personId : personIds) {
+                personGroupsMap.putIfAbsent(personId, new ArrayList<>());
+            }
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("personGroups", personGroupsMap);
+            response.put("message", "批量獲取人員小組列表成功");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "批量獲取人員小組列表失敗：" + e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    /**
      * 批量設置人員的小組關聯（支援多小組和指定加入時間）
      */
     @PutMapping("/{id}/groups")
