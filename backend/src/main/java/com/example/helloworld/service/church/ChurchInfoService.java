@@ -3,6 +3,8 @@ package com.example.helloworld.service.church;
 import com.example.helloworld.entity.church.ChurchInfo;
 import com.example.helloworld.repository.church.ChurchInfoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +25,11 @@ public class ChurchInfoService {
     @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
     public List<ChurchInfo> getAllInfo() {
         return churchInfoRepository.findAllByOrderByDisplayOrderAsc();
+    }
+
+    @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
+    public Page<ChurchInfo> getAllInfo(Pageable pageable) {
+        return churchInfoRepository.findAll(pageable);
     }
 
     /**

@@ -7,6 +7,8 @@ import com.example.helloworld.repository.church.ChurchUserRepository;
 import com.example.helloworld.repository.church.ChurchRoleRepository;
 import com.example.helloworld.repository.church.ChurchPermissionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +37,15 @@ public class ChurchUserService {
     public List<ChurchUser> getAllUsers() {
         // 使用 JOIN FETCH 主動加載關聯，避免懶加載問題
         return churchUserRepository.findAllWithRolesAndPermissions();
+    }
+
+    /**
+     * 獲取所有用戶（分頁）
+     */
+    @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
+    public Page<ChurchUser> getAllUsers(Pageable pageable) {
+        // 使用 JOIN FETCH 主動加載關聯，避免懶加載問題
+        return churchUserRepository.findAllWithRolesAndPermissions(pageable);
     }
 
     /**

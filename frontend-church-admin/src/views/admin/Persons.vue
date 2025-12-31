@@ -61,7 +61,7 @@
         </div>
         <div v-else class="persons-table">
           <div class="table-header">
-            <h3>人員列表 (共 {{ filteredList.length }} 筆)</h3>
+            <h3>人員列表 (共 {{ totalRecords }} 筆)</h3>
           </div>
           <table>
             <thead>
@@ -105,10 +105,10 @@
                 <option :value="50">50</option>
                 <option :value="100">100</option>
               </select>
-              <span class="pagination-info">共 {{ filteredList.length }} 筆 (第 {{ currentPage }}/{{ totalPages }} 頁)</span>
+              <span class="pagination-info">共 {{ totalRecords }} 筆 (第 {{ currentPage }}/{{ totalPages }} 頁)</span>
             </div>
             <div class="pagination-right">
-              <button class="btn-secondary" @click="currentPage--" :disabled="currentPage === 1">
+              <button class="btn-secondary" @click="() => { currentPage--; loadPersons(); }" :disabled="currentPage === 1">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                 </svg>
@@ -119,7 +119,7 @@
                 <input type="number" v-model.number="jumpPage" min="1" :max="totalPages" class="page-input" @keyup.enter="jumpToPage" />
                 <span class="pagination-label">頁</span>
               </div>
-              <button class="btn-secondary" @click="currentPage++" :disabled="currentPage === totalPages">
+              <button class="btn-secondary" @click="() => { currentPage++; loadPersons(); }" :disabled="currentPage === totalPages">
                 下一頁
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -175,6 +175,8 @@ const filters = ref({
 const currentPage = ref(1)
 const recordsPerPage = ref(20)
 const jumpPage = ref(1)
+const totalRecords = ref(0)
+const totalPages = ref(1)
 
 // 過濾後的列表
 const filteredList = computed(() => {
@@ -201,21 +203,16 @@ const filteredList = computed(() => {
   return filtered
 })
 
-// 分頁後的列表
+// 注意：分頁現在由後端處理，但前端過濾仍然保留（過濾當前頁數據）
 const paginatedList = computed(() => {
-  const start = (currentPage.value - 1) * recordsPerPage.value
-  return filteredList.value.slice(start, start + recordsPerPage.value)
-})
-
-// 總頁數
-const totalPages = computed(() => {
-  return Math.max(1, Math.ceil(filteredList.value.length / recordsPerPage.value))
+  return filteredList.value
 })
 
 // 跳轉到指定頁
 const jumpToPage = () => {
   if (jumpPage.value >= 1 && jumpPage.value <= totalPages.value) {
     currentPage.value = jumpPage.value
+    loadPersons()
   } else {
     jumpPage.value = currentPage.value
   }
@@ -238,15 +235,17 @@ watch(() => [filters.value.personName, filters.value.email, filters.value.phone]
   jumpPage.value = 1
 })
 
-// 監聽每頁筆數變化，重置到第一頁
+// 監聽每頁筆數變化，重置到第一頁並重新載入
 watch(recordsPerPage, () => {
   currentPage.value = 1
   jumpPage.value = 1
+  loadPersons()
 })
 
 const loadPersons = async () => {
   try {
-    const response = await apiRequest('/church/persons', {
+    const url = `/church/persons?page=${currentPage.value - 1}&size=${recordsPerPage.value}`
+    const response = await apiRequest(url, {
       method: 'GET',
       credentials: 'include'
     })
@@ -254,7 +253,17 @@ const loadPersons = async () => {
     if (response.ok) {
       const data = await response.json()
       // 後端返回格式：{ "persons": [...], "message": "..." }
-      persons.value = data.persons || data || []
+      persons.value = data.persons || data.content || data || []
+      
+      // 更新分頁信息
+      if (data.totalElements !== undefined) {
+        totalRecords.value = data.totalElements
+        totalPages.value = data.totalPages || 1
+      } else {
+        totalRecords.value = persons.value.length
+        totalPages.value = 1
+      }
+      
       // 載入所有人員的小組列表
       await loadAllPersonGroups()
     }

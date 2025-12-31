@@ -6,6 +6,9 @@ import com.example.helloworld.entity.church.Person;
 import com.example.helloworld.repository.church.GroupPersonRepository;
 import com.example.helloworld.repository.church.GroupRepository;
 import com.example.helloworld.repository.church.PersonRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +37,14 @@ public class GroupService {
         List<Group> groups = groupRepository.findAll();
         // 批量查詢所有小組的成員數量
         setMemberCountsForGroups(groups);
+        return groups;
+    }
+
+    @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
+    public Page<Group> getAllGroups(Pageable pageable) {
+        Page<Group> groups = groupRepository.findAll(pageable);
+        // 批量查詢所有小組的成員數量
+        setMemberCountsForGroups(groups.getContent());
         return groups;
     }
 

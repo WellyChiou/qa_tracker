@@ -5,6 +5,8 @@ import com.example.helloworld.repository.church.ActivityRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +33,11 @@ public class ActivityService {
     @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
     public List<Activity> getAllActivities() {
         return activityRepository.findAllByOrderByActivityDateAsc();
+    }
+
+    @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
+    public Page<Activity> getAllActivities(Pageable pageable) {
+        return activityRepository.findAll(pageable);
     }
 
     /**

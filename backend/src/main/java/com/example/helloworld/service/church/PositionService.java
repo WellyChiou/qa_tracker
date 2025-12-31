@@ -11,6 +11,8 @@ import com.example.helloworld.repository.church.PositionPersonRepository;
 import com.example.helloworld.repository.church.GroupRepository;
 import com.example.helloworld.repository.church.GroupPersonRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -111,6 +113,14 @@ public class PositionService {
     @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
     public List<Person> getAllPersons() {
         return personRepository.findAllByOrderByPersonNameAsc();
+    }
+
+    /**
+     * 獲取所有人員（分頁）
+     */
+    @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
+    public Page<Person> getAllPersons(Pageable pageable) {
+        return personRepository.findAll(pageable);
     }
 
     /**

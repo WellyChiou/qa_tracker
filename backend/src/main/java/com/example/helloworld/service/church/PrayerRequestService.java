@@ -5,6 +5,8 @@ import com.example.helloworld.repository.church.PrayerRequestRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +26,11 @@ public class PrayerRequestService {
     @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
     public List<PrayerRequest> getAllPrayerRequests() {
         return prayerRequestRepository.findAllByOrderByCreatedAtDesc();
+    }
+
+    @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
+    public Page<PrayerRequest> getAllPrayerRequests(Pageable pageable) {
+        return prayerRequestRepository.findAll(pageable);
     }
 
     /**

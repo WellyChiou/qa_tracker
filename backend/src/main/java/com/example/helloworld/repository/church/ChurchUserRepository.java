@@ -1,6 +1,8 @@
 package com.example.helloworld.repository.church;
 
 import com.example.helloworld.entity.church.ChurchUser;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -26,5 +28,11 @@ public interface ChurchUserRepository extends JpaRepository<ChurchUser, String> 
            "LEFT JOIN FETCH r.permissions " +
            "LEFT JOIN FETCH u.permissions")
     List<ChurchUser> findAllWithRolesAndPermissions();
+    
+    @Query("SELECT DISTINCT u FROM ChurchUser u " +
+           "LEFT JOIN FETCH u.roles r " +
+           "LEFT JOIN FETCH r.permissions " +
+           "LEFT JOIN FETCH u.permissions")
+    Page<ChurchUser> findAllWithRolesAndPermissions(Pageable pageable);
 }
 

@@ -5,6 +5,10 @@ import com.example.helloworld.entity.church.Person;
 import com.example.helloworld.repository.church.GroupPersonRepository;
 import com.example.helloworld.service.church.PositionService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -28,13 +32,18 @@ public class PersonManagementController {
     private GroupPersonRepository groupPersonRepository;
 
     /**
-     * 獲取所有人員
+     * 獲取所有人員（支援分頁）
      */
     @GetMapping
     @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
-    public ResponseEntity<Map<String, Object>> getAllPersons() {
+    public ResponseEntity<Map<String, Object>> getAllPersons(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         try {
-            List<Person> persons = positionService.getAllPersons();
+            Pageable pageable = PageRequest.of(page, size, Sort.by("personName").ascending());
+            Page<Person> personsPage = positionService.getAllPersons(pageable);
+            List<Person> persons = personsPage.getContent();
+            
             // 在事務內初始化懶加載的關聯，避免序列化時出現 LazyInitializationException
             for (Person person : persons) {
                 // 觸發 groupPersons 的初始化（即使有 @JsonIgnore，也要確保不會出錯）
@@ -45,8 +54,14 @@ public class PersonManagementController {
                     person.getPositionPersons().size(); // 觸發初始化
                 }
             }
+            
             Map<String, Object> response = new HashMap<>();
             response.put("persons", persons);
+            response.put("content", persons);
+            response.put("totalElements", personsPage.getTotalElements());
+            response.put("totalPages", personsPage.getTotalPages());
+            response.put("currentPage", personsPage.getNumber());
+            response.put("size", personsPage.getSize());
             response.put("message", "獲取人員列表成功");
             return ResponseEntity.ok(response);
         } catch (Exception e) {

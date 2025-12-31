@@ -3,6 +3,10 @@ package com.example.helloworld.controller.church;
 import com.example.helloworld.entity.church.ChurchInfo;
 import com.example.helloworld.service.church.ChurchInfoService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,16 +24,24 @@ public class ChurchInfoAdminController {
     private ChurchInfoService churchInfoService;
 
     /**
-     * 獲取所有教會資訊（管理用，包含未啟用的）
+     * 獲取所有教會資訊（管理用，包含未啟用的，支援分頁）
      */
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getAllChurchInfo() {
+    public ResponseEntity<Map<String, Object>> getAllChurchInfo(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         try {
             // 獲取所有資訊（包含未啟用的）
-            List<ChurchInfo> allInfo = churchInfoService.getAllInfo();
+            Pageable pageable = PageRequest.of(page, size, Sort.by("displayOrder").ascending());
+            Page<ChurchInfo> infoPage = churchInfoService.getAllInfo(pageable);
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
-            response.put("data", allInfo);
+            response.put("data", infoPage.getContent());
+            response.put("content", infoPage.getContent());
+            response.put("totalElements", infoPage.getTotalElements());
+            response.put("totalPages", infoPage.getTotalPages());
+            response.put("currentPage", infoPage.getNumber());
+            response.put("size", infoPage.getSize());
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             Map<String, Object> response = new HashMap<>();

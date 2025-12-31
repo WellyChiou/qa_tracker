@@ -99,7 +99,7 @@
         </div>
         <div v-else class="sessions-table">
           <div class="table-header">
-            <h3>場次列表 (共 {{ filteredList.length }} 筆)</h3>
+            <h3>場次列表 (共 {{ totalRecords }} 筆)</h3>
           </div>
           <table>
             <thead>
@@ -166,10 +166,10 @@
                 <option :value="50">50</option>
                 <option :value="100">100</option>
               </select>
-              <span class="pagination-info">共 {{ filteredList.length }} 筆 (第 {{ currentPage }}/{{ totalPages }} 頁)</span>
+              <span class="pagination-info">共 {{ totalRecords }} 筆 (第 {{ currentPage }}/{{ totalPages }} 頁)</span>
             </div>
             <div class="pagination-right">
-              <button class="btn-secondary" @click="currentPage--" :disabled="currentPage === 1">
+              <button class="btn-secondary" @click="() => { currentPage--; load(); }" :disabled="currentPage === 1">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                 </svg>
@@ -180,7 +180,7 @@
                 <input type="number" v-model.number="jumpPage" min="1" :max="totalPages" class="page-input" @keyup.enter="jumpToPage" />
                 <span class="pagination-label">頁</span>
               </div>
-              <button class="btn-secondary" @click="currentPage++" :disabled="currentPage === totalPages">
+              <button class="btn-secondary" @click="() => { currentPage++; load(); }" :disabled="currentPage === totalPages">
                 下一頁
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -230,6 +230,8 @@ const activeGroups = ref([])
 
 const recordsPerPage = ref(20)
 const currentPage = ref(1)
+const totalRecords = ref(0)
+const totalPages = ref(1)
 const jumpPage = ref(1)
 
 // 前端不再需要篩選，因為後端已經處理了
@@ -242,14 +244,9 @@ const filteredList = computed(() => {
   })
 })
 
-const totalPages = computed(() => {
-  return Math.ceil(filteredList.value.length / recordsPerPage.value)
-})
-
+// 注意：分頁現在由後端處理，但前端過濾仍然保留（過濾當前頁數據）
 const paginatedList = computed(() => {
-  const start = (currentPage.value - 1) * recordsPerPage.value
-  const end = start + recordsPerPage.value
-  return filteredList.value.slice(start, end)
+  return filteredList.value
 })
 
 watch([() => filters.value.sessionCode, () => filters.value.title, () => filters.value.status, () => filters.value.sessionType, () => filters.value.groupId], () => {
@@ -259,6 +256,12 @@ watch([() => filters.value.sessionCode, () => filters.value.title, () => filters
 
 watch(currentPage, (newVal) => {
   jumpPage.value = newVal
+})
+
+watch(recordsPerPage, () => {
+  currentPage.value = 1
+  jumpPage.value = 1
+  load()
 })
 
 async function load() {
@@ -274,14 +277,30 @@ async function load() {
     if (filters.value.endDate) params.append('endDate', filters.value.endDate)
     
     const queryString = params.toString()
-    const url = queryString ? `/church/checkin/admin/sessions?${queryString}` : '/church/checkin/admin/sessions'
+    // 添加分頁參數
+    const paginationParams = `page=${currentPage.value - 1}&size=${recordsPerPage.value}`
+    const url = queryString 
+      ? `/church/checkin/admin/sessions?${queryString}&${paginationParams}` 
+      : `/church/checkin/admin/sessions?${paginationParams}`
     
     const res = await apiRequest(url, {
       method: 'GET'
     }, '載入中...', true)
-    const data = await res.json() || []
-    sessions.value = data
-    toast.success(`查詢成功，共 ${data.length} 筆場次`, '場次管理')
+    const responseData = await res.json() || {}
+    
+    // 處理分頁響應
+    if (responseData.content) {
+      sessions.value = responseData.content
+      totalRecords.value = responseData.totalElements || 0
+      totalPages.value = responseData.totalPages || 1
+      toast.success(`查詢成功，共 ${totalRecords.value} 筆場次`, '場次管理')
+    } else {
+      // 兼容舊格式（無分頁）
+      sessions.value = Array.isArray(responseData) ? responseData : []
+      totalRecords.value = sessions.value.length
+      totalPages.value = 1
+      toast.success(`查詢成功，共 ${sessions.value.length} 筆場次`, '場次管理')
+    }
   } catch (error) {
     console.error('載入場次列表失敗:', error)
     toast.error('查詢場次列表失敗', '場次管理')
@@ -364,6 +383,7 @@ function jumpToPage() {
   const page = Math.max(1, Math.min(jumpPage.value, totalPages.value))
   currentPage.value = page
   jumpPage.value = page
+  load()
 }
 
 function formatDate(date) {

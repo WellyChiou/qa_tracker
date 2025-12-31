@@ -6,6 +6,7 @@ import com.example.helloworld.service.church.AttendanceRateService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,11 +28,12 @@ public class AttendanceRateController {
     public ResponseEntity<Map<String, Object>> getPersonAttendance(
             @PathVariable Long personId,
             @RequestParam Integer year,
-            @RequestParam(required = false, defaultValue = "false") Boolean includeHistorical) {
+            @RequestParam(required = false, defaultValue = "false") Boolean includeHistorical,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         try {
-            List<AttendanceRateDto> results = attendanceRateService.calculateAttendanceByCategory(personId, year, includeHistorical);
-            Map<String, Object> response = new HashMap<>();
-            response.put("attendanceRates", results);
+            List<AttendanceRateDto> allResults = attendanceRateService.calculateAttendanceByCategory(personId, year, includeHistorical);
+            Map<String, Object> response = buildPagedResponse(allResults, page, size);
             response.put("message", "獲取出席率成功");
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -48,11 +50,12 @@ public class AttendanceRateController {
     public ResponseEntity<Map<String, Object>> getGroupAttendance(
             @PathVariable Long groupId,
             @RequestParam Integer year,
-            @RequestParam(required = false, defaultValue = "false") Boolean includeHistorical) {
+            @RequestParam(required = false, defaultValue = "false") Boolean includeHistorical,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         try {
-            List<AttendanceRateDto> results = attendanceRateService.calculateGroupAttendance(groupId, year, includeHistorical);
-            Map<String, Object> response = new HashMap<>();
-            response.put("attendanceRates", results);
+            List<AttendanceRateDto> allResults = attendanceRateService.calculateGroupAttendance(groupId, year, includeHistorical);
+            Map<String, Object> response = buildPagedResponse(allResults, page, size);
             response.put("message", "獲取小組出席率成功");
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -69,11 +72,12 @@ public class AttendanceRateController {
     public ResponseEntity<Map<String, Object>> getAllAttendance(
             @RequestParam Integer year,
             @RequestParam(required = false) String category,
-            @RequestParam(required = false, defaultValue = "false") Boolean includeHistorical) {
+            @RequestParam(required = false, defaultValue = "false") Boolean includeHistorical,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         try {
-            List<AttendanceRateDto> results = attendanceRateService.calculateAllPersonsAttendance(year, category, includeHistorical);
-            Map<String, Object> response = new HashMap<>();
-            response.put("attendanceRates", results);
+            List<AttendanceRateDto> allResults = attendanceRateService.calculateAllPersonsAttendance(year, category, includeHistorical);
+            Map<String, Object> response = buildPagedResponse(allResults, page, size);
             response.put("message", "獲取所有出席率成功");
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -103,6 +107,30 @@ public class AttendanceRateController {
             error.put("error", "獲取場次詳細資訊失敗：" + e.getMessage());
             return ResponseEntity.badRequest().body(error);
         }
+    }
+
+    /**
+     * 構建分頁響應
+     */
+    private Map<String, Object> buildPagedResponse(List<AttendanceRateDto> allResults, int page, int size) {
+        int totalElements = allResults.size();
+        int totalPages = (int) Math.ceil((double) totalElements / size);
+        int start = page * size;
+        int end = Math.min(start + size, totalElements);
+        
+        List<AttendanceRateDto> content = (start < totalElements) 
+            ? allResults.subList(start, end) 
+            : new ArrayList<>();
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("attendanceRates", content);
+        response.put("content", content);
+        response.put("totalElements", totalElements);
+        response.put("totalPages", totalPages);
+        response.put("currentPage", page);
+        response.put("size", size);
+        
+        return response;
     }
 }
 

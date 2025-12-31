@@ -188,7 +188,7 @@
       </section>
 
       <section class="records-list">
-        <h2>記帳記錄 (共 {{ filteredRecords.length }} 筆)</h2>
+        <h2>記帳記錄 (共 {{ totalRecords }} 筆)</h2>
         <table class="records-table">
           <thead>
             <tr>
@@ -203,7 +203,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="record in paginatedRecords" :key="record.id">
+            <tr v-for="record in records" :key="record.id">
               <td>{{ formatDate(record.date) }}</td>
               <td>{{ record.member }}</td>
               <td>{{ record.type }}</td>
@@ -231,10 +231,10 @@
               <option :value="50">50</option>
               <option :value="100">100</option>
             </select>
-            <span class="pagination-info">共 {{ filteredRecords.length }} 筆 (第 {{ currentPage }}/{{ totalPages }} 頁)</span>
+            <span class="pagination-info">共 {{ totalRecords }} 筆 (第 {{ currentPage }}/{{ totalPages }} 頁)</span>
           </div>
           <div class="pagination-right">
-            <button class="btn-secondary" @click="currentPage--" :disabled="currentPage === 1">
+            <button class="btn-secondary" @click="() => { currentPage--; loadRecords(); }" :disabled="currentPage === 1">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
               </svg>
@@ -245,7 +245,7 @@
               <input type="number" v-model.number="jumpPage" min="1" :max="totalPages" class="page-input" @keyup.enter="jumpToPage" />
               <span class="pagination-label">頁</span>
             </div>
-            <button class="btn-secondary" @click="currentPage++" :disabled="currentPage === totalPages">
+            <button class="btn-secondary" @click="() => { currentPage++; loadRecords(); }" :disabled="currentPage === totalPages">
               下一頁
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -284,9 +284,11 @@ import AssetPortfolioModal from './expenses/AssetPortfolioModal.vue'
 import TradingFeesConfigModal from './expenses/TradingFeesConfigModal.vue'
 
 const records = ref([])
+const totalRecords = ref(0)
+const totalPages = ref(1)
 const editingId = ref(null)
 const currentPage = ref(1)
-const recordsPerPage = ref(10)
+const recordsPerPage = ref(20)
 const jumpPage = ref(1)
 const showModal = ref(false)
 const showChartsModalFlag = ref(false)
@@ -388,8 +390,12 @@ const years = computed(() => {
   return Array.from({ length: 10 }, (_, i) => currentYear - i)
 })
 
+// 用於統計計算的所有記錄（不包含分頁限制）
+const allRecordsForStats = ref([])
+
 const filteredRecords = computed(() => {
-  let filtered = [...records.value]
+  // 用於統計計算，從 allRecordsForStats 過濾
+  let filtered = [...allRecordsForStats.value]
   
   // 年份和月份現在總是有值，所以直接篩選
   if (filters.value.year) {
@@ -408,29 +414,13 @@ const filteredRecords = computed(() => {
     filtered = filtered.filter(r => r.mainCategory === filters.value.mainCategory)
   }
   
-  // 排序：先按日期降序，再按建立時間降序（如果日期相同）
-  return filtered.sort((a, b) => {
-    const dateDiff = new Date(b.date) - new Date(a.date)
-    if (dateDiff !== 0) return dateDiff
-    // 如果日期相同，按建立時間降序
-    const createdAtA = a.createdAt ? new Date(a.createdAt) : new Date(0)
-    const createdAtB = b.createdAt ? new Date(b.createdAt) : new Date(0)
-    return createdAtB - createdAtA
-  })
-})
-
-const paginatedRecords = computed(() => {
-  const start = (currentPage.value - 1) * recordsPerPage.value
-  return filteredRecords.value.slice(start, start + recordsPerPage.value)
-})
-
-const totalPages = computed(() => {
-  return Math.ceil(filteredRecords.value.length / recordsPerPage.value)
+  return filtered
 })
 
 const jumpToPage = () => {
   if (jumpPage.value >= 1 && jumpPage.value <= totalPages.value) {
     currentPage.value = jumpPage.value
+    loadRecords()
   } else {
     jumpPage.value = currentPage.value
   }
@@ -473,8 +463,60 @@ const showNotification = (message, type = 'success') => {
 
 const loadRecords = async () => {
   try {
-    const expenses = await apiService.getAllExpenses()
-    records.value = expenses.map(expense => ({
+    // 載入分頁數據
+    const params = {
+      page: currentPage.value - 1, // Spring Data 從 0 開始
+      size: recordsPerPage.value,
+      year: filters.value.year || undefined,
+      month: filters.value.month || undefined,
+      member: filters.value.member || undefined,
+      type: filters.value.type || undefined,
+      mainCategory: filters.value.mainCategory || undefined
+    }
+    
+    // 移除 undefined 值
+    Object.keys(params).forEach(key => {
+      if (params[key] === undefined || params[key] === '') {
+        delete params[key]
+      }
+    })
+    
+    const response = await apiService.getExpenses(params)
+    
+    // 處理分頁響應（Spring Data Page 對象會被序列化為包含 content, totalElements, totalPages 等屬性的對象）
+    records.value = (response.content || []).map(expense => ({
+      id: expense.id,
+      member: expense.member,
+      type: expense.type,
+      mainCategory: expense.mainCategory,
+      subCategory: expense.subCategory,
+      amount: parseFloat(expense.amount),
+      currency: expense.currency || 'TWD',
+      date: expense.date,
+      description: expense.description,
+      createdAt: expense.createdAt || expense.created_at || null
+    }))
+    
+    totalRecords.value = response.totalElements || 0
+    totalPages.value = response.totalPages || 1
+    
+    // 載入所有記錄用於統計計算（只載入符合當前過濾條件的記錄）
+    const statsParams = {
+      year: filters.value.year || undefined,
+      month: filters.value.month || undefined,
+      member: filters.value.member || undefined,
+      type: filters.value.type || undefined,
+      mainCategory: filters.value.mainCategory || undefined
+    }
+    
+    Object.keys(statsParams).forEach(key => {
+      if (statsParams[key] === undefined || statsParams[key] === '') {
+        delete statsParams[key]
+      }
+    })
+    
+    const allExpenses = await apiService.getAllExpenses(statsParams)
+    allRecordsForStats.value = allExpenses.map(expense => ({
       id: expense.id,
       member: expense.member,
       type: expense.type,
@@ -534,7 +576,11 @@ const handleSubmit = async () => {
   }
 }
 
-const editRecord = (id) => {
+const editRecord = async (id) => {
+  // 先確保數據已載入
+  if (records.value.length === 0) {
+    await loadRecords()
+  }
   const record = records.value.find(r => r.id === id)
   if (!record) {
     showNotification('找不到要編輯的記錄', 'error')
@@ -563,7 +609,11 @@ const editRecord = (id) => {
   })
 }
 
-const copyRecord = (id) => {
+const copyRecord = async (id) => {
+  // 先確保數據已載入
+  if (records.value.length === 0) {
+    await loadRecords()
+  }
   const record = records.value.find(r => r.id === id || r.id === Number(id))
   if (!record) {
     showNotification('找不到要複製的記錄', 'error')
@@ -626,6 +676,7 @@ const resetForm = () => {
 watch(() => filters.value, () => {
   currentPage.value = 1
   jumpPage.value = 1
+  loadRecords()
 }, { deep: true })
 
 watch(() => currentPage.value, (newVal) => {
@@ -635,6 +686,7 @@ watch(() => currentPage.value, (newVal) => {
 watch(() => recordsPerPage.value, () => {
   currentPage.value = 1
   jumpPage.value = 1
+  loadRecords()
 })
 
 onMounted(async () => {

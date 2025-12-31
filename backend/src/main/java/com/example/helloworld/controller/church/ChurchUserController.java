@@ -3,6 +3,9 @@ package com.example.helloworld.controller.church;
 import com.example.helloworld.entity.church.ChurchUser;
 import com.example.helloworld.service.church.ChurchUserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,15 +23,23 @@ public class ChurchUserController {
     private ChurchUserService churchUserService;
 
     /**
-     * 獲取所有用戶
+     * 獲取所有用戶（支援分頁）
      */
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getAllUsers() {
+    public ResponseEntity<Map<String, Object>> getAllUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         try {
-            List<ChurchUser> users = churchUserService.getAllUsers();
+            Pageable pageable = PageRequest.of(page, size);
+            Page<ChurchUser> usersPage = churchUserService.getAllUsers(pageable);
             // Service 層已經使用 JOIN FETCH 主動加載所有關聯，無需在這裡手動初始化
             Map<String, Object> response = new HashMap<>();
-            response.put("users", users);
+            response.put("users", usersPage.getContent());
+            response.put("content", usersPage.getContent());
+            response.put("totalElements", usersPage.getTotalElements());
+            response.put("totalPages", usersPage.getTotalPages());
+            response.put("currentPage", usersPage.getNumber());
+            response.put("size", usersPage.getSize());
             response.put("message", "獲取用戶列表成功");
             return ResponseEntity.ok(response);
         } catch (Exception e) {

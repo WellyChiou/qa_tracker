@@ -3,6 +3,10 @@ package com.example.helloworld.controller.church;
 import com.example.helloworld.entity.church.Activity;
 import com.example.helloworld.service.church.ActivityService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,15 +23,23 @@ public class ActivityAdminController {
     private ActivityService activityService;
 
     /**
-     * 獲取所有活動（管理用，包含未啟用的）
+     * 獲取所有活動（管理用，包含未啟用的，支援分頁）
      */
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getAllActivities() {
+    public ResponseEntity<Map<String, Object>> getAllActivities(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         try {
-            List<Activity> allActivities = activityService.getAllActivities();
+            Pageable pageable = PageRequest.of(page, size, Sort.by("activityDate").descending());
+            Page<Activity> activitiesPage = activityService.getAllActivities(pageable);
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
-            response.put("data", allActivities);
+            response.put("data", activitiesPage.getContent());
+            response.put("content", activitiesPage.getContent());
+            response.put("totalElements", activitiesPage.getTotalElements());
+            response.put("totalPages", activitiesPage.getTotalPages());
+            response.put("currentPage", activitiesPage.getNumber());
+            response.put("size", activitiesPage.getSize());
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             Map<String, Object> response = new HashMap<>();

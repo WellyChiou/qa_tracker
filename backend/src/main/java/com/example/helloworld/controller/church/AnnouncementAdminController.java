@@ -3,6 +3,10 @@ package com.example.helloworld.controller.church;
 import com.example.helloworld.entity.church.Announcement;
 import com.example.helloworld.service.church.AnnouncementService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,15 +23,23 @@ public class AnnouncementAdminController {
     private AnnouncementService announcementService;
 
     /**
-     * 獲取所有公告（管理用，包含未啟用的）
+     * 獲取所有公告（管理用，包含未啟用的，支援分頁）
      */
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getAllAnnouncements() {
+    public ResponseEntity<Map<String, Object>> getAllAnnouncements(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         try {
-            List<Announcement> allAnnouncements = announcementService.getAllAnnouncements();
+            Pageable pageable = PageRequest.of(page, size, Sort.by("isPinned").descending().and(Sort.by("publishDate").descending()));
+            Page<Announcement> announcementsPage = announcementService.getAllAnnouncements(pageable);
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
-            response.put("data", allAnnouncements);
+            response.put("data", announcementsPage.getContent());
+            response.put("content", announcementsPage.getContent());
+            response.put("totalElements", announcementsPage.getTotalElements());
+            response.put("totalPages", announcementsPage.getTotalPages());
+            response.put("currentPage", announcementsPage.getNumber());
+            response.put("size", announcementsPage.getSize());
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             Map<String, Object> response = new HashMap<>();

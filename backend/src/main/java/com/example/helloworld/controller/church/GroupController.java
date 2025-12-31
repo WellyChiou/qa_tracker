@@ -4,6 +4,9 @@ import com.example.helloworld.entity.church.Group;
 import com.example.helloworld.entity.church.GroupPerson;
 import com.example.helloworld.entity.church.Person;
 import com.example.helloworld.service.church.GroupService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -26,14 +29,22 @@ public class GroupController {
     }
 
     /**
-     * 獲取所有小組列表
+     * 獲取所有小組列表（支援分頁）
      */
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getAllGroups() {
+    public ResponseEntity<Map<String, Object>> getAllGroups(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         try {
-            List<Group> groups = groupService.getAllGroups();
+            Pageable pageable = PageRequest.of(page, size);
+            Page<Group> groupsPage = groupService.getAllGroups(pageable);
             Map<String, Object> response = new HashMap<>();
-            response.put("groups", groups);
+            response.put("groups", groupsPage.getContent());
+            response.put("content", groupsPage.getContent());
+            response.put("totalElements", groupsPage.getTotalElements());
+            response.put("totalPages", groupsPage.getTotalPages());
+            response.put("currentPage", groupsPage.getNumber());
+            response.put("size", groupsPage.getSize());
             response.put("message", "獲取小組列表成功");
             return ResponseEntity.ok(response);
         } catch (Exception e) {

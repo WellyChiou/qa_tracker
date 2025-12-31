@@ -126,7 +126,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(item, index) in paginatedList" :key="index" :class="{ 'historical-row': item.groupStatus === 'HISTORICAL' }">
+            <tr v-for="(item, index) in results" :key="index" :class="{ 'historical-row': item.groupStatus === 'HISTORICAL' }">
               <td>{{ item.personName || '-' }}</td>
               <td>{{ item.displayName || '-' }}</td>
               <td>{{ item.memberNo || '-' }}</td>
@@ -165,10 +165,10 @@
               <option :value="50">50</option>
               <option :value="100">100</option>
             </select>
-            <span class="pagination-info">共 {{ results.length }} 筆 (第 {{ currentPage }}/{{ totalPages }} 頁)</span>
+            <span class="pagination-info">共 {{ totalRecords }} 筆 (第 {{ currentPage }}/{{ totalPages }} 頁)</span>
           </div>
           <div class="pagination-right">
-            <button class="btn-secondary" @click="currentPage--" :disabled="currentPage === 1">
+            <button class="btn-secondary" @click="() => { currentPage--; query(); }" :disabled="currentPage === 1">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
               </svg>
@@ -179,7 +179,7 @@
               <input type="number" v-model.number="jumpPage" min="1" :max="totalPages" class="page-input" @keyup.enter="jumpToPage" />
               <span class="pagination-label">頁</span>
             </div>
-            <button class="btn-secondary" @click="currentPage++" :disabled="currentPage === totalPages">
+            <button class="btn-secondary" @click="() => { currentPage++; query(); }" :disabled="currentPage === totalPages">
               下一頁
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -328,6 +328,8 @@ const filters = ref({
 const currentPage = ref(1)
 const recordsPerPage = ref(20)
 const jumpPage = ref(1)
+const totalRecords = ref(0)
+const totalPages = ref(1)
 
 // 可用年度列表（當前年度往前5年，往後1年）
 const availableYears = computed(() => {
@@ -393,21 +395,13 @@ const canQuery = computed(() => {
   return true
 })
 
-// 分頁後的列表
-const paginatedList = computed(() => {
-  const start = (currentPage.value - 1) * recordsPerPage.value
-  return results.value.slice(start, start + recordsPerPage.value)
-})
-
-// 總頁數
-const totalPages = computed(() => {
-  return Math.max(1, Math.ceil(results.value.length / recordsPerPage.value))
-})
+// 注意：分頁現在由後端處理，results 已經是當前頁的數據
 
 // 跳轉到指定頁
 const jumpToPage = () => {
   if (jumpPage.value >= 1 && jumpPage.value <= totalPages.value) {
     currentPage.value = jumpPage.value
+    query()
   } else {
     jumpPage.value = currentPage.value
   }
@@ -490,12 +484,14 @@ const query = async () => {
   try {
     let url = ''
     const includeHistorical = filters.value.includeHistorical ? '&includeHistorical=true' : ''
+    const pageParam = `page=${currentPage.value - 1}&size=${recordsPerPage.value}`
+    
     if (filters.value.queryType === 'person') {
-      url = `/church/attendance/person/${filters.value.personId}?year=${filters.value.year}${includeHistorical}`
+      url = `/church/attendance/person/${filters.value.personId}?year=${filters.value.year}${includeHistorical}&${pageParam}`
     } else if (filters.value.queryType === 'group') {
-      url = `/church/attendance/group/${filters.value.groupId}?year=${filters.value.year}${includeHistorical}`
+      url = `/church/attendance/group/${filters.value.groupId}?year=${filters.value.year}${includeHistorical}&${pageParam}`
     } else {
-      url = `/church/attendance/all?year=${filters.value.year}${includeHistorical}`
+      url = `/church/attendance/all?year=${filters.value.year}${includeHistorical}&${pageParam}`
       if (filters.value.category) {
         url += `&category=${filters.value.category}`
       }
@@ -508,9 +504,9 @@ const query = async () => {
     
     if (response.ok) {
       const data = await response.json()
-      let attendanceRates = data.attendanceRates || []
+      let attendanceRates = data.content || data.attendanceRates || []
       
-      // 如果類別為「小組」且選擇了特定小組，則過濾結果
+      // 如果類別為「小組」且選擇了特定小組，則過濾結果（前端過濾，但這會影響分頁準確性）
       if (filters.value.queryType === 'all' && 
           filters.value.category === 'WEEKDAY' && 
           filters.value.groupFilterId) {
@@ -523,7 +519,18 @@ const query = async () => {
       }
       
       results.value = attendanceRates
-      toast.success(`查詢成功，共 ${results.value.length} 筆資料`, '查詢')
+      
+      // 更新分頁信息
+      if (data.totalElements !== undefined) {
+        totalRecords.value = data.totalElements
+        totalPages.value = data.totalPages || 1
+      } else {
+        // 如果後端沒有返回分頁信息，使用結果長度（兼容舊格式）
+        totalRecords.value = results.value.length
+        totalPages.value = 1
+      }
+      
+      toast.success(`查詢成功，共 ${totalRecords.value} 筆資料`, '查詢')
     } else {
       const errorData = await response.json()
       toast.error(errorData.error || '查詢失敗', '錯誤')

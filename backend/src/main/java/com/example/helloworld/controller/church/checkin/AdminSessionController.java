@@ -10,6 +10,9 @@ import com.example.helloworld.repository.church.checkin.SessionGroupRepository;
 import com.example.helloworld.service.church.checkin.CheckinService;
 import com.example.helloworld.service.church.checkin.CsvService;
 import com.example.helloworld.service.church.checkin.ExcelService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -46,19 +49,21 @@ public class AdminSessionController {
         this.groupRepository = groupRepository;
     }
 
-    // 獲取所有場次列表（支援篩選）
+    // 獲取所有場次列表（支援篩選和分頁）
     @GetMapping
-    public List<Session> listAll(
+    public ResponseEntity<Map<String, Object>> listAll(
             @RequestParam(required = false) String sessionCode,
             @RequestParam(required = false) String title,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String sessionType,
             @RequestParam(required = false) Long groupId,
             @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate) {
+            @RequestParam(required = false) String endDate,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         List<Session> allSessions = sessionRepo.findAll();
         
-        // 前端篩選
+        // 後端篩選
         List<Session> filtered = new ArrayList<>();
         for (Session session : allSessions) {
             // 場次代碼篩選
@@ -125,7 +130,24 @@ public class AdminSessionController {
             filtered.add(session);
         }
         
-        return filtered;
+        // 分頁處理
+        int totalElements = filtered.size();
+        int start = page * size;
+        int end = Math.min(start + size, totalElements);
+        List<Session> content = (start < totalElements) 
+            ? filtered.subList(start, end) 
+            : new ArrayList<>();
+        
+        Page<Session> sessionPage = new PageImpl<>(content, PageRequest.of(page, size), totalElements);
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("content", content);
+        response.put("totalElements", totalElements);
+        response.put("totalPages", sessionPage.getTotalPages());
+        response.put("currentPage", page);
+        response.put("size", size);
+        
+        return ResponseEntity.ok(response);
     }
 
     // 獲取單一場次
