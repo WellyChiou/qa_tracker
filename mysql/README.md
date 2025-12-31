@@ -26,6 +26,32 @@
   - **注意**：persons 表已包含 `member_no` 和 `birthday` 欄位（用於簽到系統）
 - **`church-data.sql`** - 崗位和人員初始數據（可選）
 
+##### 前台內容管理系統
+- **`prayer-requests-schema.sql`** - 代禱事項表格結構
+  - 包含：id, title, content, category, is_urgent, is_active, created_at, updated_at
+- **`prayer-requests-permissions.sql`** - 代禱事項權限配置
+  - 包含：permissions 表權限（PRAYER_REQUEST_READ, PRAYER_REQUEST_EDIT）
+  - 包含：url_permissions 表配置（公開 API 和管理 API）
+  - 包含：角色權限分配（ADMIN、EDITOR、VIEWER）
+- **`announcements-schema.sql`** - 公告表格結構
+  - 包含：id, title, content, category, publish_date, expire_date, is_pinned, is_active, created_at, updated_at
+- **`announcements-permissions.sql`** - 公告權限配置
+  - 包含：permissions 表權限（ANNOUNCEMENT_READ, ANNOUNCEMENT_EDIT）
+  - 包含：url_permissions 表配置（公開 API 和管理 API）
+  - 包含：角色權限分配（ADMIN、EDITOR、VIEWER）
+- **`groups-public-permissions.sql`** - 小組公開 API 權限配置
+  - 包含：url_permissions 表配置（公開訪問的小組 API）
+
+##### 菜單配置
+- **`add-frontend-menus.sql`** - 新增前台菜單
+  - 小組介紹（直接顯示）
+  - 資訊服務父菜單及其子菜單（最新消息、代禱事項）
+- **`add-admin-menus.sql`** - 新增後台管理菜單
+  - 代禱事項管理（位於「前台內容管理」父菜單下）
+  - 公告管理（位於「前台內容管理」父菜單下）
+  - **重要**：後台菜單的 URL **不包含 `/admin` 前綴**，因為後台路由的 base path 是 `/church-admin/`
+  - 例如：菜單 URL 設為 `/prayer-requests`，實際訪問路徑為 `/church-admin/prayer-requests`
+
 ##### 資料清理工具
 - **`cleanup-duplicate-url-permissions.sql`** - 清理 url_permissions 表中的重複資料
   - 檢查基於 `url_pattern` 和 `http_method` 的重複記錄
@@ -155,11 +181,14 @@ mysql -u root -p church < mysql/church-security-tables.sql
 # 4. 創建崗位和人員管理表
 mysql -u root -p church < mysql/church-init.sql
 
-# 5. 為 persons 表添加 member_no 欄位（簽到系統需要）
-mysql -u root -p church < mysql/add-member-no-to-persons.sql
+# 5. 創建前台內容管理系統表格
+mysql -u root -p church < mysql/prayer-requests-schema.sql
+mysql -u root -p church < mysql/announcements-schema.sql
 
-# 6. 插入初始數據（可選）
-mysql -u root -p church < mysql/church-data.sql
+# 6. 配置前台內容管理系統權限
+mysql -u root -p church < mysql/prayer-requests-permissions.sql
+mysql -u root -p church < mysql/announcements-permissions.sql
+mysql -u root -p church < mysql/groups-public-permissions.sql
 
 # 7. 配置簽到系統 URL 權限
 mysql -u root -p church < mysql/add-checkin-url-permissions.sql
@@ -167,7 +196,13 @@ mysql -u root -p church < mysql/add-checkin-url-permissions.sql
 # 8. 添加簽到系統後台菜單
 mysql -u root -p church < mysql/add-checkin-menu-items.sql
 
-# 9. 創建管理員帳號
+# 9. 添加前台菜單（小組介紹、資訊服務等）
+mysql -u root -p church < mysql/add-frontend-menus.sql
+
+# 10. 添加後台管理菜單（代禱事項管理、公告管理）
+mysql -u root -p church < mysql/add-admin-menus.sql
+
+# 11. 創建管理員帳號
 mysql -u root -p church < mysql/church-admin-setup.sql
 ```
 
@@ -176,6 +211,15 @@ mysql -u root -p church < mysql/church-admin-setup.sql
 ```bash
 # 執行遷移腳本（會自動檢查並應用必要的更新）
 mysql -u root -p church < mysql/church-migrations.sql
+
+# 如果新增了前台內容管理功能，執行以下 SQL：
+mysql -u root -p church < mysql/prayer-requests-schema.sql
+mysql -u root -p church < mysql/announcements-schema.sql
+mysql -u root -p church < mysql/prayer-requests-permissions.sql
+mysql -u root -p church < mysql/announcements-permissions.sql
+mysql -u root -p church < mysql/groups-public-permissions.sql
+mysql -u root -p church < mysql/add-frontend-menus.sql
+mysql -u root -p church < mysql/add-admin-menus.sql
 ```
 
 ### 檢查系統狀態
@@ -194,5 +238,4 @@ mysql -u root -p church < mysql/check-and-update-users-table.sql
 2. **備份資料庫**：執行任何 SQL 文件前，請先備份資料庫
 3. **遷移腳本**：`church-migrations.sql` 可以安全地多次執行
 4. **數據腳本**：使用 `ON DUPLICATE KEY UPDATE`，不會重複插入數據
-
-
+5. **後台菜單 URL 格式**：後台菜單的 URL 不包含 `/admin` 前綴，因為後台路由的 base path 是 `/church-admin/`

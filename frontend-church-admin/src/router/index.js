@@ -110,6 +110,18 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/prayer-requests',
+    name: 'AdminPrayerRequests',
+    component: () => import('@/views/admin/PrayerRequests.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/announcements',
+    name: 'AdminAnnouncements',
+    component: () => import('@/views/admin/Announcements.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/maintenance',
     name: 'AdminMaintenance',
     component: () => import('@/views/admin/Maintenance.vue'),

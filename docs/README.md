@@ -35,6 +35,12 @@
 - [安全實現](./SECURITY_IMPLEMENTATION.md) - 安全功能實現說明
 - [Ubuntu 防火牆](./UBUNTU_FIREWALL.md) - Ubuntu 防火牆配置
 
+### ⛪ [教會系統](./)
+- [教會系統設定指南](./CHURCH_SYSTEM_SETUP.md) ⭐ - 完整的教會系統設定說明（推薦）
+- [教會前台功能說明](./CHURCH_FRONTEND_FEATURES.md) - 前台網站功能詳細說明
+- [活動資訊 vs 最新消息使用指南](./ACTIVITIES_VS_ANNOUNCEMENTS.md) - 如何區分使用活動和公告
+- [首頁優化指南](./HOME_PAGE_OPTIMIZATION.md) - 首頁設計和優化建議
+
 ## 📝 文檔結構說明
 
 所有文檔已按功能分類整理：
@@ -57,6 +63,8 @@ docs/
 
 - **部署系統** → 查看 [部署指南](./deployment/)
 - **管理用戶和權限** → 查看 [系統管理](./admin/)
+- **設置教會系統** → 查看 [教會系統設定指南](./CHURCH_SYSTEM_SETUP.md)
+- **了解前台功能** → 查看 [教會前台功能說明](./CHURCH_FRONTEND_FEATURES.md)
 - **推送代碼** → 查看 [開發指南](./development/)
 - **解決問題** → 查看 [故障排除](./TROUBLESHOOTING.md)
 - **了解安全** → 查看 [安全相關](./)

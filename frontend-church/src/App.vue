@@ -15,14 +15,45 @@
         </button>
 
         <nav class="nav" :class="{ 'nav--open': isMenuOpen }">
-          <router-link
-            v-for="menu in displayMenus"
-            :key="menu.id"
-            :to="menu.url || '#'"
-            @click="closeMenu"
-          >
-            {{ menu.menuName }}
-          </router-link>
+          <template v-for="menu in frontendMenus" :key="menu.id">
+            <!-- 有子菜單的父菜單：顯示下拉選單 -->
+            <div 
+              v-if="menu.children && menu.children.length > 0" 
+              class="nav-dropdown"
+              :class="{ 'nav-dropdown--open': openDropdownId === menu.id }"
+              @mouseenter="!isMobile && (openDropdownId = menu.id)"
+              @mouseleave="!isMobile && (openDropdownId = null)"
+            >
+              <button 
+                class="nav-dropdown__trigger"
+                :class="{ 'nav-dropdown__trigger--active': openDropdownId === menu.id }"
+                @click="toggleDropdown(menu.id)"
+                @mouseenter="!isMobile && (openDropdownId = menu.id)"
+              >
+                {{ menu.menuName }}
+                <span class="nav-dropdown__arrow">▼</span>
+              </button>
+              <div class="nav-dropdown__menu">
+                <router-link
+                  v-for="child in menu.children"
+                  :key="child.id"
+                  :to="child.url || '#'"
+                  @click="closeMenuAndDropdown"
+                  class="nav-dropdown__item"
+                >
+                  {{ child.menuName }}
+                </router-link>
+              </div>
+            </div>
+            <!-- 沒有子菜單的普通菜單 -->
+            <router-link
+              v-else-if="menu.url && menu.url !== '#'"
+              :to="menu.url"
+              @click="closeMenu"
+            >
+              {{ menu.menuName }}
+            </router-link>
+          </template>
         </nav>
       </div>
     </header>
@@ -66,26 +97,31 @@ window.addEventListener('resize', updateIsMobile)
 onUnmounted(() => window.removeEventListener('resize', updateIsMobile))
 const frontendMenus = ref([])
 const isMenuOpen = ref(false)
+const openDropdownId = ref(null)
 
 const toggleMenu = () => {
   isMenuOpen.value = !isMenuOpen.value
+  if (!isMenuOpen.value) {
+    openDropdownId.value = null
+  }
 }
 const closeMenu = () => {
   isMenuOpen.value = false
+  openDropdownId.value = null
 }
 
-// 計算要顯示的菜單（如果有子菜單，只顯示子菜單；否則顯示根菜單）
-const displayMenus = computed(() => {
-  const menus = []
-  for (const menu of frontendMenus.value) {
-    if (menu.children && menu.children.length > 0) {
-      menus.push(...menu.children)
-    } else if (menu.url && menu.url !== '#') {
-      menus.push(menu)
-    }
+const toggleDropdown = (menuId) => {
+  if (isMobile.value) {
+    // 手機版：切換下拉選單
+    openDropdownId.value = openDropdownId.value === menuId ? null : menuId
   }
-  return menus
-})
+  // 桌面版：由 hover 控制，不需要在這裡處理
+}
+
+const closeMenuAndDropdown = () => {
+  closeMenu()
+  openDropdownId.value = null
+}
 
 // 初始化 loading 系統（註冊回調到 API 服務）
 useLoading()

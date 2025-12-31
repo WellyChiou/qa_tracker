@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -64,6 +65,9 @@ public class GroupService {
         
         existingGroup.setGroupName(group.getGroupName());
         existingGroup.setDescription(group.getDescription());
+        existingGroup.setMeetingFrequency(group.getMeetingFrequency());
+        existingGroup.setCategory(group.getCategory());
+        existingGroup.setMeetingLocation(group.getMeetingLocation());
         existingGroup.setIsActive(group.getIsActive());
         return groupRepository.save(existingGroup);
     }
@@ -101,6 +105,12 @@ public class GroupService {
             }
         }
         return members;
+    }
+
+    // 獲取小組成員列表（包含角色）
+    @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
+    public List<GroupPerson> getGroupMembersWithRole(Long groupId) {
+        return groupPersonRepository.findActiveMembersByGroupId(groupId);
     }
 
     // 獲取未加入小組的人員列表（只返回沒有加入任何活躍小組的人員）
@@ -148,6 +158,12 @@ public class GroupService {
     // 批量添加成員到小組（支援多小組）
     @Transactional(transactionManager = "churchTransactionManager")
     public void addMembersToGroup(Long groupId, List<Long> personIds, LocalDate joinedAt) {
+        addMembersToGroupWithRoles(groupId, personIds, null, joinedAt);
+    }
+
+    // 批量添加成員到小組（支援多小組和角色設定）
+    @Transactional(transactionManager = "churchTransactionManager")
+    public void addMembersToGroupWithRoles(Long groupId, List<Long> personIds, Map<Long, String> personRoles, LocalDate joinedAt) {
         Group group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new RuntimeException("小組不存在：" + groupId));
         
@@ -168,6 +184,14 @@ public class GroupService {
                     gp.setIsActive(true);
                     gp.setLeftAt(null);
                     gp.setJoinedAt(joinedAt); // 更新加入時間
+                    // 更新角色（如果提供）
+                    if (personRoles != null && personRoles.containsKey(personId)) {
+                        gp.setRole(personRoles.get(personId));
+                    }
+                    groupPersonRepository.save(gp);
+                } else if (personRoles != null && personRoles.containsKey(personId)) {
+                    // 更新現有成員的角色
+                    gp.setRole(personRoles.get(personId));
                     groupPersonRepository.save(gp);
                 }
                 continue; // 已經加入，跳過
@@ -179,6 +203,12 @@ public class GroupService {
             groupPerson.setPerson(person);
             groupPerson.setJoinedAt(joinedAt);
             groupPerson.setIsActive(true);
+            // 設定角色（如果提供）
+            if (personRoles != null && personRoles.containsKey(personId)) {
+                groupPerson.setRole(personRoles.get(personId));
+            } else {
+                groupPerson.setRole("MEMBER");
+            }
             groupPersonRepository.save(groupPerson);
         }
     }
@@ -264,6 +294,20 @@ public class GroupService {
                 groupPersonRepository.save(groupPerson);
             }
         }
+    }
+
+    // 更新成員角色
+    @Transactional(transactionManager = "churchTransactionManager")
+    public void updateMemberRole(Long groupId, Long personId, String role) {
+        GroupPerson groupPerson = groupPersonRepository.findByGroupIdAndPersonIdAndIsActiveTrue(groupId, personId)
+                .orElseThrow(() -> new RuntimeException("人員不在該小組中或已離開"));
+        
+        if (role == null || (!role.equals("MEMBER") && !role.equals("LEADER") && !role.equals("ASSISTANT_LEADER"))) {
+            throw new RuntimeException("無效的角色：" + role);
+        }
+        
+        groupPerson.setRole(role);
+        groupPersonRepository.save(groupPerson);
     }
 }
 

@@ -265,6 +265,55 @@ a:hover { text-decoration: underline; }
 
 .card__content { margin-top: 10px; }
 
+/* 緊急代禱事項樣式 */
+.urgent-prayers {
+  background: linear-gradient(135deg, rgba(255, 87, 34, 0.03) 0%, rgba(255, 152, 0, 0.03) 100%);
+  border-radius: var(--radius);
+  padding: 24px 0;
+}
+
+.card--urgent {
+  border: 2px solid rgba(255, 87, 34, 0.15);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.card--urgent:hover {
+  border-color: rgba(255, 87, 34, 0.3);
+  box-shadow: 0 8px 24px rgba(255, 87, 34, 0.12);
+}
+
+/* 快速連結卡片樣式 */
+.card--link {
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card--link:hover {
+  transform: translateY(-4px);
+  text-decoration: none;
+  color: inherit;
+}
+
+.card--link .card__body {
+  padding: 32px 24px;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.card--link .card__title {
+  margin-top: 12px;
+  margin-bottom: 0;
+}
+
+.card--link .muted {
+  margin-top: 8px;
+  margin-bottom: 0;
+}
+
 /* Media */
 .media {
   border-radius: calc(var(--radius) - 6px);
@@ -439,6 +488,7 @@ a:hover { text-decoration: underline; }
   border-radius: 12px;
   color: rgba(16, 24, 40, 0.78);
   font-weight: 700;
+  transition: all 180ms ease;
 }
 
 .nav a.router-link-active {
@@ -450,6 +500,91 @@ a:hover { text-decoration: underline; }
 .nav a:hover {
   text-decoration: none;
   background: rgba(16, 24, 40, 0.04);
+}
+
+/* 下拉選單 */
+.nav-dropdown {
+  position: relative;
+}
+
+.nav-dropdown__trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  color: rgba(16, 24, 40, 0.78);
+  font-weight: 700;
+  font-size: inherit;
+  font-family: inherit;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 180ms ease;
+}
+
+.nav-dropdown__trigger:hover {
+  background: rgba(16, 24, 40, 0.04);
+}
+
+.nav-dropdown__trigger--active {
+  background: rgba(31, 157, 106, 0.10);
+  border: 1px solid rgba(31, 157, 106, 0.18);
+  color: var(--text);
+}
+
+.nav-dropdown__arrow {
+  font-size: 10px;
+  transition: transform 180ms ease;
+  opacity: 0.6;
+}
+
+.nav-dropdown--open .nav-dropdown__arrow {
+  transform: rotate(180deg);
+}
+
+.nav-dropdown__menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: 180px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  padding: 6px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px);
+  transition: all 200ms ease;
+  z-index: 100;
+}
+
+.nav-dropdown--open .nav-dropdown__menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.nav-dropdown__item {
+  display: block;
+  padding: 10px 14px;
+  border-radius: 10px;
+  color: rgba(16, 24, 40, 0.78);
+  font-weight: 600;
+  transition: all 150ms ease;
+}
+
+.nav-dropdown__item:hover {
+  background: rgba(31, 157, 106, 0.08);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.nav-dropdown__item.router-link-active {
+  background: rgba(31, 157, 106, 0.12);
+  color: var(--primary-2);
+  font-weight: 700;
 }
 
 .burger {
@@ -479,6 +614,36 @@ a:hover { text-decoration: underline; }
   }
 
   .nav--open a { padding: 12px; }
+
+  /* 手機版下拉選單樣式 */
+  .nav-dropdown {
+    width: 100%;
+  }
+
+  .nav-dropdown__trigger {
+    width: 100%;
+    justify-content: space-between;
+    padding: 12px;
+  }
+
+  .nav-dropdown__menu {
+    position: static;
+    width: 100%;
+    margin-top: 4px;
+    margin-left: 0;
+    box-shadow: none;
+    border: none;
+    background: rgba(255, 255, 255, 0.5);
+    padding: 4px 0;
+  }
+
+  .nav-dropdown--open .nav-dropdown__menu {
+    transform: none;
+  }
+
+  .nav-dropdown__item {
+    padding: 10px 24px;
+  }
 }
 
 /* Footer */

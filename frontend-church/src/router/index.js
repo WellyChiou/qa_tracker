@@ -30,6 +30,21 @@ const routes = [
     path: '/sunday-messages',
     name: 'SundayMessages',
     component: () => import('@/views/SundayMessages.vue')
+  },
+  {
+    path: '/groups',
+    name: 'Groups',
+    component: () => import('@/views/Groups.vue')
+  },
+  {
+    path: '/prayer-requests',
+    name: 'PrayerRequests',
+    component: () => import('@/views/PrayerRequests.vue')
+  },
+  {
+    path: '/announcements',
+    name: 'Announcements',
+    component: () => import('@/views/Announcements.vue')
   }
 ]
 

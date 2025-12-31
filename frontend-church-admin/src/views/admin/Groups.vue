@@ -32,6 +32,26 @@
               />
             </div>
             <div class="filter-group">
+              <label>區分</label>
+              <input
+                type="text"
+                v-model="filters.category"
+                placeholder="輸入區分"
+                class="form-input"
+                @keyup.enter="load"
+              />
+            </div>
+            <div class="filter-group">
+              <label>聚會地點</label>
+              <input
+                type="text"
+                v-model="filters.meetingLocation"
+                placeholder="輸入聚會地點"
+                class="form-input"
+                @keyup.enter="load"
+              />
+            </div>
+            <div class="filter-group">
               <label>狀態</label>
               <select v-model="filters.status" class="form-input">
                 <option value="">全部</option>
@@ -169,6 +189,8 @@ const editingGroup = ref(null)
 // 查詢條件
 const filters = ref({
   groupName: '',
+  category: '',
+  meetingLocation: '',
   status: ''
 })
 
@@ -184,6 +206,18 @@ const filteredList = computed(() => {
   if (filters.value.groupName) {
     filtered = filtered.filter(group => 
       (group.groupName || '').toLowerCase().includes(filters.value.groupName.toLowerCase())
+    )
+  }
+  
+  if (filters.value.category) {
+    filtered = filtered.filter(group => 
+      (group.category || '').toLowerCase().includes(filters.value.category.toLowerCase())
+    )
+  }
+  
+  if (filters.value.meetingLocation) {
+    filtered = filtered.filter(group => 
+      (group.meetingLocation || '').toLowerCase().includes(filters.value.meetingLocation.toLowerCase())
     )
   }
   
@@ -222,6 +256,8 @@ const jumpToPage = () => {
 const resetFilters = () => {
   filters.value = {
     groupName: '',
+    category: '',
+    meetingLocation: '',
     status: ''
   }
   currentPage.value = 1
@@ -229,7 +265,7 @@ const resetFilters = () => {
 }
 
 // 監聽查詢條件變化，重置到第一頁
-watch(() => [filters.value.groupName, filters.value.status], () => {
+watch(() => [filters.value.groupName, filters.value.category, filters.value.meetingLocation, filters.value.status], () => {
   currentPage.value = 1
   jumpPage.value = 1
 })

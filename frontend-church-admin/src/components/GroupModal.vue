@@ -32,6 +32,36 @@
           </div>
 
           <div class="form-group">
+            <label>聚會頻率</label>
+            <input
+              v-model="form.meetingFrequency"
+              type="text"
+              class="form-input"
+              placeholder="例如：一週一次、兩週一次、三週一次、四周一次"
+            />
+          </div>
+
+          <div class="form-group">
+            <label>區分</label>
+            <input
+              v-model="form.category"
+              type="text"
+              class="form-input"
+              placeholder="例如：學生(國高)、學生(大專)、社青、家萱區、遲靜區"
+            />
+          </div>
+
+          <div class="form-group">
+            <label>聚會地點</label>
+            <input
+              v-model="form.meetingLocation"
+              type="text"
+              class="form-input"
+              placeholder="例如：極光基地、榮耀堂"
+            />
+          </div>
+
+          <div class="form-group">
             <label>狀態</label>
             <select v-model="form.isActive" class="form-input">
               <option :value="true">啟用</option>
@@ -151,6 +181,16 @@
                   />
                   <span>{{ person.personName || person.displayName || '-' }}</span>
                   <span class="member-no" v-if="person.memberNo">({{ person.memberNo }})</span>
+                  <select
+                    v-model="person.role"
+                    @click.stop
+                    @change="updatePersonRole(person.id, person.role)"
+                    class="role-select"
+                  >
+                    <option value="MEMBER">一般成員</option>
+                    <option value="LEADER">小組長</option>
+                    <option value="ASSISTANT_LEADER">實習小組長</option>
+                  </select>
                 </div>
                 <div v-if="filteredRightPersons.length === 0" class="empty-message">
                   尚無人員
@@ -192,6 +232,9 @@ const emit = defineEmits(['close', 'saved'])
 const form = ref({
   groupName: '',
   description: '',
+  meetingFrequency: '',
+  category: '',
+  meetingLocation: '',
   isActive: true
 })
 
@@ -261,6 +304,12 @@ const toggleRightSelection = (personId) => {
 
 const addSelected = () => {
   const selected = leftPersons.value.filter(p => leftSelected.value.includes(p.id))
+  // 為新加入的成員設定預設角色
+  selected.forEach(p => {
+    if (!p.role) {
+      p.role = 'MEMBER'
+    }
+  })
   rightPersons.value.push(...selected)
   leftPersons.value = leftPersons.value.filter(p => !leftSelected.value.includes(p.id))
   leftSelected.value = []
@@ -274,8 +323,9 @@ const removeSelected = () => {
 }
 
 const addAll = () => {
-  rightPersons.value.push(...filteredLeftPersons.value)
-  leftPersons.value = leftPersons.value.filter(p => !filteredLeftPersons.value.find(fp => fp.id === p.id))
+  const toAdd = filteredLeftPersons.value.map(p => ({ ...p, role: p.role || 'MEMBER' }))
+  rightPersons.value.push(...toAdd)
+  leftPersons.value = leftPersons.value.filter(p => !toAdd.find(fp => fp.id === p.id))
   leftSelected.value = []
 }
 
@@ -310,10 +360,34 @@ const loadMembers = async (groupId) => {
     
     if (response.ok) {
       const data = await response.json()
-      rightPersons.value = data.members || []
+      // 確保每個成員都有 role 欄位
+      rightPersons.value = (data.members || []).map(m => ({
+        ...m,
+        role: m.role || 'MEMBER'
+      }))
     }
   } catch (error) {
     console.error('載入成員失敗:', error)
+  }
+}
+
+const updatePersonRole = async (personId, role) => {
+  if (!editingGroup.value) return
+  
+  try {
+    const response = await apiRequest(`/church/groups/${editingGroup.value.id}/members/${personId}/role`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ role })
+    })
+    
+    if (response.ok) {
+      // 角色已更新，不需要額外處理
+    }
+  } catch (error) {
+    console.error('更新成員角色失敗:', error)
+    toast.error('更新成員角色失敗', '錯誤')
   }
 }
 
@@ -341,6 +415,9 @@ const save = async () => {
     const groupData = {
       groupName: form.value.groupName,
       description: form.value.description,
+      meetingFrequency: form.value.meetingFrequency,
+      category: form.value.category,
+      meetingLocation: form.value.meetingLocation,
       isActive: form.value.isActive
     }
 
@@ -377,13 +454,23 @@ const save = async () => {
       }
     }
 
-    // 更新成員
+    // 更新成員（包含角色）
     if (groupId && rightPersons.value.length > 0) {
       const personIds = rightPersons.value.map(p => p.id)
+      const personRoles = {}
+      rightPersons.value.forEach(p => {
+        if (p.role) {
+          personRoles[p.id] = p.role
+        }
+      })
       await apiRequest(`/church/groups/${groupId}/members`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ personIds })
+        credentials: 'include',
+        body: JSON.stringify({ 
+          personIds,
+          personRoles: Object.keys(personRoles).length > 0 ? personRoles : null
+        })
       }, '更新成員中...', true)
     }
 
@@ -403,6 +490,9 @@ const close = () => {
   form.value = {
     groupName: '',
     description: '',
+    meetingFrequency: '',
+    category: '',
+    meetingLocation: '',
     isActive: true
   }
   leftPersons.value = []
@@ -421,6 +511,9 @@ watch([() => props.show, () => props.group], ([showVal, groupVal]) => {
       form.value = {
         groupName: groupVal.groupName || '',
         description: groupVal.description || '',
+        meetingFrequency: groupVal.meetingFrequency || '',
+        category: groupVal.category || '',
+        meetingLocation: groupVal.meetingLocation || '',
         isActive: groupVal.isActive !== undefined ? groupVal.isActive : true
       }
       loadNonMembers(groupVal.id)
@@ -430,6 +523,9 @@ watch([() => props.show, () => props.group], ([showVal, groupVal]) => {
       form.value = {
         groupName: '',
         description: '',
+        meetingFrequency: '',
+        category: '',
+        meetingLocation: '',
         isActive: true
       }
       loadAllPersons()
@@ -443,6 +539,9 @@ onMounted(() => {
       form.value = {
         groupName: props.group.groupName || '',
         description: props.group.description || '',
+        meetingFrequency: props.group.meetingFrequency || '',
+        category: props.group.category || '',
+        meetingLocation: props.group.meetingLocation || '',
         isActive: props.group.isActive !== undefined ? props.group.isActive : true
       }
       loadNonMembers(props.group.id)
@@ -615,6 +714,20 @@ onMounted(() => {
 .member-no {
   color: #666;
   font-size: 12px;
+}
+
+.role-select {
+  margin-left: auto;
+  padding: 4px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+  background: white;
+  cursor: pointer;
+}
+
+.role-select:hover {
+  border-color: #999;
 }
 
 .empty-message {

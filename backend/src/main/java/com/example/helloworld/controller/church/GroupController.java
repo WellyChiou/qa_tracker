@@ -1,6 +1,7 @@
 package com.example.helloworld.controller.church;
 
 import com.example.helloworld.entity.church.Group;
+import com.example.helloworld.entity.church.GroupPerson;
 import com.example.helloworld.entity.church.Person;
 import com.example.helloworld.service.church.GroupService;
 import org.springframework.http.ResponseEntity;
@@ -8,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -153,20 +155,35 @@ public class GroupController {
     }
 
     /**
-     * 獲取小組成員列表
+     * 獲取小組成員列表（包含角色）
      */
     @GetMapping("/{id}/members")
     @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
     public ResponseEntity<Map<String, Object>> getGroupMembers(@PathVariable Long id) {
         try {
-            List<Person> members = groupService.getGroupMembers(id);
+            List<GroupPerson> groupPersons = groupService.getGroupMembersWithRole(id);
             // 在事務內初始化懶加載的關聯，避免序列化時出現 LazyInitializationException
-            for (Person member : members) {
-                if (member.getGroupPersons() != null) {
-                    member.getGroupPersons().size(); // 觸發初始化
-                }
-                if (member.getPositionPersons() != null) {
-                    member.getPositionPersons().size(); // 觸發初始化
+            List<Map<String, Object>> members = new ArrayList<>();
+            for (GroupPerson gp : groupPersons) {
+                Person person = gp.getPerson();
+                if (person != null) {
+                    // 觸發初始化
+                    person.getId();
+                    person.getPersonName();
+                    if (person.getGroupPersons() != null) {
+                        person.getGroupPersons().size();
+                    }
+                    if (person.getPositionPersons() != null) {
+                        person.getPositionPersons().size();
+                    }
+                    
+                    Map<String, Object> memberData = new HashMap<>();
+                    memberData.put("id", person.getId());
+                    memberData.put("personName", person.getPersonName());
+                    memberData.put("displayName", person.getDisplayName());
+                    memberData.put("memberNo", person.getMemberNo());
+                    memberData.put("role", gp.getRole() != null ? gp.getRole() : "MEMBER");
+                    members.add(memberData);
                 }
             }
             Map<String, Object> response = new HashMap<>();
@@ -237,7 +254,7 @@ public class GroupController {
     }
 
     /**
-     * 批量添加成員到小組
+     * 批量添加成員到小組（支援角色設定）
      */
     @PostMapping("/{id}/members")
     public ResponseEntity<Map<String, Object>> addMembersToGroup(
@@ -267,13 +284,52 @@ public class GroupController {
                 joinedAt = LocalDate.parse(request.get("joinedAt").toString());
             }
             
-            groupService.addMembersToGroup(id, personIds, joinedAt);
+            // 處理角色設定（可選）
+            @SuppressWarnings("unchecked")
+            Map<String, String> personRolesMap = (Map<String, String>) request.get("personRoles");
+            Map<Long, String> personRoles = null;
+            if (personRolesMap != null) {
+                personRoles = new HashMap<>();
+                for (Map.Entry<String, String> entry : personRolesMap.entrySet()) {
+                    Long personId = Long.parseLong(entry.getKey());
+                    personRoles.put(personId, entry.getValue());
+                }
+            }
+            
+            groupService.addMembersToGroupWithRoles(id, personIds, personRoles, joinedAt);
             Map<String, Object> response = new HashMap<>();
             response.put("message", "批量添加成員成功");
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             Map<String, Object> error = new HashMap<>();
             error.put("error", "批量添加成員失敗：" + e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    /**
+     * 更新成員角色
+     */
+    @PutMapping("/{id}/members/{personId}/role")
+    public ResponseEntity<Map<String, Object>> updateMemberRole(
+            @PathVariable Long id,
+            @PathVariable Long personId,
+            @RequestBody Map<String, String> request) {
+        try {
+            String role = request.get("role");
+            if (role == null || (!role.equals("MEMBER") && !role.equals("LEADER") && !role.equals("ASSISTANT_LEADER"))) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "無效的角色：" + role);
+                return ResponseEntity.badRequest().body(error);
+            }
+            
+            groupService.updateMemberRole(id, personId, role);
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "更新成員角色成功");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "更新成員角色失敗：" + e.getMessage());
             return ResponseEntity.badRequest().body(error);
         }
     }

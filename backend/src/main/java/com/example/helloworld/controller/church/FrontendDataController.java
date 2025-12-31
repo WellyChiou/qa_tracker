@@ -3,13 +3,24 @@ package com.example.helloworld.controller.church;
 import com.example.helloworld.dto.church.frontend.AboutResult;
 import com.example.helloworld.dto.church.ApiResponse;
 import com.example.helloworld.dto.church.frontend.ActivityResult;
+import com.example.helloworld.dto.church.frontend.AnnouncementResult;
+import com.example.helloworld.dto.church.frontend.GroupResult;
+import com.example.helloworld.dto.church.frontend.PrayerRequestResult;
 import com.example.helloworld.dto.church.frontend.SiteResult;
 import com.example.helloworld.dto.church.frontend.SundayMessageResult;
 import com.example.helloworld.entity.church.AboutInfo;
 import com.example.helloworld.entity.church.Activity;
+import com.example.helloworld.entity.church.Announcement;
+import com.example.helloworld.entity.church.Group;
+import com.example.helloworld.entity.church.GroupPerson;
+import com.example.helloworld.entity.church.Person;
+import com.example.helloworld.entity.church.PrayerRequest;
 import com.example.helloworld.service.church.AboutInfoService;
 import com.example.helloworld.service.church.ActivityService;
+import com.example.helloworld.service.church.AnnouncementService;
 import com.example.helloworld.service.church.ChurchInfoService;
+import com.example.helloworld.service.church.GroupService;
+import com.example.helloworld.service.church.PrayerRequestService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -34,6 +45,15 @@ public class FrontendDataController {
 
     @Autowired
     private com.example.helloworld.service.church.SundayMessageService sundayMessageService;
+
+    @Autowired
+    private GroupService groupService;
+
+    @Autowired
+    private PrayerRequestService prayerRequestService;
+
+    @Autowired
+    private AnnouncementService announcementService;
 
     /**
      * 獲取教會基本資訊（公開訪問）
@@ -146,6 +166,141 @@ public class FrontendDataController {
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.fail("獲取主日信息失敗: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 獲取所有啟用的小組列表（公開訪問）
+     */
+    @GetMapping("/groups")
+    public ResponseEntity<ApiResponse<List<GroupResult>>> getGroups() {
+        try {
+            List<Group> groups = groupService.getActiveGroups();
+
+            List<GroupResult> results = groups.stream()
+                    .map(group -> {
+                        List<GroupPerson> groupPersons = groupService.getGroupMembersWithRole(group.getId());
+                        List<GroupResult.MemberInfo> memberInfos = groupPersons.stream()
+                                .map(gp -> new GroupResult.MemberInfo(
+                                        gp.getPerson().getId(),
+                                        gp.getPerson().getPersonName(),
+                                        gp.getPerson().getDisplayName(),
+                                        gp.getPerson().getMemberNo(),
+                                        gp.getRole() != null ? gp.getRole() : "MEMBER"
+                                ))
+                                .toList();
+
+                        return new GroupResult(
+                                group.getId(),
+                                group.getGroupName(),
+                                group.getDescription(),
+                                group.getMeetingFrequency(),
+                                group.getCategory(),
+                                group.getMeetingLocation(),
+                                group.getIsActive(),
+                                memberInfos
+                        );
+                    })
+                    .toList();
+
+            return ResponseEntity.ok(ApiResponse.ok(results));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("獲取小組列表失敗: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 獲取單一小組詳情（公開訪問）
+     */
+    @GetMapping("/groups/{id}")
+    public ResponseEntity<ApiResponse<GroupResult>> getGroupById(@PathVariable Long id) {
+        try {
+            Group group = groupService.getGroupById(id)
+                    .orElseThrow(() -> new RuntimeException("小組不存在: " + id));
+
+            List<GroupPerson> groupPersons = groupService.getGroupMembersWithRole(id);
+            List<GroupResult.MemberInfo> memberInfos = groupPersons.stream()
+                    .map(gp -> new GroupResult.MemberInfo(
+                            gp.getPerson().getId(),
+                            gp.getPerson().getPersonName(),
+                            gp.getPerson().getDisplayName(),
+                            gp.getPerson().getMemberNo(),
+                            gp.getRole() != null ? gp.getRole() : "MEMBER"
+                    ))
+                    .toList();
+
+            GroupResult result = new GroupResult(
+                    group.getId(),
+                    group.getGroupName(),
+                    group.getDescription(),
+                    group.getMeetingFrequency(),
+                    group.getCategory(),
+                    group.getMeetingLocation(),
+                    group.getIsActive(),
+                    memberInfos
+            );
+
+            return ResponseEntity.ok(ApiResponse.ok(result));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("獲取小組詳情失敗: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 獲取代禱事項列表（公開訪問）
+     */
+    @GetMapping("/prayer-requests")
+    public ResponseEntity<ApiResponse<List<PrayerRequestResult>>> getPrayerRequests() {
+        try {
+            List<PrayerRequest> prayerRequests = prayerRequestService.getAllActivePrayerRequests();
+
+            List<PrayerRequestResult> results = prayerRequests.stream()
+                    .map(pr -> new PrayerRequestResult(
+                            pr.getId(),
+                            pr.getTitle(),
+                            pr.getContent(),
+                            pr.getCategory(),
+                            pr.getIsUrgent(),
+                            pr.getIsActive(),
+                            pr.getCreatedAt()
+                    ))
+                    .toList();
+
+            return ResponseEntity.ok(ApiResponse.ok(results));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("獲取代禱事項失敗: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 獲取公告列表（公開訪問）
+     */
+    @GetMapping("/announcements")
+    public ResponseEntity<ApiResponse<List<AnnouncementResult>>> getAnnouncements() {
+        try {
+            List<Announcement> announcements = announcementService.getValidAnnouncements();
+
+            List<AnnouncementResult> results = announcements.stream()
+                    .map(a -> new AnnouncementResult(
+                            a.getId(),
+                            a.getTitle(),
+                            a.getContent(),
+                            a.getCategory(),
+                            a.getPublishDate(),
+                            a.getExpireDate(),
+                            a.getIsPinned(),
+                            a.getIsActive(),
+                            a.getCreatedAt()
+                    ))
+                    .toList();
+
+            return ResponseEntity.ok(ApiResponse.ok(results));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("獲取公告失敗: " + e.getMessage()));
         }
     }
 }

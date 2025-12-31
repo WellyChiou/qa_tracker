@@ -34,6 +34,9 @@ public class GroupPerson {
     @Column(name = "left_at")
     private LocalDate leftAt;
 
+    @Column(name = "role", nullable = false, length = 20)
+    private String role = "MEMBER";
+
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 
@@ -118,6 +121,14 @@ public class GroupPerson {
 
     public void setLeftAt(LocalDate leftAt) {
         this.leftAt = leftAt;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
     }
 
     public Boolean getIsActive() {

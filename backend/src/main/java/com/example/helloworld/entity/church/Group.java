@@ -18,6 +18,15 @@ public class Group {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
+    @Column(name = "meeting_frequency", length = 100)
+    private String meetingFrequency;
+
+    @Column(name = "category", length = 100)
+    private String category;
+
+    @Column(name = "meeting_location", length = 200)
+    private String meetingLocation;
+
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 
@@ -65,6 +74,30 @@ public class Group {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getMeetingFrequency() {
+        return meetingFrequency;
+    }
+
+    public void setMeetingFrequency(String meetingFrequency) {
+        this.meetingFrequency = meetingFrequency;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
+    public String getMeetingLocation() {
+        return meetingLocation;
+    }
+
+    public void setMeetingLocation(String meetingLocation) {
+        this.meetingLocation = meetingLocation;
     }
 
     public Boolean getIsActive() {
