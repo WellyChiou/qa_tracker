@@ -114,7 +114,7 @@
               <span class="pagination-info">共 {{ totalRecords }} 筆 (第 {{ currentPage }}/{{ totalPages }} 頁)</span>
             </div>
             <div class="pagination-right">
-              <button class="btn-secondary" @click="() => { currentPage--; loadPrayerRequests(); }" :disabled="currentPage === 1">
+              <button class="btn-secondary" @click="previousPage" :disabled="currentPage === 1">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                 </svg>
@@ -125,7 +125,7 @@
                 <input type="number" v-model.number="jumpPage" min="1" :max="totalPages" class="page-input" @keyup.enter="jumpToPage" />
                 <span class="pagination-label">頁</span>
               </div>
-              <button class="btn-secondary" @click="() => { currentPage++; loadPrayerRequests(); }" :disabled="currentPage === totalPages">
+              <button class="btn-secondary" @click="nextPage" :disabled="currentPage === totalPages">
                 下一頁
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -266,6 +266,22 @@ const filteredList = computed(() => {
 const paginatedList = computed(() => {
   return filteredList.value
 })
+
+// 上一頁
+const previousPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value--
+    loadPrayerRequests()
+  }
+}
+
+// 下一頁
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++
+    loadPrayerRequests()
+  }
+}
 
 // 跳轉到指定頁
 const jumpToPage = () => {
