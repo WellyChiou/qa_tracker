@@ -1,6 +1,8 @@
 package com.example.helloworld.repository.church;
 
 import com.example.helloworld.entity.church.ChurchMenuItem;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -27,6 +29,21 @@ public interface ChurchMenuItemRepository extends JpaRepository<ChurchMenuItem, 
         @Param("menuType") String menuType,
         @Param("isActive") Boolean isActive,
         @Param("showInDashboard") Boolean showInDashboard
+    );
+    
+    // 支持分頁和過濾的查詢
+    @Query("SELECT m FROM ChurchMenuItem m WHERE " +
+           "(:menuCode IS NULL OR :menuCode = '' OR LOWER(m.menuCode) LIKE LOWER(CONCAT('%', :menuCode, '%'))) AND " +
+           "(:menuName IS NULL OR :menuName = '' OR LOWER(m.menuName) LIKE LOWER(CONCAT('%', :menuName, '%'))) AND " +
+           "(:menuType IS NULL OR :menuType = '' OR m.menuType = :menuType) AND " +
+           "(:isActive IS NULL OR m.isActive = :isActive) " +
+           "ORDER BY m.orderIndex")
+    Page<ChurchMenuItem> findByFilters(
+        @Param("menuCode") String menuCode,
+        @Param("menuName") String menuName,
+        @Param("menuType") String menuType,
+        @Param("isActive") Boolean isActive,
+        Pageable pageable
     );
 }
 

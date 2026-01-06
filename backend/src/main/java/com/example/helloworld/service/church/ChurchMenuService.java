@@ -201,6 +201,19 @@ public class ChurchMenuService {
     public List<ChurchMenuItem> getAllMenuItems() {
         return churchMenuItemRepository.findAll();
     }
+    
+    /**
+     * 獲取所有菜單項（支持分頁和過濾）
+     */
+    @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
+    public org.springframework.data.domain.Page<ChurchMenuItem> getAllMenuItems(
+            String menuCode, String menuName, String menuType, Boolean isActive, int page, int size) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        String filterMenuCode = (menuCode != null && !menuCode.trim().isEmpty()) ? menuCode.trim() : null;
+        String filterMenuName = (menuName != null && !menuName.trim().isEmpty()) ? menuName.trim() : null;
+        String filterMenuType = (menuType != null && !menuType.trim().isEmpty()) ? menuType.trim() : null;
+        return churchMenuItemRepository.findByFilters(filterMenuCode, filterMenuName, filterMenuType, isActive, pageable);
+    }
 
     /**
      * 根據 ID 獲取菜單項

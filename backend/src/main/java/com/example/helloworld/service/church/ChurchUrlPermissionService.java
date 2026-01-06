@@ -5,6 +5,9 @@ import com.example.helloworld.repository.church.ChurchUrlPermissionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +35,20 @@ public class ChurchUrlPermissionService {
     @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
     public List<ChurchUrlPermission> getAllPermissions() {
         return churchUrlPermissionRepository.findAll();
+    }
+    
+    /**
+     * 獲取所有 URL 權限配置（支持分頁和過濾）
+     */
+    @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
+    public Page<ChurchUrlPermission> getAllPermissions(
+            String urlPattern, String httpMethod, Boolean isPublic, String requiredPermission, Boolean isActive,
+            int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        String filterUrlPattern = (urlPattern != null && !urlPattern.trim().isEmpty()) ? urlPattern.trim() : null;
+        String filterHttpMethod = (httpMethod != null && !httpMethod.trim().isEmpty()) ? httpMethod.trim() : null;
+        String filterRequiredPermission = (requiredPermission != null && !requiredPermission.trim().isEmpty()) ? requiredPermission.trim() : null;
+        return churchUrlPermissionRepository.findByFilters(filterUrlPattern, filterHttpMethod, isPublic, filterRequiredPermission, isActive, pageable);
     }
 
     /**

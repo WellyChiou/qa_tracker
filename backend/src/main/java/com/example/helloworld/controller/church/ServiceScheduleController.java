@@ -7,6 +7,9 @@ import com.example.helloworld.entity.church.ServiceSchedulePositionConfig;
 import com.example.helloworld.entity.church.ServiceScheduleAssignment;
 import com.example.helloworld.service.church.ServiceScheduleService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -54,12 +57,28 @@ public class ServiceScheduleController {
     }
 
     /**
-     * 獲取所有安排表（包含日期範圍信息）
+     * 獲取所有安排表（包含日期範圍信息，支持分頁和過濾）
      */
     @GetMapping
-    public ResponseEntity<List<Map<String, Object>>> getAllSchedules() {
-        List<Map<String, Object>> schedules = service.getAllSchedulesWithDateRange();
-        return ResponseEntity.ok(schedules);
+    public ResponseEntity<Map<String, Object>> getAllSchedules(
+            @RequestParam(required = false) Integer year,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            Pageable pageable = PageRequest.of(page, size);
+            Page<Map<String, Object>> schedulesPage = service.getAllSchedulesWithDateRange(year, pageable);
+            Map<String, Object> response = new HashMap<>();
+            response.put("content", schedulesPage.getContent());
+            response.put("totalElements", schedulesPage.getTotalElements());
+            response.put("totalPages", schedulesPage.getTotalPages());
+            response.put("currentPage", schedulesPage.getNumber());
+            response.put("size", schedulesPage.getSize());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "獲取服事表列表失敗：" + e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
     }
 
     /**

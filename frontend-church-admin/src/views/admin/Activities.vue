@@ -81,7 +81,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="activity in paginatedList" :key="activity.id">
+              <tr v-for="activity in activitiesList" :key="activity.id">
                 <td>{{ activity.title }}</td>
                 <td>{{ formatDate(activity.activityDate) }}</td>
                 <td>{{ formatTimeRange(activity.startTime, activity.endTime) }}</td>
@@ -110,6 +110,11 @@
               <span class="pagination-info">共 {{ totalRecords }} 筆 (第 {{ currentPage }}/{{ totalPages }} 頁)</span>
             </div>
             <div class="pagination-right">
+              <button class="btn-secondary" @click="firstPage" :disabled="currentPage === 1" title="第一頁">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
+                </svg>
+              </button>
               <button class="btn-secondary" @click="previousPage" :disabled="currentPage === 1">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
@@ -125,6 +130,11 @@
                 下一頁
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+              </button>
+              <button class="btn-secondary" @click="lastPage" :disabled="currentPage === totalPages" title="最後一頁">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
                 </svg>
               </button>
             </div>
@@ -267,51 +277,19 @@ const jumpPage = ref(1)
 const totalRecords = ref(0)
 const totalPages = ref(1)
 
-// 過濾後的列表
-const filteredList = computed(() => {
-  let filtered = [...activitiesList.value]
-  
-  if (filters.value.title) {
-    filtered = filtered.filter(activity => 
-      activity.title?.toLowerCase().includes(filters.value.title.toLowerCase())
-    )
-  }
-  
-  if (filters.value.startDate) {
-    filtered = filtered.filter(activity => {
-      if (!activity.activityDate) return false
-      return new Date(activity.activityDate) >= new Date(filters.value.startDate)
-    })
-  }
-  
-  if (filters.value.endDate) {
-    filtered = filtered.filter(activity => {
-      if (!activity.activityDate) return false
-      return new Date(activity.activityDate) <= new Date(filters.value.endDate)
-    })
-  }
-  
-  if (filters.value.isActive !== '') {
-    filtered = filtered.filter(activity => activity.isActive === filters.value.isActive)
-  }
-  
-  return filtered.sort((a, b) => {
-    if (!a.activityDate && !b.activityDate) return 0
-    if (!a.activityDate) return 1
-    if (!b.activityDate) return -1
-    return new Date(b.activityDate) - new Date(a.activityDate)
-  })
-})
 
-// 注意：分頁現在由後端處理，但前端過濾仍然保留（過濾當前頁數據）
-const paginatedList = computed(() => {
-  return filteredList.value
-})
+// 第一頁
+const firstPage = () => {
+  currentPage.value = 1
+  jumpPage.value = 1
+  loadActivities()
+}
 
 // 上一頁
 const previousPage = () => {
   if (currentPage.value > 1) {
     currentPage.value--
+    jumpPage.value = currentPage.value
     loadActivities()
   }
 }
@@ -320,14 +298,24 @@ const previousPage = () => {
 const nextPage = () => {
   if (currentPage.value < totalPages.value) {
     currentPage.value++
+    jumpPage.value = currentPage.value
     loadActivities()
   }
 }
 
+// 最後一頁
+const lastPage = () => {
+  currentPage.value = totalPages.value
+  jumpPage.value = totalPages.value
+  loadActivities()
+}
+
 // 跳轉到指定頁
 const jumpToPage = () => {
-  if (jumpPage.value >= 1 && jumpPage.value <= totalPages.value) {
-    currentPage.value = jumpPage.value
+  const targetPage = Number(jumpPage.value)
+  if (targetPage >= 1 && targetPage <= totalPages.value && !isNaN(targetPage)) {
+    currentPage.value = targetPage
+    jumpPage.value = targetPage
     loadActivities()
   } else {
     jumpPage.value = currentPage.value
@@ -344,12 +332,14 @@ const resetFilters = () => {
   }
   currentPage.value = 1
   jumpPage.value = 1
+  loadActivities()
 }
 
-// 監聽查詢條件變化，重置到第一頁
+// 監聽查詢條件變化，重置到第一頁並重新載入
 watch(() => [filters.value.title, filters.value.startDate, filters.value.endDate, filters.value.isActive], () => {
   currentPage.value = 1
   jumpPage.value = 1
+  loadActivities()
 })
 
 // 監聽每頁筆數變化，重置到第一頁並重新載入
@@ -377,8 +367,23 @@ const formatTimeRange = (startTime, endTime) => {
 
 const loadActivities = async () => {
   try {
-    const url = `/church/admin/activities?page=${currentPage.value - 1}&size=${recordsPerPage.value}`
-    const response = await apiRequest(url, {
+    const params = new URLSearchParams()
+    if (filters.value.title) {
+      params.append('title', filters.value.title)
+    }
+    if (filters.value.startDate) {
+      params.append('startDate', filters.value.startDate)
+    }
+    if (filters.value.endDate) {
+      params.append('endDate', filters.value.endDate)
+    }
+    if (filters.value.isActive !== '') {
+      params.append('isActive', filters.value.isActive === true || filters.value.isActive === 'true')
+    }
+    params.append('page', (currentPage.value - 1).toString())
+    params.append('size', recordsPerPage.value.toString())
+    
+    const response = await apiRequest(`/church/admin/activities?${params.toString()}`, {
       method: 'GET',
       credentials: 'include'
     })
@@ -391,9 +396,18 @@ const loadActivities = async () => {
         if (data.totalElements !== undefined) {
           totalRecords.value = data.totalElements
           totalPages.value = data.totalPages || 1
+          // 確保 currentPage 不超過 totalPages
+          if (currentPage.value > totalPages.value) {
+            currentPage.value = totalPages.value
+            jumpPage.value = totalPages.value
+          }
+          // 同步 jumpPage 與 currentPage
+          jumpPage.value = currentPage.value
         } else {
           totalRecords.value = activitiesList.value.length
           totalPages.value = 1
+          currentPage.value = 1
+          jumpPage.value = 1
         }
       }
     }

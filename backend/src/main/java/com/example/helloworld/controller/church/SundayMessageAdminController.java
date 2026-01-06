@@ -3,9 +3,11 @@ package com.example.helloworld.controller.church;
 import com.example.helloworld.entity.church.SundayMessage;
 import com.example.helloworld.service.church.SundayMessageService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,15 +21,30 @@ public class SundayMessageAdminController {
     private SundayMessageService sundayMessageService;
 
     /**
-     * 獲取所有主日信息（管理用，包含未啟用的）
+     * 獲取所有主日信息（管理用，包含未啟用的，支持分頁和過濾）
      */
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getAllMessages() {
+    public ResponseEntity<Map<String, Object>> getAllMessages(
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String serviceType,
+            @RequestParam(required = false) Boolean isActive,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         try {
-            List<SundayMessage> allMessages = sundayMessageService.getAllMessages();
+            LocalDate filterStartDate = (startDate != null && !startDate.trim().isEmpty()) ? LocalDate.parse(startDate) : null;
+            LocalDate filterEndDate = (endDate != null && !endDate.trim().isEmpty()) ? LocalDate.parse(endDate) : null;
+            Page<SundayMessage> messagesPage = sundayMessageService.getAllMessages(
+                title, filterStartDate, filterEndDate, serviceType, isActive, page, size);
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
-            response.put("data", allMessages);
+            response.put("data", messagesPage.getContent());
+            response.put("content", messagesPage.getContent());
+            response.put("totalElements", messagesPage.getTotalElements());
+            response.put("totalPages", messagesPage.getTotalPages());
+            response.put("currentPage", messagesPage.getNumber());
+            response.put("size", messagesPage.getSize());
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             Map<String, Object> response = new HashMap<>();

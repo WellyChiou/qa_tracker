@@ -169,6 +169,11 @@
               <span class="pagination-info">共 {{ totalRecords }} 筆 (第 {{ currentPage }}/{{ totalPages }} 頁)</span>
             </div>
             <div class="pagination-right">
+              <button class="btn-secondary" @click="firstPage" :disabled="currentPage === 1" title="第一頁">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
+                </svg>
+              </button>
               <button class="btn-secondary" @click="previousPage" :disabled="currentPage === 1">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
@@ -184,6 +189,11 @@
                 下一頁
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+              </button>
+              <button class="btn-secondary" @click="lastPage" :disabled="currentPage === totalPages" title="最後一頁">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
                 </svg>
               </button>
             </div>
@@ -293,12 +303,21 @@ async function load() {
       sessions.value = responseData.content
       totalRecords.value = responseData.totalElements || 0
       totalPages.value = responseData.totalPages || 1
+      // 確保 currentPage 不超過 totalPages
+      if (currentPage.value > totalPages.value) {
+        currentPage.value = totalPages.value
+        jumpPage.value = totalPages.value
+      }
+      // 同步 jumpPage 與 currentPage
+      jumpPage.value = currentPage.value
       toast.success(`查詢成功，共 ${totalRecords.value} 筆場次`, '場次管理')
     } else {
       // 兼容舊格式（無分頁）
       sessions.value = Array.isArray(responseData) ? responseData : []
       totalRecords.value = sessions.value.length
       totalPages.value = 1
+      currentPage.value = 1
+      jumpPage.value = 1
       toast.success(`查詢成功，共 ${sessions.value.length} 筆場次`, '場次管理')
     }
   } catch (error) {
@@ -379,9 +398,16 @@ function handleSaved() {
   load()
 }
 
+function firstPage() {
+  currentPage.value = 1
+  jumpPage.value = 1
+  load()
+}
+
 function previousPage() {
   if (currentPage.value > 1) {
     currentPage.value--
+    jumpPage.value = currentPage.value
     load()
   }
 }
@@ -389,15 +415,26 @@ function previousPage() {
 function nextPage() {
   if (currentPage.value < totalPages.value) {
     currentPage.value++
+    jumpPage.value = currentPage.value
     load()
   }
 }
 
-function jumpToPage() {
-  const page = Math.max(1, Math.min(jumpPage.value, totalPages.value))
-  currentPage.value = page
-  jumpPage.value = page
+function lastPage() {
+  currentPage.value = totalPages.value
+  jumpPage.value = totalPages.value
   load()
+}
+
+function jumpToPage() {
+  const targetPage = Number(jumpPage.value)
+  if (targetPage >= 1 && targetPage <= totalPages.value && !isNaN(targetPage)) {
+    currentPage.value = targetPage
+    jumpPage.value = targetPage
+    load()
+  } else {
+    jumpPage.value = currentPage.value
+  }
 }
 
 function formatDate(date) {

@@ -3,6 +3,9 @@ package com.example.helloworld.service.church;
 import com.example.helloworld.entity.church.AboutInfo;
 import com.example.helloworld.repository.church.AboutInfoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +23,17 @@ public class AboutInfoService {
     @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
     public List<AboutInfo> getAllInfo() {
         return aboutInfoRepository.findAllByOrderByDisplayOrderAsc();
+    }
+    
+    /**
+     * 獲取所有關於我們資訊（支持分頁和過濾）
+     */
+    @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
+    public Page<AboutInfo> getAllInfo(String sectionKey, String title, Boolean isActive, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        String filterSectionKey = (sectionKey != null && !sectionKey.trim().isEmpty()) ? sectionKey.trim() : null;
+        String filterTitle = (title != null && !title.trim().isEmpty()) ? title.trim() : null;
+        return aboutInfoRepository.findByFilters(filterSectionKey, filterTitle, isActive, pageable);
     }
 
     /**

@@ -38,12 +38,12 @@
       </details>
 
       <div class="roles-list">
-        <div v-if="filteredList.length === 0" class="empty-state">
-          <p>{{ roles.length === 0 ? '尚無角色資料' : '沒有符合條件的資料' }}</p>
+        <div v-if="roles.length === 0" class="empty-state">
+          <p>尚無角色資料</p>
         </div>
         <div v-else class="roles-table">
           <div class="table-header">
-            <h3>角色列表 (共 {{ filteredList.length }} 筆)</h3>
+            <h3>角色列表 (共 {{ totalRecords }} 筆)</h3>
           </div>
           <table>
             <thead>
@@ -55,7 +55,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="role in paginatedList" :key="role.id">
+              <tr v-for="role in roles" :key="role.id">
                 <td>{{ role.roleName }}</td>
                 <td>{{ role.description || '-' }}</td>
                 <td>{{ role.permissions ? role.permissions.length : 0 }}</td>
@@ -75,10 +75,15 @@
                 <option :value="50">50</option>
                 <option :value="100">100</option>
               </select>
-              <span class="pagination-info">共 {{ filteredList.length }} 筆 (第 {{ currentPage }}/{{ totalPages }} 頁)</span>
+              <span class="pagination-info">共 {{ totalRecords }} 筆 (第 {{ currentPage }}/{{ totalPages }} 頁)</span>
             </div>
             <div class="pagination-right">
-              <button class="btn-secondary" @click="currentPage--" :disabled="currentPage === 1">
+              <button class="btn-secondary" @click="firstPage" :disabled="currentPage === 1" title="第一頁">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
+                </svg>
+              </button>
+              <button class="btn-secondary" @click="previousPage" :disabled="currentPage === 1">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                 </svg>
@@ -89,10 +94,15 @@
                 <input type="number" v-model.number="jumpPage" min="1" :max="totalPages" class="page-input" @keyup.enter="jumpToPage" />
                 <span class="pagination-label">頁</span>
               </div>
-              <button class="btn-secondary" @click="currentPage++" :disabled="currentPage === totalPages">
+              <button class="btn-secondary" @click="nextPage" :disabled="currentPage === totalPages">
                 下一頁
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+              </button>
+              <button class="btn-secondary" @click="lastPage" :disabled="currentPage === totalPages" title="最後一頁">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
                 </svg>
               </button>
             </div>
@@ -132,35 +142,48 @@ const filters = ref({
 const currentPage = ref(1)
 const recordsPerPage = ref(20)
 const jumpPage = ref(1)
+const totalRecords = ref(0)
+const totalPages = ref(1)
 
-// 過濾後的列表
-const filteredList = computed(() => {
-  let filtered = [...roles.value]
-  
-  if (filters.value.roleName) {
-    filtered = filtered.filter(role => 
-      role.roleName?.toLowerCase().includes(filters.value.roleName.toLowerCase())
-    )
+// 第一頁
+const firstPage = () => {
+  currentPage.value = 1
+  jumpPage.value = 1
+  loadRoles()
+}
+
+// 上一頁
+const previousPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value--
+    jumpPage.value = currentPage.value
+    loadRoles()
   }
-  
-  return filtered
-})
+}
 
-// 分頁後的列表
-const paginatedList = computed(() => {
-  const start = (currentPage.value - 1) * recordsPerPage.value
-  return filteredList.value.slice(start, start + recordsPerPage.value)
-})
+// 下一頁
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++
+    jumpPage.value = currentPage.value
+    loadRoles()
+  }
+}
 
-// 總頁數
-const totalPages = computed(() => {
-  return Math.max(1, Math.ceil(filteredList.value.length / recordsPerPage.value))
-})
+// 最後一頁
+const lastPage = () => {
+  currentPage.value = totalPages.value
+  jumpPage.value = totalPages.value
+  loadRoles()
+}
 
 // 跳轉到指定頁
 const jumpToPage = () => {
-  if (jumpPage.value >= 1 && jumpPage.value <= totalPages.value) {
-    currentPage.value = jumpPage.value
+  const targetPage = Number(jumpPage.value)
+  if (targetPage >= 1 && targetPage <= totalPages.value && !isNaN(targetPage)) {
+    currentPage.value = targetPage
+    jumpPage.value = targetPage
+    loadRoles()
   } else {
     jumpPage.value = currentPage.value
   }
@@ -173,30 +196,58 @@ const resetFilters = () => {
   }
   currentPage.value = 1
   jumpPage.value = 1
+  loadRoles()
 }
 
-// 監聽查詢條件變化，重置到第一頁
+// 監聽查詢條件變化，重置到第一頁並重新載入
 watch(() => filters.value.roleName, () => {
   currentPage.value = 1
   jumpPage.value = 1
+  loadRoles()
 })
 
-// 監聽每頁筆數變化，重置到第一頁
+// 監聽每頁筆數變化，重置到第一頁並重新載入
 watch(recordsPerPage, () => {
   currentPage.value = 1
   jumpPage.value = 1
+  loadRoles()
 })
 
 const loadRoles = async () => {
   try {
-    const response = await apiRequest('/church/admin/roles', {
+    const params = new URLSearchParams()
+    if (filters.value.roleName) {
+      params.append('roleName', filters.value.roleName)
+    }
+    params.append('page', (currentPage.value - 1).toString())
+    params.append('size', recordsPerPage.value.toString())
+    
+    const response = await apiRequest(`/church/admin/roles?${params.toString()}`, {
       method: 'GET',
       credentials: 'include'
     })
     
     if (response.ok) {
       const data = await response.json()
-      roles.value = data.roles || data || []
+      roles.value = data.roles || data.content || data || []
+      
+      // 更新分頁信息
+      if (data.totalElements !== undefined) {
+        totalRecords.value = data.totalElements
+        totalPages.value = data.totalPages || 1
+        // 確保 currentPage 不超過 totalPages
+        if (currentPage.value > totalPages.value) {
+          currentPage.value = totalPages.value
+          jumpPage.value = totalPages.value
+        }
+        // 同步 jumpPage 與 currentPage
+        jumpPage.value = currentPage.value
+      } else {
+        totalRecords.value = roles.value.length
+        totalPages.value = 1
+        currentPage.value = 1
+        jumpPage.value = 1
+      }
     }
   } catch (error) {
     console.error('載入角色失敗:', error)

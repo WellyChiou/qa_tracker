@@ -1267,9 +1267,14 @@ const importSelectedGitlabIssues = async () => {
         const checkParams = { issueNumber: iid, page: 0, size: 1 }
         const checkResponse = await apiService.getRecords(checkParams)
         if (checkResponse.content && checkResponse.content.length > 0) {
-          console.log(`Issue ${iid} 已存在，略過匯入`)
-          skippedCount++
-          continue
+          const existingRecord = checkResponse.content[0]
+          // 如果現有資料的 bugFound != 1，則略過匯入
+          if (existingRecord.bugFound !== 1 && existingRecord.bugFound !== '1') {
+            console.log(`Issue ${iid} 已存在且 bugFound!=1，略過匯入`)
+            skippedCount++
+            continue
+          }
+          // 如果 bugFound = 1，則繼續匯入（新增一筆資料）
         }
       } catch (err) {
         console.error('檢查記錄失敗:', err)
@@ -1295,6 +1300,7 @@ const importSelectedGitlabIssues = async () => {
       }
       
       try {
+        // 新增一筆資料
         await apiService.createRecord(payload)
         successCount++
       } catch (err) {

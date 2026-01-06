@@ -3,6 +3,7 @@ package com.example.helloworld.controller.church;
 import com.example.helloworld.entity.church.ChurchPermission;
 import com.example.helloworld.service.church.ChurchPermissionService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,14 +21,24 @@ public class ChurchPermissionController {
     private ChurchPermissionService churchPermissionService;
 
     /**
-     * 獲取所有權限
+     * 獲取所有權限（支持分頁和過濾）
      */
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getAllPermissions() {
+    public ResponseEntity<Map<String, Object>> getAllPermissions(
+            @RequestParam(required = false) String permissionCode,
+            @RequestParam(required = false) String resource,
+            @RequestParam(required = false) String action,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         try {
-            List<ChurchPermission> permissions = churchPermissionService.getAllPermissions();
+            Page<ChurchPermission> permissionsPage = churchPermissionService.getAllPermissions(permissionCode, resource, action, page, size);
             Map<String, Object> response = new HashMap<>();
-            response.put("permissions", permissions);
+            response.put("permissions", permissionsPage.getContent());
+            response.put("content", permissionsPage.getContent());
+            response.put("totalElements", permissionsPage.getTotalElements());
+            response.put("totalPages", permissionsPage.getTotalPages());
+            response.put("currentPage", permissionsPage.getNumber());
+            response.put("size", permissionsPage.getSize());
             response.put("message", "獲取權限列表成功");
             return ResponseEntity.ok(response);
         } catch (Exception e) {

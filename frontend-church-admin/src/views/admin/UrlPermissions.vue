@@ -73,12 +73,12 @@
       </details>
 
       <div class="url-permissions-list">
-        <div v-if="filteredList.length === 0" class="empty-state">
-          <p>{{ permissions.length === 0 ? '尚無 URL 權限資料' : '沒有符合條件的資料' }}</p>
+        <div v-if="permissions.length === 0" class="empty-state">
+          <p>尚無 URL 權限資料</p>
         </div>
         <div v-else class="url-permissions-table">
           <div class="table-header">
-            <h3>URL 權限列表 (共 {{ filteredList.length }} 筆)</h3>
+            <h3>URL 權限列表 (共 {{ totalRecords }} 筆)</h3>
           </div>
           <table>
             <thead>
@@ -95,7 +95,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="permission in paginatedList" :key="permission.id">
+              <tr v-for="permission in permissions" :key="permission.id">
                 <td>{{ permission.urlPattern }}</td>
                 <td>{{ permission.httpMethod || '全部' }}</td>
                 <td>{{ permission.isPublic ? '是' : '否' }}</td>
@@ -120,10 +120,15 @@
                 <option :value="50">50</option>
                 <option :value="100">100</option>
               </select>
-              <span class="pagination-info">共 {{ filteredList.length }} 筆 (第 {{ currentPage }}/{{ totalPages }} 頁)</span>
+              <span class="pagination-info">共 {{ totalRecords }} 筆 (第 {{ currentPage }}/{{ totalPages }} 頁)</span>
             </div>
             <div class="pagination-right">
-              <button class="btn-secondary" @click="currentPage--" :disabled="currentPage === 1">
+              <button class="btn-secondary" @click="firstPage" :disabled="currentPage === 1" title="第一頁">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
+                </svg>
+              </button>
+              <button class="btn-secondary" @click="previousPage" :disabled="currentPage === 1">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                 </svg>
@@ -134,10 +139,15 @@
                 <input type="number" v-model.number="jumpPage" min="1" :max="totalPages" class="page-input" @keyup.enter="jumpToPage" />
                 <span class="pagination-label">頁</span>
               </div>
-              <button class="btn-secondary" @click="currentPage++" :disabled="currentPage === totalPages">
+              <button class="btn-secondary" @click="nextPage" :disabled="currentPage === totalPages">
                 下一頁
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+              </button>
+              <button class="btn-secondary" @click="lastPage" :disabled="currentPage === totalPages" title="最後一頁">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
                 </svg>
               </button>
             </div>
@@ -179,55 +189,48 @@ const filters = ref({
 const currentPage = ref(1)
 const recordsPerPage = ref(20)
 const jumpPage = ref(1)
+const totalRecords = ref(0)
+const totalPages = ref(1)
 
-// 過濾後的列表
-const filteredList = computed(() => {
-  let filtered = [...permissions.value]
-  
-  if (filters.value.urlPattern) {
-    filtered = filtered.filter(perm => 
-      perm.urlPattern?.toLowerCase().includes(filters.value.urlPattern.toLowerCase())
-    )
-  }
-  
-  if (filters.value.httpMethod) {
-    filtered = filtered.filter(perm => 
-      (perm.httpMethod || '').toLowerCase() === filters.value.httpMethod.toLowerCase()
-    )
-  }
-  
-  if (filters.value.isPublic !== '') {
-    filtered = filtered.filter(perm => perm.isPublic === filters.value.isPublic)
-  }
-  
-  if (filters.value.requiredPermission) {
-    filtered = filtered.filter(perm => 
-      (perm.requiredPermission || '').toLowerCase().includes(filters.value.requiredPermission.toLowerCase())
-    )
-  }
-  
-  if (filters.value.isActive !== '') {
-    filtered = filtered.filter(perm => perm.isActive === filters.value.isActive)
-  }
-  
-  return filtered.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0))
-})
+// 第一頁
+const firstPage = () => {
+  currentPage.value = 1
+  jumpPage.value = 1
+  loadPermissions()
+}
 
-// 分頁後的列表
-const paginatedList = computed(() => {
-  const start = (currentPage.value - 1) * recordsPerPage.value
-  return filteredList.value.slice(start, start + recordsPerPage.value)
-})
+// 上一頁
+const previousPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value--
+    jumpPage.value = currentPage.value
+    loadPermissions()
+  }
+}
 
-// 總頁數
-const totalPages = computed(() => {
-  return Math.max(1, Math.ceil(filteredList.value.length / recordsPerPage.value))
-})
+// 下一頁
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++
+    jumpPage.value = currentPage.value
+    loadPermissions()
+  }
+}
+
+// 最後一頁
+const lastPage = () => {
+  currentPage.value = totalPages.value
+  jumpPage.value = totalPages.value
+  loadPermissions()
+}
 
 // 跳轉到指定頁
 const jumpToPage = () => {
-  if (jumpPage.value >= 1 && jumpPage.value <= totalPages.value) {
-    currentPage.value = jumpPage.value
+  const targetPage = Number(jumpPage.value)
+  if (targetPage >= 1 && targetPage <= totalPages.value && !isNaN(targetPage)) {
+    currentPage.value = targetPage
+    jumpPage.value = targetPage
+    loadPermissions()
   } else {
     jumpPage.value = currentPage.value
   }
@@ -244,9 +247,10 @@ const resetFilters = () => {
   }
   currentPage.value = 1
   jumpPage.value = 1
+  loadPermissions()
 }
 
-// 監聽查詢條件變化，重置到第一頁
+// 監聽查詢條件變化，重置到第一頁並重新載入
 watch(() => [
   filters.value.urlPattern, 
   filters.value.httpMethod, 
@@ -256,24 +260,63 @@ watch(() => [
 ], () => {
   currentPage.value = 1
   jumpPage.value = 1
+  loadPermissions()
 })
 
-// 監聽每頁筆數變化，重置到第一頁
+// 監聽每頁筆數變化，重置到第一頁並重新載入
 watch(recordsPerPage, () => {
   currentPage.value = 1
   jumpPage.value = 1
+  loadPermissions()
 })
 
 const loadPermissions = async () => {
   try {
-    const response = await apiRequest('/church/admin/url-permissions', {
+    const params = new URLSearchParams()
+    if (filters.value.urlPattern) {
+      params.append('urlPattern', filters.value.urlPattern)
+    }
+    if (filters.value.httpMethod) {
+      params.append('httpMethod', filters.value.httpMethod)
+    }
+    if (filters.value.isPublic !== '') {
+      params.append('isPublic', filters.value.isPublic === true || filters.value.isPublic === 'true')
+    }
+    if (filters.value.requiredPermission) {
+      params.append('requiredPermission', filters.value.requiredPermission)
+    }
+    if (filters.value.isActive !== '') {
+      params.append('isActive', filters.value.isActive === true || filters.value.isActive === 'true')
+    }
+    params.append('page', (currentPage.value - 1).toString())
+    params.append('size', recordsPerPage.value.toString())
+    
+    const response = await apiRequest(`/church/admin/url-permissions?${params.toString()}`, {
       method: 'GET',
       credentials: 'include'
     })
     
     if (response.ok) {
       const data = await response.json()
-      permissions.value = data.permissions || data || []
+      permissions.value = data.permissions || data.content || data || []
+      
+      // 更新分頁信息
+      if (data.totalElements !== undefined) {
+        totalRecords.value = data.totalElements
+        totalPages.value = data.totalPages || 1
+        // 確保 currentPage 不超過 totalPages
+        if (currentPage.value > totalPages.value) {
+          currentPage.value = totalPages.value
+          jumpPage.value = totalPages.value
+        }
+        // 同步 jumpPage 與 currentPage
+        jumpPage.value = currentPage.value
+      } else {
+        totalRecords.value = permissions.value.length
+        totalPages.value = 1
+        currentPage.value = 1
+        jumpPage.value = 1
+      }
     }
   } catch (error) {
     console.error('載入 URL 權限失敗:', error)

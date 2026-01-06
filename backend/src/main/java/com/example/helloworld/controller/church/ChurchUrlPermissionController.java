@@ -3,6 +3,7 @@ package com.example.helloworld.controller.church;
 import com.example.helloworld.entity.church.ChurchUrlPermission;
 import com.example.helloworld.service.church.ChurchUrlPermissionService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,14 +21,27 @@ public class ChurchUrlPermissionController {
     private ChurchUrlPermissionService churchUrlPermissionService;
 
     /**
-     * 獲取所有 URL 權限配置
+     * 獲取所有 URL 權限配置（支持分頁和過濾）
      */
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getAllPermissions() {
+    public ResponseEntity<Map<String, Object>> getAllPermissions(
+            @RequestParam(required = false) String urlPattern,
+            @RequestParam(required = false) String httpMethod,
+            @RequestParam(required = false) Boolean isPublic,
+            @RequestParam(required = false) String requiredPermission,
+            @RequestParam(required = false) Boolean isActive,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         try {
-            List<ChurchUrlPermission> permissions = churchUrlPermissionService.getAllPermissions();
+            Page<ChurchUrlPermission> permissionsPage = churchUrlPermissionService.getAllPermissions(
+                urlPattern, httpMethod, isPublic, requiredPermission, isActive, page, size);
             Map<String, Object> response = new HashMap<>();
-            response.put("permissions", permissions);
+            response.put("permissions", permissionsPage.getContent());
+            response.put("content", permissionsPage.getContent());
+            response.put("totalElements", permissionsPage.getTotalElements());
+            response.put("totalPages", permissionsPage.getTotalPages());
+            response.put("currentPage", permissionsPage.getNumber());
+            response.put("size", permissionsPage.getSize());
             response.put("message", "獲取 URL 權限列表成功");
             return ResponseEntity.ok(response);
         } catch (Exception e) {

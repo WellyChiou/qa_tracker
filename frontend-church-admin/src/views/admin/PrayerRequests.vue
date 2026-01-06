@@ -82,7 +82,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="prayer in paginatedList" :key="prayer.id">
+              <tr v-for="prayer in prayerRequestsList" :key="prayer.id">
                 <td>{{ prayer.title }}</td>
                 <td>{{ prayer.category || '-' }}</td>
                 <td>
@@ -114,6 +114,11 @@
               <span class="pagination-info">共 {{ totalRecords }} 筆 (第 {{ currentPage }}/{{ totalPages }} 頁)</span>
             </div>
             <div class="pagination-right">
+              <button class="btn-secondary" @click="firstPage" :disabled="currentPage === 1" title="第一頁">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
+                </svg>
+              </button>
               <button class="btn-secondary" @click="previousPage" :disabled="currentPage === 1">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
@@ -129,6 +134,11 @@
                 下一頁
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+              </button>
+              <button class="btn-secondary" @click="lastPage" :disabled="currentPage === totalPages" title="最後一頁">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
                 </svg>
               </button>
             </div>
@@ -227,50 +237,19 @@ const jumpPage = ref(1)
 const totalRecords = ref(0)
 const totalPages = ref(1)
 
-// 過濾後的列表
-const filteredList = computed(() => {
-  let filtered = [...prayerRequestsList.value]
-  
-  if (filters.value.title) {
-    filtered = filtered.filter(prayer => 
-      prayer.title?.toLowerCase().includes(filters.value.title.toLowerCase())
-    )
-  }
-  
-  if (filters.value.category) {
-    filtered = filtered.filter(prayer => 
-      prayer.category?.toLowerCase().includes(filters.value.category.toLowerCase())
-    )
-  }
-  
-  if (filters.value.isUrgent !== '') {
-    filtered = filtered.filter(prayer => prayer.isUrgent === filters.value.isUrgent)
-  }
-  
-  if (filters.value.isActive !== '') {
-    filtered = filtered.filter(prayer => prayer.isActive === filters.value.isActive)
-  }
-  
-  return filtered.sort((a, b) => {
-    // 緊急的在前，然後按建立時間降序
-    if (a.isUrgent && !b.isUrgent) return -1
-    if (!a.isUrgent && b.isUrgent) return 1
-    if (!a.createdAt && !b.createdAt) return 0
-    if (!a.createdAt) return 1
-    if (!b.createdAt) return -1
-    return new Date(b.createdAt) - new Date(a.createdAt)
-  })
-})
 
-// 注意：分頁現在由後端處理，但前端過濾仍然保留（過濾當前頁數據）
-const paginatedList = computed(() => {
-  return filteredList.value
-})
+// 第一頁
+const firstPage = () => {
+  currentPage.value = 1
+  jumpPage.value = 1
+  loadPrayerRequests()
+}
 
 // 上一頁
 const previousPage = () => {
   if (currentPage.value > 1) {
     currentPage.value--
+    jumpPage.value = currentPage.value
     loadPrayerRequests()
   }
 }
@@ -279,14 +258,24 @@ const previousPage = () => {
 const nextPage = () => {
   if (currentPage.value < totalPages.value) {
     currentPage.value++
+    jumpPage.value = currentPage.value
     loadPrayerRequests()
   }
 }
 
+// 最後一頁
+const lastPage = () => {
+  currentPage.value = totalPages.value
+  jumpPage.value = totalPages.value
+  loadPrayerRequests()
+}
+
 // 跳轉到指定頁
 const jumpToPage = () => {
-  if (jumpPage.value >= 1 && jumpPage.value <= totalPages.value) {
-    currentPage.value = jumpPage.value
+  const targetPage = Number(jumpPage.value)
+  if (targetPage >= 1 && targetPage <= totalPages.value && !isNaN(targetPage)) {
+    currentPage.value = targetPage
+    jumpPage.value = targetPage
     loadPrayerRequests()
   } else {
     jumpPage.value = currentPage.value
@@ -333,7 +322,24 @@ const loadPrayerRequests = async () => {
     if (response.ok) {
       const data = await response.json()
       if (data.success && data.data) {
-        prayerRequestsList.value = data.data
+        prayerRequestsList.value = data.data || data.content || []
+        // 更新分頁信息
+        if (data.totalElements !== undefined) {
+          totalRecords.value = data.totalElements
+          totalPages.value = data.totalPages || 1
+          // 確保 currentPage 不超過 totalPages
+          if (currentPage.value > totalPages.value) {
+            currentPage.value = totalPages.value
+            jumpPage.value = totalPages.value
+          }
+          // 同步 jumpPage 與 currentPage
+          jumpPage.value = currentPage.value
+        } else {
+          totalRecords.value = prayerRequestsList.value.length
+          totalPages.value = 1
+          currentPage.value = 1
+          jumpPage.value = 1
+        }
       }
     }
   } catch (error) {

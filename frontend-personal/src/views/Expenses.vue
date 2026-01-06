@@ -234,6 +234,11 @@
             <span class="pagination-info">共 {{ totalRecords }} 筆 (第 {{ currentPage }}/{{ totalPages }} 頁)</span>
           </div>
           <div class="pagination-right">
+            <button class="btn-secondary" @click="firstPage" :disabled="currentPage === 1" title="第一頁">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
+              </svg>
+            </button>
             <button class="btn-secondary" @click="previousPage" :disabled="currentPage === 1">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
@@ -249,6 +254,11 @@
               下一頁
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </button>
+            <button class="btn-secondary" @click="lastPage" :disabled="currentPage === totalPages" title="最後一頁">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
               </svg>
             </button>
           </div>
@@ -417,10 +427,18 @@ const filteredRecords = computed(() => {
   return filtered
 })
 
+// 第一頁
+const firstPage = () => {
+  currentPage.value = 1
+  jumpPage.value = 1
+  loadRecords()
+}
+
 // 上一頁
 const previousPage = () => {
   if (currentPage.value > 1) {
     currentPage.value--
+    jumpPage.value = currentPage.value
     loadRecords()
   }
 }
@@ -429,14 +447,24 @@ const previousPage = () => {
 const nextPage = () => {
   if (currentPage.value < totalPages.value) {
     currentPage.value++
+    jumpPage.value = currentPage.value
     loadRecords()
   }
 }
 
+// 最後一頁
+const lastPage = () => {
+  currentPage.value = totalPages.value
+  jumpPage.value = totalPages.value
+  loadRecords()
+}
+
 // 跳轉到指定頁
 const jumpToPage = () => {
-  if (jumpPage.value >= 1 && jumpPage.value <= totalPages.value) {
-    currentPage.value = jumpPage.value
+  const targetPage = Number(jumpPage.value)
+  if (targetPage >= 1 && targetPage <= totalPages.value && !isNaN(targetPage)) {
+    currentPage.value = targetPage
+    jumpPage.value = targetPage
     loadRecords()
   } else {
     jumpPage.value = currentPage.value
@@ -516,6 +544,13 @@ const loadRecords = async () => {
     
     totalRecords.value = response.totalElements || 0
     totalPages.value = response.totalPages || 1
+    // 確保 currentPage 不超過 totalPages
+    if (currentPage.value > totalPages.value) {
+      currentPage.value = totalPages.value
+      jumpPage.value = totalPages.value
+    }
+    // 同步 jumpPage 與 currentPage
+    jumpPage.value = currentPage.value
     
     // 載入所有記錄用於統計計算（只載入符合當前過濾條件的記錄）
     const statsParams = {

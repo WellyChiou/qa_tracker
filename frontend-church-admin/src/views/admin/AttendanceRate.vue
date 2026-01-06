@@ -100,7 +100,7 @@
               </label>
             </div>
             <div class="filter-group">
-              <button @click="query" class="btn btn-primary" :disabled="loading || !canQuery">查詢</button>
+              <button @click="executeQuery" class="btn btn-primary" :disabled="loading || !canQuery">查詢</button>
               <button @click="resetFilters" class="btn btn-secondary">清除條件</button>
             </div>
           </div>
@@ -168,6 +168,11 @@
             <span class="pagination-info">共 {{ totalRecords }} 筆 (第 {{ currentPage }}/{{ totalPages }} 頁)</span>
           </div>
           <div class="pagination-right">
+            <button class="btn-secondary" @click="firstPage" :disabled="currentPage === 1" title="第一頁">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
+              </svg>
+            </button>
             <button class="btn-secondary" @click="previousPage" :disabled="currentPage === 1">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
@@ -183,6 +188,11 @@
               下一頁
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </button>
+            <button class="btn-secondary" @click="lastPage" :disabled="currentPage === totalPages" title="最後一頁">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
               </svg>
             </button>
           </div>
@@ -397,10 +407,18 @@ const canQuery = computed(() => {
 
 // 注意：分頁現在由後端處理，results 已經是當前頁的數據
 
+// 第一頁
+const firstPage = () => {
+  currentPage.value = 1
+  jumpPage.value = 1
+  query()
+}
+
 // 上一頁
 const previousPage = () => {
   if (currentPage.value > 1) {
     currentPage.value--
+    jumpPage.value = currentPage.value
     query()
   }
 }
@@ -409,14 +427,24 @@ const previousPage = () => {
 const nextPage = () => {
   if (currentPage.value < totalPages.value) {
     currentPage.value++
+    jumpPage.value = currentPage.value
     query()
   }
 }
 
+// 最後一頁
+const lastPage = () => {
+  currentPage.value = totalPages.value
+  jumpPage.value = totalPages.value
+  query()
+}
+
 // 跳轉到指定頁
 const jumpToPage = () => {
-  if (jumpPage.value >= 1 && jumpPage.value <= totalPages.value) {
-    currentPage.value = jumpPage.value
+  const targetPage = Number(jumpPage.value)
+  if (targetPage >= 1 && targetPage <= totalPages.value && !isNaN(targetPage)) {
+    currentPage.value = targetPage
+    jumpPage.value = targetPage
     query()
   } else {
     jumpPage.value = currentPage.value
@@ -443,9 +471,11 @@ const resetFilters = () => {
 
 // 監聽每頁筆數變化，重置到第一頁並重新載入
 watch(recordsPerPage, () => {
-  currentPage.value = 1
-  jumpPage.value = 1
-  query()
+  if (canQuery.value) {
+    currentPage.value = 1
+    jumpPage.value = 1
+    query()
+  }
 })
 
 const loadActivePersons = async () => {
@@ -493,6 +523,14 @@ const loadActiveGroups = async () => {
   }
 }
 
+// 執行查詢（重置頁碼）
+const executeQuery = () => {
+  currentPage.value = 1
+  jumpPage.value = 1
+  query()
+}
+
+// 查詢函數（不重置頁碼，用於分頁操作）
 const query = async () => {
   if (!canQuery.value) {
     toast.warning('請填寫完整的查詢條件', '提示')
@@ -501,8 +539,6 @@ const query = async () => {
 
   loading.value = true
   results.value = []
-  currentPage.value = 1
-  jumpPage.value = 1
 
   try {
     let url = ''
@@ -547,10 +583,19 @@ const query = async () => {
       if (data.totalElements !== undefined) {
         totalRecords.value = data.totalElements
         totalPages.value = data.totalPages || 1
+        // 確保 currentPage 不超過 totalPages
+        if (currentPage.value > totalPages.value) {
+          currentPage.value = totalPages.value
+          jumpPage.value = totalPages.value
+        }
+        // 同步 jumpPage 與 currentPage
+        jumpPage.value = currentPage.value
       } else {
         // 如果後端沒有返回分頁信息，使用結果長度（兼容舊格式）
         totalRecords.value = results.value.length
         totalPages.value = 1
+        currentPage.value = 1
+        jumpPage.value = 1
       }
       
       toast.success(`查詢成功，共 ${totalRecords.value} 筆資料`, '查詢')

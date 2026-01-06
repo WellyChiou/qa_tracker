@@ -33,12 +33,12 @@
       </details>
 
       <div class="schedule-list">
-        <div v-if="filteredList.length === 0" class="empty-state">
-          <p>{{ schedules.length === 0 ? '尚無服事表' : '沒有符合條件的資料' }}</p>
+        <div v-if="schedules.length === 0" class="empty-state">
+          <p>尚無服事表</p>
         </div>
         <div v-else class="schedule-table-wrapper">
           <div class="table-header">
-            <h3>服事表列表 (共 {{ filteredList.length }} 筆)</h3>
+            <h3>服事表列表 (共 {{ totalRecords }} 筆)</h3>
           </div>
           <table class="schedule-table">
             <thead>
@@ -50,7 +50,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="schedule in paginatedList" :key="schedule.year">
+              <tr v-for="schedule in schedules" :key="schedule.year">
                 <td>{{ schedule.year }}年</td>
                 <td>
                   <span v-if="schedule.startDate && schedule.endDate">
@@ -78,10 +78,15 @@
                 <option :value="50">50</option>
                 <option :value="100">100</option>
               </select>
-              <span class="pagination-info">共 {{ filteredList.length }} 筆 (第 {{ currentPage }}/{{ totalPages }} 頁)</span>
+              <span class="pagination-info">共 {{ totalRecords }} 筆 (第 {{ currentPage }}/{{ totalPages }} 頁)</span>
             </div>
             <div class="pagination-right">
-              <button class="btn-secondary" @click="currentPage--" :disabled="currentPage === 1">
+              <button class="btn-secondary" @click="firstPage" :disabled="currentPage === 1" title="第一頁">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
+                </svg>
+              </button>
+              <button class="btn-secondary" @click="previousPage" :disabled="currentPage === 1">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                 </svg>
@@ -92,10 +97,15 @@
                 <input type="number" v-model.number="jumpPage" min="1" :max="totalPages" class="page-input" @keyup.enter="jumpToPage" />
                 <span class="pagination-label">頁</span>
               </div>
-              <button class="btn-secondary" @click="currentPage++" :disabled="currentPage === totalPages">
+              <button class="btn-secondary" @click="nextPage" :disabled="currentPage === totalPages">
                 下一頁
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+              </button>
+              <button class="btn-secondary" @click="lastPage" :disabled="currentPage === totalPages" title="最後一頁">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
                 </svg>
               </button>
             </div>
@@ -151,69 +161,121 @@ const availableYears = computed(() => {
 const currentPage = ref(1)
 const recordsPerPage = ref(20)
 const jumpPage = ref(1)
+const totalRecords = ref(0)
+const totalPages = ref(1)
 
-// 過濾後的列表
-const filteredList = computed(() => {
-  let filtered = [...schedules.value]
-  
-  if (filters.value.year) {
-    filtered = filtered.filter(schedule => schedule.year === parseInt(filters.value.year))
+// 第一頁
+const firstPage = () => {
+  currentPage.value = 1
+  jumpPage.value = 1
+  loadSchedules()
+}
+
+// 上一頁
+const previousPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value--
+    jumpPage.value = currentPage.value
+    loadSchedules()
   }
-  
-  return filtered.sort((a, b) => {
-    // 按年度降序排列
-    if (a.year && b.year) {
-      return b.year - a.year
-    }
-    if (!a.year && !b.year) return 0
-    if (!a.year) return 1
-    if (!b.year) return -1
-    return 0
-  })
-})
+}
 
-// 分頁後的列表
-const paginatedList = computed(() => {
-  const start = (currentPage.value - 1) * recordsPerPage.value
-  return filteredList.value.slice(start, start + recordsPerPage.value)
-})
+// 下一頁
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++
+    jumpPage.value = currentPage.value
+    loadSchedules()
+  }
+}
 
-// 總頁數
-const totalPages = computed(() => {
-  return Math.max(1, Math.ceil(filteredList.value.length / recordsPerPage.value))
-})
+// 最後一頁
+const lastPage = () => {
+  currentPage.value = totalPages.value
+  jumpPage.value = totalPages.value
+  loadSchedules()
+}
 
 // 跳轉到指定頁
 const jumpToPage = () => {
-  if (jumpPage.value >= 1 && jumpPage.value <= totalPages.value) {
-    currentPage.value = jumpPage.value
+  const targetPage = Number(jumpPage.value)
+  if (targetPage >= 1 && targetPage <= totalPages.value && !isNaN(targetPage)) {
+    currentPage.value = targetPage
+    jumpPage.value = targetPage
+    loadSchedules()
   } else {
     jumpPage.value = currentPage.value
   }
 }
 
+// 重置查詢條件
+const resetFilters = () => {
+  filters.value = {
+    year: ''
+  }
+  currentPage.value = 1
+  jumpPage.value = 1
+  loadSchedules()
+}
 
-// 監聽查詢條件變化，重置到第一頁
+// 監聽查詢條件變化，重置到第一頁並重新載入
 watch(() => filters.value.year, () => {
   currentPage.value = 1
   jumpPage.value = 1
+  loadSchedules()
 })
 
-// 監聽每頁筆數變化，重置到第一頁
+// 監聽每頁筆數變化，重置到第一頁並重新載入
 watch(recordsPerPage, () => {
   currentPage.value = 1
   jumpPage.value = 1
+  loadSchedules()
 })
 
 const loadSchedules = async () => {
   try {
-    const response = await apiRequest('/church/service-schedules', {
+    const params = new URLSearchParams()
+    if (filters.value.year) {
+      params.append('year', filters.value.year.toString())
+    }
+    params.append('page', (currentPage.value - 1).toString())
+    params.append('size', recordsPerPage.value.toString())
+    
+    const response = await apiRequest(`/church/service-schedules?${params.toString()}`, {
       method: 'GET',
       credentials: 'include'
     })
     
     if (response.ok) {
-      schedules.value = await response.json()
+      const data = await response.json()
+      schedules.value = data.content || data || []
+      
+      // 更新分頁信息
+      if (data.totalElements !== undefined) {
+        totalRecords.value = data.totalElements
+        totalPages.value = data.totalPages || 1
+        // 確保 currentPage 不超過 totalPages
+        if (currentPage.value > totalPages.value) {
+          currentPage.value = totalPages.value
+          jumpPage.value = totalPages.value
+        }
+        // 同步 jumpPage 與 currentPage
+        jumpPage.value = currentPage.value
+        
+        // 更新可用年份列表（從當前數據中提取）
+        const years = new Set()
+        schedules.value.forEach(schedule => {
+          if (schedule.year) {
+            years.add(schedule.year)
+          }
+        })
+        // 注意：這裡只包含當前頁的年份，如果需要完整的年份列表，可能需要額外的 API
+      } else {
+        totalRecords.value = schedules.value.length
+        totalPages.value = 1
+        currentPage.value = 1
+        jumpPage.value = 1
+      }
     }
   } catch (error) {
     console.error('載入服事表失敗:', error)

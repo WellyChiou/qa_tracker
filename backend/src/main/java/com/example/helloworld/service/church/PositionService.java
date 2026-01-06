@@ -47,6 +47,17 @@ public class PositionService {
     public List<Position> getAllPositions() {
         return positionRepository.findAllByOrderBySortOrderAsc();
     }
+    
+    /**
+     * 獲取所有崗位（支持分頁和過濾）
+     */
+    @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
+    public Page<Position> getAllPositions(String positionCode, String positionName, Boolean isActive, int page, int size) {
+        Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        String filterPositionCode = (positionCode != null && !positionCode.trim().isEmpty()) ? positionCode.trim() : null;
+        String filterPositionName = (positionName != null && !positionName.trim().isEmpty()) ? positionName.trim() : null;
+        return positionRepository.findByFilters(filterPositionCode, filterPositionName, isActive, pageable);
+    }
 
     /**
      * 獲取所有啟用的崗位

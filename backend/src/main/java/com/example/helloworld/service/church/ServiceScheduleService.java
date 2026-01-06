@@ -13,6 +13,9 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.hibernate.Hibernate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -473,6 +476,58 @@ public class ServiceScheduleService {
         }
         
         return result;
+    }
+    
+    /**
+     * 獲取所有安排表（支持分頁和過濾）
+     */
+    @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
+    public Page<Map<String, Object>> getAllSchedulesWithDateRange(Integer year, Pageable pageable) {
+        List<ServiceSchedule> allSchedules = repository.findAllByOrderByCreatedAtDesc();
+        List<Map<String, Object>> result = new ArrayList<>();
+        
+        // 過濾和轉換數據
+        for (ServiceSchedule schedule : allSchedules) {
+            // 過濾年度
+            if (year != null && !schedule.getYear().equals(year)) {
+                continue;
+            }
+            
+            Map<String, Object> scheduleMap = new HashMap<>();
+            scheduleMap.put("year", schedule.getYear());
+            scheduleMap.put("createdAt", schedule.getCreatedAt());
+            scheduleMap.put("updatedAt", schedule.getUpdatedAt());
+            
+            // 計算日期範圍
+            List<ServiceScheduleDate> dates = schedule.getDates();
+            if (dates != null && !dates.isEmpty()) {
+                LocalDate minDate = null;
+                LocalDate maxDate = null;
+                
+                for (ServiceScheduleDate date : dates) {
+                    if (minDate == null || date.getDate().isBefore(minDate)) {
+                        minDate = date.getDate();
+                    }
+                    if (maxDate == null || date.getDate().isAfter(maxDate)) {
+                        maxDate = date.getDate();
+                    }
+                }
+                
+                if (minDate != null && maxDate != null) {
+                    scheduleMap.put("startDate", minDate.toString());
+                    scheduleMap.put("endDate", maxDate.toString());
+                }
+            }
+            
+            result.add(scheduleMap);
+        }
+        
+        // 手動分頁
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), result.size());
+        List<Map<String, Object>> paginatedContent = result.subList(start, end);
+        
+        return new PageImpl<>(paginatedContent, pageable, result.size());
     }
 
     /**

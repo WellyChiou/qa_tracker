@@ -5,6 +5,9 @@ import com.example.helloworld.entity.church.ChurchPermission;
 import com.example.helloworld.repository.church.ChurchRoleRepository;
 import com.example.helloworld.repository.church.ChurchPermissionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +29,16 @@ public class ChurchRoleService {
     public List<ChurchRole> getAllRoles() {
         // 使用 JOIN FETCH 主動加載關聯，避免懶加載問題
         return churchRoleRepository.findAllWithPermissions();
+    }
+    
+    /**
+     * 獲取所有角色（支持分頁和過濾）
+     */
+    @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
+    public Page<ChurchRole> getAllRoles(String roleName, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        String filterRoleName = (roleName != null && !roleName.trim().isEmpty()) ? roleName.trim() : null;
+        return churchRoleRepository.findByFilters(filterRoleName, pageable);
     }
 
     /**

@@ -5,6 +5,9 @@ import com.example.helloworld.repository.church.SundayMessageRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +34,19 @@ public class SundayMessageService {
     @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
     public List<SundayMessage> getAllMessages() {
         return sundayMessageRepository.findAllByOrderByServiceDateDesc();
+    }
+    
+    /**
+     * 獲取所有主日信息（支持分頁和過濾）
+     */
+    @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
+    public Page<SundayMessage> getAllMessages(
+            String title, LocalDate startDate, LocalDate endDate, String serviceType, Boolean isActive,
+            int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        String filterTitle = (title != null && !title.trim().isEmpty()) ? title.trim() : null;
+        String filterServiceType = (serviceType != null && !serviceType.trim().isEmpty()) ? serviceType.trim() : null;
+        return sundayMessageRepository.findByFilters(filterTitle, startDate, endDate, filterServiceType, isActive, pageable);
     }
 
     /**

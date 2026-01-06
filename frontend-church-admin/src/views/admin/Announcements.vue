@@ -99,7 +99,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="announcement in paginatedList" :key="announcement.id">
+              <tr v-for="announcement in announcementsList" :key="announcement.id">
                 <td>{{ announcement.title }}</td>
                 <td>{{ announcement.category || '-' }}</td>
                 <td>{{ formatDate(announcement.publishDate) }}</td>
@@ -132,6 +132,11 @@
               <span class="pagination-info">共 {{ totalRecords }} 筆 (第 {{ currentPage }}/{{ totalPages }} 頁)</span>
             </div>
             <div class="pagination-right">
+              <button class="btn-secondary" @click="firstPage" :disabled="currentPage === 1" title="第一頁">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
+                </svg>
+              </button>
               <button class="btn-secondary" @click="previousPage" :disabled="currentPage === 1">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
@@ -147,6 +152,11 @@
                 下一頁
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+              </button>
+              <button class="btn-secondary" @click="lastPage" :disabled="currentPage === totalPages" title="最後一頁">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
                 </svg>
               </button>
             </div>
@@ -266,64 +276,19 @@ const jumpPage = ref(1)
 const totalRecords = ref(0)
 const totalPages = ref(1)
 
-// 過濾後的列表
-const filteredList = computed(() => {
-  let filtered = [...announcementsList.value]
-  
-  if (filters.value.title) {
-    filtered = filtered.filter(announcement => 
-      announcement.title?.toLowerCase().includes(filters.value.title.toLowerCase())
-    )
-  }
-  
-  if (filters.value.category) {
-    filtered = filtered.filter(announcement => 
-      announcement.category?.toLowerCase().includes(filters.value.category.toLowerCase())
-    )
-  }
-  
-  if (filters.value.startDate) {
-    filtered = filtered.filter(announcement => {
-      if (!announcement.publishDate) return false
-      return new Date(announcement.publishDate) >= new Date(filters.value.startDate)
-    })
-  }
-  
-  if (filters.value.endDate) {
-    filtered = filtered.filter(announcement => {
-      if (!announcement.publishDate) return false
-      return new Date(announcement.publishDate) <= new Date(filters.value.endDate)
-    })
-  }
-  
-  if (filters.value.isPinned !== '') {
-    filtered = filtered.filter(announcement => announcement.isPinned === filters.value.isPinned)
-  }
-  
-  if (filters.value.isActive !== '') {
-    filtered = filtered.filter(announcement => announcement.isActive === filters.value.isActive)
-  }
-  
-  return filtered.sort((a, b) => {
-    // 置頂的在前，然後按發布日期降序
-    if (a.isPinned && !b.isPinned) return -1
-    if (!a.isPinned && b.isPinned) return 1
-    if (!a.publishDate && !b.publishDate) return 0
-    if (!a.publishDate) return 1
-    if (!b.publishDate) return -1
-    return new Date(b.publishDate) - new Date(a.publishDate)
-  })
-})
 
-// 注意：分頁現在由後端處理，但前端過濾仍然保留（過濾當前頁數據）
-const paginatedList = computed(() => {
-  return filteredList.value
-})
+// 第一頁
+const firstPage = () => {
+  currentPage.value = 1
+  jumpPage.value = 1
+  loadAnnouncements()
+}
 
 // 上一頁
 const previousPage = () => {
   if (currentPage.value > 1) {
     currentPage.value--
+    jumpPage.value = currentPage.value
     loadAnnouncements()
   }
 }
@@ -332,14 +297,24 @@ const previousPage = () => {
 const nextPage = () => {
   if (currentPage.value < totalPages.value) {
     currentPage.value++
+    jumpPage.value = currentPage.value
     loadAnnouncements()
   }
 }
 
+// 最後一頁
+const lastPage = () => {
+  currentPage.value = totalPages.value
+  jumpPage.value = totalPages.value
+  loadAnnouncements()
+}
+
 // 跳轉到指定頁
 const jumpToPage = () => {
-  if (jumpPage.value >= 1 && jumpPage.value <= totalPages.value) {
-    currentPage.value = jumpPage.value
+  const targetPage = Number(jumpPage.value)
+  if (targetPage >= 1 && targetPage <= totalPages.value && !isNaN(targetPage)) {
+    currentPage.value = targetPage
+    jumpPage.value = targetPage
     loadAnnouncements()
   } else {
     jumpPage.value = currentPage.value
@@ -394,9 +369,18 @@ const loadAnnouncements = async () => {
         if (data.totalElements !== undefined) {
           totalRecords.value = data.totalElements
           totalPages.value = data.totalPages || 1
+          // 確保 currentPage 不超過 totalPages
+          if (currentPage.value > totalPages.value) {
+            currentPage.value = totalPages.value
+            jumpPage.value = totalPages.value
+          }
+          // 同步 jumpPage 與 currentPage
+          jumpPage.value = currentPage.value
         } else {
           totalRecords.value = announcementsList.value.length
           totalPages.value = 1
+          currentPage.value = 1
+          jumpPage.value = 1
         }
       }
     }

@@ -74,8 +74,8 @@
       </details>
 
       <div class="submissions-list">
-        <div v-if="filteredList.length === 0 && !loading" class="empty-state">
-          <p>{{ submissionsList.length === 0 ? '尚無聯絡表單記錄' : '沒有符合條件的資料' }}</p>
+        <div v-if="submissionsList.length === 0 && !loading" class="empty-state">
+          <p>尚無聯絡表單記錄</p>
         </div>
         <div v-else-if="loading" class="empty-state">
           <div class="skeleton" style="height:14px; width:42%; margin:6px auto;"></div>
@@ -83,7 +83,7 @@
         </div>
         <div v-else class="info-table">
           <div class="table-header">
-            <h3>聯絡表單列表 (共 {{ totalElements }} 筆)</h3>
+            <h3>聯絡表單列表 (共 {{ totalRecords }} 筆)</h3>
           </div>
           <table>
             <thead>
@@ -98,7 +98,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="submission in filteredList" :key="submission.id" :class="{ 'unread': !submission.isRead }">
+              <tr v-for="submission in submissionsList" :key="submission.id" :class="{ 'unread': !submission.isRead }">
                 <td>{{ submission.name }}</td>
                 <td>{{ submission.email }}</td>
                 <td>{{ submission.phone || '-' }}</td>
@@ -126,10 +126,15 @@
                 <option :value="50">50</option>
                 <option :value="100">100</option>
               </select>
-              <span class="pagination-info">共 {{ totalElements }} 筆 (第 {{ currentPage + 1 }}/{{ totalPages }} 頁)</span>
+              <span class="pagination-info">共 {{ totalRecords }} 筆 (第 {{ currentPage }}/{{ totalPages }} 頁)</span>
             </div>
             <div class="pagination-right">
-              <button class="btn-secondary" @click="currentPage--" :disabled="currentPage === 0">
+              <button class="btn-secondary" @click="firstPage" :disabled="currentPage === 1" title="第一頁">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
+                </svg>
+              </button>
+              <button class="btn-secondary" @click="previousPage" :disabled="currentPage === 1">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                 </svg>
@@ -140,10 +145,15 @@
                 <input type="number" v-model.number="jumpPage" min="1" :max="totalPages" class="page-input" @keyup.enter="jumpToPage" />
                 <span class="pagination-label">頁</span>
               </div>
-              <button class="btn-secondary" @click="currentPage++" :disabled="currentPage >= totalPages - 1">
+              <button class="btn-secondary" @click="nextPage" :disabled="currentPage === totalPages">
                 下一頁
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+              </button>
+              <button class="btn-secondary" @click="lastPage" :disabled="currentPage === totalPages" title="最後一頁">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
                 </svg>
               </button>
             </div>
@@ -211,69 +221,59 @@ const filters = ref({
   endDate: ''
 })
 
-// 分頁（後端分頁，從0開始）
-const currentPage = ref(0)
+// 分頁
+const currentPage = ref(1)
 const recordsPerPage = ref(20)
 const jumpPage = ref(1)
-const totalElements = ref(0)
-const totalPages = ref(0)
+const totalRecords = ref(0)
+const totalPages = ref(1)
 
 const formatDateTime = (dateString) => {
   if (!dateString) return '-'
   return new Date(dateString).toLocaleString('zh-TW')
 }
 
-// 過濾後的列表（前端過濾）
-const filteredList = computed(() => {
-  let filtered = [...submissionsList.value]
-  
-  if (filters.value.name) {
-    filtered = filtered.filter(sub => 
-      sub.name?.toLowerCase().includes(filters.value.name.toLowerCase())
-    )
+// 第一頁
+const firstPage = () => {
+  currentPage.value = 1
+  jumpPage.value = 1
+  loadSubmissions()
+}
+
+// 上一頁
+const previousPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value--
+    jumpPage.value = currentPage.value
+    loadSubmissions()
   }
-  
-  if (filters.value.email) {
-    filtered = filtered.filter(sub => 
-      sub.email?.toLowerCase().includes(filters.value.email.toLowerCase())
-    )
+}
+
+// 下一頁
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++
+    jumpPage.value = currentPage.value
+    loadSubmissions()
   }
-  
-  if (filters.value.isRead !== '') {
-    filtered = filtered.filter(sub => sub.isRead === filters.value.isRead)
-  }
-  
-  if (filters.value.startDate) {
-    filtered = filtered.filter(sub => {
-      const date = sub.submittedAt || sub.createdAt
-      if (!date) return false
-      return new Date(date) >= new Date(filters.value.startDate)
-    })
-  }
-  
-  if (filters.value.endDate) {
-    filtered = filtered.filter(sub => {
-      const date = sub.submittedAt || sub.createdAt
-      if (!date) return false
-      return new Date(date) <= new Date(filters.value.endDate + 'T23:59:59')
-    })
-  }
-  
-  return filtered.sort((a, b) => {
-    const dateA = new Date(a.submittedAt || a.createdAt || 0)
-    const dateB = new Date(b.submittedAt || b.createdAt || 0)
-    return dateB - dateA
-  })
-})
+}
+
+// 最後一頁
+const lastPage = () => {
+  currentPage.value = totalPages.value
+  jumpPage.value = totalPages.value
+  loadSubmissions()
+}
 
 // 跳轉到指定頁
 const jumpToPage = () => {
-  const page = jumpPage.value - 1 // 轉換為從0開始
-  if (page >= 0 && page < totalPages.value) {
-    currentPage.value = page
+  const targetPage = Number(jumpPage.value)
+  if (targetPage >= 1 && targetPage <= totalPages.value && !isNaN(targetPage)) {
+    currentPage.value = targetPage
+    jumpPage.value = targetPage
     loadSubmissions()
   } else {
-    jumpPage.value = currentPage.value + 1
+    jumpPage.value = currentPage.value
   }
 }
 
@@ -286,7 +286,7 @@ const resetFilters = () => {
     startDate: '',
     endDate: ''
   }
-  currentPage.value = 0
+  currentPage.value = 1
   jumpPage.value = 1
   loadSubmissions()
 }
@@ -296,10 +296,10 @@ const loadSubmissions = async () => {
   try {
     // 構建查詢參數
     const params = new URLSearchParams()
-    params.append('page', currentPage.value.toString())
+    params.append('page', (currentPage.value - 1).toString()) // 後端從0開始
     params.append('size', recordsPerPage.value.toString())
     if (filters.value.isRead !== '') {
-      params.append('isRead', filters.value.isRead.toString())
+      params.append('isRead', filters.value.isRead === true || filters.value.isRead === 'true')
     }
     
     const [submissionsRes, statsRes] = await Promise.all([
@@ -317,9 +317,15 @@ const loadSubmissions = async () => {
       const data = await submissionsRes.json()
       if (data.success && data.data) {
         submissionsList.value = data.data
-        totalElements.value = data.totalElements || data.data.length
+        totalRecords.value = data.totalElements || data.data.length
         totalPages.value = data.totalPages || 1
-        jumpPage.value = currentPage.value + 1
+        // 確保 currentPage 不超過 totalPages
+        if (currentPage.value > totalPages.value) {
+          currentPage.value = totalPages.value
+          jumpPage.value = totalPages.value
+        }
+        // 同步 jumpPage 與 currentPage
+        jumpPage.value = currentPage.value
       }
     }
     
@@ -337,8 +343,17 @@ const loadSubmissions = async () => {
   }
 }
 
-// 監聽分頁變化
-watch([currentPage, recordsPerPage], () => {
+// 監聽查詢條件變化，重置到第一頁並重新載入
+watch(() => [filters.value.name, filters.value.email, filters.value.isRead, filters.value.startDate, filters.value.endDate], () => {
+  currentPage.value = 1
+  jumpPage.value = 1
+  loadSubmissions()
+})
+
+// 監聽每頁筆數變化，重置到第一頁並重新載入
+watch(recordsPerPage, () => {
+  currentPage.value = 1
+  jumpPage.value = 1
   loadSubmissions()
 })
 

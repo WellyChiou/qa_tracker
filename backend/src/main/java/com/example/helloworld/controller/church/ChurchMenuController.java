@@ -3,6 +3,7 @@ package com.example.helloworld.controller.church;
 import com.example.helloworld.entity.church.ChurchMenuItem;
 import com.example.helloworld.service.church.ChurchMenuService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -47,12 +48,30 @@ public class ChurchMenuController {
     }
 
     /**
-     * 獲取所有菜單項（管理用，需要管理權限）
+     * 獲取所有菜單項（管理用，需要管理權限，支持分頁和過濾）
      */
     @GetMapping
-    public ResponseEntity<List<ChurchMenuItem>> getAllMenuItems() {
-        List<ChurchMenuItem> menus = churchMenuService.getAllMenuItems();
-        return ResponseEntity.ok(menus);
+    public ResponseEntity<Map<String, Object>> getAllMenuItems(
+            @RequestParam(required = false) String menuCode,
+            @RequestParam(required = false) String menuName,
+            @RequestParam(required = false) String menuType,
+            @RequestParam(required = false) Boolean isActive,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            Page<ChurchMenuItem> menusPage = churchMenuService.getAllMenuItems(menuCode, menuName, menuType, isActive, page, size);
+            Map<String, Object> response = new HashMap<>();
+            response.put("content", menusPage.getContent());
+            response.put("totalElements", menusPage.getTotalElements());
+            response.put("totalPages", menusPage.getTotalPages());
+            response.put("currentPage", menusPage.getNumber());
+            response.put("size", menusPage.getSize());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "獲取菜單列表失敗：" + e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
     }
 
     /**

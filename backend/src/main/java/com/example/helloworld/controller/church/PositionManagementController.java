@@ -4,6 +4,7 @@ import com.example.helloworld.entity.church.Position;
 import com.example.helloworld.entity.church.Person;
 import com.example.helloworld.service.church.PositionService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,14 +26,24 @@ public class PositionManagementController {
     // ========== 崗位相關 API ==========
 
     /**
-     * 獲取所有崗位
+     * 獲取所有崗位（支持分頁和過濾）
      */
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getAllPositions() {
+    public ResponseEntity<Map<String, Object>> getAllPositions(
+            @RequestParam(required = false) String positionCode,
+            @RequestParam(required = false) String positionName,
+            @RequestParam(required = false) Boolean isActive,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         try {
-            List<Position> positions = positionService.getAllPositions();
+            Page<Position> positionsPage = positionService.getAllPositions(positionCode, positionName, isActive, page, size);
             Map<String, Object> response = new HashMap<>();
-            response.put("positions", positions);
+            response.put("positions", positionsPage.getContent());
+            response.put("content", positionsPage.getContent());
+            response.put("totalElements", positionsPage.getTotalElements());
+            response.put("totalPages", positionsPage.getTotalPages());
+            response.put("currentPage", positionsPage.getNumber());
+            response.put("size", positionsPage.getSize());
             response.put("message", "獲取崗位列表成功");
             return ResponseEntity.ok(response);
         } catch (Exception e) {

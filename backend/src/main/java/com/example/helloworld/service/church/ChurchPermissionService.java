@@ -3,6 +3,9 @@ package com.example.helloworld.service.church;
 import com.example.helloworld.entity.church.ChurchPermission;
 import com.example.helloworld.repository.church.ChurchPermissionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +24,18 @@ public class ChurchPermissionService {
     @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
     public List<ChurchPermission> getAllPermissions() {
         return churchPermissionRepository.findAll();
+    }
+    
+    /**
+     * 獲取所有權限（支持分頁和過濾）
+     */
+    @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
+    public Page<ChurchPermission> getAllPermissions(String permissionCode, String resource, String action, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        String filterPermissionCode = (permissionCode != null && !permissionCode.trim().isEmpty()) ? permissionCode.trim() : null;
+        String filterResource = (resource != null && !resource.trim().isEmpty()) ? resource.trim() : null;
+        String filterAction = (action != null && !action.trim().isEmpty()) ? action.trim() : null;
+        return churchPermissionRepository.findByFilters(filterPermissionCode, filterResource, filterAction, pageable);
     }
 
     /**

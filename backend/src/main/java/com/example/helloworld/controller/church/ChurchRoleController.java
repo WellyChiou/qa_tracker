@@ -3,6 +3,7 @@ package com.example.helloworld.controller.church;
 import com.example.helloworld.entity.church.ChurchRole;
 import com.example.helloworld.service.church.ChurchRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,14 +21,22 @@ public class ChurchRoleController {
     private ChurchRoleService churchRoleService;
 
     /**
-     * 獲取所有角色
+     * 獲取所有角色（支持分頁和過濾）
      */
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getAllRoles() {
+    public ResponseEntity<Map<String, Object>> getAllRoles(
+            @RequestParam(required = false) String roleName,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         try {
-            List<ChurchRole> roles = churchRoleService.getAllRoles();
+            Page<ChurchRole> rolesPage = churchRoleService.getAllRoles(roleName, page, size);
             Map<String, Object> response = new HashMap<>();
-            response.put("roles", roles);
+            response.put("roles", rolesPage.getContent());
+            response.put("content", rolesPage.getContent());
+            response.put("totalElements", rolesPage.getTotalElements());
+            response.put("totalPages", rolesPage.getTotalPages());
+            response.put("currentPage", rolesPage.getNumber());
+            response.put("size", rolesPage.getSize());
             response.put("message", "獲取角色列表成功");
             return ResponseEntity.ok(response);
         } catch (Exception e) {
