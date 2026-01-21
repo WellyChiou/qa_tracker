@@ -18,13 +18,38 @@ set SERVER_USER=root
 set PROJECT_NAME=docker-vue-java-mysql
 set REMOTE_PATH=/root/project/work
 set ARCHIVE_NAME=%PROJECT_NAME%.tar.gz
-set REMOTE_DEPLOY=remote_deploy.sh
+set REMOTE_DEPLOY=scripts\deployment\remote_deploy.sh
 REM =========================================
 
-REM 取得腳本所在目錄
+REM 取得腳本所在目錄並查找專案根目錄
 set SCRIPT_DIR=%~dp0
+REM 移除尾部的反斜線（如果有的話）
+if "%SCRIPT_DIR:~-1%"=="\" set SCRIPT_DIR=%SCRIPT_DIR:~0,-1%
+
+REM 向上查找專案根目錄（直到找到 docker-compose.yml）
 cd /d "%SCRIPT_DIR%"
+:find_root
+if exist "docker-compose.yml" goto found_root
+cd ..
+REM 檢查是否已到達根目錄（無法再向上）
+set CURRENT_CD=%CD%
+cd ..
+if "%CD%"=="%CURRENT_CD%" (
+    echo [ERROR] 找不到 docker-compose.yml。請確認在專案目錄中執行。
+    echo    目前: %SCRIPT_DIR%
+    pause
+    exit /b 1
+)
+cd /d "%CURRENT_CD%"
+goto find_root
+
+:found_root
 for %%I in ("%CD%") do set CURRENT_DIR=%%~nxI
+set PROJECT_ROOT=%CD%
+REM 取得專案根目錄的父目錄（用於打包）
+cd ..
+set PARENT_DIR=%CD%
+cd /d "%PROJECT_ROOT%"
 
 echo ==========================================
 echo 🚀 開始一鍵部署（Windows - unified）
@@ -55,8 +80,8 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-if not exist "%SCRIPT_DIR%%REMOTE_DEPLOY%" (
-    echo [ERROR] 找不到 %REMOTE_DEPLOY%（請確認放在腳本同層）
+if not exist "%PROJECT_ROOT%\%REMOTE_DEPLOY%" (
+    echo [ERROR] 找不到 %REMOTE_DEPLOY%（請確認檔案存在）
     pause
     exit /b 1
 )
@@ -66,29 +91,45 @@ echo.
 
 REM ====== Step 2: 打包 ======
 echo Step 2/4: 打包專案...
-cd /d "%SCRIPT_DIR%"
+
+REM 清除舊壓縮檔（在父目錄中）
+cd /d "%PARENT_DIR%"
 if exist "%ARCHIVE_NAME%" del "%ARCHIVE_NAME%"
 
-REM 切到上一層打包（讓 tar 內路徑是 docker-vue-java-mysql/...）
-cd /d "%SCRIPT_DIR%.."
-
-tar -czf "%SCRIPT_DIR%\%ARCHIVE_NAME%" ^
+REM 切到父目錄打包（讓 tar 內路徑是 docker-vue-java-mysql/...）
+REM 使用 ustar 格式讓 Linux 端解壓更穩
+REM 排除：VCS、node_modules、target、log、dist、tar.gz、自家系統檔
+REM 注意：使用 %CURRENT_DIR% 以確保排除規則與實際打包的目錄名稱一致
+tar --format=ustar -czf "%ARCHIVE_NAME%" ^
     --exclude="%CURRENT_DIR%/.git" ^
     --exclude="%CURRENT_DIR%/node_modules" ^
+    --exclude="%CURRENT_DIR%/**/node_modules" ^
     --exclude="%CURRENT_DIR%/target" ^
+    --exclude="%CURRENT_DIR%/**/target" ^
     --exclude="%CURRENT_DIR%/.DS_Store" ^
+    --exclude="%CURRENT_DIR%/**/.DS_Store" ^
     --exclude="%CURRENT_DIR%/*.log" ^
+    --exclude="%CURRENT_DIR%/**/*.log" ^
     --exclude="%CURRENT_DIR%/frontend/dist" ^
     --exclude="%CURRENT_DIR%/frontend-personal/dist" ^
     --exclude="%CURRENT_DIR%/frontend-church/dist" ^
     --exclude="%CURRENT_DIR%/frontend-church-admin/dist" ^
+    --exclude="%CURRENT_DIR%/**/dist" ^
     --exclude="%CURRENT_DIR%/*.tar.gz" ^
-    --exclude="%CURRENT_DIR%\local-letsencrypt" ^
-    --exclude="%CURRENT_DIR%\docker-compose.local.yml" ^
-    --exclude="%CURRENT_DIR%\docker-compose.override.yml" ^
+    --exclude="%CURRENT_DIR%/local-letsencrypt" ^
+    --exclude="%CURRENT_DIR%/local-letsencrypt/**" ^
+    --exclude="%CURRENT_DIR%/docker-compose.local.yml" ^
+    --exclude="%CURRENT_DIR%/docker-compose.override.yml" ^
     "%CURRENT_DIR%"
 
-cd /d "%SCRIPT_DIR%"
+cd /d "%PROJECT_ROOT%"
+
+REM 檢查壓縮檔是否在父目錄中
+if not exist "%PARENT_DIR%\%ARCHIVE_NAME%" (
+    echo [ERROR] 打包失敗：找不到 %ARCHIVE_NAME%
+    pause
+    exit /b 1
+)
 
 if %errorlevel% neq 0 (
     echo [ERROR] 打包失敗!
@@ -96,13 +137,8 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-if not exist "%ARCHIVE_NAME%" (
-    echo [ERROR] 打包失敗! 找不到歸檔文件
-    pause
-    exit /b 1
-)
-
-for %%A in ("%ARCHIVE_NAME%") do set ARCHIVE_SIZE=%%~zA
+REM 計算壓縮檔大小（使用父目錄中的檔案）
+for %%A in ("%PARENT_DIR%\%ARCHIVE_NAME%") do set ARCHIVE_SIZE=%%~zA
 set /a ARCHIVE_SIZE_KB=!ARCHIVE_SIZE!/1024
 if !ARCHIVE_SIZE_KB! geq 1024 (
     set /a ARCHIVE_SIZE_MB=!ARCHIVE_SIZE_KB!/1024
@@ -124,14 +160,14 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL "%ARCHIVE_NAME%" %SERVER_USER%@%SERVER_IP%:%REMOTE_PATH%/
+scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL "%PARENT_DIR%\%ARCHIVE_NAME%" %SERVER_USER%@%SERVER_IP%:%REMOTE_PATH%/
 if %errorlevel% neq 0 (
     echo [ERROR] 上傳壓縮檔失敗
     pause
     exit /b 1
 )
 
-scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL "%SCRIPT_DIR%%REMOTE_DEPLOY%" %SERVER_USER%@%SERVER_IP%:/tmp/remote_deploy.sh
+scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL "%PROJECT_ROOT%\%REMOTE_DEPLOY%" %SERVER_USER%@%SERVER_IP%:/tmp/remote_deploy.sh
 if %errorlevel% neq 0 (
     echo [ERROR] 上傳 remote_deploy.sh 失敗
     pause

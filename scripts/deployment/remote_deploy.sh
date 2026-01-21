@@ -52,12 +52,12 @@ if [ -d "$PROJECT_NAME" ]; then
     find . -type f -name "*.sh" -exec chmod +x {} \;
     
     # 確保 deploy.sh 有執行權限
-    if [ -f "deploy.sh" ]; then
-        chmod +x deploy.sh
+    if [ -f "scripts/deployment/deploy.sh" ]; then
+        chmod +x scripts/deployment/deploy.sh
         # 執行部署
-        ./deploy.sh
+        ./scripts/deployment/deploy.sh
     else
-        echo "❌ 錯誤: 找不到 deploy.sh 文件"
+        echo "❌ 錯誤: 找不到 scripts/deployment/deploy.sh 文件"
         exit 1
     fi
     
@@ -106,7 +106,7 @@ if [ -d "$PROJECT_NAME" ]; then
     
     # 確保所有腳本有執行權限
     echo "設置腳本執行權限..."
-    chmod +x monitor-frontend.sh monitor-system.sh cleanup-docker.sh fix-frontend.sh diagnose-frontend.sh setup-prevention.sh 2>/dev/null || true
+    chmod +x scripts/monitoring/monitor-frontend.sh scripts/monitoring/monitor-system.sh scripts/maintenance/cleanup-docker.sh scripts/diagnostics/fix-frontend.sh scripts/diagnostics/diagnose-frontend.sh scripts/setup/setup-prevention.sh 2>/dev/null || true
     
     # 檢查並安裝 cron 服務
     echo "檢查並安裝 cron 服務..."

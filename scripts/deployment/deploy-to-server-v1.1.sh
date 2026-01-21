@@ -18,7 +18,7 @@ SERVER_PASSWORD=""   # 例如：SERVER_PASSWORD="your_password"
 REMOTE_PATH="/root/project/work"
 PROJECT_NAME="docker-vue-java-mysql"
 ARCHIVE_NAME="${PROJECT_NAME}.tar.gz"
-REMOTE_DEPLOY_LOCAL="./remote_deploy.sh"   # 本機專案中的 remote_deploy.sh
+REMOTE_DEPLOY_LOCAL="scripts/deployment/remote_deploy.sh"   # 本機專案中的 remote_deploy.sh
 REMOTE_DEPLOY_REMOTE="/tmp/remote_deploy.sh"
 # =====================================
 
@@ -72,17 +72,23 @@ echo
 
 # ====== 取得腳本位置 / 專案根 ======
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="${SCRIPT_DIR}"              # 預設腳本放在專案根
-PARENT_DIR="$(cd "${PROJECT_ROOT}/.." && pwd)"
+
+# 自動查找專案根目錄（向上查找直到找到 docker-compose.yml）
+PROJECT_ROOT="${SCRIPT_DIR}"
+while [[ ! -f "${PROJECT_ROOT}/docker-compose.yml" ]] && [[ "${PROJECT_ROOT}" != "/" ]]; do
+  PROJECT_ROOT="$(cd "${PROJECT_ROOT}/.." && pwd)"
+done
 
 if [[ ! -f "${PROJECT_ROOT}/docker-compose.yml" ]]; then
-  echo "❌ 找不到 docker-compose.yml。請把本腳本放在專案根目錄執行。"
-  echo "   目前: ${PROJECT_ROOT}"
+  echo "❌ 找不到 docker-compose.yml。請確認在專案目錄中執行。"
+  echo "   目前: ${SCRIPT_DIR}"
   exit 1
 fi
 
-if [[ ! -f "${PROJECT_ROOT}/remote_deploy.sh" ]]; then
-  echo "❌ 找不到 ${PROJECT_ROOT}/remote_deploy.sh"
+PARENT_DIR="$(cd "${PROJECT_ROOT}/.." && pwd)"
+
+if [[ ! -f "${PROJECT_ROOT}/scripts/deployment/remote_deploy.sh" ]]; then
+  echo "❌ 找不到 ${PROJECT_ROOT}/scripts/deployment/remote_deploy.sh"
   echo "   這是同步部署的核心（遠端部署入口），請確認檔案存在。"
   exit 1
 fi
@@ -137,8 +143,8 @@ echo
 
 # ====== Step 3: 上傳壓縮檔 + remote_deploy.sh ======
 echo "Step 3/4: 上傳壓縮檔與遠端部署腳本..."
-scp_put "${ARCHIVE_NAME}" "${REMOTE_PATH}/"
-scp_put "${PROJECT_ROOT}/remote_deploy.sh" "${REMOTE_DEPLOY_REMOTE}"
+scp_put "${PARENT_DIR}/${ARCHIVE_NAME}" "${REMOTE_PATH}/"
+scp_put "${PROJECT_ROOT}/scripts/deployment/remote_deploy.sh" "${REMOTE_DEPLOY_REMOTE}"
 echo "✅ 上傳完成"
 echo
 

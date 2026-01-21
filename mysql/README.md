@@ -1,241 +1,204 @@
-# SQL 文件組織說明
+# SQL 檔案組織說明
 
-## 📁 文件結構
+## 📁 檔案結構
 
-### 🎯 主要初始化文件（按順序執行）
+SQL 檔案已按資料庫和功能分類組織，結構如下：
 
-#### 1. 個人系統（qa_tracker 資料庫）
-- **`schema.sql`** - 個人系統完整資料庫結構
-  - 包含：users, records, config, expenses, assets 等表
-  - 用途：個人 QA Tracker 系統
+```
+mysql/
+├── personal/                    # 個人系統 (qa_tracker 資料庫)
+│   ├── schema/
+│   │   └── schema.sql          # 主結構檔案
+│   ├── setup/
+│   │   └── personal-admin-setup.sql  # 初始管理員設定
+│   └── permissions/
+│       └── personal-permissions.sql  # 整合所有個人系統權限設定
+├── church/                      # 教會系統 (church 資料庫)
+│   ├── schema/                  # 主結構檔案
+│   │   ├── church-schema.sql   # 主結構（包含 prayer_requests 和 announcements 表）
+│   │   ├── church-security-tables.sql
+│   │   ├── church-init.sql
+│   │   ├── system-settings-schema.sql
+│   │   └── church-scheduled-jobs-schema.sql
+│   ├── setup/                   # 初始設定檔案
+│   │   ├── create-church-db.sql
+│   │   ├── church-admin-setup.sql
+│   │   └── church-data.sql
+│   ├── permissions/             # 初始權限設定（整合版）
+│   │   └── church-permissions.sql
+│   ├── menus/                   # 初始菜單設定（整合版）
+│   │   └── church-menus.sql
+│   └── features/                # 功能完整安裝腳本
+│       └── checkin-system-complete-setup.sql
+└── diagnostics/                 # 診斷工具
+    └── [現有檔案]
+```
 
-#### 2. 教會系統（church 資料庫）
+## 🎯 主要初始化檔案（按順序執行）
 
-##### 基礎結構
-- **`create-church-db.sql`** - 創建 church 資料庫
-- **`church-schema.sql`** - 教會系統基礎表結構（service_schedules 等）
+### 個人系統（qa_tracker 資料庫）
 
-##### 安全系統
-- **`church-security-tables.sql`** - 教會系統安全相關表
-  - 包含：users, roles, permissions, role_permissions, user_roles, user_permissions, menu_items, url_permissions
-  - 包含預設角色、權限、菜單數據
+1. **`personal/schema/schema.sql`** - 個人系統完整資料庫結構
+   - 包含：users, records, config, expenses, assets 等表
+   - 用途：個人 QA Tracker 系統
 
-##### 崗位和人員管理
-- **`church-init.sql`** - 崗位和人員管理系統初始化
-  - 包含：positions, persons, position_persons 表結構
-  - **注意**：persons 表已包含 `member_no` 和 `birthday` 欄位（用於簽到系統）
-- **`church-data.sql`** - 崗位和人員初始數據（可選）
+2. **`personal/setup/personal-admin-setup.sql`** - 個人系統管理員帳號設定
 
-##### 前台內容管理系統
-- **`prayer-requests-schema.sql`** - 代禱事項表格結構
-  - 包含：id, title, content, category, is_urgent, is_active, created_at, updated_at
-- **`prayer-requests-permissions.sql`** - 代禱事項權限配置
-  - 包含：permissions 表權限（PRAYER_REQUEST_READ, PRAYER_REQUEST_EDIT）
-  - 包含：url_permissions 表配置（公開 API 和管理 API）
-  - 包含：角色權限分配（ADMIN、EDITOR、VIEWER）
-- **`announcements-schema.sql`** - 公告表格結構
-  - 包含：id, title, content, category, publish_date, expire_date, is_pinned, is_active, created_at, updated_at
-- **`announcements-permissions.sql`** - 公告權限配置
-  - 包含：permissions 表權限（ANNOUNCEMENT_READ, ANNOUNCEMENT_EDIT）
-  - 包含：url_permissions 表配置（公開 API 和管理 API）
-  - 包含：角色權限分配（ADMIN、EDITOR、VIEWER）
-- **`groups-public-permissions.sql`** - 小組公開 API 權限配置
-  - 包含：url_permissions 表配置（公開訪問的小組 API）
+3. **`personal/permissions/personal-permissions.sql`** - 個人系統權限設定（整合版）
+   - 整合了：資料庫權限授予、定時任務 URL 權限
 
-##### 菜單配置
-- **`add-frontend-menus.sql`** - 新增前台菜單
-  - 小組介紹（直接顯示）
-  - 資訊服務父菜單及其子菜單（最新消息、代禱事項）
-- **`add-admin-menus.sql`** - 新增後台管理菜單
-  - 代禱事項管理（位於「前台內容管理」父菜單下）
-  - 公告管理（位於「前台內容管理」父菜單下）
-  - **重要**：後台菜單的 URL **不包含 `/admin` 前綴**，因為後台路由的 base path 是 `/church-admin/`
-  - 例如：菜單 URL 設為 `/prayer-requests`，實際訪問路徑為 `/church-admin/prayer-requests`
+### 教會系統（church 資料庫）
 
-##### 資料清理工具
-- **`cleanup-duplicate-url-permissions.sql`** - 清理 url_permissions 表中的重複資料
-  - 檢查基於 `url_pattern` 和 `http_method` 的重複記錄
-  - 移除重複資料（保留 id 最小的記錄）
-  - 使用前請先備份資料庫
+#### 基礎結構
 
-##### 簽到系統
-- **`checkin-system-complete-setup.sql`** ⭐ **推薦使用** - 簽到系統完整配置（整合所有配置）
-  - 包含：member_no 和 birthday 欄位檢查、URL 權限、菜單配置
-  - 可一次性執行完成所有配置
-  - 使用 `INSERT IGNORE` 可安全重複執行
-  - 適用於全新安裝或現有系統更新
-- **`add-member-no-to-persons.sql`** ⚠️ **已整合** - 為 persons 表添加 member_no 欄位
-  - **狀態**：已整合到 `church-init.sql` 和 `checkin-system-complete-setup.sql`
-  - 此檔案保留僅作為歷史記錄，新安裝請使用整合版本
-- **`add-birthday-to-persons.sql`** ⚠️ **已整合** - 為 persons 表添加 birthday 欄位
-  - **狀態**：已整合到 `church-init.sql` 和 `checkin-system-complete-setup.sql`
-  - 此檔案保留僅作為歷史記錄，新安裝請使用整合版本
-- **`add-checkin-url-permissions.sql`** - 簽到系統 URL 權限配置（包含所有 API 權限）
-  - 公開 API（3 個）
-  - 場次管理 API（5 個）
-  - 場次查詢和統計 API（7 個，包含 CSV 和 Excel 匯出）
-  - 補登管理 API（5 個，包含 CSV 和 Excel 匯出）
-  - 總計：20 個 URL 權限配置
-- **`add-checkin-session-management-permissions.sql`** - 場次管理 CRUD 操作的 URL 權限配置（可選）
-  - 此文件已包含在 `add-checkin-url-permissions.sql` 中
-- **`add-checkin-menu-items.sql`** - 簽到系統後台菜單項目
-- **`update-checkin-menu-items.sql`** - 更新簽到系統菜單結構（將主菜單改為父菜單）
-- **`update-checkin-menu-sessions-url.sql`** - 更新「管理場次」菜單的 URL
+1. **`church/setup/create-church-db.sql`** - 創建 church 資料庫
 
-**詳細說明請參考**：`mysql/README_CHECKIN_SQL.md`
+2. **`church/schema/church-schema.sql`** - 教會系統基礎表結構
+   - 包含：service_schedules, sunday_messages, groups, sessions, checkins 等
+   - **已整合**：prayer_requests 和 announcements 表結構
 
-### 🔄 遷移和更新文件
+3. **`church/schema/church-security-tables.sql`** - 教會系統安全相關表
+   - 包含：users, roles, permissions, role_permissions, user_roles, user_permissions, menu_items, url_permissions
+   - 包含預設角色、權限、菜單數據
 
-- **`church-migrations.sql`** - 教會系統遷移腳本
-  - 用於更新現有系統
-  - 包含所有歷史修復和更新
-  - 可安全地多次執行
+4. **`church/schema/church-init.sql`** - 崗位和人員管理系統初始化
+   - 包含：positions, persons, position_persons 表結構
+   - **注意**：persons 表已包含 `member_no` 和 `birthday` 欄位（用於簽到系統）
 
-### 👤 用戶管理文件
+5. **`church/schema/system-settings-schema.sql`** - 系統設定表結構
 
-- **`church-admin-setup.sql`** - 教會系統管理員帳號設定（整合版）
-- **`personal-admin-setup.sql`** - 個人系統管理員帳號設定（整合版）
+6. **`church/schema/church-scheduled-jobs-schema.sql`** - 定時任務表結構
 
-### 🔍 檢查和診斷文件
+#### 初始設定
 
-- **`check-and-update-users-table.sql`** - 檢查和更新用戶表結構
-- **`../check-frontend-menus.sql`** - 檢查前台菜單配置（根目錄）
+7. **`church/setup/church-admin-setup.sql`** - 教會系統管理員帳號設定
 
-### 📝 文檔文件
+8. **`church/setup/church-data.sql`** - 崗位和人員初始數據（可選）
 
-- **`README.md`** - 本文件，包含所有 SQL 文件的說明和使用指南
-- **`CHECK_AND_CREATE.md`** - 檢查和創建資料庫的詳細指南
-- **`MIGRATION_GUIDE.md`** - 服事表資料遷移指南
-- **`diagnostics/README.md`** - 診斷腳本說明文檔
+#### 權限和菜單配置
 
-## 🗑️ 已整合/可移除的文件
+9. **`church/permissions/church-permissions.sql`** - 教會系統權限設定（整合版）
+   - 整合了：代禱事項權限、公告權限、小組公開 API 權限
 
-以下文件已整合到主要文件中，可以安全移除：
+10. **`church/menus/church-menus.sql`** - 教會系統菜單設定（整合版）
+    - 整合了：前台菜單（小組介紹、資訊服務、最新消息、代禱事項）
+    - 整合了：後台管理菜單（代禱事項管理、公告管理）
 
-### 崗位和人員相關（已整合到 church-init.sql 和 church-migrations.sql）
-- ⚠️ `add-member-no-to-persons.sql` → 已整合到 `church-init.sql` 和 `checkin-system-complete-setup.sql`（保留作為歷史記錄）
-- ⚠️ `add-birthday-to-persons.sql` → 已整合到 `church-init.sql` 和 `checkin-system-complete-setup.sql`（保留作為歷史記錄）
-- ❌ `church-positions-schema.sql` → 已整合到 `church-init.sql`
-- ❌ `add-include-in-auto-schedule.sql` → 已整合到 `church-migrations.sql`
-- ❌ `fix-positions-is-active.sql` → 已整合到 `church-migrations.sql`
-- ❌ `fix-position-encoding.sql` → 已整合到 `church-migrations.sql`
-- ❌ `migrate-position-data.sql` → 已整合到 `church-data.sql`
-- ❌ `add-live-position-persons.sql` → 已整合到 `church-data.sql`
-- ❌ `remove-position-config-table.sql` → 已整合到 `church-migrations.sql`
-- ❌ `remove-position-config-column.sql` → 已整合到 `church-migrations.sql`
-- ❌ `fix-position-config-encoding.sql` → 已廢棄（舊表結構）
-- ❌ `init-position-config.sql` → 已廢棄（舊表結構）
-- ❌ `add-allow-duplicate-to-positions.sql` → 已整合到 `church-migrations.sql`
+#### 功能完整安裝
 
-### 服事安排相關（已整合或過時）
-- ❌ `church-schedule-redesign.sql` → 已整合到 `church-schema.sql`
-- ❌ `migrate-service-schedules.sql` → 已整合到 `church-migrations.sql`
-- ❌ `migrate-service-schedules-simple.sql` → 已整合到 `church-migrations.sql`
-- ❌ `migrate-service-schedules-data.sql` → 已整合到 `church-migrations.sql`
-- ❌ `fix-service-schedules-table.sql` → 已整合到 `church-migrations.sql`
-- ❌ `fix-service-schedules-table-structure.sql` → 已整合到 `church-migrations.sql`
-- ❌ `remove-schedule-data-column.sql` → 已整合到 `church-migrations.sql`
-
-### 安全系統相關（已整合）
-- ❌ `add-security-tables-simple.sql` → 已整合到 `church-security-tables.sql`
-- ❌ `add-church-api-permission.sql` → 已整合到 `church-security-tables.sql`
-- ❌ `grant-church-permissions.sql` → 已整合到 `church-security-tables.sql`
-- ❌ `grant-permissions.sql` → 個人系統用，保留
-
-### 菜單相關（已整合）
-- ❌ `remove-line-groups-menu.sql` → 已整合到 `church-migrations.sql`
-- ❌ `update-menu-urls-to-vue.sql` → 已整合到 `church-migrations.sql`
-
-### LINE Bot 相關（功能擴展，保留）
-- ✅ `add-line-bot-config.sql` - 添加 LINE Bot 配置
-- ✅ `add-line-user-id-column.sql` - 添加 LINE 用戶 ID 欄位
-
-### 定時任務相關（功能擴展，保留）
-- ✅ `add-scheduled-jobs-url-permissions.sql` - 添加定時任務 URL 權限
-
-### 診斷和檢查文件（已整合到 diagnostics 目錄）
-- ✅ `diagnostics/check-frontend-menus.sql` - 檢查前台菜單
-- ✅ `diagnostics/check_config.sql` - 檢查配置
-- ✅ `diagnostics/check_members.sql` - 檢查成員
-- ✅ `diagnostics/check_old_jobs.sql` - 檢查舊任務
-- ✅ `diagnostics/diagnose_scheduled_jobs.sql` - 診斷定時任務
-- ✅ `diagnostics/cleanup_orphaned_executions.sql` - 清理孤立執行記錄
-- ✅ `diagnostics/remove_old_jobs.sql` - 移除舊任務
-- ✅ `diagnostics/run-all-checks.sql` - 整合所有診斷檢查
-- ✅ `diagnostics/README.md` - 診斷腳本說明文檔
+11. **`church/features/checkin-system-complete-setup.sql`** - 簽到系統完整配置
+    - 包含：member_no 和 birthday 欄位檢查、URL 權限、菜單配置
+    - 可一次性執行完成所有配置
 
 ## 🚀 使用指南
+
+### 全新安裝個人系統
+
+```bash
+# 1. 創建資料庫結構
+mysql -u root -p < mysql/personal/schema/schema.sql
+
+# 2. 創建管理員帳號
+mysql -u root -p qa_tracker < mysql/personal/setup/personal-admin-setup.sql
+
+# 3. 配置權限
+mysql -u root -p qa_tracker < mysql/personal/permissions/personal-permissions.sql
+```
 
 ### 全新安裝教會系統
 
 ```bash
 # 1. 創建資料庫
-mysql -u root -p < mysql/create-church-db.sql
+mysql -u root -p < mysql/church/setup/create-church-db.sql
 
 # 2. 創建基礎表結構
-mysql -u root -p church < mysql/church-schema.sql
+mysql -u root -p church < mysql/church/schema/church-schema.sql
 
 # 3. 創建安全系統表
-mysql -u root -p church < mysql/church-security-tables.sql
+mysql -u root -p church < mysql/church/schema/church-security-tables.sql
 
 # 4. 創建崗位和人員管理表
-mysql -u root -p church < mysql/church-init.sql
+mysql -u root -p church < mysql/church/schema/church-init.sql
 
-# 5. 創建前台內容管理系統表格
-mysql -u root -p church < mysql/prayer-requests-schema.sql
-mysql -u root -p church < mysql/announcements-schema.sql
+# 5. 創建系統設定表
+mysql -u root -p church < mysql/church/schema/system-settings-schema.sql
 
-# 6. 配置前台內容管理系統權限
-mysql -u root -p church < mysql/prayer-requests-permissions.sql
-mysql -u root -p church < mysql/announcements-permissions.sql
-mysql -u root -p church < mysql/groups-public-permissions.sql
+# 6. 創建定時任務表
+mysql -u root -p church < mysql/church/schema/church-scheduled-jobs-schema.sql
 
-# 7. 配置簽到系統 URL 權限
-mysql -u root -p church < mysql/add-checkin-url-permissions.sql
+# 7. 配置權限
+mysql -u root -p church < mysql/church/permissions/church-permissions.sql
 
-# 8. 添加簽到系統後台菜單
-mysql -u root -p church < mysql/add-checkin-menu-items.sql
+# 8. 配置菜單
+mysql -u root -p church < mysql/church/menus/church-menus.sql
 
-# 9. 添加前台菜單（小組介紹、資訊服務等）
-mysql -u root -p church < mysql/add-frontend-menus.sql
+# 9. 創建管理員帳號
+mysql -u root -p church < mysql/church/setup/church-admin-setup.sql
 
-# 10. 添加後台管理菜單（代禱事項管理、公告管理）
-mysql -u root -p church < mysql/add-admin-menus.sql
+# 10. （可選）添加初始數據
+mysql -u root -p church < mysql/church/setup/church-data.sql
 
-# 11. 創建管理員帳號
-mysql -u root -p church < mysql/church-admin-setup.sql
+# 11. （可選）配置簽到系統
+mysql -u root -p church < mysql/church/features/checkin-system-complete-setup.sql
 ```
 
-### 更新現有系統
+### Docker Compose 自動初始化
 
-```bash
-# 執行遷移腳本（會自動檢查並應用必要的更新）
-mysql -u root -p church < mysql/church-migrations.sql
+使用 Docker Compose 時，以下檔案會自動執行（在容器首次啟動時）：
 
-# 如果新增了前台內容管理功能，執行以下 SQL：
-mysql -u root -p church < mysql/prayer-requests-schema.sql
-mysql -u root -p church < mysql/announcements-schema.sql
-mysql -u root -p church < mysql/prayer-requests-permissions.sql
-mysql -u root -p church < mysql/announcements-permissions.sql
-mysql -u root -p church < mysql/groups-public-permissions.sql
-mysql -u root -p church < mysql/add-frontend-menus.sql
-mysql -u root -p church < mysql/add-admin-menus.sql
-```
+- `mysql/personal/schema/schema.sql` → `/docker-entrypoint-initdb.d/01-schema.sql`
+- `mysql/church/schema/church-schema.sql` → `/docker-entrypoint-initdb.d/02-church-schema.sql`
 
-### 檢查系統狀態
+其他檔案需要手動執行或通過應用程式初始化。
 
-```bash
-# 檢查前台菜單
-mysql -u root -p church < check-frontend-menus.sql
+## 📝 檔案整合說明
 
-# 檢查用戶表
-mysql -u root -p church < mysql/check-and-update-users-table.sql
-```
+為了減少檔案數量並提高可維護性，以下檔案已整合：
+
+### 整合的 Permissions 檔案
+
+- **`church/permissions/church-permissions.sql`** 整合了：
+  - 代禱事項權限配置
+  - 公告權限配置
+  - 小組公開 API 權限配置
+
+- **`personal/permissions/personal-permissions.sql`** 整合了：
+  - 資料庫權限授予
+  - 定時任務 URL 權限
+
+### 整合的 Schema 檔案
+
+- **`church/schema/church-schema.sql`** 已整合：
+  - 代禱事項表結構（prayer_requests）
+  - 公告表結構（announcements）
+
+### 整合的 Menus 檔案
+
+- **`church/menus/church-menus.sql`** 整合了：
+  - 前台菜單配置
+  - 後台管理菜單配置
+
+## 🔍 檢查和診斷
+
+診斷工具位於 `diagnostics/` 目錄，包含：
+
+- 各種檢查和診斷 SQL 腳本
+- 清理工具
+- 系統狀態檢查
+
+詳細說明請參考 `diagnostics/README.md`
 
 ## 📌 注意事項
 
-1. **執行順序很重要**：請按照上述順序執行初始化文件
-2. **備份資料庫**：執行任何 SQL 文件前，請先備份資料庫
-3. **遷移腳本**：`church-migrations.sql` 可以安全地多次執行
-4. **數據腳本**：使用 `ON DUPLICATE KEY UPDATE`，不會重複插入數據
-5. **後台菜單 URL 格式**：後台菜單的 URL 不包含 `/admin` 前綴，因為後台路由的 base path 是 `/church-admin/`
+1. **執行順序很重要**：請按照上述順序執行初始化檔案
+2. **備份資料庫**：執行任何 SQL 檔案前，請先備份資料庫
+3. **整合檔案**：所有整合檔案使用 `INSERT IGNORE`，可以安全地重複執行
+4. **後台菜單 URL 格式**：後台菜單的 URL 不包含 `/admin` 前綴，因為後台路由的 base path 是 `/church-admin/`
+
+## 🗑️ 已移除的檔案
+
+以下檔案已整合到其他檔案中，不再需要：
+
+- `migrations/` 資料夾（歷史遷移檔案，已刪除）
+- 所有 `add-*.sql`、`migrate-*.sql` 等歷史變更檔案（已刪除）
+- 已整合的 permissions、schema、menus 檔案（已整合到對應的整合檔案中）

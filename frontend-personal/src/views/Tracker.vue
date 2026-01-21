@@ -1264,17 +1264,19 @@ const importSelectedGitlabIssues = async () => {
       
       // 檢查是否已存在相同 issue_number 的記錄
       try {
-        const checkParams = { issueNumber: iid, page: 0, size: 1 }
+        const checkParams = { issueNumber: iid, page: 0, size: 1000 } // 查詢所有相同 issueNumber 的記錄
         const checkResponse = await apiService.getRecords(checkParams)
         if (checkResponse.content && checkResponse.content.length > 0) {
-          const existingRecord = checkResponse.content[0]
-          // 如果現有資料的 bugFound != 1，則略過匯入
-          if (existingRecord.bugFound !== 1 && existingRecord.bugFound !== '1') {
-            console.log(`Issue ${iid} 已存在且 bugFound!=1，略過匯入`)
+          // 檢查是否有一筆記錄的 bugFound != 1
+          const hasBugFoundNotOne = checkResponse.content.some(record => 
+            record.bugFound !== 1 && record.bugFound !== '1'
+          )
+          if (hasBugFoundNotOne) {
+            console.log(`Issue ${iid} 已存在且其中一筆 bugFound!=1，略過匯入`)
             skippedCount++
             continue
           }
-          // 如果 bugFound = 1，則繼續匯入（新增一筆資料）
+          // 如果所有記錄的 bugFound = 1，則繼續匯入（新增一筆資料）
         }
       } catch (err) {
         console.error('檢查記錄失敗:', err)
