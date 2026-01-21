@@ -241,9 +241,7 @@
       </div>
     </main>
 
-    <div v-if="notification.show" class="notification" :class="notification.type">
-      {{ notification.message }}
-    </div>
+    <!-- 通知已移至全局 ToastHost -->
   </div>
   </AdminLayout>
 </template>
@@ -253,6 +251,7 @@ import AdminLayout from '@/components/AdminLayout.vue'
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { apiService } from '@/composables/useApi'
+import { toast } from '@shared/composables/useToast'
 
 const route = useRoute()
 const activeTab = ref(route.query.tab || 'settings')
@@ -262,7 +261,7 @@ const creatingBackup = ref(false)
 const refreshingConfig = ref(false)
 const savingSettings = ref(new Set())
 const savedSettings = ref(new Set())
-const notification = ref({ show: false, message: '', type: 'success' })
+// notification 已改用全局 toast 系統
 
 // Remote additions for create
 const showCreateModal = ref(false)
@@ -284,10 +283,7 @@ const testMessage = ref({
   message: ''
 })
 
-const showNotification = (message, type = 'success') => {
-  notification.value = { show: true, message, type }
-  setTimeout(() => { notification.value.show = false }, 3000)
-}
+// showNotification 已改用全局 toast 系統
 
 const categories = computed(() => {
   const cats = new Set(settings.value.map(s => s.category))
@@ -315,7 +311,7 @@ const loadSettings = async () => {
       settings.value = data.settings
     }
   } catch (err) {
-    showNotification('載入系統參數失敗: ' + err.message, 'error')
+    toast.error('載入系統參數失敗: ' + err.message)
   }
 }
 
@@ -333,12 +329,12 @@ const saveSetting = async (setting) => {
       setTimeout(() => {
         savedSettings.value.delete(setting.settingKey)
       }, 2000)
-      showNotification('設定已儲存', 'success')
+      toast.success('設定已儲存')
     } else {
-      showNotification(response?.message || '儲存失敗', 'error')
+      toast.error(response?.message || '儲存失敗')
     }
   } catch (err) {
-    showNotification('儲存失敗: ' + err.message, 'error')
+    toast.error('儲存失敗: ' + err.message)
   } finally {
     savingSettings.value.delete(setting.settingKey)
   }
@@ -351,7 +347,7 @@ const createSetting = async () => {
     const data = await apiService.createSystemSetting(newSetting.value)
     
     if (data.success) {
-      showNotification('參數創建成功', 'success')
+      toast.success('參數創建成功')
       showCreateModal.value = false
       // 重置表單
       newSetting.value = {
@@ -364,10 +360,10 @@ const createSetting = async () => {
       }
       loadSettings()
     } else {
-      showNotification(data.message || '創建失敗', 'error')
+      toast.error(data.message || '創建失敗')
     }
   } catch (err) {
-    showNotification('創建失敗: ' + err.message, 'error')
+    toast.error('創建失敗: ' + err.message)
   } finally {
     creatingSetting.value = false
   }
@@ -375,7 +371,7 @@ const createSetting = async () => {
 
 const sendTestMessage = async () => {
   if (!testMessage.value.groupId || !testMessage.value.message) {
-    showNotification('請填寫群組 ID 和訊息內容', 'error')
+    toast.error('請填寫群組 ID 和訊息內容')
     return
   }
 
@@ -399,14 +395,14 @@ const sendTestMessage = async () => {
     const data = await response.json()
     
     if (response.ok && data.success) {
-      showNotification('測試訊息發送成功', 'success')
+      toast.success('測試訊息發送成功')
       showTestMessageModal.value = false
       testMessage.value.message = '' // 清空訊息，保留 Group ID 方便下次測試
     } else {
-      showNotification(data.message || '發送失敗', 'error')
+      toast.error(data.message || '發送失敗')
     }
   } catch (err) {
-    showNotification('發送失敗: ' + err.message, 'error')
+    toast.error('發送失敗: ' + err.message)
   } finally {
     sendingTestMessage.value = false
   }
@@ -421,13 +417,13 @@ const deleteSetting = async (settingKey) => {
     const data = await apiService.deleteSystemSetting(settingKey)
     
     if (data.success) {
-      showNotification('參數刪除成功', 'success')
+      toast.success('參數刪除成功')
       loadSettings()
     } else {
-      showNotification(data.message || '刪除失敗', 'error')
+      toast.error(data.message || '刪除失敗')
     }
   } catch (err) {
-    showNotification('刪除失敗: ' + err.message, 'error')
+    toast.error('刪除失敗: ' + err.message)
   }
 }
 
@@ -438,13 +434,13 @@ const refreshConfig = async () => {
     const response = await apiService.refreshSystemSettings()
     
     if (response && response.success) {
-      showNotification('配置刷新成功，新的配置已生效', 'success')
+      toast.success('配置刷新成功，新的配置已生效')
       loadSettings()
     } else {
-      showNotification(response?.message || '配置刷新失敗', 'error')
+      toast.error(response?.message || '配置刷新失敗')
     }
   } catch (err) {
-    showNotification('配置刷新失敗: ' + err.message, 'error')
+    toast.error('配置刷新失敗: ' + err.message)
   } finally {
     refreshingConfig.value = false
   }
@@ -457,7 +453,7 @@ const loadBackups = async () => {
       backups.value = data.backups
     }
   } catch (err) {
-    showNotification('載入備份列表失敗: ' + err.message, 'error')
+    toast.error('載入備份列表失敗: ' + err.message)
   }
 }
 
@@ -472,13 +468,13 @@ const createBackup = async () => {
     const response = await apiService.createBackup()
     
     if (response && response.success) {
-      showNotification('備份創建成功', 'success')
+      toast.success('備份創建成功')
       loadBackups()
     } else {
-      showNotification(response?.message || '備份創建失敗', 'error')
+      toast.error(response?.message || '備份創建失敗')
     }
   } catch (err) {
-    showNotification('備份創建失敗: ' + err.message, 'error')
+    toast.error('備份創建失敗: ' + err.message)
   } finally {
     creatingBackup.value = false
   }
@@ -505,12 +501,12 @@ const downloadBackup = async (relativePath) => {
       a.click()
       window.URL.revokeObjectURL(downloadUrl)
       document.body.removeChild(a)
-      showNotification('備份檔案下載開始', 'success')
+      toast.success('備份檔案下載開始')
     } else {
-      showNotification('下載失敗', 'error')
+      toast.error('下載失敗')
     }
   } catch (err) {
-    showNotification('下載失敗: ' + err.message, 'error')
+    toast.error('下載失敗: ' + err.message)
   }
 }
 
@@ -524,13 +520,13 @@ const deleteBackup = async (relativePath) => {
     const response = await apiService.deleteBackup(relativePath)
     
     if (response && response.success) {
-      showNotification('備份檔案刪除成功', 'success')
+      toast.success('備份檔案刪除成功')
       loadBackups()
     } else {
-      showNotification(response?.message || '刪除失敗', 'error')
+      toast.error(response?.message || '刪除失敗')
     }
   } catch (err) {
-    showNotification('刪除失敗: ' + err.message, 'error')
+    toast.error('刪除失敗: ' + err.message)
   }
 }
 

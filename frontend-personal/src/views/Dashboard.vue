@@ -55,6 +55,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import TopNavbar from '@/components/TopNavbar.vue'
 import { apiService } from '@/composables/useApi'
+import { toast } from '@shared/composables/useToast'
 
 const router = useRouter()
 
@@ -110,8 +111,10 @@ const checkBackendStatus = async () => {
 const loadMenus = async () => {
   try {
     menus.value = await apiService.getMenus()
+    // Dashboard 的菜單載入不需要提示（避免打擾）
   } catch (error) {
     console.error('載入菜單失敗:', error)
+    toast.error('載入菜單失敗')
   }
 }
 

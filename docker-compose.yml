@@ -64,8 +64,8 @@ services:
   # 個人網站前端
   frontend-personal:
     build:
-      context: ./frontend-personal
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./frontend-personal/Dockerfile
     container_name: vue_personal
     # 移除對外端口，由 nginx 反向代理處理
     # ports:
@@ -90,8 +90,8 @@ services:
   # 教會網站前端
   frontend-church:
     build:
-      context: ./frontend-church
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./frontend-church/Dockerfile
     container_name: vue_frontend_church
     # 移除對外端口，由 nginx 反向代理處理
     depends_on:
@@ -114,8 +114,8 @@ services:
   # 教會後台管理系統前端
   frontend-church-admin:
     build:
-      context: ./frontend-church-admin
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./frontend-church-admin/Dockerfile
     container_name: vue_frontend_church_admin
     # 移除對外端口，由 nginx 反向代理處理
     depends_on:

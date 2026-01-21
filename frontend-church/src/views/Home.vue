@@ -71,7 +71,7 @@
               <h3 class="card__title h3">{{ announcement.title }}</h3>
 
               <p class="muted" style="margin-top:10px; margin-bottom:0">
-                {{ truncateText(announcement.content, 100) }}
+                <TruncatedText :text="announcement.content" :max-length="100" />
               </p>
 
               <div v-if="announcement.expireDate" style="margin-top:12px">
@@ -107,7 +107,7 @@
               <h3 class="card__title h3">{{ prayer.title }}</h3>
 
               <p class="muted" style="margin-top:10px; margin-bottom:0">
-                {{ truncateText(prayer.content, 100) }}
+                <TruncatedText :text="prayer.content" :max-length="100" />
               </p>
             </div>
           </article>
@@ -166,6 +166,7 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import TruncatedText from '@/components/TruncatedText.vue'
 import { apiRequest } from '@/utils/api'
 
 const churchInfo = ref(null)
@@ -221,11 +222,7 @@ const urgentPrayerRequests = computed(() => {
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
 })
 
-const truncateText = (text, maxLength) => {
-  if (!text) return ''
-  if (text.length <= maxLength) return text
-  return text.substring(0, maxLength) + '...'
-}
+// truncateText 函數已由 TruncatedText 元件取代
 
 const formatActivityTime = (startTime, endTime) => {
   if (startTime && endTime) {

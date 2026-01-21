@@ -185,7 +185,7 @@
 </template>
 
 <script setup>
-import { toast } from '@/composables/useToast'
+import { toast } from '@shared/composables/useToast'
 import { ref, computed, onMounted, watch } from 'vue'
 import AdminLayout from '@/components/AdminLayout.vue'
 import GroupModal from '@/components/GroupModal.vue'
@@ -212,6 +212,9 @@ const totalPages = ref(1)
 
 // 過濾後的列表
 const filteredList = computed(() => {
+  if (!groups.value || !Array.isArray(groups.value)) {
+    return []
+  }
   let filtered = [...groups.value]
   
   if (filters.value.groupName) {
@@ -325,7 +328,19 @@ const loadGroups = async () => {
     
     if (response.ok) {
       const data = await response.json()
-      groups.value = data.groups || data.content || data || []
+      // 處理多種可能的數據結構
+      let groupsData = []
+      if (data.groups) {
+        groupsData = data.groups
+      } else if (data.content) {
+        groupsData = data.content
+      } else if (data.data) {
+        groupsData = data.data
+      } else if (Array.isArray(data)) {
+        groupsData = data
+      }
+      
+      groups.value = Array.isArray(groupsData) ? groupsData : []
       // 更新分頁信息
       if (data.totalElements !== undefined) {
         totalRecords.value = data.totalElements
@@ -344,10 +359,17 @@ const loadGroups = async () => {
         jumpPage.value = 1
       }
       // 成員數量已經在後端查詢時包含，不需要逐一查詢
+      toast.success(`載入成功，共 ${totalRecords.value} 個小組`)
+    } else {
+      // 確保即使 API 失敗，列表也是空陣列
+      groups.value = []
+      toast.error('載入小組失敗')
     }
   } catch (error) {
     console.error('載入小組失敗:', error)
-    toast.error('載入小組失敗', '錯誤')
+    // 確保即使發生錯誤，列表也是空陣列
+    groups.value = []
+    toast.error('載入小組失敗')
   }
 }
 
@@ -371,7 +393,7 @@ const editGroup = async (id) => {
     }
   } catch (error) {
     console.error('載入小組詳情失敗:', error)
-    toast.error('載入小組詳情失敗', '錯誤')
+    toast.error('載入小組詳情失敗')
   }
 }
 
@@ -383,7 +405,7 @@ const closeModal = () => {
 const handleSaved = () => {
   loadGroups()
   closeModal()
-  toast.success('操作成功', '成功')
+  toast.success('操作成功')
 }
 
 const deleteGroup = async (id) => {
@@ -397,11 +419,11 @@ const deleteGroup = async (id) => {
       credentials: 'include'
     }, '刪除中...', true)
     
-    toast.success('刪除成功', '成功')
+    toast.success('刪除成功')
     loadGroups()
   } catch (error) {
     console.error('刪除小組失敗:', error)
-    toast.error('刪除小組失敗', '錯誤')
+    toast.error('刪除小組失敗')
   }
 }
 

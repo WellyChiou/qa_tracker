@@ -79,7 +79,7 @@
 </template>
 
 <script setup>
-import { toast } from '@/composables/useToast'
+import { toast } from '@shared/composables/useToast'
 import { ref, onMounted, watch } from 'vue'
 import { apiRequest } from '@/utils/api'
 import CreatePersonModal from './CreatePersonModal.vue'

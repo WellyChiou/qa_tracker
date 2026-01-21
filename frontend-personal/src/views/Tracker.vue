@@ -494,9 +494,7 @@
       </div>
     </div>
 
-    <div v-if="notification.show" class="notification" :class="notification.type">
-      {{ notification.message }}
-    </div>
+    <!-- 通知已移至全局 ToastHost -->
   </div>
 </template>
 
@@ -505,6 +503,7 @@ import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import DateRangePicker from '@/components/DateRangePicker.vue'
 import TopNavbar from '@/components/TopNavbar.vue'
 import { apiService } from '@/composables/useApi'
+import { toast } from '@shared/composables/useToast'
 import * as XLSX from 'xlsx'
 
 const records = ref([])
@@ -573,11 +572,7 @@ const filters = ref({
   etaDateRange: [] // [startDate, endDate] 格式為 'YYYY-MM-DD'
 })
 
-const notification = ref({
-  show: false,
-  message: '',
-  type: 'success'
-})
+// notification 已改用全局 toast 系統
 
 const inProgressCount = ref(0) // 查詢結果中執行中的數量
 const completedCount = ref(0) // 查詢結果中已完成的數量
@@ -627,11 +622,17 @@ const formatDate = (dateStr) => {
   return new Date(dateStr).toLocaleDateString('zh-TW')
 }
 
+// showNotification 已改用全局 toast 系統
 const showNotification = (message, type = 'success') => {
-  notification.value = { show: true, message, type }
-  setTimeout(() => {
-    notification.value.show = false
-  }, 3000)
+  if (type === 'error') {
+    toast.error(message)
+  } else if (type === 'warning') {
+    toast.warning(message)
+  } else if (type === 'info') {
+    toast.info(message)
+  } else {
+    toast.success(message)
+  }
 }
 
 // 載入年度統計（總記錄數、執行中、已完成）
@@ -709,16 +710,17 @@ const loadRecords = async () => {
 
     // 載入年度統計（總記錄數、執行中、已完成）
     await loadYearlyStats(selectedYear.value, false)
+    toast.success(`載入成功，共 ${totalRecords.value} 筆記錄`)
   } catch (error) {
     console.error('載入記錄失敗:', error)
-    showNotification('載入記錄失敗', 'error')
+    toast.error('載入記錄失敗')
   }
 }
 
 
 const handleSubmit = async () => {
   if (!form.value.issueNumber) {
-    showNotification('請填寫 Issue Number', 'error')
+    toast.error('請填寫 Issue Number')
     return
   }
   
@@ -731,17 +733,18 @@ const handleSubmit = async () => {
     
     if (editingId.value) {
       await apiService.updateRecord(editingId.value, recordData)
-      showNotification('記錄已更新', 'success')
+      closeModal()
+      toast.success('記錄已更新')
+      await loadRecords()
     } else {
       await apiService.createRecord(recordData)
-      showNotification('記錄已新增', 'success')
+      closeModal()
+      toast.success('記錄已新增')
+      await loadRecords()
     }
-    
-    closeModal()
-    await loadRecords()
   } catch (error) {
     console.error('儲存失敗:', error)
-    showNotification('儲存失敗: ' + error.message, 'error')
+    toast.error('儲存失敗: ' + error.message)
   }
 }
 
@@ -1027,7 +1030,7 @@ const exportExcel = async () => {
 const editRecord = async (id) => {
   const record = records.value.find(r => r.id === id)
   if (!record) {
-    showNotification('找不到要編輯的記錄', 'error')
+    toast.error('找不到要編輯的記錄')
     return
   }
   
@@ -1059,11 +1062,11 @@ const deleteRecord = async (id) => {
   
   try {
     await apiService.deleteRecord(id)
-    showNotification('記錄已刪除', 'success')
+    toast.success('記錄已刪除')
     await loadRecords()
   } catch (error) {
     console.error('刪除失敗:', error)
-    showNotification('刪除失敗', 'error')
+    toast.error('刪除失敗')
   }
 }
 

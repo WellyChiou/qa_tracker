@@ -118,7 +118,7 @@
 </template>
 
 <script setup>
-import { toast } from '@/composables/useToast'
+import { toast } from '@shared/composables/useToast'
 import { ref, watch, onMounted, nextTick } from 'vue'
 import { apiRequest } from '@/utils/api'
 

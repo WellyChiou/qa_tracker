@@ -102,7 +102,9 @@
                 <td>{{ submission.name }}</td>
                 <td>{{ submission.email }}</td>
                 <td>{{ submission.phone || '-' }}</td>
-                <td class="message-preview">{{ (submission.message || '').substring(0, 50) }}{{ (submission.message || '').length > 50 ? '...' : '' }}</td>
+                <td class="message-preview">
+                  <TruncatedText :text="submission.message" :max-length="50" />
+                </td>
                 <td>{{ formatDateTime(submission.submittedAt || submission.createdAt) }}</td>
                 <td>
                   <span :class="submission.isRead ? 'status-read' : 'status-unread'">
@@ -201,9 +203,10 @@
 </template>
 
 <script setup>
-import { toast } from '@/composables/useToast'
+import { toast } from '@shared/composables/useToast'
 import { ref, computed, onMounted, watch } from 'vue'
 import AdminLayout from '@/components/AdminLayout.vue'
+import TruncatedText from '@/components/TruncatedText.vue'
 import { apiRequest } from '@/utils/api'
 
 const submissionsList = ref([])
@@ -327,6 +330,10 @@ const loadSubmissions = async () => {
         // 同步 jumpPage 與 currentPage
         jumpPage.value = currentPage.value
       }
+      toast.success(`載入成功，共 ${totalRecords.value} 筆聯絡表單`)
+    } else {
+      submissionsList.value = []
+      toast.error('載入聯絡表單失敗')
     }
     
     if (statsRes.ok) {

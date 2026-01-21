@@ -1,6 +1,11 @@
 /* =========================================================
    Global UI Tokens (Admin + Public)
    ========================================================= */
+
+/* 引用共用樣式（Toast 樣式已在 components.css 中） */
+@import url('../shared/styles/variables.css');
+@import url('../shared/styles/utilities.css');
+@import url('../shared/styles/components.css');
 :root{
   --bg:#f6f7fb;
   --surface:#ffffff;

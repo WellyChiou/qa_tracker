@@ -280,7 +280,7 @@
 </template>
 
 <script setup>
-import { toast } from '@/composables/useToast'
+import { toast } from '@shared/composables/useToast'
 import { ref, computed, onMounted, watch } from 'vue'
 import AdminLayout from '@/components/AdminLayout.vue'
 import UserModal from '@/components/UserModal.vue'
@@ -450,10 +450,19 @@ const resetFilters = () => {
   jumpPage.value = 1
 }
 
-// 監聽查詢條件變化，重置到第一頁
+// 過濾後的用戶列表（用於顯示）
+const filteredList = computed(() => {
+  if (!users.value || !Array.isArray(users.value)) {
+    return []
+  }
+  return users.value
+})
+
+// 監聽查詢條件變化，重置到第一頁並重新載入
 watch(() => [filters.value.username, filters.value.email, filters.value.roleId, filters.value.isEnabled], () => {
   currentPage.value = 1
   jumpPage.value = 1
+  loadUsers()
 })
 
 // 監聽每頁筆數變化，重置到第一頁並重新載入
@@ -465,7 +474,26 @@ watch(recordsPerPage, () => {
 
 const loadUsers = async () => {
   try {
-    const url = `/church/admin/users?page=${currentPage.value - 1}&size=${recordsPerPage.value}`
+    // 構建查詢參數
+    const params = new URLSearchParams({
+      page: (currentPage.value - 1).toString(),
+      size: recordsPerPage.value.toString()
+    })
+    
+    if (filters.value.username) {
+      params.append('username', filters.value.username)
+    }
+    if (filters.value.email) {
+      params.append('email', filters.value.email)
+    }
+    if (filters.value.roleId) {
+      params.append('roleId', filters.value.roleId)
+    }
+    if (filters.value.isEnabled !== '') {
+      params.append('isEnabled', filters.value.isEnabled.toString())
+    }
+    
+    const url = `/church/admin/users?${params.toString()}`
     const response = await apiRequest(url, {
       method: 'GET',
       credentials: 'include'
@@ -473,7 +501,9 @@ const loadUsers = async () => {
     
     if (response.ok) {
       const data = await response.json()
-      users.value = data.users || data.content || data || []
+      // 確保 users.value 是陣列
+      const usersData = data.users || data.content || data || []
+      users.value = Array.isArray(usersData) ? usersData : []
       // 更新分頁信息
       if (data.totalElements !== undefined) {
         totalRecords.value = data.totalElements
@@ -491,9 +521,13 @@ const loadUsers = async () => {
         currentPage.value = 1
         jumpPage.value = 1
       }
+      toast.success(`載入成功，共 ${totalRecords.value} 位用戶`)
+    } else {
+      toast.error('載入用戶失敗')
     }
   } catch (error) {
     console.error('載入用戶失敗:', error)
+    toast.error('載入用戶失敗: ' + (error.message || '未知錯誤'))
   }
 }
 
@@ -507,9 +541,12 @@ const loadRoles = async () => {
     if (response.ok) {
       const data = await response.json()
       availableRoles.value = data.roles || data || []
+    } else {
+      toast.error('載入角色失敗')
     }
   } catch (error) {
     console.error('載入角色失敗:', error)
+    toast.error('載入角色失敗: ' + (error.message || '未知錯誤'))
   }
 }
 
@@ -523,9 +560,12 @@ const loadPermissions = async () => {
     if (response.ok) {
       const data = await response.json()
       availablePermissions.value = data.permissions || data || []
+    } else {
+      toast.error('載入權限失敗')
     }
   } catch (error) {
     console.error('載入權限失敗:', error)
+    toast.error('載入權限失敗: ' + (error.message || '未知錯誤'))
   }
 }
 

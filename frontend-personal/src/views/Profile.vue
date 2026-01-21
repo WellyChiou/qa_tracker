@@ -262,6 +262,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useAuth } from '@/composables/useAuth'
 import { apiService } from '@/composables/useApi'
+import { toast } from '@shared/composables/useToast'
 
 // 響應式數據
 const user = ref(null)
@@ -305,7 +306,7 @@ const loadUserProfile = async () => {
     }
   } catch (error) {
     console.error('載入用戶資料失敗:', error)
-    alert('載入用戶資料失敗，請稍後再試')
+    toast.error('載入用戶資料失敗，請稍後再試')
   } finally {
     loading.value = false
   }

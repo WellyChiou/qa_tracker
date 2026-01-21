@@ -278,9 +278,7 @@
     <!-- 交易費用配置 Modal -->
     <TradingFeesConfigModal v-if="showTradingFeesModal" @close="hideTradingFeesConfig" />
 
-    <div v-if="notification.show" class="notification" :class="notification.type">
-      {{ notification.message }}
-    </div>
+    <!-- 通知已移至全局 ToastHost -->
   </div>
 </template>
 
@@ -288,6 +286,7 @@
 import { ref, computed, onMounted, watch, onUnmounted, nextTick } from 'vue'
 import TopNavbar from '@/components/TopNavbar.vue'
 import { apiService } from '@/composables/useApi'
+import { toast } from '@shared/composables/useToast'
 import ChartsModal from './expenses/ChartsModal.vue'
 import ExchangeRateModal from './expenses/ExchangeRateModal.vue'
 import AssetPortfolioModal from './expenses/AssetPortfolioModal.vue'
@@ -327,11 +326,7 @@ const filters = ref({
   mainCategory: ''
 })
 
-const notification = ref({
-  show: false,
-  message: '',
-  type: 'success'
-})
+// notification 已改用全局 toast 系統
 
 // 根據類型過濾類別
 const mainCategories = computed(() => {
@@ -499,14 +494,20 @@ const formatDate = (dateStr) => {
   return new Date(dateStr).toLocaleDateString('zh-TW')
 }
 
+// showNotification 已改用全局 toast 系統
 const showNotification = (message, type = 'success') => {
-  notification.value = { show: true, message, type }
-  setTimeout(() => {
-    notification.value.show = false
-  }, 3000)
+  if (type === 'error') {
+    toast.error(message)
+  } else if (type === 'warning') {
+    toast.warning(message)
+  } else if (type === 'info') {
+    toast.info(message)
+  } else {
+    toast.success(message)
+  }
 }
 
-const loadRecords = async () => {
+const loadRecords = async (silent = false) => {
   try {
     // 載入分頁數據
     const params = {
@@ -580,9 +581,13 @@ const loadRecords = async () => {
       description: expense.description,
       createdAt: expense.createdAt || expense.created_at || null
     }))
+    // 只在非靜默載入時顯示通知（避免在更新/新增後顯示兩次通知）
+    if (!silent) {
+      toast.success(`載入成功，共 ${totalRecords.value} 筆記錄`)
+    }
   } catch (error) {
     console.error('載入記錄失敗:', error)
-    showNotification('載入記錄失敗', 'error')
+    toast.error('載入記錄失敗')
   }
 }
 
@@ -614,17 +619,18 @@ const handleSubmit = async () => {
     
     if (editingId.value) {
       await apiService.updateExpense(editingId.value, expenseData)
-      showNotification('記錄已更新', 'success')
+      toast.success('記錄已更新')
+      closeModal()
+      await loadRecords(true) // 靜默載入，避免顯示兩次通知
     } else {
       await apiService.createExpense(expenseData)
-      showNotification('記錄已新增', 'success')
+      toast.success('記錄已新增')
+      closeModal()
+      await loadRecords(true) // 靜默載入，避免顯示兩次通知
     }
-    
-    closeModal()
-    await loadRecords()
   } catch (error) {
     console.error('儲存失敗:', error)
-    showNotification('儲存失敗: ' + error.message, 'error')
+    toast.error('儲存失敗: ' + error.message)
   }
 }
 
@@ -635,7 +641,7 @@ const editRecord = async (id) => {
   }
   const record = records.value.find(r => r.id === id)
   if (!record) {
-    showNotification('找不到要編輯的記錄', 'error')
+    toast.error('找不到要編輯的記錄')
     return
   }
   
@@ -668,7 +674,7 @@ const copyRecord = async (id) => {
   }
   const record = records.value.find(r => r.id === id || r.id === Number(id))
   if (!record) {
-    showNotification('找不到要複製的記錄', 'error')
+    toast.error('找不到要複製的記錄')
     return
   }
   
@@ -690,7 +696,7 @@ const copyRecord = async (id) => {
       form.value.description = record.description || ''
       
       showModal.value = true
-      showNotification('記錄已複製到表單', 'success')
+      toast.success('記錄已複製到表單')
     })
   })
 }
@@ -703,11 +709,11 @@ const deleteRecord = async (id) => {
   try {
     const recordId = typeof id === 'string' ? (isNaN(id) ? id : Number(id)) : id
     await apiService.deleteExpense(recordId)
-    showNotification('記錄已刪除', 'success')
+    toast.success('記錄已刪除')
     await loadRecords()
   } catch (error) {
     console.error('刪除失敗:', error)
-    showNotification('刪除失敗', 'error')
+    toast.error('刪除失敗')
   }
 }
 

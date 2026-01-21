@@ -14,7 +14,6 @@
       <div class="container">
         <!-- Modals / Notification (keep logic untouched) -->
         <PositionManagementModal :show="showPositionManagement" @close="closePositionManagement" />
-        <Notification ref="notificationRef" />
 
         <div class="two-col">
           <!-- 本週服事（重點呈現，閱讀優先） -->
@@ -207,8 +206,8 @@ import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import DateRangePicker from '@/components/DateRangePicker.vue'
 import PositionManagementModal from '@/components/PositionManagementModal.vue'
 import ServiceScheduleModal from '@/components/ServiceScheduleModal.vue'
-import Notification from '@/components/Notification.vue'
 import { apiRequest } from '@/utils/api'
+import { toast } from '@shared/composables/useToast'
 
 // 崗位人員配置（從新的 API 載入）
 const positionConfig = ref({})
@@ -359,13 +358,17 @@ const useRandomAssignment = ref(false) // 是否使用完全隨機分配（不�
 // 當前載入的服事表年度
 const currentScheduleYear = ref(null)
 
-// 通知組件引用
-const notificationRef = ref(null)
-
-// 顯示通知的輔助函數
+// 顯示通知（使用共用 Toast 系統）
 const showNotification = (message, type = 'info', duration = 3000) => {
-  if (notificationRef.value) {
-    notificationRef.value.showNotification(message, type, duration)
+  const opts = duration > 0 ? { duration } : {}
+  if (type === 'success') {
+    toast.success(message, '成功', opts)
+  } else if (type === 'error') {
+    toast.error(message, '錯誤', opts)
+  } else if (type === 'warning') {
+    toast.warning(message, '提醒', opts)
+  } else {
+    toast.info(message, '提示', opts)
   }
 }
 

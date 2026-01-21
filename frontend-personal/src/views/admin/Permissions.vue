@@ -92,9 +92,7 @@
       </div>
     </div>
 
-    <div v-if="notification.show" class="notification" :class="notification.type">
-      {{ notification.message }}
-    </div>
+    <!-- 通知已移至全局 ToastHost -->
   </div>
   </AdminLayout>
 </template>
@@ -103,11 +101,12 @@
 import AdminLayout from '@/components/AdminLayout.vue'
 import { ref, onMounted } from 'vue'
 import { apiService } from '@/composables/useApi'
+import { toast } from '@shared/composables/useToast'
 
 const permissions = ref([])
 const showAddModal = ref(false)
 const editingPermission = ref(null)
-const notification = ref({ show: false, message: '', type: 'success' })
+// notification 已改用全局 toast 系統
 
 const form = ref({
   permissionCode: '',
@@ -120,8 +119,9 @@ const form = ref({
 const loadPermissions = async () => {
   try {
     permissions.value = await apiService.getPermissions()
+    toast.success(`載入成功，共 ${permissions.value.length} 個權限`)
   } catch (error) {
-    showNotification('載入權限失敗', 'error')
+    toast.error('載入權限失敗')
   }
 }
 
@@ -129,15 +129,15 @@ const handleSubmit = async () => {
   try {
     if (editingPermission.value) {
       await apiService.updatePermission(editingPermission.value.id, form.value)
-      showNotification('權限已更新', 'success')
+      toast.success('權限已更新')
     } else {
       await apiService.createPermission(form.value)
-      showNotification('權限已新增', 'success')
+      toast.success('權限已新增')
     }
     closeModal()
     await loadPermissions()
   } catch (error) {
-    showNotification(error.message || '操作失敗', 'error')
+    toast.error(error.message || '操作失敗')
   }
 }
 
@@ -156,10 +156,10 @@ const deletePermission = async (id) => {
   if (!confirm('確定要刪除這個權限嗎？')) return
   try {
     await apiService.deletePermission(id)
-    showNotification('權限已刪除', 'success')
+    toast.success('權限已刪除')
     await loadPermissions()
   } catch (error) {
-    showNotification('刪除失敗', 'error')
+    toast.error('刪除失敗')
   }
 }
 
@@ -175,10 +175,7 @@ const closeModal = () => {
   }
 }
 
-const showNotification = (message, type = 'success') => {
-  notification.value = { show: true, message, type }
-  setTimeout(() => { notification.value.show = false }, 3000)
-}
+// showNotification 已改用全局 toast 系統
 
 onMounted(loadPermissions)
 </script>

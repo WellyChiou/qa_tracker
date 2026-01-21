@@ -206,6 +206,7 @@ import AdminLayout from '@/components/AdminLayout.vue'
 import { ref, onMounted } from 'vue';
 import { Modal } from 'bootstrap';
 import { apiService } from '@/composables/useApi';
+import { toast } from '@shared/composables/useToast';
 
 // Data
 const groups = ref([]);
@@ -260,7 +261,7 @@ const fetchGroups = async () => {
     groups.value = await apiService.getLineGroups();
   } catch (error) {
     console.error('Failed to fetch groups', error);
-    alert('載入群組失敗');
+    toast.error('載入群組失敗');
   }
 };
 
@@ -284,10 +285,11 @@ const saveGroup = async () => {
       await apiService.createLineGroup(groupForm.value);
     }
     groupModal.hide();
+    toast.success(isEditingGroup.value ? '群組已更新' : '群組已新增');
     fetchGroups();
   } catch (error) {
     console.error('Failed to save group', error);
-    alert('儲存群組失敗: ' + (error.message || '未知錯誤'));
+    toast.error('儲存群組失敗: ' + (error.message || '未知錯誤'));
   }
 };
 
@@ -295,10 +297,11 @@ const deleteGroup = async (group) => {
   if (!confirm(`確定要刪除群組 ${group.groupName || group.groupId} 嗎？此操作無法復原。`)) return;
   try {
     await apiService.deleteLineGroup(group.groupId);
+    toast.success('群組已刪除');
     fetchGroups();
   } catch (error) {
     console.error('Failed to delete group', error);
-    alert('刪除群組失敗');
+    toast.error('刪除群組失敗');
   }
 };
 
@@ -310,7 +313,7 @@ const viewMembers = async (group) => {
     membersListModal.show();
   } catch (error) {
     console.error('Failed to fetch members', error);
-    alert('載入成員失敗');
+    toast.error('載入成員失敗');
   }
 };
 
@@ -341,9 +344,10 @@ const saveMember = async () => {
     }
     // Refresh groups to update member counts
     fetchGroups();
+    toast.success(isEditingMember.value ? '成員已更新' : '成員已新增');
   } catch (error) {
     console.error('Failed to save member', error);
-    alert('儲存成員失敗: ' + (error.message || '未知錯誤'));
+    toast.error('儲存成員失敗: ' + (error.message || '未知錯誤'));
   }
 };
 
@@ -362,9 +366,10 @@ const deleteMemberInModal = async (member) => {
     currentGroupMembers.value = await apiService.getLineGroupMembers(currentGroup.value.groupId);
     // Refresh groups to update member counts
     fetchGroups();
+    toast.success('成員已移除');
   } catch (error) {
     console.error('Failed to delete member', error);
-    alert('移除成員失敗');
+    toast.error('移除成員失敗');
   }
 };
 </script>

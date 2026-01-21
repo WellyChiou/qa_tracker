@@ -140,9 +140,7 @@
       </div>
     </div>
 
-    <div v-if="notification.show" class="notification" :class="notification.type">
-      {{ notification.message }}
-    </div>
+    <!-- 通知已移至全局 ToastHost -->
   </div>
   </AdminLayout>
 </template>
@@ -151,11 +149,12 @@
 import AdminLayout from '@/components/AdminLayout.vue'
 import { ref, onMounted } from 'vue'
 import { apiService } from '@/composables/useApi'
+import { toast } from '@shared/composables/useToast'
 
 const permissions = ref([])
 const showAddModal = ref(false)
 const editingPermission = ref(null)
-const notification = ref({ show: false, message: '', type: 'success' })
+// notification 已改用全局 toast 系統
 const availableRoles = ref([])
 const availablePermissions = ref([])
 
@@ -173,14 +172,16 @@ const form = ref({
 const loadPermissions = async () => {
   try {
     permissions.value = await apiService.getUrlPermissions()
+    toast.success(`載入成功，共 ${permissions.value.length} 個 URL 權限`)
   } catch (error) {
-    showNotification('載入 URL 權限失敗', 'error')
+    toast.error('載入 URL 權限失敗')
   }
 }
 
 const loadRoles = async () => {
   try {
     availableRoles.value = await apiService.getRoles()
+    // 載入角色是為了下拉選項，不需要提示（避免打擾）
   } catch (error) {
     console.error('載入角色列表失敗:', error)
   }
@@ -189,6 +190,7 @@ const loadRoles = async () => {
 const loadAvailablePermissions = async () => {
   try {
     availablePermissions.value = await apiService.getPermissions()
+    // 載入權限是為了下拉選項，不需要提示（避免打擾）
   } catch (error) {
     console.error('載入權限列表失敗:', error)
   }
@@ -201,15 +203,15 @@ const handleSubmit = async () => {
     
     if (editingPermission.value) {
       await apiService.updateUrlPermission(editingPermission.value.id, permissionData)
-      showNotification('URL 權限已更新', 'success')
+      toast.success('URL 權限已更新')
     } else {
       await apiService.createUrlPermission(permissionData)
-      showNotification('URL 權限已新增', 'success')
+      toast.success('URL 權限已新增')
     }
     closeModal()
     await loadPermissions()
   } catch (error) {
-    showNotification(error.message || '操作失敗', 'error')
+    toast.error(error.message || '操作失敗')
   }
 }
 
@@ -231,10 +233,10 @@ const deletePermission = async (id) => {
   if (!confirm('確定要刪除這個 URL 權限嗎？')) return
   try {
     await apiService.deleteUrlPermission(id)
-    showNotification('URL 權限已刪除', 'success')
+    toast.success('URL 權限已刪除')
     await loadPermissions()
   } catch (error) {
-    showNotification('刪除失敗', 'error')
+    toast.error('刪除失敗')
   }
 }
 
@@ -253,10 +255,7 @@ const closeModal = () => {
   }
 }
 
-const showNotification = (message, type = 'success') => {
-  notification.value = { show: true, message, type }
-  setTimeout(() => { notification.value.show = false }, 3000)
-}
+// showNotification 已改用全局 toast 系統
 
 onMounted(() => {
   loadPermissions()

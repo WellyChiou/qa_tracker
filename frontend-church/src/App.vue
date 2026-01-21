@@ -77,6 +77,7 @@
     </footer>
 
     <LoadingSpinner />
+    <ToastHost />
   </div>
 </template>
 
@@ -86,6 +87,7 @@ import { useRoute } from 'vue-router'
 import { useLoading } from '@/composables/useLoading'
 import { apiRequest } from '@/utils/api'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import ToastHost from '@shared/components/ToastHost.vue'
 
 const route = useRoute()
 

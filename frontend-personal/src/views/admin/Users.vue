@@ -238,9 +238,7 @@
       </div>
     </div>
 
-    <div v-if="notification.show" class="notification" :class="notification.type">
-      {{ notification.message }}
-    </div>
+    <!-- 通知已移至全局 ToastHost -->
   </div>
   </AdminLayout>
 </template>
@@ -249,6 +247,7 @@
 import AdminLayout from '@/components/AdminLayout.vue'
 import { ref, onMounted, computed } from 'vue'
 import { apiService } from '@/composables/useApi'
+import { toast } from '@shared/composables/useToast'
 
 const users = ref([])
 const showAddModal = ref(false)
@@ -388,7 +387,7 @@ const removeSelectedPermissions = () => {
   selectedPermissionIds.value = selectedPermissionIds.value.filter(id => !removeSet.has(id))
   tmpRemovePermissionIds.value = []
 }
-const notification = ref({ show: false, message: '', type: 'success' })
+// notification 已改用全局 toast 系統
 
 const form = ref({
   uid: '',
@@ -402,24 +401,27 @@ const form = ref({
 const loadUsers = async () => {
   try {
     users.value = await apiService.getUsers()
+    toast.success(`載入成功，共 ${users.value.length} 位用戶`)
   } catch (error) {
-    showNotification('載入用戶失敗', 'error')
+    toast.error('載入用戶失敗')
   }
 }
 
 const loadRoles = async () => {
   try {
     allRoles.value = await apiService.getRoles()
+    // 載入角色是為了下拉選項，不需要提示（避免打擾）
   } catch (error) {
-    showNotification('載入角色失敗', 'error')
+    toast.error('載入角色失敗')
   }
 }
 
 const loadPermissions = async () => {
   try {
     allPermissions.value = await apiService.getPermissions()
+    // 載入權限是為了下拉選項，不需要提示（避免打擾）
   } catch (error) {
-    showNotification('載入權限失敗', 'error')
+    toast.error('載入權限失敗')
   }
 }
 
@@ -437,7 +439,7 @@ const handleSubmit = async () => {
       delete userData.password
     } else if (!editingUser.value && !userData.password) {
       // 新增用戶時，密碼為必填
-      showNotification('請輸入密碼', 'error')
+      toast.error('請輸入密碼')
       return
     }
     
@@ -449,15 +451,15 @@ const handleSubmit = async () => {
     
     if (editingUser.value) {
       await apiService.updateUser(editingUser.value.uid, userData)
-      showNotification('用戶已更新', 'success')
+      toast.success('用戶已更新')
     } else {
       await apiService.createUser(userData)
-      showNotification('用戶已新增', 'success')
+      toast.success('用戶已新增')
     }
     closeModal()
     await loadUsers()
   } catch (error) {
-    showNotification(error.message || '操作失敗', 'error')
+    toast.error(error.message || '操作失敗')
   }
 }
 
@@ -477,10 +479,10 @@ const deleteUser = async (uid) => {
   if (!confirm('確定要刪除這個用戶嗎？')) return
   try {
     await apiService.deleteUser(uid)
-    showNotification('用戶已刪除', 'success')
+    toast.success('用戶已刪除')
     await loadUsers()
   } catch (error) {
-    showNotification('刪除失敗', 'error')
+    toast.error('刪除失敗')
   }
 }
 
@@ -506,11 +508,11 @@ const closeRolesModal = () => {
 const saveRoles = async () => {
   try {
     await apiService.updateUserRoles(selectedUser.value.uid, selectedRoleIds.value)
-    showNotification('角色已更新', 'success')
+    toast.success('角色已更新')
     closeRolesModal()
     await loadUsers()
   } catch (error) {
-    showNotification(error.message || '更新失敗', 'error')
+    toast.error(error.message || '更新失敗')
   }
 }
 
@@ -536,11 +538,11 @@ const closePermissionsModal = () => {
 const savePermissions = async () => {
   try {
     await apiService.updateUserPermissions(selectedUser.value.uid, selectedPermissionIds.value)
-    showNotification('權限已更新', 'success')
+    toast.success('權限已更新')
     closePermissionsModal()
     await loadUsers()
   } catch (error) {
-    showNotification(error.message || '更新失敗', 'error')
+    toast.error(error.message || '更新失敗')
   }
 }
 
@@ -557,10 +559,7 @@ const closeModal = () => {
   }
 }
 
-const showNotification = (message, type = 'success') => {
-  notification.value = { show: true, message, type }
-  setTimeout(() => { notification.value.show = false }, 3000)
-}
+// showNotification 已改用全局 toast 系統
 
 onMounted(() => {
   loadUsers()

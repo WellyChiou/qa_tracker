@@ -206,7 +206,7 @@
 </template>
 
 <script setup>
-import { toast } from '@/composables/useToast'
+import { toast } from '@shared/composables/useToast'
 import { ref, computed, onMounted, watch } from 'vue'
 import AdminLayout from '@/components/AdminLayout.vue'
 import { apiRequest } from '@/utils/api'
@@ -348,10 +348,18 @@ const loadAboutInfo = async () => {
           currentPage.value = 1
           jumpPage.value = 1
         }
+        toast.success(`載入成功，共 ${totalRecords.value} 筆資訊`)
+      } else {
+        aboutInfoList.value = []
+        toast.error('載入關於我們資訊失敗')
       }
+    } else {
+      aboutInfoList.value = []
+      toast.error('載入關於我們資訊失敗')
     }
   } catch (error) {
     console.error('載入關於我們資訊失敗:', error)
+    toast.error('載入關於我們資訊失敗: ' + error.message)
     toast.error('載入關於我們資訊失敗: ' + error.message)
   }
 }

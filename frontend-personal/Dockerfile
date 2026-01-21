@@ -4,14 +4,20 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # 複製 package 文件
-COPY package*.json ./
-COPY vite.config.js ./
+COPY frontend-personal/package*.json ./
+COPY frontend-personal/vite.config.js ./
 
 # 安裝依賴
 RUN npm install
 
-# 複製源代碼
-COPY . .
+# 複製源代碼（排除 node_modules，使用 .dockerignore）
+COPY frontend-personal/src ./src
+COPY frontend-personal/index.html ./
+COPY frontend-personal/public ./public
+COPY shared/ ./shared/
+
+# 確保 node_modules/.bin 有執行權限
+RUN chmod -R +x node_modules/.bin 2>/dev/null || true
 
 # 構建應用
 RUN npm run build
@@ -27,7 +33,7 @@ FROM nginx:stable
 COPY --from=builder /app/dist /usr/share/nginx/html
 
 # 複製 nginx 配置文件（支持 Vue Router history 模式）
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY frontend-personal/nginx.conf /etc/nginx/conf.d/default.conf
 
 # 暴露端口
 EXPOSE 80

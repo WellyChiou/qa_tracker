@@ -25,7 +25,9 @@
           <tr v-for="role in roles" :key="role.id">
             <td>{{ role.id }}</td>
             <td>{{ role.roleName }}</td>
-            <td>{{ role.description || '-' }}</td>
+            <td>
+              <TruncatedText :text="role.description" />
+            </td>
             <td>{{ role.permissions ? role.permissions.length : 0 }}</td>
             <td class="actions">
               <button class="btn-sm btn-edit" @click="editRole(role)">編輯</button>
@@ -138,17 +140,17 @@
       </div>
     </div>
 
-    <div v-if="notification.show" class="notification" :class="notification.type">
-      {{ notification.message }}
-    </div>
+    <!-- 通知已移至全局 ToastHost -->
   </div>
   </AdminLayout>
 </template>
 
 <script setup>
 import AdminLayout from '@/components/AdminLayout.vue'
+import TruncatedText from '@/components/TruncatedText.vue'
 import { ref, onMounted, computed } from 'vue'
 import { apiService } from '@/composables/useApi'
+import { toast } from '@shared/composables/useToast'
 
 const roles = ref([])
 const allPermissions = ref([])
@@ -228,7 +230,7 @@ const removeSelectedPermissions = () => {
   selectedPermissionIds.value = selectedPermissionIds.value.filter(id => !removeSet.has(id))
   tmpRemovePermissionIds.value = []
 }
-const notification = ref({ show: false, message: '', type: 'success' })
+// notification 已改用全局 toast 系統
 
 const form = ref({
   roleName: '',
@@ -238,16 +240,18 @@ const form = ref({
 const loadRoles = async () => {
   try {
     roles.value = await apiService.getRoles()
+    toast.success(`載入成功，共 ${roles.value.length} 個角色`)
   } catch (error) {
-    showNotification('載入角色失敗', 'error')
+    toast.error('載入角色失敗')
   }
 }
 
 const loadPermissions = async () => {
   try {
     allPermissions.value = await apiService.getPermissions()
+    // 載入權限是為了下拉選項，不需要提示（避免打擾）
   } catch (error) {
-    showNotification('載入權限失敗', 'error')
+    toast.error('載入權限失敗')
   }
 }
 
@@ -255,15 +259,15 @@ const handleSubmit = async () => {
   try {
     if (editingRole.value) {
       await apiService.updateRole(editingRole.value.id, form.value)
-      showNotification('角色已更新', 'success')
+      toast.success('角色已更新')
     } else {
       await apiService.createRole(form.value)
-      showNotification('角色已新增', 'success')
+      toast.success('角色已新增')
     }
     closeModal()
     await loadRoles()
   } catch (error) {
-    showNotification(error.message || '操作失敗', 'error')
+    toast.error(error.message || '操作失敗')
   }
 }
 
@@ -288,11 +292,11 @@ const editPermissions = async (role) => {
 const savePermissions = async () => {
   try {
     await apiService.updateRolePermissions(selectedRole.value.id, selectedPermissionIds.value)
-    showNotification('權限已更新', 'success')
+    toast.success('權限已更新')
     closePermissionsModal()
     await loadRoles()
   } catch (error) {
-    showNotification('更新權限失敗', 'error')
+    toast.error('更新權限失敗')
   }
 }
 
@@ -300,10 +304,10 @@ const deleteRole = async (id) => {
   if (!confirm('確定要刪除這個角色嗎？')) return
   try {
     await apiService.deleteRole(id)
-    showNotification('角色已刪除', 'success')
+    toast.success('角色已刪除')
     await loadRoles()
   } catch (error) {
-    showNotification('刪除失敗', 'error')
+    toast.error('刪除失敗')
   }
 }
 
@@ -321,10 +325,7 @@ const closePermissionsModal = () => {
   tmpRemovePermissionIds.value = []
 }
 
-const showNotification = (message, type = 'success') => {
-  notification.value = { show: true, message, type }
-  setTimeout(() => { notification.value.show = false }, 3000)
-}
+// showNotification 已改用全局 toast 系統
 
 onMounted(async () => {
   await loadRoles()

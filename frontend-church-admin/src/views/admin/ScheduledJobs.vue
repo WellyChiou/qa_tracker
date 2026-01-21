@@ -44,8 +44,8 @@
                   <code class="cron-code" :title="job.cronExpression">{{ job.cronExpression }}</code>
                 </div>
               </td>
-              <td class="col-desc" :title="job.description || '-'">
-                {{ job.description || '-' }}
+              <td class="col-desc">
+                <TruncatedText :text="job.description" />
               </td>
               <td class="col-enabled">
                 <span :class="job.enabled ? 'status-active' : 'status-inactive'">
@@ -217,9 +217,10 @@
 </template>
 
 <script setup>
-import { toast } from '@/composables/useToast'
+import { toast } from '@shared/composables/useToast'
 import { ref, onMounted, onUnmounted } from 'vue'
 import AdminLayout from '@/components/AdminLayout.vue'
+import TruncatedText from '@/components/TruncatedText.vue'
 import { apiRequest } from '@/utils/api'
 
 const jobs = ref([])
@@ -288,6 +289,7 @@ const loadJobs = async () => {
       for (const job of jobs.value) {
         await loadLatestExecution(job.id)
       }
+      toast.success(`載入成功，共 ${jobs.value.length} 個任務`)
     } else {
       throw new Error('載入任務失敗')
     }
@@ -780,30 +782,7 @@ onUnmounted(() => {
 :deep(.table th.col-exec), :deep(.table td.col-exec){ width: 18%; min-width: 180px; text-align: center; }
 :deep(.table th.col-actions), :deep(.table td.col-actions){ width: 15%; min-width: 220px; }
 
-/* Description: hover 漂浮效果（參考個人網站） */
-:deep(.table td.col-desc){
-  max-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  position: relative;
-  cursor: help;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-}
-
-:deep(.table td.col-desc):hover{
-  white-space: normal;
-  overflow: visible;
-  z-index: 10;
-  background: white;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  padding: 1rem;
-  border-radius: 0.5rem;
-  max-width: 400px;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-}
+/* 描述欄位樣式已移至 TruncatedText 元件 */
 
 /* Actions: two buttons per row */
 .action-grid{

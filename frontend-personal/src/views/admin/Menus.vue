@@ -121,9 +121,7 @@
       </div>
     </div>
 
-    <div v-if="notification.show" class="notification" :class="notification.type">
-      {{ notification.message }}
-    </div>
+    <!-- 通知已移至全局 ToastHost -->
   </div>
   </AdminLayout>
 </template>
@@ -132,11 +130,12 @@
 import AdminLayout from '@/components/AdminLayout.vue'
 import { ref, onMounted } from 'vue'
 import { apiService } from '@/composables/useApi'
+import { toast } from '@shared/composables/useToast'
 
 const menus = ref([])
 const showAddModal = ref(false)
 const editingMenu = ref(null)
-const notification = ref({ show: false, message: '', type: 'success' })
+// notification 已改用全局 toast 系統
 
 const form = ref({
   menuCode: '',
@@ -154,8 +153,9 @@ const form = ref({
 const loadMenus = async () => {
   try {
     menus.value = await apiService.getAllMenuItems()
+    toast.success(`載入成功，共 ${menus.value.length} 個菜單`)
   } catch (error) {
-    showNotification('載入菜單失敗', 'error')
+    toast.error('載入菜單失敗')
   }
 }
 
@@ -172,15 +172,15 @@ const handleSubmit = async () => {
     
     if (editingMenu.value) {
       await apiService.updateMenuItem(editingMenu.value.id, menuData)
-      showNotification('菜單已更新', 'success')
+      toast.success('菜單已更新')
     } else {
       await apiService.createMenuItem(menuData)
-      showNotification('菜單已新增', 'success')
+      toast.success('菜單已新增')
     }
     closeModal()
     await loadMenus()
   } catch (error) {
-    showNotification(error.message || '操作失敗', 'error')
+    toast.error(error.message || '操作失敗')
   }
 }
 
@@ -204,10 +204,10 @@ const deleteMenu = async (id) => {
   if (!confirm('確定要刪除這個菜單嗎？')) return
   try {
     await apiService.deleteMenuItem(id)
-    showNotification('菜單已刪除', 'success')
+    toast.success('菜單已刪除')
     await loadMenus()
   } catch (error) {
-    showNotification('刪除失敗', 'error')
+    toast.error('刪除失敗')
   }
 }
 
@@ -228,10 +228,7 @@ const closeModal = () => {
   }
 }
 
-const showNotification = (message, type = 'success') => {
-  notification.value = { show: true, message, type }
-  setTimeout(() => { notification.value.show = false }, 3000)
-}
+// showNotification 已改用全局 toast 系統
 
 onMounted(loadMenus)
 </script>

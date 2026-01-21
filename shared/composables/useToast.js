@@ -33,7 +33,9 @@ function pushToast({ type = 'info', title = '', message = '', duration } = {}) {
 
 function removeToast(id) {
   const idx = state.toasts.findIndex(t => t.id === id)
-  if (idx >= 0) state.toasts.splice(idx, 1)
+  if (idx >= 0) {
+    state.toasts.splice(idx, 1)
+  }
 }
 
 export function useToastState() {

@@ -263,7 +263,7 @@ import { apiRequest } from '@/utils/api'
 import { useRouter, useRoute } from 'vue-router'
 import QRCode from 'qrcode'
 import AdminLayout from '@/components/AdminLayout.vue'
-import { toast } from '@/composables/useToast'
+import { toast } from '@shared/composables/useToast'
 
 const router = useRouter()
 const route = useRoute()

@@ -218,8 +218,6 @@
           </div>
         </div>
         </div>
-        <!-- 通知組件 -->
-        <Notification ref="notificationRef" />
       </div>
     </div>
   </Teleport>
@@ -228,7 +226,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { apiRequest } from '@/utils/api'
-import Notification from '@/components/Notification.vue'
+import { toast } from '@shared/composables/useToast'
 
 const props = defineProps({
   show: {
@@ -641,16 +639,17 @@ const initializePositionSelection = () => {
   }
 }
 
-// 通知組件引用
-const notificationRef = ref(null)
-
-// 顯示通知
+// 顯示通知（使用共用 Toast 系統）
 const showNotification = (message, type = 'info', duration = 3000) => {
-  if (notificationRef.value && typeof notificationRef.value.showNotification === 'function') {
-    notificationRef.value.showNotification(message, type, duration)
+  const opts = duration > 0 ? { duration } : {}
+  if (type === 'success') {
+    toast.success(message, '成功', opts)
+  } else if (type === 'error') {
+    toast.error(message, '錯誤', opts)
+  } else if (type === 'warning') {
+    toast.warning(message, '提醒', opts)
   } else {
-    // 如果通知組件還沒掛載，使用 console 或 alert
-    console.log(`[${type}] ${message}`)
+    toast.info(message, '提示', opts)
   }
 }
 

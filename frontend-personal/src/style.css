@@ -2,6 +2,11 @@
    全局樣式 - 統一設計系統
    ============================================ */
 
+/* 引用共用樣式 */
+@import url('../shared/styles/variables.css');
+@import url('../shared/styles/utilities.css');
+@import url('../shared/styles/components.css');
+
 :root {
   /* 主色調 */
   --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);

@@ -41,8 +41,8 @@
                 {{ job.cronExpression }}
               </code>
             </td>
-            <td :title="job.description || '-'">
-              {{ job.description || '-' }}
+            <td>
+              <TruncatedText :text="job.description" />
             </td>
             <td>
               <span :class="job.enabled ? 'status-active' : 'status-inactive'">
@@ -196,7 +196,9 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import TopNavbar from '@/components/TopNavbar.vue'
+import TruncatedText from '@/components/TruncatedText.vue'
 import { apiService } from '@/composables/useApi'
+import { toast } from '@shared/composables/useToast'
 
 const jobs = ref([])
 const loading = ref(false)
@@ -227,9 +229,10 @@ const loadJobs = async () => {
     for (const job of jobs.value) {
       await loadLatestExecution(job.id)
     }
+    toast.success(`載入成功，共 ${jobs.value.length} 個任務`)
   } catch (error) {
     console.error('載入任務失敗:', error)
-    alert('載入任務失敗: ' + error.message)
+    toast.error('載入任務失敗: ' + error.message)
   } finally {
     loading.value = false
   }
@@ -332,9 +335,10 @@ const handleSubmit = async () => {
     
     await loadJobs()
     closeModal()
+    toast.success(editingJob.value ? '任務已更新' : '任務已新增')
   } catch (error) {
     console.error('儲存任務失敗:', error)
-    alert('儲存失敗: ' + error.message)
+    toast.error('儲存失敗: ' + error.message)
   } finally {
     saving.value = false
   }
@@ -348,9 +352,10 @@ const deleteJob = async (id) => {
   try {
     await apiService.deleteScheduledJob(id)
     await loadJobs()
+    toast.success('任務已刪除')
   } catch (error) {
     console.error('刪除任務失敗:', error)
-    alert('刪除失敗: ' + error.message)
+    toast.error('刪除失敗: ' + error.message)
   }
 }
 
@@ -358,9 +363,10 @@ const toggleJob = async (id, enabled) => {
   try {
     await apiService.toggleScheduledJob(id, enabled)
     await loadJobs()
+    toast.success(enabled ? '任務已啟用' : '任務已停用')
   } catch (error) {
     console.error('切換任務狀態失敗:', error)
-    alert('切換狀態失敗: ' + error.message)
+    toast.error('切換狀態失敗: ' + error.message)
   }
 }
 
@@ -369,14 +375,14 @@ const executeJob = async (id) => {
   try {
     const response = await apiService.executeScheduledJob(id)
     
-    alert(response?.message || '任務已開始執行')
+    toast.success(response?.message || '任務已開始執行')
     // 重新載入執行狀態
     await loadLatestExecution(id)
     // 開始輪詢
     startPolling(id)
   } catch (error) {
     console.error('執行任務失敗:', error)
-    alert('執行失敗: ' + (error.message || '未知錯誤'))
+    toast.error('執行失敗: ' + (error.message || '未知錯誤'))
   } finally {
     executingJobId.value = null
   }
@@ -391,7 +397,7 @@ const viewExecutionHistory = async (jobId) => {
     executionHistory.value = await apiService.getJobExecutions(jobId)
   } catch (error) {
     console.error('載入執行記錄失敗:', error)
-    alert('載入執行記錄失敗: ' + error.message)
+    toast.error('載入執行記錄失敗: ' + error.message)
     executionHistory.value = []
   }
 }
@@ -660,27 +666,7 @@ onUnmounted(() => {
   overflow-wrap: break-word;
 }
 
-.data-table td:nth-child(4) {
-  max-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  position: relative;
-  cursor: help;
-}
-
-.data-table td:nth-child(4):hover {
-  white-space: normal;
-  overflow: visible;
-  z-index: 10;
-  background: white;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  padding: 1rem;
-  border-radius: 0.5rem;
-  max-width: 400px;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-}
+/* 描述欄位樣式已移至 TruncatedText 元件 */
 
 .data-table tbody tr:hover {
   background: #f9fafb;

@@ -241,7 +241,7 @@
 </template>
 
 <script setup>
-import { toast } from '@/composables/useToast'
+import { toast } from '@shared/composables/useToast'
 import { ref, computed, onMounted, watch } from 'vue'
 import AdminLayout from '@/components/AdminLayout.vue'
 import { apiRequest } from '@/utils/api'
@@ -335,10 +335,19 @@ const resetFilters = () => {
   jumpPage.value = 1
 }
 
-// 監聽查詢條件變化，重置到第一頁
+// 過濾後的列表（用於顯示）
+const filteredList = computed(() => {
+  if (!announcementsList.value || !Array.isArray(announcementsList.value)) {
+    return []
+  }
+  return announcementsList.value
+})
+
+// 監聽查詢條件變化，重置到第一頁並重新載入
 watch(() => [filters.value.title, filters.value.category, filters.value.startDate, filters.value.endDate, filters.value.isPinned, filters.value.isActive], () => {
   currentPage.value = 1
   jumpPage.value = 1
+  loadAnnouncements()
 })
 
 // 監聽每頁筆數變化，重置到第一頁並重新載入
@@ -363,30 +372,48 @@ const loadAnnouncements = async () => {
     
     if (response.ok) {
       const data = await response.json()
+      // 處理多種可能的數據結構
+      let announcementsData = []
       if (data.success && data.data) {
-        announcementsList.value = data.data || data.content || []
-        // 更新分頁信息
-        if (data.totalElements !== undefined) {
-          totalRecords.value = data.totalElements
-          totalPages.value = data.totalPages || 1
-          // 確保 currentPage 不超過 totalPages
-          if (currentPage.value > totalPages.value) {
-            currentPage.value = totalPages.value
-            jumpPage.value = totalPages.value
-          }
-          // 同步 jumpPage 與 currentPage
-          jumpPage.value = currentPage.value
-        } else {
-          totalRecords.value = announcementsList.value.length
-          totalPages.value = 1
-          currentPage.value = 1
-          jumpPage.value = 1
-        }
+        announcementsData = data.data
+      } else if (data.data) {
+        announcementsData = data.data
+      } else if (data.content) {
+        announcementsData = data.content
+      } else if (Array.isArray(data)) {
+        announcementsData = data
       }
+      
+      announcementsList.value = Array.isArray(announcementsData) ? announcementsData : []
+      
+      // 更新分頁信息
+      if (data.totalElements !== undefined) {
+        totalRecords.value = data.totalElements
+        totalPages.value = data.totalPages || 1
+        // 確保 currentPage 不超過 totalPages
+        if (currentPage.value > totalPages.value) {
+          currentPage.value = totalPages.value
+          jumpPage.value = totalPages.value
+        }
+        // 同步 jumpPage 與 currentPage
+        jumpPage.value = currentPage.value
+      } else {
+        totalRecords.value = announcementsList.value.length
+        totalPages.value = 1
+        currentPage.value = 1
+        jumpPage.value = 1
+      }
+      toast.success(`載入成功，共 ${totalRecords.value} 筆公告`)
+    } else {
+      // 確保即使 API 失敗，列表也是空陣列
+      announcementsList.value = []
+      toast.error('載入公告失敗')
     }
   } catch (error) {
     console.error('載入公告失敗:', error)
     toast.error('載入公告失敗: ' + error.message)
+    // 確保即使發生錯誤，列表也是空陣列
+    announcementsList.value = []
   }
 }
 

@@ -298,7 +298,7 @@
 </template>
 
 <script setup>
-import { toast } from '@/composables/useToast'
+import { toast } from '@shared/composables/useToast'
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import AdminLayout from '@/components/AdminLayout.vue'
 import { apiRequest } from '@/utils/api'
@@ -598,14 +598,14 @@ const query = async () => {
         jumpPage.value = 1
       }
       
-      toast.success(`查詢成功，共 ${totalRecords.value} 筆資料`, '查詢')
+      toast.success(`查詢成功，共 ${totalRecords.value} 筆資料`)
     } else {
       const errorData = await response.json()
-      toast.error(errorData.error || '查詢失敗', '錯誤')
+      toast.error(errorData.error || '查詢失敗')
     }
   } catch (error) {
     console.error('查詢出席率失敗:', error)
-    toast.error('查詢出席率失敗', '錯誤')
+    toast.error('查詢出席率失敗')
   } finally {
     loading.value = false
   }
@@ -667,11 +667,11 @@ const handleAttendanceRateClick = async (item) => {
       })
     } else {
       const errorData = await response.json()
-      toast.error(errorData.error || '載入場次詳細資訊失敗', '錯誤')
+      toast.error(errorData.error || '載入場次詳細資訊失敗')
     }
   } catch (error) {
     console.error('載入場次詳細資訊失敗:', error)
-    toast.error('載入場次詳細資訊失敗', '錯誤')
+    toast.error('載入場次詳細資訊失敗')
   } finally {
     sessionDetailsLoading.value = false
   }

@@ -77,7 +77,7 @@ import { ref, computed, onMounted } from 'vue'
 import { apiRequest } from '@/utils/api'
 import { useRouter } from 'vue-router'
 import AdminLayout from '@/components/AdminLayout.vue'
-import { toast } from '@/composables/useToast'
+import { toast } from '@shared/composables/useToast'
 
 const router = useRouter()
 const rows = ref([])

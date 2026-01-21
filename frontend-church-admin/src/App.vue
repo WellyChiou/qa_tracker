@@ -8,7 +8,7 @@
 
 <script setup>
 import { useLoading } from '@/composables/useLoading'
-import ToastHost from '@/components/ToastHost.vue'
+import ToastHost from '@shared/components/ToastHost.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 // 初始化 loading 系統（註冊回調到 API 服務）

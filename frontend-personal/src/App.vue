@@ -3,6 +3,7 @@
     <router-view />
     <LoadingSpinner />
   </div>
+  <ToastHost />
 </template>
 
 <script setup>
@@ -10,6 +11,7 @@ import { onMounted } from 'vue'
 import { useAuth } from '@/composables/useAuth'
 import { useLoading } from '@/composables/useLoading'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import ToastHost from '@shared/components/ToastHost.vue'
 
 // 初始化 loading 系統（註冊回調到 API 服務）
 useLoading()

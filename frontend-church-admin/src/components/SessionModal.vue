@@ -104,7 +104,7 @@
 
 <script setup>
 import { ref, watch, computed, onMounted } from 'vue'
-import { toast } from '@/composables/useToast'
+import { toast } from '@shared/composables/useToast'
 import { apiRequest } from '@/utils/api'
 
 const props = defineProps({
