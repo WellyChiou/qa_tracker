@@ -1,5 +1,6 @@
 package com.example.helloworld.controller.church;
 
+import com.example.helloworld.dto.common.ApiResponse;
 import com.example.helloworld.service.church.FileUploadService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -25,25 +26,18 @@ public class FileUploadController {
      * @return 上傳結果，包含圖片的 URL
      */
     @PostMapping("/image")
-    public ResponseEntity<Map<String, Object>> uploadImage(
+    public ResponseEntity<ApiResponse<Map<String, Object>>> uploadImage(
             @RequestParam("file") MultipartFile file,
             @RequestParam("type") String type) {
-        Map<String, Object> response = new HashMap<>();
-
         try {
             String imageUrl = fileUploadService.uploadImage(file, type);
-            response.put("success", true);
-            response.put("url", imageUrl);
-            response.put("message", "圖片上傳成功");
-            return ResponseEntity.ok(response);
+            Map<String, Object> result = new HashMap<>();
+            result.put("url", imageUrl);
+            return ResponseEntity.ok(ApiResponse.ok(result));
         } catch (IllegalArgumentException e) {
-            response.put("success", false);
-            response.put("message", e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest().body(ApiResponse.fail(e.getMessage()));
         } catch (Exception e) {
-            response.put("success", false);
-            response.put("message", "圖片上傳失敗: " + e.getMessage());
-            return ResponseEntity.internalServerError().body(response);
+            return ResponseEntity.internalServerError().body(ApiResponse.fail("圖片上傳失敗: " + e.getMessage()));
         }
     }
 
@@ -54,24 +48,16 @@ public class FileUploadController {
      * @return 刪除結果
      */
     @DeleteMapping("/image")
-    public ResponseEntity<Map<String, Object>> deleteImage(@RequestParam("url") String url) {
-        Map<String, Object> response = new HashMap<>();
-
+    public ResponseEntity<ApiResponse<Void>> deleteImage(@RequestParam("url") String url) {
         try {
             boolean deleted = fileUploadService.deleteImage(url);
             if (deleted) {
-                response.put("success", true);
-                response.put("message", "圖片刪除成功");
-                return ResponseEntity.ok(response);
+                return ResponseEntity.ok(ApiResponse.ok(null));
             } else {
-                response.put("success", false);
-                response.put("message", "圖片不存在或無法刪除");
-                return ResponseEntity.badRequest().body(response);
+                return ResponseEntity.badRequest().body(ApiResponse.fail("圖片不存在或無法刪除"));
             }
         } catch (Exception e) {
-            response.put("success", false);
-            response.put("message", "圖片刪除失敗: " + e.getMessage());
-            return ResponseEntity.internalServerError().body(response);
+            return ResponseEntity.internalServerError().body(ApiResponse.fail("圖片刪除失敗: " + e.getMessage()));
         }
     }
 }

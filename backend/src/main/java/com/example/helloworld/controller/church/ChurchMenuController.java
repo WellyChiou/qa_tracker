@@ -1,5 +1,7 @@
 package com.example.helloworld.controller.church;
 
+import com.example.helloworld.dto.common.ApiResponse;
+import com.example.helloworld.dto.common.PageResponse;
 import com.example.helloworld.entity.church.ChurchMenuItem;
 import com.example.helloworld.service.church.ChurchMenuService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,7 +53,7 @@ public class ChurchMenuController {
      * 獲取所有菜單項（管理用，需要管理權限，支持分頁和過濾）
      */
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getAllMenuItems(
+    public ResponseEntity<ApiResponse<PageResponse<ChurchMenuItem>>> getAllMenuItems(
             @RequestParam(required = false) String menuCode,
             @RequestParam(required = false) String menuName,
             @RequestParam(required = false) String menuType,
@@ -60,17 +62,16 @@ public class ChurchMenuController {
             @RequestParam(defaultValue = "20") int size) {
         try {
             Page<ChurchMenuItem> menusPage = churchMenuService.getAllMenuItems(menuCode, menuName, menuType, isActive, page, size);
-            Map<String, Object> response = new HashMap<>();
-            response.put("content", menusPage.getContent());
-            response.put("totalElements", menusPage.getTotalElements());
-            response.put("totalPages", menusPage.getTotalPages());
-            response.put("currentPage", menusPage.getNumber());
-            response.put("size", menusPage.getSize());
-            return ResponseEntity.ok(response);
+            PageResponse<ChurchMenuItem> pageResponse = new PageResponse<>(
+                menusPage.getContent(),
+                menusPage.getTotalElements(),
+                menusPage.getTotalPages(),
+                menusPage.getNumber(),
+                menusPage.getSize()
+            );
+            return ResponseEntity.ok(ApiResponse.ok(pageResponse));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "獲取菜單列表失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取菜單列表失敗：" + e.getMessage()));
         }
     }
 
@@ -78,29 +79,22 @@ public class ChurchMenuController {
      * 根據 ID 獲取菜單項
      */
     @GetMapping("/{id}")
-    public ResponseEntity<ChurchMenuItem> getMenuItemById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<ChurchMenuItem>> getMenuItemById(@PathVariable Long id) {
         return churchMenuService.getMenuItemById(id)
-            .map(ResponseEntity::ok)
-            .orElse(ResponseEntity.notFound().build());
+            .map(menuItem -> ResponseEntity.ok(ApiResponse.ok(menuItem)))
+            .orElse(ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND).body(ApiResponse.fail("找不到指定的菜單項")));
     }
 
     /**
      * 創建菜單項
      */
     @PostMapping
-    public ResponseEntity<Map<String, Object>> createMenuItem(@RequestBody ChurchMenuItem menuItem) {
+    public ResponseEntity<ApiResponse<ChurchMenuItem>> createMenuItem(@RequestBody ChurchMenuItem menuItem) {
         try {
             ChurchMenuItem created = churchMenuService.createMenuItem(menuItem);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "菜單項創建成功");
-            response.put("data", created);
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(created));
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "創建失敗: " + e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("創建失敗: " + e.getMessage()));
         }
     }
 
@@ -108,19 +102,12 @@ public class ChurchMenuController {
      * 更新菜單項
      */
     @PutMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> updateMenuItem(@PathVariable Long id, @RequestBody ChurchMenuItem menuItem) {
+    public ResponseEntity<ApiResponse<ChurchMenuItem>> updateMenuItem(@PathVariable Long id, @RequestBody ChurchMenuItem menuItem) {
         try {
             ChurchMenuItem updated = churchMenuService.updateMenuItem(id, menuItem);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "菜單項更新成功");
-            response.put("data", updated);
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(updated));
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "更新失敗: " + e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("更新失敗: " + e.getMessage()));
         }
     }
 
@@ -128,18 +115,12 @@ public class ChurchMenuController {
      * 刪除菜單項
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> deleteMenuItem(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> deleteMenuItem(@PathVariable Long id) {
         try {
             churchMenuService.deleteMenuItem(id);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "菜單項刪除成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(null));
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "刪除失敗: " + e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("刪除失敗: " + e.getMessage()));
         }
     }
 }

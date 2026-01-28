@@ -116,15 +116,15 @@ const handleSubmit = async () => {
 
   saving.value = true
   try {
-    const response = await apiRequest('/church/positions', {
+    const result = await apiRequest('/church/positions', {
       method: 'POST',
       body: JSON.stringify(form.value)
     })
-
-    const result = await response.json()
     
-    if (response.ok && result.success !== false) {
-      emit('created', result.position)
+    if (result !== null) {
+      // 處理返回的數據
+      const position = result.position || result.data || result
+      emit('created', position)
       resetForm()
       closeModal()
     } else {

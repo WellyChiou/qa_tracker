@@ -84,29 +84,27 @@ const quickActions = ref([])
 const loadStats = async () => {
   try {
     // 載入統計數據
-    const [schedulesRes, personsRes, positionsRes] = await Promise.all([
+    const [schedulesData, personsData, positionsData] = await Promise.all([
       apiRequest('/church/service-schedules', { method: 'GET', credentials: 'include' }),
       apiRequest('/church/persons', { method: 'GET', credentials: 'include' }),
       apiRequest('/church/positions', { method: 'GET', credentials: 'include' })
     ])
     
-    if (schedulesRes.ok) {
-      const schedules = await schedulesRes.json()
-      // 後端可能返回數組或物件
-      scheduleCount.value = Array.isArray(schedules) ? schedules.length : (schedules.length || 0)
+    if (schedulesData) {
+      // 處理 PageResponse 格式或直接列表
+      const schedules = schedulesData.content || schedulesData || []
+      scheduleCount.value = Array.isArray(schedules) ? schedules.length : 0
     }
     
-    if (personsRes.ok) {
-      const data = await personsRes.json()
-      // 後端返回格式：{ "persons": [...], "message": "..." }
-      const persons = data.persons || data
+    if (personsData) {
+      // 處理 PageResponse 格式或直接列表
+      const persons = personsData.content || personsData.persons || personsData || []
       personCount.value = Array.isArray(persons) ? persons.length : 0
     }
     
-    if (positionsRes.ok) {
-      const data = await positionsRes.json()
-      // 後端返回格式：{ "positions": [...], "message": "..." }
-      const positions = data.positions || data
+    if (positionsData) {
+      // 處理直接列表
+      const positions = positionsData.positions || positionsData || []
       positionCount.value = Array.isArray(positions) ? positions.length : 0
     }
   } catch (error) {
@@ -116,13 +114,13 @@ const loadStats = async () => {
 
 const loadQuickActions = async () => {
   try {
-    const response = await apiRequest('/church/menus/dashboard', {
+    const data = await apiRequest('/church/menus/dashboard', {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      quickActions.value = await response.json()
+    if (data) {
+      quickActions.value = data || []
     }
   } catch (error) {
     console.error('載入快速操作失敗:', error)

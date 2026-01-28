@@ -1,5 +1,6 @@
 package com.example.helloworld.controller.church.checkin;
 
+import com.example.helloworld.dto.common.ApiResponse;
 import com.example.helloworld.repository.church.checkin.CheckinRepository;
 import com.example.helloworld.service.church.checkin.CheckinService;
 import com.example.helloworld.service.church.checkin.CsvService;
@@ -13,6 +14,7 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -32,27 +34,42 @@ public class AdminManualController {
     }
 
     @GetMapping
-    public Object list(
+    public ResponseEntity<ApiResponse<List<?>>> list(
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String from,
             @RequestParam(required = false) String to,
             @RequestParam(defaultValue = "false") boolean includeCanceled
     ) {
-        return checkinRepo.findManualRows(q, parseStart(from), parseEnd(to), includeCanceled);
+        try {
+            List<?> rows = checkinRepo.findManualRows(q, parseStart(from), parseEnd(to), includeCanceled);
+            return ResponseEntity.ok(ApiResponse.ok(rows));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取補登記錄失敗: " + e.getMessage()));
+        }
     }
 
     @PostMapping
-    public void create(@RequestBody Map<String, String> body) {
-        Long sessionId = Long.valueOf(body.get("sessionId"));
-        String memberNo = body.getOrDefault("memberNo", "").trim().toUpperCase();
-        String note = body.getOrDefault("note", "").trim();
-        checkinService.adminManualCheckin(sessionId, memberNo, note);
+    public ResponseEntity<ApiResponse<Void>> create(@RequestBody Map<String, String> body) {
+        try {
+            Long sessionId = Long.valueOf(body.get("sessionId"));
+            String memberNo = body.getOrDefault("memberNo", "").trim().toUpperCase();
+            String note = body.getOrDefault("note", "").trim();
+            checkinService.adminManualCheckin(sessionId, memberNo, note);
+            return ResponseEntity.ok(ApiResponse.ok(null));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.fail("補登失敗: " + e.getMessage()));
+        }
     }
 
     @PatchMapping("/{id}/cancel")
-    public void cancel(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body) {
-        String note = body == null ? null : body.getOrDefault("note", null);
-        checkinService.cancelManualCheckin(id, note);
+    public ResponseEntity<ApiResponse<Void>> cancel(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body) {
+        try {
+            String note = body == null ? null : body.getOrDefault("note", null);
+            checkinService.cancelManualCheckin(id, note);
+            return ResponseEntity.ok(ApiResponse.ok(null));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.fail("取消補登失敗: " + e.getMessage()));
+        }
     }
 
     @GetMapping("/export.csv")

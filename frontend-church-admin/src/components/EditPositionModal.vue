@@ -150,18 +150,18 @@ const handleSubmit = async () => {
 
   saving.value = true
   try {
-    const response = await apiRequest(`/church/positions/${props.position.id}`, {
+    const result = await apiRequest(`/church/positions/${props.position.id}`, {
       method: 'PUT',
       body: JSON.stringify(form.value)
     })
-
-    const result = await response.json()
     
-    if (response.ok && result.success !== false) {
-      emit('updated', result.position)
+    if (result !== null) {
+      // 處理返回的數據
+      const position = result.position || result.data || result
+      emit('updated', position)
       closeModal()
     } else {
-      console.error('更新失敗響應：', result)
+      console.error('更新失敗')
       toast.error('更新失敗：' + (result.error || '未知錯誤'))
     }
   } catch (error) {

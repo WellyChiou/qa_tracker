@@ -179,14 +179,15 @@ watch(() => props.show, (newVal) => {
 
 const loadPermissions = async () => {
   try {
-    const response = await apiRequest('/church/admin/permissions', {
+    const data = await apiRequest('/church/admin/permissions', {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      availablePermissions.value = data.permissions || data || []
+    if (data) {
+      // 處理 PageResponse 格式或直接列表
+      const permissionsData = data.content || data.permissions || data || []
+      availablePermissions.value = Array.isArray(permissionsData) ? permissionsData : []
     }
   } catch (error) {
     console.error('載入權限列表失敗:', error)
@@ -195,14 +196,15 @@ const loadPermissions = async () => {
 
 const loadRoles = async () => {
   try {
-    const response = await apiRequest('/church/admin/roles', {
+    const data = await apiRequest('/church/admin/roles', {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      availableRoles.value = data.roles || data || []
+    if (data) {
+      // 處理 PageResponse 格式或直接列表
+      const rolesData = data.content || data.roles || data || []
+      availableRoles.value = Array.isArray(rolesData) ? rolesData : []
     }
   } catch (error) {
     console.error('載入角色列表失敗:', error)
@@ -235,19 +237,17 @@ const handleSubmit = async () => {
       description: formData.value.description || null
     }
     
-    const response = await apiRequest(url, {
+    const data = await apiRequest(url, {
       method,
       body: JSON.stringify(payload),
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
+    if (data !== null) {
       emit('saved', data)
       close()
     } else {
-      const data = await response.json()
-      error.value = data.message || data.error || '操作失敗'
+      error.value = '操作失敗'
     }
   } catch (err) {
     error.value = err.message || '操作失敗'

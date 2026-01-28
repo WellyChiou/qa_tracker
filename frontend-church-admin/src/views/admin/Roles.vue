@@ -222,25 +222,38 @@ const loadRoles = async () => {
     params.append('page', (currentPage.value - 1).toString())
     params.append('size', recordsPerPage.value.toString())
     
-    const response = await apiRequest(`/church/admin/roles?${params.toString()}`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/admin/roles?${params.toString()}`, {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      roles.value = data.roles || data.content || data || []
+    if (data) {
+      // apiRequest 已經提取了 ApiResponse.data，所以 data 可能是：
+      // 1. PageResponse 對象（有 content 字段）
+      // 2. 直接數組
+      // 3. 其他格式
+      const rolesData = data.content || (Array.isArray(data) ? data : [])
+      roles.value = Array.isArray(rolesData) ? rolesData : []
       
       // 更新分頁信息
-      if (data.totalElements !== undefined) {
-        totalRecords.value = data.totalElements
-        totalPages.value = data.totalPages || 1
+      if (responseData.totalElements !== undefined) {
+        totalRecords.value = responseData.totalElements
+        totalPages.value = responseData.totalPages || 1
         // 確保 currentPage 不超過 totalPages
         if (currentPage.value > totalPages.value) {
           currentPage.value = totalPages.value
           jumpPage.value = totalPages.value
         }
         // 同步 jumpPage 與 currentPage
+        jumpPage.value = currentPage.value
+      } else if (data.totalElements !== undefined) {
+        totalRecords.value = data.totalElements
+        totalPages.value = data.totalPages || 1
+        if (currentPage.value > totalPages.value) {
+          currentPage.value = totalPages.value
+          jumpPage.value = totalPages.value
+        }
         jumpPage.value = currentPage.value
       } else {
         totalRecords.value = roles.value.length
@@ -256,14 +269,16 @@ const loadRoles = async () => {
 
 const loadPermissions = async () => {
   try {
-    const response = await apiRequest('/church/admin/permissions', {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest('/church/admin/permissions', {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      availablePermissions.value = data.permissions || data || []
+    if (data) {
+      // 處理 PageResponse 格式或直接列表
+      const permissionsData = data.content || data.permissions || data || []
+      availablePermissions.value = Array.isArray(permissionsData) ? permissionsData : []
     }
   } catch (error) {
     console.error('載入權限失敗:', error)
@@ -277,14 +292,15 @@ const openAddModal = () => {
 
 const editRole = async (id) => {
   try {
-    const response = await apiRequest(`/church/admin/roles/${id}`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/admin/roles/${id}`, {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      selectedRole.value = data.role || data
+    if (data) {
+      // apiRequest 已經提取了 ApiResponse.data，所以 data 直接是角色對象
+      selectedRole.value = data
       showModal.value = true
     } else {
       toast.error('載入角色資料失敗')
@@ -313,12 +329,13 @@ const deleteRole = async (id) => {
   }
   
   try {
-    const response = await apiRequest(`/church/admin/roles/${id}`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/admin/roles/${id}`, {
       method: 'DELETE',
       credentials: 'include'
     })
     
-    if (response.ok) {
+    if (data !== null) {
       loadRoles()
     } else {
       toast.error('刪除失敗')

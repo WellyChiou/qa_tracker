@@ -264,10 +264,10 @@ const calculatedYear = computed(() => {
 // 檢查該年度是否已有服事表
 const checkYearExists = async (year) => {
   try {
-    const response = await apiRequest(`/church/service-schedules/year/${year}`, {
+    const data = await apiRequest(`/church/service-schedules/year/${year}`, {
       method: 'GET'
     })
-    return response.ok
+    return data !== null
   } catch (error) {
     return false
   }
@@ -293,12 +293,15 @@ const availableYearsForCreate = computed(() => {
 // 載入已存在的年份列表
 const loadExistingYears = async () => {
   try {
-    const response = await apiRequest('/church/service-schedules', {
+    const data = await apiRequest('/church/service-schedules', {
       method: 'GET'
     })
-    if (response.ok) {
-      const schedules = await response.json()
-      existingYears.value = schedules.map(s => s.year).filter(y => y != null)
+    if (data) {
+      // 處理 PageResponse 格式或直接列表
+      const schedules = data.content || data || []
+      existingYears.value = Array.isArray(schedules) 
+        ? schedules.map(s => s.year).filter(y => y != null)
+        : []
     }
   } catch (error) {
     console.error('載入已存在年份失敗:', error)
@@ -529,13 +532,12 @@ const getPersonIdByName = (personName, posCode, item) => {
 
 const loadScheduleForEdit = async (scheduleYear) => {
   try {
-    const response = await apiRequest(`/church/service-schedules/${scheduleYear}`, {
+    const data = await apiRequest(`/church/service-schedules/${scheduleYear}`, {
       method: 'GET',
       credentials: 'include'
-    }, '載入服事表中...')
-    const data = await response.json()
+    })
     
-    if (response.ok) {
+    if (data) {
       localScheduleYear.value = data.year
       editingScheduleYear.value = scheduleYear
       
@@ -636,21 +638,20 @@ const loadScheduleForEdit = async (scheduleYear) => {
       
       showNotification('服事表載入成功！', 'success', 3000)
     } else {
-      showNotification('載入失敗：' + (data.error || '未知錯誤'), 'error', 3000)
+      showNotification('載入失敗：未知錯誤', 'error', 3000)
     }
   } catch (error) {
-    showNotification('載入失敗：' + error.message, 'error', 3000)
+    showNotification('載入失敗：' + (error.message || '未知錯誤'), 'error', 3000)
   }
 }
 
 const loadScheduleForView = async (scheduleYear) => {
   try {
-    const response = await apiRequest(`/church/service-schedules/${scheduleYear}`, {
+    const data = await apiRequest(`/church/service-schedules/${scheduleYear}`, {
       method: 'GET'
-    }, '載入服事表中...')
-    const data = await response.json()
+    })
     
-    if (response.ok) {
+    if (data) {
       localScheduleYear.value = data.year
       
       if (data.scheduleData && Array.isArray(data.scheduleData) && data.scheduleData.length > 0) {
@@ -741,10 +742,10 @@ const loadScheduleForView = async (scheduleYear) => {
       isEditing.value = false
       showNotification('服事表載入成功！', 'success', 3000)
     } else {
-      showNotification('載入失敗：' + (data.error || '未知錯誤'), 'error', 3000)
+      showNotification('載入失敗：未知錯誤', 'error', 3000)
     }
   } catch (error) {
-    showNotification('載入失敗：' + error.message, 'error', 3000)
+    showNotification('載入失敗：' + (error.message || '未知錯誤'), 'error', 3000)
   }
 }
 
@@ -1443,28 +1444,27 @@ const saveSchedule = async () => {
       return result
     })
 
-    const response = await apiRequest('/church/service-schedules', {
+    const result = await apiRequest('/church/service-schedules', {
       method: 'POST',
       body: JSON.stringify({
         scheduleData: scheduleDataForBackend,
         dateRange: localDateRange.value
       })
-    }, '保存服事表中...')
-
-    const result = await response.json()
+    })
     
-    if (response.ok && result.success !== false) {
+    if (result !== null) {
+      // 處理返回的數據
+      const year = result.year || result.data?.year || calculatedYear.value
       showNotification('服事表保存成功！', 'success', 3000)
-      editingScheduleYear.value = result.year
-      localScheduleYear.value = result.year
-      emit('saved', result.year)
+      editingScheduleYear.value = year
+      localScheduleYear.value = year
+      emit('saved', year)
       // 延遲關閉視窗，讓用戶看到成功訊息
       setTimeout(() => {
         closeModal()
       }, 1500)
     } else {
-      const errorMsg = result.error || '未知錯誤'
-      showNotification('保存失敗：' + errorMsg, 'error', 5000)
+      showNotification('保存失敗', 'error', 5000)
     }
   } catch (error) {
     const errorMsg = error.message || '未知錯誤'
@@ -1530,22 +1530,22 @@ const updateSchedule = async () => {
       return result
     })
 
-    const response = await apiRequest(`/church/service-schedules/${editingScheduleYear.value}`, {
+    const result = await apiRequest(`/church/service-schedules/${editingScheduleYear.value}`, {
       method: 'PUT',
       body: JSON.stringify({
         scheduleData: scheduleDataForBackend,
         dateRange: localDateRange.value
       })
-    }, '更新服事表中...')
-
-    const result = await response.json()
+    })
     
-    if (response.ok) {
+    if (result !== null) {
       showNotification('服事表更新成功！', 'success', 3000)
+      // 處理返回的數據
+      const year = result.year || result.data?.year || editingScheduleYear.value
       // 如果年度改變了，更新當前年度
-      if (result.year && result.year !== editingScheduleYear.value) {
-        localScheduleYear.value = result.year
-        editingScheduleYear.value = result.year
+      if (year && year !== editingScheduleYear.value) {
+        localScheduleYear.value = year
+        editingScheduleYear.value = year
       }
       isEditing.value = false
       originalSchedule.value = []
@@ -1555,7 +1555,7 @@ const updateSchedule = async () => {
         closeModal()
       }, 1500)
     } else {
-      showNotification('更新失敗：' + (result.error || '未知錯誤'), 'error', 4000)
+      showNotification('更新失敗', 'error', 4000)
     }
   } catch (error) {
     showNotification('更新失敗：' + error.message, 'error', 4000)

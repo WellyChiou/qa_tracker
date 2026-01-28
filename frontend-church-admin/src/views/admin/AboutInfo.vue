@@ -321,38 +321,59 @@ const loadAboutInfo = async () => {
     params.append('page', (currentPage.value - 1).toString())
     params.append('size', recordsPerPage.value.toString())
     
-    const response = await apiRequest(`/church/admin/about-info?${params.toString()}`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/admin/about-info?${params.toString()}`, {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
+    if (data) {
+      // 處理 ApiResponse 格式或直接返回的資料
+      let responseData = data
       if (data.success && data.data) {
-        aboutInfoList.value = data.data || data.content || []
-        
-        // 更新分頁信息
-        if (data.totalElements !== undefined) {
-          totalRecords.value = data.totalElements
-          totalPages.value = data.totalPages || 1
-          // 確保 currentPage 不超過 totalPages
-          if (currentPage.value > totalPages.value) {
-            currentPage.value = totalPages.value
-            jumpPage.value = totalPages.value
-          }
-          // 同步 jumpPage 與 currentPage
-          jumpPage.value = currentPage.value
-        } else {
-          totalRecords.value = aboutInfoList.value.length
-          totalPages.value = 1
-          currentPage.value = 1
-          jumpPage.value = 1
-        }
-        toast.success(`載入成功，共 ${totalRecords.value} 筆資訊`)
-      } else {
-        aboutInfoList.value = []
-        toast.error('載入關於我們資訊失敗')
+        responseData = data.data
+      } else if (data.data) {
+        responseData = data.data
       }
+      
+      // 處理分頁資料
+      let content = []
+      if (responseData.content) {
+        content = responseData.content
+      } else if (Array.isArray(responseData)) {
+        content = responseData
+      } else if (responseData.data) {
+        content = responseData.data
+      }
+      
+      aboutInfoList.value = Array.isArray(content) ? content : []
+      
+      // 更新分頁信息
+      if (responseData.totalElements !== undefined) {
+        totalRecords.value = responseData.totalElements
+        totalPages.value = responseData.totalPages || 1
+        // 確保 currentPage 不超過 totalPages
+        if (currentPage.value > totalPages.value) {
+          currentPage.value = totalPages.value
+          jumpPage.value = totalPages.value
+        }
+        // 同步 jumpPage 與 currentPage
+        jumpPage.value = currentPage.value
+      } else if (data.totalElements !== undefined) {
+        totalRecords.value = data.totalElements
+        totalPages.value = data.totalPages || 1
+        if (currentPage.value > totalPages.value) {
+          currentPage.value = totalPages.value
+          jumpPage.value = totalPages.value
+        }
+        jumpPage.value = currentPage.value
+      } else {
+        totalRecords.value = aboutInfoList.value.length
+        totalPages.value = 1
+        currentPage.value = 1
+        jumpPage.value = 1
+      }
+      toast.success(`載入成功，共 ${totalRecords.value} 筆資訊`)
     } else {
       aboutInfoList.value = []
       toast.error('載入關於我們資訊失敗')
@@ -407,7 +428,8 @@ const saveInfo = async () => {
       : '/church/admin/about-info'
     const method = editingInfo.value ? 'PUT' : 'POST'
     
-    const response = await apiRequest(url, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(url, {
       method,
       headers: {
         'Content-Type': 'application/json'
@@ -416,8 +438,7 @@ const saveInfo = async () => {
       body: JSON.stringify(formData.value)
     })
     
-    if (response.ok) {
-      const data = await response.json()
+    if (data) {
       if (data.success) {
         toast.success('儲存成功')
         closeModal()
@@ -425,9 +446,6 @@ const saveInfo = async () => {
       } else {
         toast.error('儲存失敗: ' + (data.message || '未知錯誤'))
       }
-    } else {
-      const error = await response.json()
-      toast.error('儲存失敗: ' + (error.message || '未知錯誤'))
     }
   } catch (error) {
     console.error('儲存關於我們資訊失敗:', error)
@@ -441,13 +459,13 @@ const deleteInfo = async (id) => {
   }
   
   try {
-    const response = await apiRequest(`/church/admin/about-info/${id}`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/admin/about-info/${id}`, {
       method: 'DELETE',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
+    if (data) {
       if (data.success) {
         toast.success('刪除成功')
         loadAboutInfo()

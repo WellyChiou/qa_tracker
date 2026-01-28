@@ -1,5 +1,7 @@
 package com.example.helloworld.controller.church;
 
+import com.example.helloworld.dto.common.ApiResponse;
+import com.example.helloworld.dto.common.PageResponse;
 import com.example.helloworld.entity.church.ChurchUser;
 import com.example.helloworld.service.church.ChurchUserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,28 +28,25 @@ public class ChurchUserController {
      * 獲取所有用戶（支援分頁）
      */
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getAllUsers(
+    public ResponseEntity<ApiResponse<PageResponse<ChurchUser>>> getAllUsers(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         try {
             Pageable pageable = PageRequest.of(page, size);
             Page<ChurchUser> usersPage = churchUserService.getAllUsers(pageable);
             // Service 層已經使用 JOIN FETCH 主動加載所有關聯，無需在這裡手動初始化
-            Map<String, Object> response = new HashMap<>();
-            response.put("users", usersPage.getContent());
-            response.put("content", usersPage.getContent());
-            response.put("totalElements", usersPage.getTotalElements());
-            response.put("totalPages", usersPage.getTotalPages());
-            response.put("currentPage", usersPage.getNumber());
-            response.put("size", usersPage.getSize());
-            response.put("message", "獲取用戶列表成功");
-            return ResponseEntity.ok(response);
+            PageResponse<ChurchUser> pageResponse = new PageResponse<>(
+                    usersPage.getContent(),
+                    usersPage.getTotalElements(),
+                    usersPage.getTotalPages(),
+                    usersPage.getNumber(),
+                    usersPage.getSize()
+            );
+            return ResponseEntity.ok(ApiResponse.ok(pageResponse));
         } catch (Exception e) {
             e.printStackTrace(); // 輸出錯誤堆棧以便調試
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "獲取用戶列表失敗：" + e.getMessage());
-            error.put("details", e.getClass().getSimpleName());
-            return ResponseEntity.status(500).body(error);
+            return ResponseEntity.status(500)
+                    .body(ApiResponse.fail("獲取用戶列表失敗：" + e.getMessage()));
         }
     }
 
@@ -55,21 +54,18 @@ public class ChurchUserController {
      * 根據 UID 獲取用戶
      */
     @GetMapping("/{uid}")
-    public ResponseEntity<Map<String, Object>> getUserByUid(@PathVariable String uid) {
+    public ResponseEntity<ApiResponse<ChurchUser>> getUserByUid(@PathVariable String uid) {
         try {
             Optional<ChurchUser> user = churchUserService.getUserByUid(uid);
             if (user.isPresent()) {
-                Map<String, Object> response = new HashMap<>();
-                response.put("user", user.get());
-                response.put("message", "獲取用戶成功");
-                return ResponseEntity.ok(response);
+                return ResponseEntity.ok(ApiResponse.ok(user.get()));
             } else {
-                return ResponseEntity.notFound().build();
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.fail("用戶不存在"));
             }
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "獲取用戶失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("獲取用戶失敗：" + e.getMessage()));
         }
     }
 
@@ -77,19 +73,13 @@ public class ChurchUserController {
      * 創建用戶
      */
     @PostMapping
-    public ResponseEntity<Map<String, Object>> createUser(@RequestBody ChurchUser user) {
+    public ResponseEntity<ApiResponse<ChurchUser>> createUser(@RequestBody ChurchUser user) {
         try {
             ChurchUser created = churchUserService.createUser(user);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "用戶創建成功");
-            response.put("user", created);
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(created));
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "創建失敗: " + e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("創建失敗: " + e.getMessage()));
         }
     }
 
@@ -97,19 +87,13 @@ public class ChurchUserController {
      * 更新用戶
      */
     @PutMapping("/{uid}")
-    public ResponseEntity<Map<String, Object>> updateUser(@PathVariable String uid, @RequestBody ChurchUser user) {
+    public ResponseEntity<ApiResponse<ChurchUser>> updateUser(@PathVariable String uid, @RequestBody ChurchUser user) {
         try {
             ChurchUser updated = churchUserService.updateUser(uid, user);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "用戶更新成功");
-            response.put("user", updated);
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(updated));
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "更新失敗: " + e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("更新失敗: " + e.getMessage()));
         }
     }
 
@@ -117,18 +101,13 @@ public class ChurchUserController {
      * 刪除用戶
      */
     @DeleteMapping("/{uid}")
-    public ResponseEntity<Map<String, Object>> deleteUser(@PathVariable String uid) {
+    public ResponseEntity<ApiResponse<String>> deleteUser(@PathVariable String uid) {
         try {
             churchUserService.deleteUser(uid);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "用戶刪除成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok("用戶刪除成功"));
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "刪除失敗: " + e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("刪除失敗: " + e.getMessage()));
         }
     }
 
@@ -136,7 +115,7 @@ public class ChurchUserController {
      * 為用戶分配角色
      */
     @PostMapping("/{uid}/roles")
-    public ResponseEntity<Map<String, Object>> assignRoles(
+    public ResponseEntity<ApiResponse<ChurchUser>> assignRoles(
             @PathVariable String uid, 
             @RequestBody Map<String, Object> request) {
         try {
@@ -157,16 +136,10 @@ public class ChurchUserController {
                 })
                 .collect(java.util.stream.Collectors.toList());
             ChurchUser user = churchUserService.assignRoles(uid, roleIds);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "角色分配成功");
-            response.put("user", user);
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(user));
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "分配失敗: " + e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("分配失敗: " + e.getMessage()));
         }
     }
 
@@ -174,7 +147,7 @@ public class ChurchUserController {
      * 為用戶分配權限
      */
     @PostMapping("/{uid}/permissions")
-    public ResponseEntity<Map<String, Object>> assignPermissions(
+    public ResponseEntity<ApiResponse<ChurchUser>> assignPermissions(
             @PathVariable String uid, 
             @RequestBody Map<String, Object> request) {
         try {
@@ -195,16 +168,10 @@ public class ChurchUserController {
                 })
                 .collect(java.util.stream.Collectors.toList());
             ChurchUser user = churchUserService.assignPermissions(uid, permissionIds);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "權限分配成功");
-            response.put("user", user);
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(user));
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "分配失敗: " + e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("分配失敗: " + e.getMessage()));
         }
     }
 }

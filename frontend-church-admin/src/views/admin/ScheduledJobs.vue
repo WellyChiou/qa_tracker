@@ -279,12 +279,13 @@ const form = ref({
 const loadJobs = async () => {
   loading.value = true
   try {
-    const response = await apiRequest('/church/scheduled-jobs', {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest('/church/scheduled-jobs', {
       method: 'GET'
-    }, '載入任務中...', true)
+    })
     
-    if (response.ok) {
-      jobs.value = await response.json()
+    if (data) {
+      jobs.value = Array.isArray(data) ? data : (data.jobs || [])
       // 載入每個任務的最新執行狀態
       for (const job of jobs.value) {
         await loadLatestExecution(job.id)
@@ -303,22 +304,18 @@ const loadJobs = async () => {
 
 const loadLatestExecution = async (jobId) => {
   try {
-    const response = await apiRequest(`/church/scheduled-jobs/${jobId}/executions/latest`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const execution = await apiRequest(`/church/scheduled-jobs/${jobId}/executions/latest`, {
       method: 'GET'
-    }, '', true)
+    })
     
-    if (response.ok) {
-      const execution = await response.json()
-      if (execution) {
-        jobExecutions.value[jobId] = execution
-        // 如果正在執行，開始輪詢
-        if (execution.status === 'RUNNING' || execution.status === 'PENDING') {
-          startPolling(jobId)
-        }
-      } else {
-        jobExecutions.value[jobId] = null
+    if (execution) {
+      jobExecutions.value[jobId] = execution
+      // 如果正在執行，開始輪詢
+      if (execution.status === 'RUNNING' || execution.status === 'PENDING') {
+        startPolling(jobId)
       }
-    } else if (response.status === 404) {
+    } else {
       jobExecutions.value[jobId] = null
     }
   } catch (error) {
@@ -340,22 +337,18 @@ const startPolling = (jobId) => {
   // 開始新的輪詢（每2秒檢查一次）
   pollingIntervals.value[jobId] = setInterval(async () => {
     try {
-      const response = await apiRequest(`/church/scheduled-jobs/${jobId}/executions/latest`, {
+      // apiRequest 現在會自動返回解析後的資料
+      const execution = await apiRequest(`/church/scheduled-jobs/${jobId}/executions/latest`, {
         method: 'GET'
-      }, '', true)
+      })
       
-      if (response.ok) {
-        const execution = await response.json()
-        if (execution) {
-          jobExecutions.value[jobId] = execution
-          // 如果執行完成，停止輪詢
-          if (execution.status === 'SUCCESS' || execution.status === 'FAILED') {
-            stopPolling(jobId)
-          }
-        } else {
-          jobExecutions.value[jobId] = null
+      if (execution) {
+        jobExecutions.value[jobId] = execution
+        // 如果執行完成，停止輪詢
+        if (execution.status === 'SUCCESS' || execution.status === 'FAILED') {
+          stopPolling(jobId)
         }
-      } else if (response.status === 404) {
+      } else {
         jobExecutions.value[jobId] = null
         stopPolling(jobId)
       }
@@ -405,22 +398,22 @@ const closeModal = () => {
 const handleSubmit = async () => {
   saving.value = true
   try {
-    const response = editingJob.value
+    // apiRequest 現在會自動返回解析後的資料
+    const data = editingJob.value
       ? await apiRequest(`/church/scheduled-jobs/${editingJob.value.id}`, {
           method: 'PUT',
           body: JSON.stringify(form.value)
-        }, '更新中...', true)
+        })
       : await apiRequest('/church/scheduled-jobs', {
           method: 'POST',
           body: JSON.stringify(form.value)
-        }, '建立中...', true)
+        })
     
-    if (response.ok) {
+    if (data !== null) {
       await loadJobs()
       closeModal()
     } else {
-      const errorText = await response.text()
-      throw new Error(errorText || '儲存失敗')
+      throw new Error('儲存失敗')
     }
   } catch (error) {
     console.error('儲存任務失敗:', error)
@@ -436,11 +429,12 @@ const deleteJob = async (id) => {
   }
   
   try {
-    const response = await apiRequest(`/church/scheduled-jobs/${id}`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/scheduled-jobs/${id}`, {
       method: 'DELETE'
-    }, '刪除中...', true)
+    })
     
-    if (response.ok) {
+    if (data !== null) {
       await loadJobs()
     } else {
       throw new Error('刪除失敗')
@@ -453,11 +447,12 @@ const deleteJob = async (id) => {
 
 const toggleJob = async (id, enabled) => {
   try {
-    const response = await apiRequest(`/church/scheduled-jobs/${id}/toggle?enabled=${enabled}`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/scheduled-jobs/${id}/toggle?enabled=${enabled}`, {
       method: 'PUT'
-    }, '更新中...', true)
+    })
     
-    if (response.ok) {
+    if (data !== null) {
       await loadJobs()
     } else {
       throw new Error('切換狀態失敗')
@@ -471,20 +466,19 @@ const toggleJob = async (id, enabled) => {
 const executeJob = async (id) => {
   executingJobId.value = id
   try {
-    const response = await apiRequest(`/church/scheduled-jobs/${id}/execute`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const result = await apiRequest(`/church/scheduled-jobs/${id}/execute`, {
       method: 'POST'
-    }, '執行中...', true)
+    })
     
-    if (response.ok) {
-      const result = await response.json()
+    if (result !== null) {
       toast.success(result?.message || '任務已開始執行')
       // 重新載入執行狀態
       await loadLatestExecution(id)
       // 開始輪詢
       startPolling(id)
     } else {
-      const errorText = await response.text()
-      throw new Error(errorText || '執行失敗')
+      throw new Error('執行失敗')
     }
   } catch (error) {
     console.error('執行任務失敗:', error)
@@ -500,12 +494,13 @@ const viewExecutionHistory = async (jobId) => {
   showExecutionModal.value = true
   
   try {
-    const response = await apiRequest(`/church/scheduled-jobs/${jobId}/executions`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/scheduled-jobs/${jobId}/executions`, {
       method: 'GET'
-    }, '載入記錄中...', true)
+    })
     
-    if (response.ok) {
-      executionHistory.value = await response.json()
+    if (data) {
+      executionHistory.value = Array.isArray(data) ? data : (data.executions || [])
     } else {
       throw new Error('載入執行記錄失敗')
     }

@@ -279,16 +279,16 @@ const loadMenus = async () => {
     params.append('page', (currentPage.value - 1).toString())
     params.append('size', recordsPerPage.value.toString())
     
-    const response = await apiRequest(`/church/menus?${params.toString()}`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/menus?${params.toString()}`, {
       method: 'GET'
-    }, '載入菜單中...', true)
+    })
     
-    if (response.ok) {
-      const data = await response.json()
-      menus.value = data.content || data || []
-      
-      // 更新分頁信息
-      if (data.totalElements !== undefined) {
+    if (data) {
+      // 處理 PageResponse 格式
+      if (data.content !== undefined && data.totalElements !== undefined) {
+        // 這是 PageResponse 格式
+        menus.value = Array.isArray(data.content) ? data.content : []
         totalRecords.value = data.totalElements
         totalPages.value = data.totalPages || 1
         // 確保 currentPage 不超過 totalPages
@@ -296,13 +296,24 @@ const loadMenus = async () => {
           currentPage.value = totalPages.value
           jumpPage.value = totalPages.value
         }
-        // 同步 jumpPage 與 currentPage
         jumpPage.value = currentPage.value
       } else {
-        totalRecords.value = menus.value.length
-        totalPages.value = 1
-        currentPage.value = 1
-        jumpPage.value = 1
+        // 向後兼容：處理舊格式
+        menus.value = data.content || data || []
+        if (data.totalElements !== undefined) {
+          totalRecords.value = data.totalElements
+          totalPages.value = data.totalPages || 1
+          if (currentPage.value > totalPages.value) {
+            currentPage.value = totalPages.value
+            jumpPage.value = totalPages.value
+          }
+          jumpPage.value = currentPage.value
+        } else {
+          totalRecords.value = menus.value.length
+          totalPages.value = 1
+          currentPage.value = 1
+          jumpPage.value = 1
+        }
       }
     }
   } catch (error) {
@@ -317,13 +328,13 @@ const openAddModal = () => {
 
 const editMenu = async (id) => {
   try {
-    const response = await apiRequest(`/church/menus/${id}`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/menus/${id}`, {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
+    if (data) {
       selectedMenu.value = data.data || data.menu || data
       showModal.value = true
     } else {
@@ -350,12 +361,13 @@ const deleteMenu = async (id) => {
   }
   
   try {
-    const response = await apiRequest(`/church/menus/${id}`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/menus/${id}`, {
       method: 'DELETE',
       credentials: 'include'
     })
     
-    if (response.ok) {
+    if (data !== null) {
       loadMenus()
     } else {
       toast.error('刪除失敗')

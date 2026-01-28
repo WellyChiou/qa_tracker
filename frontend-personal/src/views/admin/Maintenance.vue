@@ -323,8 +323,8 @@ const saveSetting = async (setting) => {
   
   try {
     const response = await apiService.updateSystemSetting(setting.settingKey, setting.settingValue)
-    
-    if (response && response.success) {
+    // ApiResponse 成功時回傳 data（可能為 null 或 { success, message, setting }）
+    if (response != null) {
       savedSettings.value.add(setting.settingKey)
       setTimeout(() => {
         savedSettings.value.delete(setting.settingKey)
@@ -345,8 +345,8 @@ const createSetting = async () => {
   
   try {
     const data = await apiService.createSystemSetting(newSetting.value)
-    
-    if (data.success) {
+    // ApiResponse 成功時回傳 data（創建成功為 SystemSetting 實體）
+    if (data != null) {
       toast.success('參數創建成功')
       showCreateModal.value = false
       // 重置表單
@@ -431,14 +431,9 @@ const refreshConfig = async () => {
   refreshingConfig.value = true
   
   try {
-    const response = await apiService.refreshSystemSettings()
-    
-    if (response && response.success) {
-      toast.success('配置刷新成功，新的配置已生效')
-      loadSettings()
-    } else {
-      toast.error(response?.message || '配置刷新失敗')
-    }
+    await apiService.refreshSystemSettings()
+    toast.success('配置刷新成功，新的配置已生效')
+    loadSettings()
   } catch (err) {
     toast.error('配置刷新失敗: ' + err.message)
   } finally {
@@ -466,8 +461,8 @@ const createBackup = async () => {
   
   try {
     const response = await apiService.createBackup()
-    
-    if (response && response.success) {
+    // ApiResponse 成功時 data 為 { success, message, output? }
+    if (response && (response.success !== false)) {
       toast.success('備份創建成功')
       loadBackups()
     } else {
@@ -517,14 +512,9 @@ const deleteBackup = async (relativePath) => {
   }
   
   try {
-    const response = await apiService.deleteBackup(relativePath)
-    
-    if (response && response.success) {
-      toast.success('備份檔案刪除成功')
-      loadBackups()
-    } else {
-      toast.error(response?.message || '刪除失敗')
-    }
+    await apiService.deleteBackup(relativePath)
+    toast.success('備份檔案刪除成功')
+    loadBackups()
   } catch (err) {
     toast.error('刪除失敗: ' + err.message)
   }

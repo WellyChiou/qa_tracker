@@ -1,5 +1,7 @@
 package com.example.helloworld.controller.church;
 
+import com.example.helloworld.dto.common.ApiResponse;
+import com.example.helloworld.dto.common.PageResponse;
 import com.example.helloworld.entity.church.GroupPerson;
 import com.example.helloworld.entity.church.Person;
 import com.example.helloworld.repository.church.GroupPersonRepository;
@@ -36,7 +38,7 @@ public class PersonManagementController {
      */
     @GetMapping
     @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
-    public ResponseEntity<Map<String, Object>> getAllPersons(
+    public ResponseEntity<ApiResponse<PageResponse<Person>>> getAllPersons(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         try {
@@ -55,19 +57,16 @@ public class PersonManagementController {
                 }
             }
             
-            Map<String, Object> response = new HashMap<>();
-            response.put("persons", persons);
-            response.put("content", persons);
-            response.put("totalElements", personsPage.getTotalElements());
-            response.put("totalPages", personsPage.getTotalPages());
-            response.put("currentPage", personsPage.getNumber());
-            response.put("size", personsPage.getSize());
-            response.put("message", "獲取人員列表成功");
-            return ResponseEntity.ok(response);
+            PageResponse<Person> pageResponse = new PageResponse<>(
+                persons,
+                personsPage.getTotalElements(),
+                personsPage.getTotalPages(),
+                personsPage.getNumber(),
+                personsPage.getSize()
+            );
+            return ResponseEntity.ok(ApiResponse.ok(pageResponse));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "獲取人員列表失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取人員列表失敗：" + e.getMessage()));
         }
     }
 
@@ -76,7 +75,7 @@ public class PersonManagementController {
      */
     @GetMapping("/active")
     @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
-    public ResponseEntity<Map<String, Object>> getActivePersons() {
+    public ResponseEntity<ApiResponse<List<Person>>> getActivePersons() {
         try {
             List<Person> persons = positionService.getActivePersons();
             // 在事務內初始化懶加載的關聯，避免序列化時出現 LazyInitializationException
@@ -89,14 +88,9 @@ public class PersonManagementController {
                     person.getPositionPersons().size(); // 觸發初始化
                 }
             }
-            Map<String, Object> response = new HashMap<>();
-            response.put("persons", persons);
-            response.put("message", "獲取啟用人員列表成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(persons));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "獲取人員列表失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取人員列表失敗：" + e.getMessage()));
         }
     }
 
@@ -105,7 +99,7 @@ public class PersonManagementController {
      */
     @GetMapping("/{id}")
     @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
-    public ResponseEntity<Map<String, Object>> getPersonById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Person>> getPersonById(@PathVariable Long id) {
         try {
             return positionService.getPersonById(id)
                 .map(person -> {
@@ -116,16 +110,11 @@ public class PersonManagementController {
                     if (person.getPositionPersons() != null) {
                         person.getPositionPersons().size(); // 觸發初始化
                     }
-                    Map<String, Object> response = new HashMap<>();
-                    response.put("person", person);
-                    response.put("message", "獲取人員成功");
-                    return ResponseEntity.ok(response);
+                    return ResponseEntity.ok(ApiResponse.ok(person));
                 })
-                .orElse(ResponseEntity.notFound().build());
+                .orElse(ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND).body(ApiResponse.fail("找不到指定的人員")));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "獲取人員失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取人員失敗：" + e.getMessage()));
         }
     }
 
@@ -134,7 +123,7 @@ public class PersonManagementController {
      */
     @PostMapping
     @Transactional(transactionManager = "churchTransactionManager")
-    public ResponseEntity<Map<String, Object>> createPerson(@RequestBody Person person) {
+    public ResponseEntity<ApiResponse<Person>> createPerson(@RequestBody Person person) {
         try {
             Person created = positionService.createPerson(person);
             // 在事務內初始化懶加載的關聯，避免序列化時出現 LazyInitializationException
@@ -144,14 +133,9 @@ public class PersonManagementController {
             if (created.getPositionPersons() != null) {
                 created.getPositionPersons().size(); // 觸發初始化
             }
-            Map<String, Object> response = new HashMap<>();
-            response.put("person", created);
-            response.put("message", "人員創建成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(created));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "創建人員失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("創建人員失敗：" + e.getMessage()));
         }
     }
 
@@ -160,7 +144,7 @@ public class PersonManagementController {
      */
     @PutMapping("/{id}")
     @Transactional(transactionManager = "churchTransactionManager")
-    public ResponseEntity<Map<String, Object>> updatePerson(@PathVariable Long id, @RequestBody Person person) {
+    public ResponseEntity<ApiResponse<Person>> updatePerson(@PathVariable Long id, @RequestBody Person person) {
         try {
             Person updated = positionService.updatePerson(id, person);
             // 在事務內初始化懶加載的關聯，避免序列化時出現 LazyInitializationException
@@ -170,14 +154,9 @@ public class PersonManagementController {
             if (updated.getPositionPersons() != null) {
                 updated.getPositionPersons().size(); // 觸發初始化
             }
-            Map<String, Object> response = new HashMap<>();
-            response.put("person", updated);
-            response.put("message", "人員更新成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(updated));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "更新人員失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("更新人員失敗：" + e.getMessage()));
         }
     }
 
@@ -185,16 +164,12 @@ public class PersonManagementController {
      * 刪除人員
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> deletePerson(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> deletePerson(@PathVariable Long id) {
         try {
             positionService.deletePerson(id);
-            Map<String, Object> response = new HashMap<>();
-            response.put("message", "人員刪除成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(null));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "刪除人員失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("刪除人員失敗：" + e.getMessage()));
         }
     }
 
@@ -203,7 +178,7 @@ public class PersonManagementController {
      */
     @GetMapping("/search")
     @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
-    public ResponseEntity<Map<String, Object>> searchPersons(@RequestParam String keyword) {
+    public ResponseEntity<ApiResponse<List<Person>>> searchPersons(@RequestParam String keyword) {
         try {
             List<Person> persons = positionService.getAllPersons().stream()
                 .filter(p -> p.getPersonName().contains(keyword) || 
@@ -218,14 +193,9 @@ public class PersonManagementController {
                     person.getPositionPersons().size(); // 觸發初始化
                 }
             }
-            Map<String, Object> response = new HashMap<>();
-            response.put("persons", persons);
-            response.put("message", "搜尋成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(persons));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "搜尋失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("搜尋失敗：" + e.getMessage()));
         }
     }
 
@@ -234,7 +204,7 @@ public class PersonManagementController {
      */
     @GetMapping("/{id}/groups")
     @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
-    public ResponseEntity<Map<String, Object>> getPersonGroups(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getPersonGroups(@PathVariable Long id) {
         try {
             List<GroupPerson> groupPersons = groupPersonRepository.findAllGroupsByPersonId(id);
             List<Map<String, Object>> groups = new ArrayList<>();
@@ -249,14 +219,9 @@ public class PersonManagementController {
                 groups.add(groupInfo);
             }
             
-            Map<String, Object> response = new HashMap<>();
-            response.put("groups", groups);
-            response.put("message", "獲取人員小組列表成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(groups));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "獲取人員小組列表失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取人員小組列表失敗：" + e.getMessage()));
         }
     }
 
@@ -265,7 +230,7 @@ public class PersonManagementController {
      */
     @PostMapping("/groups/batch")
     @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
-    public ResponseEntity<Map<String, Object>> getPersonsGroupsBatch(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<ApiResponse<Map<Long, List<Map<String, Object>>>>> getPersonsGroupsBatch(@RequestBody Map<String, Object> request) {
         try {
             @SuppressWarnings("unchecked")
             List<Object> personIdsRaw = (List<Object>) request.get("personIds");
@@ -284,10 +249,7 @@ public class PersonManagementController {
             }
             
             if (personIds.isEmpty()) {
-                Map<String, Object> response = new HashMap<>();
-                response.put("personGroups", new HashMap<>());
-                response.put("message", "沒有提供人員 ID");
-                return ResponseEntity.ok(response);
+                return ResponseEntity.ok(ApiResponse.ok(new HashMap<>()));
             }
             
             // 批量查詢所有相關的 GroupPerson 記錄
@@ -314,14 +276,9 @@ public class PersonManagementController {
                 personGroupsMap.putIfAbsent(personId, new ArrayList<>());
             }
             
-            Map<String, Object> response = new HashMap<>();
-            response.put("personGroups", personGroupsMap);
-            response.put("message", "批量獲取人員小組列表成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(personGroupsMap));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "批量獲取人員小組列表失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("批量獲取人員小組列表失敗：" + e.getMessage()));
         }
     }
 
@@ -330,7 +287,7 @@ public class PersonManagementController {
      */
     @PutMapping("/{id}/groups")
     @Transactional(transactionManager = "churchTransactionManager")
-    public ResponseEntity<Map<String, Object>> setPersonGroups(
+    public ResponseEntity<ApiResponse<Void>> setPersonGroups(
             @PathVariable Long id,
             @RequestBody Map<String, Object> request) {
         try {
@@ -366,13 +323,9 @@ public class PersonManagementController {
             
             positionService.setPersonGroups(id, groupIds, joinedAt);
             
-            Map<String, Object> response = new HashMap<>();
-            response.put("message", "設置人員小組關聯成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(null));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "設置人員小組關聯失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("設置人員小組關聯失敗：" + e.getMessage()));
         }
     }
 }

@@ -1,9 +1,11 @@
 package com.example.helloworld.controller.personal;
 
+import com.example.helloworld.dto.common.ApiResponse;
 import com.example.helloworld.entity.personal.ExchangeRate;
 import com.example.helloworld.service.personal.ExchangeRateService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,44 +23,39 @@ public class ExchangeRateController {
     private ExchangeRateService exchangeRateService;
 
     @GetMapping("/{date}")
-    public ResponseEntity<ExchangeRate> getExchangeRateByDate(
+    public ResponseEntity<ApiResponse<ExchangeRate>> getExchangeRateByDate(
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return exchangeRateService.getExchangeRateByDate(date)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+                .map(e -> ResponseEntity.ok(ApiResponse.ok(e)))
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail("匯率不存在")));
     }
 
     @GetMapping("/latest/{date}")
-    public ResponseEntity<ExchangeRate> getLatestExchangeRateByDate(
+    public ResponseEntity<ApiResponse<ExchangeRate>> getLatestExchangeRateByDate(
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return exchangeRateService.getLatestExchangeRateByDate(date)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+                .map(e -> ResponseEntity.ok(ApiResponse.ok(e)))
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail("匯率不存在")));
     }
 
     @PostMapping
-    public ResponseEntity<ExchangeRate> createExchangeRate(@RequestBody ExchangeRate exchangeRate) {
-        // 檢查該日期的匯率是否已存在
+    public ResponseEntity<ApiResponse<ExchangeRate>> createExchangeRate(@RequestBody ExchangeRate exchangeRate) {
         if (exchangeRate.getDate() != null) {
             Optional<ExchangeRate> existingOpt = exchangeRateService.getExchangeRateByDate(exchangeRate.getDate());
             if (existingOpt.isPresent()) {
-                // 如果已存在，執行更新而不是創建
                 ExchangeRate existing = existingOpt.get();
                 if (exchangeRate.getUsdRate() != null) existing.setUsdRate(exchangeRate.getUsdRate());
                 if (exchangeRate.getEurRate() != null) existing.setEurRate(exchangeRate.getEurRate());
                 if (exchangeRate.getJpyRate() != null) existing.setJpyRate(exchangeRate.getJpyRate());
                 if (exchangeRate.getCnyRate() != null) existing.setCnyRate(exchangeRate.getCnyRate());
-                ExchangeRate saved = exchangeRateService.saveExchangeRate(existing);
-                return ResponseEntity.ok(saved);
+                return ResponseEntity.ok(ApiResponse.ok(exchangeRateService.saveExchangeRate(existing)));
             }
         }
-        // 如果不存在，創建新記錄
-        ExchangeRate saved = exchangeRateService.saveExchangeRate(exchangeRate);
-        return ResponseEntity.ok(saved);
+        return ResponseEntity.ok(ApiResponse.ok(exchangeRateService.saveExchangeRate(exchangeRate)));
     }
 
     @PutMapping("/{date}")
-    public ResponseEntity<ExchangeRate> updateExchangeRate(
+    public ResponseEntity<ApiResponse<ExchangeRate>> updateExchangeRate(
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestBody ExchangeRate exchangeRate) {
         Optional<ExchangeRate> existingOpt = exchangeRateService.getExchangeRateByDate(date);
@@ -68,23 +65,18 @@ public class ExchangeRateController {
             if (exchangeRate.getEurRate() != null) existing.setEurRate(exchangeRate.getEurRate());
             if (exchangeRate.getJpyRate() != null) existing.setJpyRate(exchangeRate.getJpyRate());
             if (exchangeRate.getCnyRate() != null) existing.setCnyRate(exchangeRate.getCnyRate());
-            return ResponseEntity.ok(exchangeRateService.saveExchangeRate(existing));
-        } else {
-            exchangeRate.setDate(date);
-            return ResponseEntity.ok(exchangeRateService.saveExchangeRate(exchangeRate));
+            return ResponseEntity.ok(ApiResponse.ok(exchangeRateService.saveExchangeRate(existing)));
         }
+        exchangeRate.setDate(date);
+        return ResponseEntity.ok(ApiResponse.ok(exchangeRateService.saveExchangeRate(exchangeRate)));
     }
 
-    /**
-     * 手動觸發補足匯率（用於測試或手動執行）
-     * @param days 要檢查的天數，預設為 7 天
-     */
     @PostMapping("/auto-fill")
-    public ResponseEntity<Map<String, Object>> autoFillExchangeRates(@RequestParam(defaultValue = "7") int days) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> autoFillExchangeRates(@RequestParam(defaultValue = "7") int days) {
         int filledCount = exchangeRateService.checkAndAutoFillMissingRates(days);
-        Map<String, Object> response = new HashMap<>();
-        response.put("message", "已補足 " + filledCount + " 個日期的匯率");
-        response.put("filledCount", filledCount);
-        return ResponseEntity.ok(response);
+        Map<String, Object> data = new HashMap<>();
+        data.put("message", "已補足 " + filledCount + " 個日期的匯率");
+        data.put("filledCount", filledCount);
+        return ResponseEntity.ok(ApiResponse.ok(data));
     }
 }

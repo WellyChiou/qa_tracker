@@ -1,5 +1,7 @@
 package com.example.helloworld.controller.church;
 
+import com.example.helloworld.dto.common.ApiResponse;
+import com.example.helloworld.dto.common.PageResponse;
 import com.example.helloworld.entity.church.AboutInfo;
 import com.example.helloworld.service.church.AboutInfoService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +25,7 @@ public class AboutInfoAdminController {
      * 獲取所有關於我們資訊（管理用，包含未啟用的，支持分頁和過濾）
      */
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getAllAboutInfo(
+    public ResponseEntity<ApiResponse<PageResponse<AboutInfo>>> getAllAboutInfo(
             @RequestParam(required = false) String sectionKey,
             @RequestParam(required = false) String title,
             @RequestParam(required = false) Boolean isActive,
@@ -31,20 +33,17 @@ public class AboutInfoAdminController {
             @RequestParam(defaultValue = "20") int size) {
         try {
             Page<AboutInfo> infoPage = aboutInfoService.getAllInfo(sectionKey, title, isActive, page, size);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("data", infoPage.getContent());
-            response.put("content", infoPage.getContent());
-            response.put("totalElements", infoPage.getTotalElements());
-            response.put("totalPages", infoPage.getTotalPages());
-            response.put("currentPage", infoPage.getNumber());
-            response.put("size", infoPage.getSize());
-            return ResponseEntity.ok(response);
+            PageResponse<AboutInfo> pageResponse = new PageResponse<>(
+                    infoPage.getContent(),
+                    infoPage.getTotalElements(),
+                    infoPage.getTotalPages(),
+                    infoPage.getNumber(),
+                    infoPage.getSize()
+            );
+            return ResponseEntity.ok(ApiResponse.ok(pageResponse));
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "獲取關於我們資訊失敗: " + e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("獲取關於我們資訊失敗: " + e.getMessage()));
         }
     }
 
@@ -52,18 +51,13 @@ public class AboutInfoAdminController {
      * 根據 ID 獲取關於我們資訊
      */
     @GetMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> getAboutInfoById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<AboutInfo>> getAboutInfoById(@PathVariable Long id) {
         try {
             AboutInfo info = aboutInfoService.getInfoById(id);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("data", info);
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(info));
         } catch (RuntimeException e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail(e.getMessage()));
         }
     }
 
@@ -71,19 +65,13 @@ public class AboutInfoAdminController {
      * 創建關於我們資訊
      */
     @PostMapping
-    public ResponseEntity<Map<String, Object>> createAboutInfo(@RequestBody AboutInfo aboutInfo) {
+    public ResponseEntity<ApiResponse<AboutInfo>> createAboutInfo(@RequestBody AboutInfo aboutInfo) {
         try {
             AboutInfo created = aboutInfoService.createInfo(aboutInfo);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("data", created);
-            response.put("message", "關於我們資訊已建立");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(created));
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "建立關於我們資訊失敗: " + e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("建立關於我們資訊失敗: " + e.getMessage()));
         }
     }
 
@@ -91,19 +79,13 @@ public class AboutInfoAdminController {
      * 更新關於我們資訊
      */
     @PutMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> updateAboutInfo(@PathVariable Long id, @RequestBody AboutInfo aboutInfo) {
+    public ResponseEntity<ApiResponse<AboutInfo>> updateAboutInfo(@PathVariable Long id, @RequestBody AboutInfo aboutInfo) {
         try {
             AboutInfo updated = aboutInfoService.updateInfo(id, aboutInfo);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("data", updated);
-            response.put("message", "關於我們資訊已更新");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(updated));
         } catch (RuntimeException e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail(e.getMessage()));
         }
     }
 
@@ -111,18 +93,13 @@ public class AboutInfoAdminController {
      * 刪除關於我們資訊
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> deleteAboutInfo(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<String>> deleteAboutInfo(@PathVariable Long id) {
         try {
             aboutInfoService.deleteInfo(id);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "關於我們資訊已刪除");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok("關於我們資訊已刪除"));
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "刪除關於我們資訊失敗: " + e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("刪除關於我們資訊失敗: " + e.getMessage()));
         }
     }
 }

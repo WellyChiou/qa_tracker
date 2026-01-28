@@ -272,15 +272,15 @@ const handleSubmenuClick = (menuId, event) => {
 
 const loadAdminMenus = async () => {
   try {
-    const response = await apiRequest('/church/menus/admin', {
+    // apiRequest 現在會自動返回解析後的資料
+    const menus = await apiRequest('/church/menus/admin', {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const menus = await response.json()
+    if (menus) {
       console.log('載入的後台菜單:', menus)
-      adminMenus.value = menus || []
+      adminMenus.value = Array.isArray(menus) ? menus : []
       console.log('設置後的 adminMenus:', adminMenus.value)
       
       // 從 sessionStorage 恢復 manuallyClosedMenus（防止組件重新創建時丟失）

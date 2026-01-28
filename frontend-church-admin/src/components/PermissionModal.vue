@@ -140,19 +140,17 @@ const handleSubmit = async () => {
       description: formData.value.description || null
     }
     
-    const response = await apiRequest(url, {
+    const data = await apiRequest(url, {
       method,
       body: JSON.stringify(payload),
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
+    if (data !== null) {
       emit('saved', data)
       close()
     } else {
-      const data = await response.json()
-      error.value = data.message || data.error || '操作失敗'
+      error.value = '操作失敗'
     }
   } catch (err) {
     error.value = err.message || '操作失敗'

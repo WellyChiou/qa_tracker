@@ -241,17 +241,18 @@ const loadSchedules = async () => {
     params.append('page', (currentPage.value - 1).toString())
     params.append('size', recordsPerPage.value.toString())
     
-    const response = await apiRequest(`/church/service-schedules?${params.toString()}`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/service-schedules?${params.toString()}`, {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      schedules.value = data.content || data || []
-      
-      // 更新分頁信息
-      if (data.totalElements !== undefined) {
+    if (data) {
+      // 處理 PageResponse 格式
+      let pageData = data
+      if (data.content !== undefined && data.totalElements !== undefined) {
+        // 這是 PageResponse 格式
+        schedules.value = Array.isArray(data.content) ? data.content : []
         totalRecords.value = data.totalElements
         totalPages.value = data.totalPages || 1
         // 確保 currentPage 不超過 totalPages
@@ -259,23 +260,33 @@ const loadSchedules = async () => {
           currentPage.value = totalPages.value
           jumpPage.value = totalPages.value
         }
-        // 同步 jumpPage 與 currentPage
         jumpPage.value = currentPage.value
-        
-        // 更新可用年份列表（從當前數據中提取）
-        const years = new Set()
-        schedules.value.forEach(schedule => {
-          if (schedule.year) {
-            years.add(schedule.year)
-          }
-        })
-        // 注意：這裡只包含當前頁的年份，如果需要完整的年份列表，可能需要額外的 API
       } else {
-        totalRecords.value = schedules.value.length
-        totalPages.value = 1
-        currentPage.value = 1
-        jumpPage.value = 1
+        // 向後兼容：處理舊格式
+        schedules.value = data.content || data || []
+        if (data.totalElements !== undefined) {
+          totalRecords.value = data.totalElements
+          totalPages.value = data.totalPages || 1
+          if (currentPage.value > totalPages.value) {
+            currentPage.value = totalPages.value
+            jumpPage.value = totalPages.value
+          }
+          jumpPage.value = currentPage.value
+        } else {
+          totalRecords.value = schedules.value.length
+          totalPages.value = 1
+          currentPage.value = 1
+          jumpPage.value = 1
+        }
       }
+      
+      // 更新可用年份列表（從當前數據中提取）
+      const years = new Set()
+      schedules.value.forEach(schedule => {
+        if (schedule.year) {
+          years.add(schedule.year)
+        }
+      })
     }
   } catch (error) {
     console.error('載入服事表失敗:', error)
@@ -284,15 +295,15 @@ const loadSchedules = async () => {
 
 const loadPositionConfig = async () => {
   try {
-    const response = await apiRequest('/church/positions/config/full', {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest('/church/positions/config/full', {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
+    if (data) {
       // 後端返回格式：{ "config": {...}, "message": "..." }
-      const config = data.config || {}
+      const config = data.config || data || {}
       
       // 按 sortOrder 排序崗位配置
       const sortedConfig = {}
@@ -346,12 +357,13 @@ const deleteSchedule = async (year) => {
   }
   
   try {
-    const response = await apiRequest(`/church/service-schedules/${year}`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/service-schedules/${year}`, {
       method: 'DELETE',
       credentials: 'include'
     })
     
-    if (response.ok) {
+    if (data !== null) {
       loadSchedules()
     } else {
       toast.error('刪除失敗')

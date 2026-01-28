@@ -391,13 +391,13 @@ const loadActivities = async () => {
     params.append('page', (currentPage.value - 1).toString())
     params.append('size', recordsPerPage.value.toString())
     
-    const response = await apiRequest(`/church/admin/activities?${params.toString()}`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/admin/activities?${params.toString()}`, {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
+    if (data) {
       // 處理多種可能的數據結構
       let activitiesData = []
       if (data.success && data.data) {
@@ -509,21 +509,20 @@ const saveActivity = async () => {
         uploadFormData.append('file', selectedFile.value)
         uploadFormData.append('type', 'activities')
 
-        const uploadResponse = await apiRequest('/church/admin/upload/image', {
+        // apiRequest 現在會自動返回解析後的資料
+        const uploadData = await apiRequest('/church/admin/upload/image', {
           method: 'POST',
           body: uploadFormData
         })
 
-        if (uploadResponse.ok) {
-          const uploadData = await uploadResponse.json()
+        if (uploadData) {
           if (uploadData.success && uploadData.url) {
             formData.value.imageUrl = uploadData.url
           } else {
             throw new Error(uploadData.message || '圖片上傳失敗')
           }
         } else {
-          const errorData = await uploadResponse.json().catch(() => ({ message: '圖片上傳失敗' }))
-          throw new Error(errorData.message || '圖片上傳失敗')
+          throw new Error('圖片上傳失敗')
         }
       } catch (error) {
         console.error('圖片上傳失敗:', error)
@@ -548,15 +547,15 @@ const saveActivity = async () => {
       : '/church/admin/activities'
     const method = editingActivity.value ? 'PUT' : 'POST'
     
-    const response = await apiRequest(url, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify(formData.value)
     })
     
-    if (response.ok) {
-      const data = await response.json()
+    if (data) {
       if (data.success) {
         toast.success('儲存成功')
         closeModal()
@@ -575,14 +574,14 @@ const deleteActivity = async (id) => {
   if (!confirm('確定要刪除這個活動嗎？')) return
   
   try {
-    const response = await apiRequest(`/church/admin/activities/${id}`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/admin/activities/${id}`, {
       method: 'DELETE',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      if (data.success) {
+    if (data) {
+      if (data.success !== false) {
         toast.success('刪除成功')
         loadActivities()
       }

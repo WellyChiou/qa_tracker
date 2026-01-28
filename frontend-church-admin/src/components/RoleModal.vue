@@ -118,9 +118,18 @@ const permSearchLeft = ref('')
 const permSearchRight = ref('')
 
 const selectedPermSet = computed(() => new Set(formData.value.permissionIds || []))
-const availablePerms = computed(() => props.availablePermissions || [])
-const unselectedPerms = computed(() => availablePerms.value.filter(p => !selectedPermSet.value.has(p.id)))
-const selectedPerms = computed(() => availablePerms.value.filter(p => selectedPermSet.value.has(p.id)))
+const availablePerms = computed(() => {
+  const perms = props.availablePermissions || []
+  return Array.isArray(perms) ? perms : []
+})
+const unselectedPerms = computed(() => {
+  if (!Array.isArray(availablePerms.value)) return []
+  return availablePerms.value.filter(p => p && p.id != null && !selectedPermSet.value.has(p.id))
+})
+const selectedPerms = computed(() => {
+  if (!Array.isArray(availablePerms.value)) return []
+  return availablePerms.value.filter(p => p && p.id != null && selectedPermSet.value.has(p.id))
+})
 
 const filteredAvailablePerms = computed(() => {
   const q = permSearchLeft.value.trim().toLowerCase()
@@ -149,7 +158,7 @@ const removePerm = (id) => {
 }
 
 const addAllPerms = () => {
-  const ids = filteredAvailablePerms.value.map(p => p.id)
+  const ids = filteredAvailablePerms.value.map(p => p?.id).filter(id => id != null)
   const s = new Set(formData.value.permissionIds || [])
   ids.forEach(id => s.add(id))
   formData.value.permissionIds = Array.from(s)
@@ -163,10 +172,21 @@ watch(() => props.show, (newVal) => {
   if (newVal) {
     if (props.role) {
       isEdit.value = true
+      // 確保 permissions 是數組，並正確提取 ID
+      let permissionIds = []
+      if (props.role.permissions) {
+        if (Array.isArray(props.role.permissions)) {
+          permissionIds = props.role.permissions.map(p => p?.id || p).filter(id => id != null)
+        } else if (typeof props.role.permissions === 'object') {
+          // 如果是 Set 或其他對象，嘗試轉換為數組
+          const permsArray = Array.from(props.role.permissions)
+          permissionIds = permsArray.map(p => p?.id || p).filter(id => id != null)
+        }
+      }
       formData.value = {
         roleName: props.role.roleName || '',
         description: props.role.description || '',
-        permissionIds: props.role.permissions ? props.role.permissions.map(p => p.id) : []
+        permissionIds: permissionIds
       }
     } else {
       isEdit.value = false
@@ -201,19 +221,17 @@ const handleSubmit = async () => {
       permissions: formData.value.permissionIds.map(id => ({ id }))
     }
     
-    const response = await apiRequest(url, {
+    const data = await apiRequest(url, {
       method,
       body: JSON.stringify(payload),
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
+    if (data !== null) {
       emit('saved', data)
       close()
     } else {
-      const data = await response.json()
-      error.value = data.message || data.error || '操作失敗'
+      error.value = '操作失敗'
     }
   } catch (err) {
     error.value = err.message || '操作失敗'

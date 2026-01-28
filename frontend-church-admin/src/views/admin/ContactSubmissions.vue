@@ -305,7 +305,8 @@ const loadSubmissions = async () => {
       params.append('isRead', filters.value.isRead === true || filters.value.isRead === 'true')
     }
     
-    const [submissionsRes, statsRes] = await Promise.all([
+    // apiRequest 現在會自動返回解析後的資料
+    const [submissionsData, statsData] = await Promise.all([
       apiRequest(`/church/admin/contact-submissions?${params.toString()}`, {
         method: 'GET',
         credentials: 'include'
@@ -316,19 +317,27 @@ const loadSubmissions = async () => {
       })
     ])
     
-    if (submissionsRes.ok) {
-      const data = await submissionsRes.json()
+    if (submissionsData) {
+      let data = submissionsData
       if (data.success && data.data) {
-        submissionsList.value = data.data
-        totalRecords.value = data.totalElements || data.data.length
+        data = data.data
+      }
+      
+      if (Array.isArray(data)) {
+        submissionsList.value = data
+        totalRecords.value = data.length
+      } else if (data.content) {
+        submissionsList.value = data.content
+        totalRecords.value = data.totalElements || data.content.length
         totalPages.value = data.totalPages || 1
-        // 確保 currentPage 不超過 totalPages
         if (currentPage.value > totalPages.value) {
           currentPage.value = totalPages.value
           jumpPage.value = totalPages.value
         }
-        // 同步 jumpPage 與 currentPage
         jumpPage.value = currentPage.value
+      } else {
+        submissionsList.value = []
+        totalRecords.value = 0
       }
       toast.success(`載入成功，共 ${totalRecords.value} 筆聯絡表單`)
     } else {
@@ -336,10 +345,13 @@ const loadSubmissions = async () => {
       toast.error('載入聯絡表單失敗')
     }
     
-    if (statsRes.ok) {
-      const statsData = await statsRes.json()
+    if (statsData) {
       if (statsData.success && statsData.data) {
         stats.value = statsData.data
+      } else if (statsData.data) {
+        stats.value = statsData.data
+      } else {
+        stats.value = statsData
       }
     }
   } catch (error) {
@@ -376,26 +388,29 @@ const closeViewModal = () => {
 
 const markAsRead = async (id) => {
   try {
-    const response = await apiRequest(`/church/admin/contact-submissions/${id}/read`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/admin/contact-submissions/${id}/read`, {
       method: 'PUT',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      if (data.success) {
+    if (data) {
+      if (data.success !== false) {
         toast.success('標記已讀成功')
         closeViewModal()
         loadSubmissions()
         // 重新載入統計
-        const statsRes = await apiRequest('/church/admin/contact-submissions/stats', {
+        const statsData = await apiRequest('/church/admin/contact-submissions/stats', {
           method: 'GET',
           credentials: 'include'
         })
-        if (statsRes.ok) {
-          const statsData = await statsRes.json()
+        if (statsData) {
           if (statsData.success && statsData.data) {
             stats.value = statsData.data
+          } else if (statsData.data) {
+            stats.value = statsData.data
+          } else {
+            stats.value = statsData
           }
         }
       }
@@ -410,14 +425,14 @@ const deleteSubmission = async (id) => {
   if (!confirm('確定要刪除這筆聯絡表單記錄嗎？')) return
   
   try {
-    const response = await apiRequest(`/church/admin/contact-submissions/${id}`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/admin/contact-submissions/${id}`, {
       method: 'DELETE',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      if (data.success) {
+    if (data) {
+      if (data.success !== false) {
         toast.success('刪除成功')
         loadSubmissions()
       }

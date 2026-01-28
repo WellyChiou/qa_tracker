@@ -1,5 +1,6 @@
 package com.example.helloworld.controller.church;
 
+import com.example.helloworld.dto.common.ApiResponse;
 import com.example.helloworld.service.church.SystemSettingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +34,7 @@ public class BackupController {
     private SystemSettingService systemSettingService;
 
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getBackupList() {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getBackupList() {
         try {
             // 從環境變數讀取備份目錄（在 docker-compose.yml 中設定）
             String backupDir = System.getenv("BACKUP_DIR");
@@ -43,10 +44,9 @@ public class BackupController {
             Path backupPath = Paths.get(backupDir);
 
             if (!Files.exists(backupPath)) {
-                Map<String, Object> response = new HashMap<>();
-                response.put("backups", new ArrayList<>());
-                response.put("message", "備份目錄不存在");
-                return ResponseEntity.ok(response);
+                Map<String, Object> result = new HashMap<>();
+                result.put("backups", new ArrayList<>());
+                return ResponseEntity.ok(ApiResponse.ok(result));
             }
 
             List<Map<String, Object>> backups = new ArrayList<>();
@@ -107,20 +107,17 @@ public class BackupController {
                     .collect(Collectors.toList());
             }
 
-            Map<String, Object> response = new HashMap<>();
-            response.put("backups", backups);
-            response.put("message", "獲取備份列表成功");
-            return ResponseEntity.ok(response);
+            Map<String, Object> result = new HashMap<>();
+            result.put("backups", backups);
+            return ResponseEntity.ok(ApiResponse.ok(result));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "獲取備份列表失敗：" + e.getMessage());
             e.printStackTrace();
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取備份列表失敗：" + e.getMessage()));
         }
     }
 
     @PostMapping("/create")
-    public ResponseEntity<Map<String, Object>> createBackup() {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> createBackup() {
         try {
             // 獲取備份配置
             String mysqlService = systemSettingService.getSettingValue("backup.mysql_service", "mysql");
@@ -199,15 +196,14 @@ public class BackupController {
                 fullOutput.append("錯誤輸出:\n").append(stderrOutput.toString());
             }
             
-            Map<String, Object> response = new HashMap<>();
             if (exitCode == 0) {
-                response.put("success", true);
-                response.put("message", "備份創建成功");
+                Map<String, Object> result = new HashMap<>();
+                result.put("message", "備份創建成功");
                 if (fullOutput.length() > 0) {
-                    response.put("output", fullOutput.toString());
+                    result.put("output", fullOutput.toString());
                 }
+                return ResponseEntity.ok(ApiResponse.ok(result));
             } else {
-                response.put("success", false);
                 String errorMessage = "備份創建失敗，退出碼: " + exitCode;
                 if (stderrOutput.length() > 0) {
                     errorMessage += "\n錯誤訊息:\n" + stderrOutput.toString();
@@ -215,23 +211,20 @@ public class BackupController {
                 if (stdoutOutput.length() > 0) {
                     errorMessage += "\n標準輸出:\n" + stdoutOutput.toString();
                 }
-                response.put("message", errorMessage);
+                Map<String, Object> errorData = new HashMap<>();
                 if (fullOutput.length() > 0) {
-                    response.put("output", fullOutput.toString());
+                    errorData.put("output", fullOutput.toString());
                 }
+                return ResponseEntity.badRequest().body(ApiResponse.fail(errorMessage));
             }
-            return ResponseEntity.ok(response);
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "備份創建失敗: " + e.getMessage());
             e.printStackTrace();
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("備份創建失敗: " + e.getMessage()));
         }
     }
 
     @DeleteMapping("/delete")
-    public ResponseEntity<Map<String, Object>> deleteBackup(@RequestParam("path") String relativePath) {
+    public ResponseEntity<ApiResponse<Void>> deleteBackup(@RequestParam("path") String relativePath) {
         try {
             // 從環境變數讀取備份目錄（在 docker-compose.yml 中設定）
             String backupDir = System.getenv("BACKUP_DIR");
@@ -244,10 +237,7 @@ public class BackupController {
             
             // 檢查是否包含 church，防止刪除其他資料庫備份
             if (!relativePath.contains("church")) {
-                 Map<String, Object> response = new HashMap<>();
-                response.put("success", false);
-                response.put("message", "只能刪除教會網站的備份");
-                return ResponseEntity.badRequest().body(response);
+                return ResponseEntity.badRequest().body(ApiResponse.fail("只能刪除教會網站的備份"));
             }
 
             Path backupPath = Paths.get(backupDir, relativePath);
@@ -256,38 +246,23 @@ public class BackupController {
             Path normalizedBackupPath = backupPath.normalize();
             Path normalizedBackupDir = Paths.get(backupDir).normalize();
             if (!normalizedBackupPath.startsWith(normalizedBackupDir)) {
-                Map<String, Object> error = new HashMap<>();
-                error.put("success", false);
-                error.put("message", "無效的檔案路徑");
-                return ResponseEntity.badRequest().body(error);
+                return ResponseEntity.badRequest().body(ApiResponse.fail("無效的檔案路徑"));
             }
             
             // 額外檢查：確保是 church 資料庫的備份
             if (!relativePath.startsWith("church/") && !relativePath.startsWith("church_")) {
-                Map<String, Object> error = new HashMap<>();
-                error.put("success", false);
-                error.put("message", "只能刪除 Church 系統的備份檔案");
-                return ResponseEntity.badRequest().body(error);
+                return ResponseEntity.badRequest().body(ApiResponse.fail("只能刪除 Church 系統的備份檔案"));
             }
             
             if (Files.exists(backupPath)) {
                 Files.delete(backupPath);
-                Map<String, Object> response = new HashMap<>();
-                response.put("success", true);
-                response.put("message", "備份檔案刪除成功");
-                return ResponseEntity.ok(response);
+                return ResponseEntity.ok(ApiResponse.ok(null));
             } else {
-                Map<String, Object> response = new HashMap<>();
-                response.put("success", false);
-                response.put("message", "備份檔案不存在");
-                return ResponseEntity.notFound().build();
+                return ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND).body(ApiResponse.fail("備份檔案不存在"));
             }
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "刪除失敗: " + e.getMessage());
             e.printStackTrace();
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("刪除失敗: " + e.getMessage()));
         }
     }
 

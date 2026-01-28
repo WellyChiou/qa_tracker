@@ -298,8 +298,14 @@ const roleSearchLeft = ref('')
 const roleSearchRight = ref('')
 
 const selectedRoleSet = computed(() => new Set(selectedRoleIds.value || []))
-const unselectedRoles = computed(() => (availableRoles.value || []).filter(r => !selectedRoleSet.value.has(r.id)))
-const selectedRoles = computed(() => (availableRoles.value || []).filter(r => selectedRoleSet.value.has(r.id)))
+const unselectedRoles = computed(() => {
+  if (!Array.isArray(availableRoles.value)) return []
+  return availableRoles.value.filter(r => r && r.id != null && !selectedRoleSet.value.has(r.id))
+})
+const selectedRoles = computed(() => {
+  if (!Array.isArray(availableRoles.value)) return []
+  return availableRoles.value.filter(r => r && r.id != null && selectedRoleSet.value.has(r.id))
+})
 
 const filteredAvailableRoles = computed(() => {
   const q = roleSearchLeft.value.trim().toLowerCase()
@@ -329,8 +335,14 @@ const permSearchLeft = ref('')
 const permSearchRight = ref('')
 
 const selectedPermSet = computed(() => new Set(selectedPermissionIds.value || []))
-const unselectedPerms = computed(() => (availablePermissions.value || []).filter(p => !selectedPermSet.value.has(p.id)))
-const selectedPerms = computed(() => (availablePermissions.value || []).filter(p => selectedPermSet.value.has(p.id)))
+const unselectedPerms = computed(() => {
+  if (!Array.isArray(availablePermissions.value)) return []
+  return availablePermissions.value.filter(p => p && p.id != null && !selectedPermSet.value.has(p.id))
+})
+const selectedPerms = computed(() => {
+  if (!Array.isArray(availablePermissions.value)) return []
+  return availablePermissions.value.filter(p => p && p.id != null && selectedPermSet.value.has(p.id))
+})
 
 const filteredAvailablePerms = computed(() => {
   const q = permSearchLeft.value.trim().toLowerCase()
@@ -355,7 +367,7 @@ const removePerm = (id) => {
 }
 
 const addAllRoles = () => {
-  const ids = filteredAvailableRoles.value.map(r => r.id)
+  const ids = filteredAvailableRoles.value.map(r => r?.id).filter(id => id != null)
   const s = new Set(selectedRoleIds.value || [])
   ids.forEach(id => s.add(id))
   selectedRoleIds.value = Array.from(s)
@@ -366,7 +378,7 @@ const removeAllRoles = () => {
 }
 
 const addAllPerms = () => {
-  const ids = filteredAvailablePerms.value.map(p => p.id)
+  const ids = filteredAvailablePerms.value.map(p => p?.id).filter(id => id != null)
   const s = new Set(selectedPermissionIds.value || [])
   ids.forEach(id => s.add(id))
   selectedPermissionIds.value = Array.from(s)
@@ -494,17 +506,20 @@ const loadUsers = async () => {
     }
     
     const url = `/church/admin/users?${params.toString()}`
-    const response = await apiRequest(url, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(url, {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      // 確保 users.value 是陣列
-      const usersData = data.users || data.content || data || []
+    if (data) {
+      // apiRequest 已經提取了 ApiResponse.data，所以 data 可能是：
+      // 1. PageResponse 對象（有 content 字段）
+      // 2. 直接數組
+      // 3. 其他格式
+      const usersData = data.content || (Array.isArray(data) ? data : [])
       users.value = Array.isArray(usersData) ? usersData : []
-      // 更新分頁信息
+      // 更新分頁信息（PageResponse 格式）
       if (data.totalElements !== undefined) {
         totalRecords.value = data.totalElements
         totalPages.value = data.totalPages || 1
@@ -533,14 +548,16 @@ const loadUsers = async () => {
 
 const loadRoles = async () => {
   try {
-    const response = await apiRequest('/church/admin/roles', {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest('/church/admin/roles', {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      availableRoles.value = data.roles || data || []
+    if (data) {
+      // 處理 PageResponse 格式或直接列表
+      const rolesData = data.content || data.roles || data || []
+      availableRoles.value = Array.isArray(rolesData) ? rolesData : []
     } else {
       toast.error('載入角色失敗')
     }
@@ -552,14 +569,16 @@ const loadRoles = async () => {
 
 const loadPermissions = async () => {
   try {
-    const response = await apiRequest('/church/admin/permissions', {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest('/church/admin/permissions', {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      availablePermissions.value = data.permissions || data || []
+    if (data) {
+      // 處理 PageResponse 格式或直接列表
+      const permissionsData = data.content || data.permissions || data || []
+      availablePermissions.value = Array.isArray(permissionsData) ? permissionsData : []
     } else {
       toast.error('載入權限失敗')
     }
@@ -576,13 +595,13 @@ const openAddModal = () => {
 
 const editUser = async (uid) => {
   try {
-    const response = await apiRequest(`/church/admin/users/${uid}`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/admin/users/${uid}`, {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
+    if (data) {
       selectedUser.value = data.user || data
       showModal.value = true
     } else {
@@ -604,9 +623,21 @@ const handleSaved = () => {
 }
 
 const editRoles = async (user) => {
-  selectedUser.value = user
-  selectedRoleIds.value = user.roles ? user.roles.map(r => r.id) : []
-  showRolesModal.value = true
+  try {
+    selectedUser.value = user
+    // 確保 roles 是數組，並正確提取 ID
+    if (user.roles && Array.isArray(user.roles)) {
+      selectedRoleIds.value = user.roles.map(r => r.id || r).filter(id => id != null)
+    } else {
+      selectedRoleIds.value = []
+    }
+    // 重新載入角色列表以確保數據是最新的
+    await loadRoles()
+    showRolesModal.value = true
+  } catch (error) {
+    console.error('打開角色編輯失敗:', error)
+    toast.error('打開角色編輯失敗: ' + error.message)
+  }
 }
 
 const closeRolesModal = () => {
@@ -617,18 +648,20 @@ const closeRolesModal = () => {
 
 const saveRoles = async () => {
   try {
-    const response = await apiRequest(`/church/admin/users/${selectedUser.value.uid}/roles`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/admin/users/${selectedUser.value.uid}/roles`, {
       method: 'POST',
       body: JSON.stringify({ roleIds: selectedRoleIds.value }),
       credentials: 'include'
     })
     
-    if (response.ok) {
+    if (data !== null) {
+      // apiRequest 成功返回數據，表示更新成功
       closeRolesModal()
       loadUsers()
+      toast.success('角色更新成功')
     } else {
-      const data = await response.json()
-      toast.error(data.message || data.error || '更新角色失敗')
+      toast.error('更新角色失敗')
     }
   } catch (error) {
     console.error('更新角色失敗:', error)
@@ -637,11 +670,23 @@ const saveRoles = async () => {
 }
 
 const editPermissions = async (user) => {
-  selectedUser.value = user
-  selectedPermissionIds.value = user.permissions ? user.permissions.map(p => p.id) : []
-  permSearchLeft.value = ''
-  permSearchRight.value = ''
-  showPermissionsModal.value = true
+  try {
+    selectedUser.value = user
+    // 確保 permissions 是數組，並正確提取 ID
+    if (user.permissions && Array.isArray(user.permissions)) {
+      selectedPermissionIds.value = user.permissions.map(p => p.id || p).filter(id => id != null)
+    } else {
+      selectedPermissionIds.value = []
+    }
+    permSearchLeft.value = ''
+    permSearchRight.value = ''
+    // 重新載入權限列表以確保數據是最新的
+    await loadPermissions()
+    showPermissionsModal.value = true
+  } catch (error) {
+    console.error('打開權限編輯失敗:', error)
+    toast.error('打開權限編輯失敗: ' + error.message)
+  }
 }
 
 const closePermissionsModal = () => {
@@ -654,18 +699,20 @@ const closePermissionsModal = () => {
 
 const savePermissions = async () => {
   try {
-    const response = await apiRequest(`/church/admin/users/${selectedUser.value.uid}/permissions`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/admin/users/${selectedUser.value.uid}/permissions`, {
       method: 'POST',
       body: JSON.stringify({ permissionIds: selectedPermissionIds.value }),
       credentials: 'include'
     })
     
-    if (response.ok) {
+    if (data !== null) {
+      // apiRequest 成功返回數據，表示更新成功
       closePermissionsModal()
       loadUsers()
+      toast.success('權限更新成功')
     } else {
-      const data = await response.json()
-      toast.error(data.message || data.error || '更新權限失敗')
+      toast.error('更新權限失敗')
     }
   } catch (error) {
     console.error('更新權限失敗:', error)
@@ -679,12 +726,13 @@ const deleteUser = async (uid) => {
   }
   
   try {
-    const response = await apiRequest(`/church/admin/users/${uid}`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/admin/users/${uid}`, {
       method: 'DELETE',
       credentials: 'include'
     })
     
-    if (response.ok) {
+    if (data !== null) {
       loadUsers()
     } else {
       toast.error('刪除失敗')

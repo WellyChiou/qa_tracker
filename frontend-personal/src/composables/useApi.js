@@ -81,8 +81,10 @@ async function refreshAccessToken() {
       throw new Error('刷新 Token 失敗')
     }
 
-    const data = await response.json()
-    if (data.accessToken) {
+    const json = await response.json()
+    // 支援 ApiResponse 格式：{ success, data: { accessToken, tokenType } }
+    const data = (json && json.data !== undefined) ? json.data : json
+    if (data && data.accessToken) {
       localStorage.setItem('personal_access_token', data.accessToken)
       return data.accessToken
     }
@@ -179,11 +181,27 @@ class ApiService {
       }
       
       try {
-        return JSON.parse(text)
+        const apiResponse = JSON.parse(text)
+        
+        // 統一處理 ApiResponse 格式（檢查是否有 success 欄位）
+        if (apiResponse && typeof apiResponse.success === 'boolean') {
+          if (!apiResponse.success) {
+            throw new Error(apiResponse.message || '請求失敗')
+          }
+          // 成功時返回 data 欄位（如果有），否則返回原始回應（向後兼容）
+          return apiResponse.data !== undefined ? apiResponse.data : apiResponse
+        }
+        
+        // 如果不是 ApiResponse 格式，返回原始回應（向後兼容）
+        return apiResponse
       } catch (e) {
-        // 如果不是有效的 JSON，返回原始文本或 null
-        console.warn('響應不是有效的 JSON:', text)
-        return null
+        // 如果 JSON 解析失敗，拋出錯誤
+        if (e instanceof SyntaxError) {
+          console.warn('響應不是有效的 JSON:', text)
+          return null
+        }
+        // 如果是我們拋出的錯誤（ApiResponse.fail），直接拋出
+        throw e
       }
     } finally {
       if (showLoader && loadingCallbacks.hide) {

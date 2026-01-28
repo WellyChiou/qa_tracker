@@ -323,13 +323,13 @@ const formatDateTime = (dateString) => {
 
 const loadPrayerRequests = async () => {
   try {
-    const response = await apiRequest('/church/admin/prayer-requests', {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest('/church/admin/prayer-requests', {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
+    if (data) {
       // 處理多種可能的數據結構
       let prayerData = []
       if (data.success && data.data) {
@@ -411,15 +411,15 @@ const savePrayerRequest = async () => {
       : '/church/admin/prayer-requests'
     const method = editingPrayerRequest.value ? 'PUT' : 'POST'
     
-    const response = await apiRequest(url, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify(formData.value)
     })
     
-    if (response.ok) {
-      const data = await response.json()
+    if (data) {
       if (data.success) {
         toast.success('儲存成功')
         closeModal()
@@ -438,13 +438,13 @@ const deletePrayerRequest = async (id) => {
   if (!confirm('確定要刪除這個代禱事項嗎？')) return
   
   try {
-    const response = await apiRequest(`/church/admin/prayer-requests/${id}`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/admin/prayer-requests/${id}`, {
       method: 'DELETE',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
+    if (data) {
       if (data.success) {
         toast.success('刪除成功')
         loadPrayerRequests()

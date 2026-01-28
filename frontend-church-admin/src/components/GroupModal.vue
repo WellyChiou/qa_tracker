@@ -269,19 +269,20 @@ const loadNonMembers = async (groupId) => {
       credentials: 'include'
     })
     
-    if (allPersonsResponse.ok) {
-      const allPersonsData = await allPersonsResponse.json()
-      const allPersons = allPersonsData.persons || []
+    if (allPersonsResponse) {
+      // 處理 PageResponse 格式或直接列表
+      const allPersonsData = allPersonsResponse.content || allPersonsResponse.persons || allPersonsResponse || []
+      const allPersons = Array.isArray(allPersonsData) ? allPersonsData : []
       
       // 獲取該小組的成員 ID 列表
-      const membersResponse = await apiRequest(`/church/groups/${groupId}/members`, {
+      const membersData = await apiRequest(`/church/groups/${groupId}/members`, {
         method: 'GET',
         credentials: 'include'
       })
       
-      if (membersResponse.ok) {
-        const membersData = await membersResponse.json()
-        const memberIds = (membersData.members || []).map(m => m.id)
+      if (membersData) {
+        const members = membersData.members || membersData || []
+        const memberIds = Array.isArray(members) ? members.map(m => m.id) : []
         
         // 過濾掉已經在該小組的成員
         leftPersons.value = allPersons.filter(p => !memberIds.includes(p.id))
@@ -298,18 +299,18 @@ const loadNonMembers = async (groupId) => {
 
 const loadMembers = async (groupId) => {
   try {
-    const response = await apiRequest(`/church/groups/${groupId}/members`, {
+    const data = await apiRequest(`/church/groups/${groupId}/members`, {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
+    if (data) {
+      const members = data.members || data || []
       // 確保每個成員都有 role 欄位
-      rightPersons.value = (data.members || []).map(m => ({
+      rightPersons.value = Array.isArray(members) ? members.map(m => ({
         ...m,
         role: m.role || 'MEMBER'
-      }))
+      })) : []
       // 保存初始成員 ID 列表，用於後續比較
       initialMemberIds.value = rightPersons.value.map(p => p.id)
     }
@@ -321,14 +322,15 @@ const loadMembers = async (groupId) => {
 const loadAllPersons = async () => {
   try {
     // 載入所有人員（不排除已有小組的人員，因為每個人可以參加多個小組）
-    const response = await apiRequest('/church/persons', {
+    const data = await apiRequest('/church/persons', {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      leftPersons.value = data.persons || []
+    if (data) {
+      // 處理 PageResponse 格式或直接列表
+      const personsData = data.content || data.persons || data || []
+      leftPersons.value = Array.isArray(personsData) ? personsData : []
       rightPersons.value = []
     }
   } catch (error) {
@@ -352,30 +354,30 @@ const save = async () => {
     let groupId
     if (editingGroup.value) {
       // 更新小組
-      const response = await apiRequest(`/church/groups/${editingGroup.value.id}`, {
+      const data = await apiRequest(`/church/groups/${editingGroup.value.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(groupData)
-      }, '更新中...', true)
+      })
       
-      if (response.ok) {
-        const data = await response.json()
-        groupId = data.group.id
+      if (data !== null) {
+        const groupDataResult = data.group || data.data || data
+        groupId = groupDataResult.id || editingGroup.value.id
         toast.success('小組更新成功', '成功')
       } else {
         throw new Error('更新失敗')
       }
     } else {
       // 創建小組
-      const response = await apiRequest('/church/groups', {
+      const data = await apiRequest('/church/groups', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(groupData)
-      }, '創建中...', true)
+      })
       
-      if (response.ok) {
-        const data = await response.json()
-        groupId = data.group.id
+      if (data !== null) {
+        const groupDataResult = data.group || data.data || data
+        groupId = groupDataResult.id
         toast.success('小組創建成功', '成功')
       } else {
         throw new Error('創建失敗')

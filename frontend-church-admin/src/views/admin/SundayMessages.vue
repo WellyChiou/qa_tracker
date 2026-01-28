@@ -388,33 +388,47 @@ const loadMessages = async () => {
     params.append('page', (currentPage.value - 1).toString())
     params.append('size', recordsPerPage.value.toString())
     
-    const response = await apiRequest(`/church/admin/sunday-messages?${params.toString()}`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/admin/sunday-messages?${params.toString()}`, {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
+    if (data) {
+      // 處理 ApiResponse 格式或直接返回的資料
+      let responseData = data
       if (data.success && data.data) {
-        messagesList.value = data.data || data.content || []
-        
-        // 更新分頁信息
-        if (data.totalElements !== undefined) {
-          totalRecords.value = data.totalElements
-          totalPages.value = data.totalPages || 1
-          // 確保 currentPage 不超過 totalPages
-          if (currentPage.value > totalPages.value) {
-            currentPage.value = totalPages.value
-            jumpPage.value = totalPages.value
-          }
-          // 同步 jumpPage 與 currentPage
-          jumpPage.value = currentPage.value
-        } else {
-          totalRecords.value = messagesList.value.length
-          totalPages.value = 1
-          currentPage.value = 1
-          jumpPage.value = 1
+        responseData = data.data
+      } else if (data.data) {
+        responseData = data.data
+      }
+      
+      messagesList.value = responseData.content || responseData || []
+      
+      // 更新分頁信息
+      if (responseData.totalElements !== undefined) {
+        totalRecords.value = responseData.totalElements
+        totalPages.value = responseData.totalPages || 1
+        // 確保 currentPage 不超過 totalPages
+        if (currentPage.value > totalPages.value) {
+          currentPage.value = totalPages.value
+          jumpPage.value = totalPages.value
         }
+        // 同步 jumpPage 與 currentPage
+        jumpPage.value = currentPage.value
+      } else if (data.totalElements !== undefined) {
+        totalRecords.value = data.totalElements
+        totalPages.value = data.totalPages || 1
+        if (currentPage.value > totalPages.value) {
+          currentPage.value = totalPages.value
+          jumpPage.value = totalPages.value
+        }
+        jumpPage.value = currentPage.value
+      } else {
+        totalRecords.value = messagesList.value.length
+        totalPages.value = 1
+        currentPage.value = 1
+        jumpPage.value = 1
       }
     }
   } catch (error) {
@@ -537,21 +551,15 @@ const saveMessage = async () => {
         uploadFormData.append('file', selectedFile.value)
         uploadFormData.append('type', 'sunday-messages')
 
-        const uploadResponse = await apiRequest('/church/admin/upload/image', {
+        const uploadData = await apiRequest('/church/admin/upload/image', {
           method: 'POST',
           body: uploadFormData
         })
 
-        if (uploadResponse.ok) {
-          const uploadData = await uploadResponse.json()
-          if (uploadData.success && uploadData.url) {
-            formData.value.imageUrl = uploadData.url
-          } else {
-            throw new Error(uploadData.message || '圖片上傳失敗')
-          }
+        if (uploadData && uploadData.url) {
+          formData.value.imageUrl = uploadData.url
         } else {
-          const errorData = await uploadResponse.json().catch(() => ({ message: '圖片上傳失敗' }))
-          throw new Error(errorData.message || '圖片上傳失敗')
+          throw new Error('圖片上傳失敗')
         }
       } catch (error) {
         console.error('圖片上傳失敗:', error)
@@ -576,15 +584,15 @@ const saveMessage = async () => {
       : '/church/admin/sunday-messages'
     const method = editingMessage.value ? 'PUT' : 'POST'
     
-    const response = await apiRequest(url, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify(formData.value)
     })
     
-    if (response.ok) {
-      const data = await response.json()
+    if (data) {
       if (data.success) {
         toast.success('儲存成功')
         closeModal()
@@ -603,14 +611,14 @@ const deleteMessage = async (id) => {
   if (!confirm('確定要刪除這個主日信息嗎？')) return
   
   try {
-    const response = await apiRequest(`/church/admin/sunday-messages/${id}`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/admin/sunday-messages/${id}`, {
       method: 'DELETE',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      if (data.success) {
+    if (data) {
+      if (data.success !== false) {
         toast.success('刪除成功')
         loadMessages()
       }

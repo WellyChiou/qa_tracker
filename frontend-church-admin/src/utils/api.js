@@ -192,15 +192,57 @@ export async function apiRequest(url, options = {}, loadingMessage = '載入中.
       }
     }
     
-    // 對於 401/403，不拋出異常，讓調用者處理
-    // 對於其他錯誤，拋出異常，但保留 response 對象以便調用者可以讀取錯誤詳情
-    if (!response.ok && response.status !== 401 && response.status !== 403) {
-      const error = new Error(`API 請求失敗: ${response.status} ${response.statusText}`)
-      error.response = response // 保留 response 對象以便調用者可以讀取 JSON
-      throw error
+    // 統一處理 ApiResponse 格式
+    try {
+      const apiResponse = await response.json()
+      
+      // 檢查是否是 ApiResponse 格式（有 success 欄位）
+      if (apiResponse && typeof apiResponse.success === 'boolean') {
+        if (!apiResponse.success) {
+          const error = new Error(apiResponse.message || '請求失敗')
+          error.response = response
+          // 對於 401/403，不拋出異常，讓調用者處理（認證相關）
+          if (response.status === 401 || response.status === 403) {
+            return null // 返回 null 表示認證失敗
+          }
+          throw error
+        }
+        // 成功時返回 data 欄位（如果有），否則返回原始回應（向後兼容）
+        return apiResponse.data !== undefined ? apiResponse.data : apiResponse
+      }
+      
+      // 如果不是 ApiResponse 格式，檢查 HTTP 狀態碼
+      if (!response.ok) {
+        // 對於 401/403，返回 null（讓調用者處理）
+        if (response.status === 401 || response.status === 403) {
+          return null
+        }
+        // 其他錯誤，拋出異常
+        const error = new Error(`API 請求失敗: ${response.status} ${response.statusText}`)
+        error.response = response
+        throw error
+      }
+      
+      // 成功且不是 ApiResponse 格式，返回原始回應（向後兼容）
+      return apiResponse
+    } catch (e) {
+      // 如果 JSON 解析失敗
+      if (e instanceof SyntaxError) {
+        // 對於 401/403，返回 null
+        if (response.status === 401 || response.status === 403) {
+          return null
+        }
+        // 對於 200 狀態碼，如果 JSON 解析失敗（可能是空響應），返回空對象
+        if (response.status === 200 || response.status === 201 || response.status === 204) {
+          return {}
+        }
+        // 其他情況，拋出異常
+        const error = new Error(`API 請求失敗: ${response.status} ${response.statusText}`)
+        error.response = response
+        throw error
+      }
+      throw e
     }
-    
-    return response
   } finally {
     // 隱藏 loading
     if (loadingCallbacks.hide) {
@@ -210,112 +252,88 @@ export async function apiRequest(url, options = {}, loadingMessage = '載入中.
 }
 
 /**
- * 教會排程管理 API
+ * 教會排程管理 API（apiRequest 已回傳解析後的 data，直接使用返回值）
  */
 export async function getChurchScheduledJobs() {
-  const response = await apiRequest('/church/scheduled-jobs', {
+  const data = await apiRequest('/church/scheduled-jobs', {
     method: 'GET'
   }, '載入任務中...', true)
-  if (!response.ok) {
-    throw new Error('載入任務失敗')
-  }
-  return await response.json()
+  if (data == null) throw new Error('載入任務失敗')
+  return data
 }
 
 export async function getChurchScheduledJobById(id) {
-  const response = await apiRequest(`/church/scheduled-jobs/${id}`, {
+  const data = await apiRequest(`/church/scheduled-jobs/${id}`, {
     method: 'GET'
   }, '', true)
-  if (!response.ok) {
-    throw new Error('載入任務失敗')
-  }
-  return await response.json()
+  if (data == null) throw new Error('載入任務失敗')
+  return data
 }
 
 export async function createChurchScheduledJob(job) {
-  const response = await apiRequest('/church/scheduled-jobs', {
+  const data = await apiRequest('/church/scheduled-jobs', {
     method: 'POST',
     body: JSON.stringify(job)
   }, '建立中...', true)
-  if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(errorText || '建立任務失敗')
-  }
-  return await response.json()
+  if (data == null) throw new Error('建立任務失敗')
+  return data
 }
 
 export async function updateChurchScheduledJob(id, job) {
-  const response = await apiRequest(`/church/scheduled-jobs/${id}`, {
+  const data = await apiRequest(`/church/scheduled-jobs/${id}`, {
     method: 'PUT',
     body: JSON.stringify(job)
   }, '更新中...', true)
-  if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(errorText || '更新任務失敗')
-  }
-  return await response.json()
+  if (data == null) throw new Error('更新任務失敗')
+  return data
 }
 
 export async function deleteChurchScheduledJob(id) {
-  const response = await apiRequest(`/church/scheduled-jobs/${id}`, {
+  await apiRequest(`/church/scheduled-jobs/${id}`, {
     method: 'DELETE'
   }, '刪除中...', true)
-  if (!response.ok) {
-    throw new Error('刪除任務失敗')
-  }
 }
 
 export async function executeChurchScheduledJob(id) {
-  const response = await apiRequest(`/church/scheduled-jobs/${id}/execute`, {
+  const data = await apiRequest(`/church/scheduled-jobs/${id}/execute`, {
     method: 'POST'
   }, '執行中...', true)
-  if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(errorText || '執行任務失敗')
-  }
-  return await response.json()
+  if (data == null) throw new Error('執行任務失敗')
+  return data
 }
 
 export async function toggleChurchScheduledJob(id, enabled) {
-  const response = await apiRequest(`/church/scheduled-jobs/${id}/toggle?enabled=${enabled}`, {
+  const data = await apiRequest(`/church/scheduled-jobs/${id}/toggle?enabled=${enabled}`, {
     method: 'PUT'
   }, '更新中...', true)
-  if (!response.ok) {
-    throw new Error('切換狀態失敗')
-  }
-  return await response.json()
+  if (data == null) throw new Error('切換狀態失敗')
+  return data
 }
 
 export async function getChurchJobExecutions(jobId) {
-  const response = await apiRequest(`/church/scheduled-jobs/${jobId}/executions`, {
+  const data = await apiRequest(`/church/scheduled-jobs/${jobId}/executions`, {
     method: 'GET'
   }, '載入記錄中...', true)
-  if (!response.ok) {
-    throw new Error('載入執行記錄失敗')
-  }
-  return await response.json()
+  if (data == null) throw new Error('載入執行記錄失敗')
+  return data
 }
 
 export async function getChurchLatestJobExecution(jobId) {
-  const response = await apiRequest(`/church/scheduled-jobs/${jobId}/executions/latest`, {
-    method: 'GET'
-  }, '', true)
-  if (response.status === 404) {
+  try {
+    const data = await apiRequest(`/church/scheduled-jobs/${jobId}/executions/latest`, {
+      method: 'GET'
+    }, '', true)
+    return data == null ? null : data
+  } catch {
     return null
   }
-  if (!response.ok) {
-    throw new Error('載入執行狀態失敗')
-  }
-  return await response.json()
 }
 
 export async function getChurchJobExecutionById(executionId) {
-  const response = await apiRequest(`/church/scheduled-jobs/executions/${executionId}`, {
+  const data = await apiRequest(`/church/scheduled-jobs/executions/${executionId}`, {
     method: 'GET'
   }, '', true)
-  if (!response.ok) {
-    throw new Error('載入執行記錄失敗')
-  }
-  return await response.json()
+  if (data == null) throw new Error('載入執行記錄失敗')
+  return data
 }
 

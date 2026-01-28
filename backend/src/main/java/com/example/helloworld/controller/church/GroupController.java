@@ -1,5 +1,7 @@
 package com.example.helloworld.controller.church;
 
+import com.example.helloworld.dto.common.ApiResponse;
+import com.example.helloworld.dto.common.PageResponse;
 import com.example.helloworld.entity.church.Group;
 import com.example.helloworld.entity.church.GroupPerson;
 import com.example.helloworld.entity.church.Person;
@@ -32,25 +34,23 @@ public class GroupController {
      * 獲取所有小組列表（支援分頁）
      */
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getAllGroups(
+    public ResponseEntity<ApiResponse<PageResponse<Group>>> getAllGroups(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         try {
             Pageable pageable = PageRequest.of(page, size);
             Page<Group> groupsPage = groupService.getAllGroups(pageable);
-            Map<String, Object> response = new HashMap<>();
-            response.put("groups", groupsPage.getContent());
-            response.put("content", groupsPage.getContent());
-            response.put("totalElements", groupsPage.getTotalElements());
-            response.put("totalPages", groupsPage.getTotalPages());
-            response.put("currentPage", groupsPage.getNumber());
-            response.put("size", groupsPage.getSize());
-            response.put("message", "獲取小組列表成功");
-            return ResponseEntity.ok(response);
+            PageResponse<Group> pageResponse = new PageResponse<>(
+                    groupsPage.getContent(),
+                    groupsPage.getTotalElements(),
+                    groupsPage.getTotalPages(),
+                    groupsPage.getNumber(),
+                    groupsPage.getSize()
+            );
+            return ResponseEntity.ok(ApiResponse.ok(pageResponse));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "獲取小組列表失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("獲取小組列表失敗：" + e.getMessage()));
         }
     }
 
@@ -58,17 +58,13 @@ public class GroupController {
      * 獲取所有啟用的小組列表
      */
     @GetMapping("/active")
-    public ResponseEntity<Map<String, Object>> getActiveGroups() {
+    public ResponseEntity<ApiResponse<List<Group>>> getActiveGroups() {
         try {
             List<Group> groups = groupService.getActiveGroups();
-            Map<String, Object> response = new HashMap<>();
-            response.put("groups", groups);
-            response.put("message", "獲取啟用小組列表成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(groups));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "獲取啟用小組列表失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("獲取啟用小組列表失敗：" + e.getMessage()));
         }
     }
 
@@ -77,7 +73,7 @@ public class GroupController {
      */
     @GetMapping("/{id}")
     @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
-    public ResponseEntity<Map<String, Object>> getGroupById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getGroupById(@PathVariable Long id) {
         try {
             return groupService.getGroupById(id)
                 .map(group -> {
@@ -97,18 +93,17 @@ public class GroupController {
                             member.getPositionPersons().size(); // 觸發初始化
                         }
                     }
-                    Map<String, Object> response = new HashMap<>();
-                    response.put("group", group);
-                    response.put("members", members);
-                    response.put("memberCount", members.size());
-                    response.put("message", "獲取小組成功");
-                    return ResponseEntity.ok(response);
+                    Map<String, Object> result = new HashMap<>();
+                    result.put("group", group);
+                    result.put("members", members);
+                    result.put("memberCount", members.size());
+                    return ResponseEntity.ok(ApiResponse.ok(result));
                 })
-                .orElse(ResponseEntity.notFound().build());
+                .orElse(ResponseEntity.badRequest()
+                        .body(ApiResponse.fail("小組不存在")));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "獲取小組失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("獲取小組失敗：" + e.getMessage()));
         }
     }
 
@@ -116,17 +111,13 @@ public class GroupController {
      * 創建小組
      */
     @PostMapping
-    public ResponseEntity<Map<String, Object>> createGroup(@RequestBody Group group) {
+    public ResponseEntity<ApiResponse<Group>> createGroup(@RequestBody Group group) {
         try {
             Group created = groupService.createGroup(group);
-            Map<String, Object> response = new HashMap<>();
-            response.put("group", created);
-            response.put("message", "小組創建成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(created));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "創建小組失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("創建小組失敗：" + e.getMessage()));
         }
     }
 
@@ -134,17 +125,13 @@ public class GroupController {
      * 更新小組
      */
     @PutMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> updateGroup(@PathVariable Long id, @RequestBody Group group) {
+    public ResponseEntity<ApiResponse<Group>> updateGroup(@PathVariable Long id, @RequestBody Group group) {
         try {
             Group updated = groupService.updateGroup(id, group);
-            Map<String, Object> response = new HashMap<>();
-            response.put("group", updated);
-            response.put("message", "小組更新成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(updated));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "更新小組失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("更新小組失敗：" + e.getMessage()));
         }
     }
 
@@ -152,16 +139,13 @@ public class GroupController {
      * 刪除小組
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> deleteGroup(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<String>> deleteGroup(@PathVariable Long id) {
         try {
             groupService.deleteGroup(id);
-            Map<String, Object> response = new HashMap<>();
-            response.put("message", "小組刪除成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok("小組刪除成功"));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "刪除小組失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("刪除小組失敗：" + e.getMessage()));
         }
     }
 
@@ -170,7 +154,7 @@ public class GroupController {
      */
     @GetMapping("/{id}/members")
     @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
-    public ResponseEntity<Map<String, Object>> getGroupMembers(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getGroupMembers(@PathVariable Long id) {
         try {
             List<GroupPerson> groupPersons = groupService.getGroupMembersWithRole(id);
             // 在事務內初始化懶加載的關聯，避免序列化時出現 LazyInitializationException
@@ -197,14 +181,10 @@ public class GroupController {
                     members.add(memberData);
                 }
             }
-            Map<String, Object> response = new HashMap<>();
-            response.put("members", members);
-            response.put("message", "獲取小組成員列表成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(members));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "獲取小組成員列表失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("獲取小組成員列表失敗：" + e.getMessage()));
         }
     }
 
@@ -213,7 +193,7 @@ public class GroupController {
      */
     @GetMapping("/{id}/non-members")
     @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
-    public ResponseEntity<Map<String, Object>> getNonGroupMembers(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<List<Person>>> getNonGroupMembers(@PathVariable Long id) {
         try {
             List<Person> nonMembers = groupService.getNonGroupMembers(id);
             // 在事務內初始化懶加載的關聯，避免序列化時出現 LazyInitializationException
@@ -225,14 +205,10 @@ public class GroupController {
                     person.getPositionPersons().size(); // 觸發初始化
                 }
             }
-            Map<String, Object> response = new HashMap<>();
-            response.put("nonMembers", nonMembers);
-            response.put("message", "獲取未加入小組的人員列表成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(nonMembers));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "獲取未加入小組的人員列表失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("獲取未加入小組的人員列表失敗：" + e.getMessage()));
         }
     }
 
@@ -241,7 +217,7 @@ public class GroupController {
      */
     @GetMapping("/non-members")
     @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
-    public ResponseEntity<Map<String, Object>> getPersonsWithoutGroup() {
+    public ResponseEntity<ApiResponse<List<Person>>> getPersonsWithoutGroup() {
         try {
             List<Person> nonMembers = groupService.getPersonsWithoutGroup();
             // 在事務內初始化懶加載的關聯，避免序列化時出現 LazyInitializationException
@@ -253,14 +229,10 @@ public class GroupController {
                     person.getPositionPersons().size(); // 觸發初始化
                 }
             }
-            Map<String, Object> response = new HashMap<>();
-            response.put("nonMembers", nonMembers);
-            response.put("message", "獲取未加入任何小組的人員列表成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(nonMembers));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "獲取未加入任何小組的人員列表失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("獲取未加入任何小組的人員列表失敗：" + e.getMessage()));
         }
     }
 
@@ -268,7 +240,7 @@ public class GroupController {
      * 批量添加成員到小組（支援角色設定）
      */
     @PostMapping("/{id}/members")
-    public ResponseEntity<Map<String, Object>> addMembersToGroup(
+    public ResponseEntity<ApiResponse<String>> addMembersToGroup(
             @PathVariable Long id,
             @RequestBody Map<String, Object> request) {
         try {
@@ -308,13 +280,10 @@ public class GroupController {
             }
             
             groupService.addMembersToGroupWithRoles(id, personIds, personRoles, joinedAt);
-            Map<String, Object> response = new HashMap<>();
-            response.put("message", "批量添加成員成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok("批量添加成員成功"));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "批量添加成員失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("批量添加成員失敗：" + e.getMessage()));
         }
     }
 
@@ -322,26 +291,22 @@ public class GroupController {
      * 更新成員角色
      */
     @PutMapping("/{id}/members/{personId}/role")
-    public ResponseEntity<Map<String, Object>> updateMemberRole(
+    public ResponseEntity<ApiResponse<String>> updateMemberRole(
             @PathVariable Long id,
             @PathVariable Long personId,
             @RequestBody Map<String, String> request) {
         try {
             String role = request.get("role");
             if (role == null || (!role.equals("MEMBER") && !role.equals("LEADER") && !role.equals("ASSISTANT_LEADER"))) {
-                Map<String, Object> error = new HashMap<>();
-                error.put("error", "無效的角色：" + role);
-                return ResponseEntity.badRequest().body(error);
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.fail("無效的角色：" + role));
             }
             
             groupService.updateMemberRole(id, personId, role);
-            Map<String, Object> response = new HashMap<>();
-            response.put("message", "更新成員角色成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok("更新成員角色成功"));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "更新成員角色失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("更新成員角色失敗：" + e.getMessage()));
         }
     }
 
@@ -349,18 +314,15 @@ public class GroupController {
      * 從小組移除成員
      */
     @DeleteMapping("/{id}/members/{personId}")
-    public ResponseEntity<Map<String, Object>> removeMemberFromGroup(
+    public ResponseEntity<ApiResponse<String>> removeMemberFromGroup(
             @PathVariable Long id,
             @PathVariable Long personId) {
         try {
             groupService.removeMemberFromGroup(id, personId);
-            Map<String, Object> response = new HashMap<>();
-            response.put("message", "移除成員成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok("移除成員成功"));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "移除成員失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("移除成員失敗：" + e.getMessage()));
         }
     }
 }

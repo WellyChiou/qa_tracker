@@ -151,14 +151,13 @@ const form = ref({
 
 const loadActiveGroups = async () => {
   try {
-    const response = await apiRequest('/church/groups/active', {
+    const data = await apiRequest('/church/groups/active', {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      activeGroups.value = data.groups || []
+    if (data) {
+      activeGroups.value = data.groups || data || []
     }
   } catch (error) {
     console.error('載入小組列表失敗:', error)
@@ -179,15 +178,16 @@ onMounted(() => {
 
 const loadPersonGroups = async (personId) => {
   try {
-    const response = await apiRequest(`/church/persons/${personId}/groups`, {
+    const data = await apiRequest(`/church/persons/${personId}/groups`, {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
+    if (data) {
+      // 處理 ApiResponse 格式
+      const groupsData = data.groups || data || []
       // 只獲取活躍的小組
-      const activeGroupIds = (data.groups || [])
+      const activeGroupIds = (Array.isArray(groupsData) ? groupsData : [])
         .filter(g => g.isActive)
         .map(g => g.groupId)
       form.value.groupIds = activeGroupIds
@@ -257,14 +257,12 @@ const handleSubmit = async () => {
     const personData = { ...form.value }
     delete personData.groupIds
     
-    const response = await apiRequest(`/church/persons/${props.person.id}`, {
+    const result = await apiRequest(`/church/persons/${props.person.id}`, {
       method: 'PUT',
       body: JSON.stringify(personData)
     })
-
-    const result = await response.json()
     
-    if (response.ok && result.success !== false) {
+    if (result !== null) {
       // 更新小組關聯
       try {
         await apiRequest(`/church/persons/${props.person.id}/groups`, {
@@ -278,11 +276,13 @@ const handleSubmit = async () => {
         toast.warning('人員更新成功，但更新小組關聯失敗')
       }
       
-      emit('updated', result.person)
+      // 處理返回的數據
+      const person = result.person || result.data || result
+      emit('updated', person)
       closeModal()
+      toast.success('更新成功')
     } else {
-      console.error('更新失敗響應：', result)
-      toast.error('更新失敗：' + (result.error || '未知錯誤'))
+      toast.error('更新失敗')
     }
   } catch (error) {
     console.error('更新人員失敗：', error)

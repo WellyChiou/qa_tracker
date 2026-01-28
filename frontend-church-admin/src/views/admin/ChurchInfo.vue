@@ -307,13 +307,13 @@ watch(recordsPerPage, () => {
 const loadChurchInfo = async () => {
   try {
     const url = `/church/admin/church-info?page=${currentPage.value - 1}&size=${recordsPerPage.value}`
-    const response = await apiRequest(url, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(url, {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
+    if (data) {
       // 處理多種可能的數據結構
       let infoData = []
       if (data.success && data.data) {
@@ -397,7 +397,8 @@ const closeModal = () => {
 
 const saveInfo = async () => {
   try {
-    const response = await apiRequest('/church/admin/church-info', {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest('/church/admin/church-info', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -406,8 +407,7 @@ const saveInfo = async () => {
       body: JSON.stringify(formData.value)
     })
     
-    if (response.ok) {
-      const data = await response.json()
+    if (data) {
       if (data.success) {
         toast.success('儲存成功')
         closeModal()
@@ -415,9 +415,6 @@ const saveInfo = async () => {
       } else {
         toast.error('儲存失敗: ' + (data.message || '未知錯誤'))
       }
-    } else {
-      const error = await response.json()
-      toast.error('儲存失敗: ' + (error.message || '未知錯誤'))
     }
   } catch (error) {
     console.error('儲存教會資訊失敗:', error)

@@ -134,7 +134,7 @@ const confirmAdd = async () => {
   try {
     // 調用 API 添加每個選中的人員
     for (const person of selectedPersons.value) {
-      const response = await apiRequest(
+      const result = await apiRequest(
         `/church/positions/${props.positionId}/persons/${person.id}?dayType=${props.dayType}`,
         {
           method: 'POST',
@@ -142,9 +142,8 @@ const confirmAdd = async () => {
         }
       )
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.message || `添加 ${person.personName} 失敗`)
+      if (result === null) {
+        throw new Error(`添加 ${person.personName} 失敗`)
       }
     }
 
@@ -176,14 +175,19 @@ const filteredPersons = computed(() => {
 
 const loadPersons = async () => {
   try {
-    const response = await apiRequest('/church/persons/active', {
+    const data = await apiRequest('/church/persons/active', {
       method: 'GET'
     })
-    const result = await response.json()
-    persons.value = result.persons || []
+    if (data) {
+      // 後端返回 ApiResponse<List<Person>>，apiRequest 會返回 List，不需要 data.persons
+      persons.value = Array.isArray(data) ? data : []
+    } else {
+      persons.value = []
+    }
   } catch (error) {
     console.error('載入人員列表失敗：', error)
     toast.error('載入人員列表失敗：' + error.message)
+    persons.value = []
   }
 }
 

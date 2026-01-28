@@ -149,14 +149,13 @@ function generateSessionCode() {
 
 const loadActiveGroups = async () => {
   try {
-    const response = await apiRequest('/church/groups/active', {
+    const data = await apiRequest('/church/groups/active', {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      activeGroups.value = data.groups || []
+    if (data) {
+      activeGroups.value = data.groups || data || []
     }
   } catch (error) {
     console.error('載入小組列表失敗:', error)
@@ -165,14 +164,14 @@ const loadActiveGroups = async () => {
 
 const loadSessionGroups = async (sessionId) => {
   try {
-    const response = await apiRequest(`/church/checkin/admin/sessions/${sessionId}/groups`, {
+    const data = await apiRequest(`/church/checkin/admin/sessions/${sessionId}/groups`, {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      form.value.groupIds = (data.groups || []).map(g => g.id)
+    if (data) {
+      const groupsData = data.groups || data || []
+      form.value.groupIds = Array.isArray(groupsData) ? groupsData.map(g => g.id || g) : []
     }
   } catch (error) {
     console.error('載入場次關聯的小組失敗:', error)
@@ -286,15 +285,15 @@ async function save() {
       toast.success('場次已更新')
     } else {
       // 新增
-      const response = await apiRequest('/church/checkin/admin/sessions', {
+      const data = await apiRequest('/church/checkin/admin/sessions', {
         method: 'POST',
         body: JSON.stringify(payload)
-      }, '儲存中...', true)
+      })
       
-      if (response.ok) {
-        const data = await response.json()
-        // 後端返回的是 Session 對象，直接包含 id
-        sessionId = data.id
+      if (data !== null) {
+        // 處理返回的數據
+        const sessionData = data.data || data
+        sessionId = sessionData.id
         if (!sessionId) {
           console.error('新增場次成功但未返回 ID:', data)
           throw new Error('新增場次成功但未返回 ID')

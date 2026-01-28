@@ -73,13 +73,17 @@ const loadPositions = async () => {
   try {
     console.log('請求崗位列表 URL: /church/positions/active')
     
-    const response = await apiRequest('/church/positions/active', {
+    const data = await apiRequest('/church/positions/active', {
       method: 'GET'
     })
     
-    const result = await response.json()
-    positions.value = result.positions || []
-    await loadPositionPersonCounts()
+    if (data) {
+      // 後端返回 ApiResponse<List<Position>>，apiRequest 會返回 List，不需要 data.positions
+      positions.value = Array.isArray(data) ? data : []
+      await loadPositionPersonCounts()
+    } else {
+      positions.value = []
+    }
   } catch (error) {
     console.error('載入崗位列表失敗：', error)
     console.error('錯誤詳情:', error.message, error.stack)
@@ -94,18 +98,17 @@ const loadPositionPersonCounts = async (positionId = null) => {
   
   for (const position of positionsToLoad) {
     try {
-      const response = await apiRequest(`/church/positions/${position.id}/persons`, {
+      const data = await apiRequest(`/church/positions/${position.id}/persons`, {
         method: 'GET'
       })
       
-      if (response.ok) {
-        const result = await response.json()
+      if (data) {
+        // 後端返回 ApiResponse<Map<String, List<...>>>，Map 結構是 { "saturday": [...], "sunday": [...] }
+        // 不需要 data.persons，直接使用 data.saturday 和 data.sunday
         positionPersonCounts.value[position.id] = {
-          saturday: result.persons?.saturday?.length || 0,
-          sunday: result.persons?.sunday?.length || 0
+          saturday: Array.isArray(data.saturday) ? data.saturday.length : 0,
+          sunday: Array.isArray(data.sunday) ? data.sunday.length : 0
         }
-      } else {
-        console.error(`載入崗位 ${position.id} 人員數量失敗，HTTP 狀態:`, response.status)
       }
     } catch (error) {
       console.error(`載入崗位 ${position.id} 人員數量失敗：`, error)

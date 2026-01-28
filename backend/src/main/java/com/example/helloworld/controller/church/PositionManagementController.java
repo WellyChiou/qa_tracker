@@ -1,5 +1,7 @@
 package com.example.helloworld.controller.church;
 
+import com.example.helloworld.dto.common.ApiResponse;
+import com.example.helloworld.dto.common.PageResponse;
 import com.example.helloworld.entity.church.Position;
 import com.example.helloworld.entity.church.Person;
 import com.example.helloworld.service.church.PositionService;
@@ -29,7 +31,7 @@ public class PositionManagementController {
      * 獲取所有崗位（支持分頁和過濾）
      */
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getAllPositions(
+    public ResponseEntity<ApiResponse<PageResponse<Position>>> getAllPositions(
             @RequestParam(required = false) String positionCode,
             @RequestParam(required = false) String positionName,
             @RequestParam(required = false) Boolean isActive,
@@ -37,19 +39,16 @@ public class PositionManagementController {
             @RequestParam(defaultValue = "20") int size) {
         try {
             Page<Position> positionsPage = positionService.getAllPositions(positionCode, positionName, isActive, page, size);
-            Map<String, Object> response = new HashMap<>();
-            response.put("positions", positionsPage.getContent());
-            response.put("content", positionsPage.getContent());
-            response.put("totalElements", positionsPage.getTotalElements());
-            response.put("totalPages", positionsPage.getTotalPages());
-            response.put("currentPage", positionsPage.getNumber());
-            response.put("size", positionsPage.getSize());
-            response.put("message", "獲取崗位列表成功");
-            return ResponseEntity.ok(response);
+            PageResponse<Position> pageResponse = new PageResponse<>(
+                positionsPage.getContent(),
+                positionsPage.getTotalElements(),
+                positionsPage.getTotalPages(),
+                positionsPage.getNumber(),
+                positionsPage.getSize()
+            );
+            return ResponseEntity.ok(ApiResponse.ok(pageResponse));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "獲取崗位列表失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取崗位列表失敗：" + e.getMessage()));
         }
     }
 
@@ -57,17 +56,12 @@ public class PositionManagementController {
      * 獲取所有啟用的崗位
      */
     @GetMapping("/active")
-    public ResponseEntity<Map<String, Object>> getActivePositions() {
+    public ResponseEntity<ApiResponse<List<Position>>> getActivePositions() {
         try {
             List<Position> positions = positionService.getActivePositions();
-            Map<String, Object> response = new HashMap<>();
-            response.put("positions", positions);
-            response.put("message", "獲取啟用崗位列表成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(positions));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "獲取崗位列表失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取崗位列表失敗：" + e.getMessage()));
         }
     }
 
@@ -75,20 +69,13 @@ public class PositionManagementController {
      * 根據 ID 獲取崗位
      */
     @GetMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> getPositionById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Position>> getPositionById(@PathVariable Long id) {
         try {
             return positionService.getPositionById(id)
-                .map(position -> {
-                    Map<String, Object> response = new HashMap<>();
-                    response.put("position", position);
-                    response.put("message", "獲取崗位成功");
-                    return ResponseEntity.ok(response);
-                })
-                .orElse(ResponseEntity.notFound().build());
+                .map(position -> ResponseEntity.ok(ApiResponse.ok(position)))
+                .orElse(ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND).body(ApiResponse.fail("找不到指定的崗位")));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "獲取崗位失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取崗位失敗：" + e.getMessage()));
         }
     }
 
@@ -96,20 +83,13 @@ public class PositionManagementController {
      * 創建崗位
      */
     @PostMapping
-    public ResponseEntity<Map<String, Object>> createPosition(@RequestBody Position position) {
+    public ResponseEntity<ApiResponse<Position>> createPosition(@RequestBody Position position) {
         try {
             Position created = positionService.createPosition(position);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("position", created);
-            response.put("message", "崗位創建成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(created));
         } catch (Exception e) {
             e.printStackTrace();
-            Map<String, Object> error = new HashMap<>();
-            error.put("success", false);
-            error.put("error", "創建崗位失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("創建崗位失敗：" + e.getMessage()));
         }
     }
 
@@ -117,20 +97,13 @@ public class PositionManagementController {
      * 更新崗位
      */
     @PutMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> updatePosition(@PathVariable Long id, @RequestBody Position position) {
+    public ResponseEntity<ApiResponse<Position>> updatePosition(@PathVariable Long id, @RequestBody Position position) {
         try {
             Position updated = positionService.updatePosition(id, position);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("position", updated);
-            response.put("message", "崗位更新成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(updated));
         } catch (Exception e) {
             e.printStackTrace();
-            Map<String, Object> error = new HashMap<>();
-            error.put("success", false);
-            error.put("error", "更新崗位失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("更新崗位失敗：" + e.getMessage()));
         }
     }
 
@@ -138,19 +111,13 @@ public class PositionManagementController {
      * 刪除崗位
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> deletePosition(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> deletePosition(@PathVariable Long id) {
         try {
             positionService.deletePosition(id);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "崗位刪除成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(null));
         } catch (Exception e) {
             e.printStackTrace();
-            Map<String, Object> error = new HashMap<>();
-            error.put("success", false);
-            error.put("error", "刪除崗位失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("刪除崗位失敗：" + e.getMessage()));
         }
     }
 
@@ -158,17 +125,12 @@ public class PositionManagementController {
      * 獲取崗位的人員列表（按日期類型分組）
      */
     @GetMapping("/{id}/persons")
-    public ResponseEntity<Map<String, Object>> getPositionPersons(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Map<String, List<Map<String, Object>>>>> getPositionPersons(@PathVariable Long id) {
         try {
             Map<String, List<Map<String, Object>>> persons = positionService.getPositionPersonsByDayType(id);
-            Map<String, Object> response = new HashMap<>();
-            response.put("persons", persons);
-            response.put("message", "獲取崗位人員列表成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(persons));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "獲取崗位人員列表失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取崗位人員列表失敗：" + e.getMessage()));
         }
     }
 
@@ -176,19 +138,15 @@ public class PositionManagementController {
      * 為崗位添加人員
      */
     @PostMapping("/{positionId}/persons/{personId}")
-    public ResponseEntity<Map<String, Object>> addPersonToPosition(
+    public ResponseEntity<ApiResponse<Void>> addPersonToPosition(
             @PathVariable Long positionId,
             @PathVariable Long personId,
             @RequestParam String dayType) {
         try {
             positionService.addPersonToPosition(positionId, personId, dayType);
-            Map<String, Object> response = new HashMap<>();
-            response.put("message", "人員添加成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(null));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "添加人員失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("添加人員失敗：" + e.getMessage()));
         }
     }
 
@@ -196,22 +154,16 @@ public class PositionManagementController {
      * 從崗位移除人員
      */
     @DeleteMapping("/{positionId}/persons/{personId}")
-    public ResponseEntity<Map<String, Object>> removePersonFromPosition(
+    public ResponseEntity<ApiResponse<Void>> removePersonFromPosition(
             @PathVariable Long positionId,
             @PathVariable Long personId,
             @RequestParam String dayType) {
         try {
             positionService.removePersonFromPosition(positionId, personId, dayType);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "人員移除成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(null));
         } catch (Exception e) {
             e.printStackTrace(); // 打印錯誤堆棧
-            Map<String, Object> error = new HashMap<>();
-            error.put("success", false);
-            error.put("error", "移除人員失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("移除人員失敗：" + e.getMessage()));
         }
     }
 
@@ -219,7 +171,7 @@ public class PositionManagementController {
      * 更新崗位人員的 includeInAutoSchedule 狀態
      */
     @PutMapping("/position-persons/{positionPersonId}/include-in-auto-schedule")
-    public ResponseEntity<Map<String, Object>> updatePositionPersonIncludeInAutoSchedule(
+    public ResponseEntity<ApiResponse<Void>> updatePositionPersonIncludeInAutoSchedule(
             @PathVariable Long positionPersonId,
             @RequestBody Map<String, Object> request) {
         try {
@@ -228,16 +180,10 @@ public class PositionManagementController {
                 : true;
             
             positionService.updatePositionPersonIncludeInAutoSchedule(positionPersonId, includeInAutoSchedule);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "更新成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(null));
         } catch (Exception e) {
             e.printStackTrace();
-            Map<String, Object> error = new HashMap<>();
-            error.put("success", false);
-            error.put("error", "更新失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("更新失敗：" + e.getMessage()));
         }
     }
 
@@ -245,19 +191,15 @@ public class PositionManagementController {
      * 更新崗位人員排序
      */
     @PutMapping("/{id}/persons/order")
-    public ResponseEntity<Map<String, Object>> updatePositionPersonOrder(
+    public ResponseEntity<ApiResponse<Void>> updatePositionPersonOrder(
             @PathVariable Long id,
             @RequestParam String dayType,
             @RequestBody List<Long> personIds) {
         try {
             positionService.updatePositionPersonOrder(id, dayType, personIds);
-            Map<String, Object> response = new HashMap<>();
-            response.put("message", "排序更新成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(null));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "更新排序失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("更新排序失敗：" + e.getMessage()));
         }
     }
 
@@ -265,17 +207,12 @@ public class PositionManagementController {
      * 獲取完整的崗位配置
      */
     @GetMapping("/config/full")
-    public ResponseEntity<Map<String, Object>> getFullPositionConfig() {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getFullPositionConfig() {
         try {
             Map<String, Object> config = positionService.getFullPositionConfig();
-            Map<String, Object> response = new HashMap<>();
-            response.put("config", config);
-            response.put("message", "獲取完整配置成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(config));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "獲取配置失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取配置失敗：" + e.getMessage()));
         }
     }
 }

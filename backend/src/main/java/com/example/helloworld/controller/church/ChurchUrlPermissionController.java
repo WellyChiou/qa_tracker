@@ -1,5 +1,7 @@
 package com.example.helloworld.controller.church;
 
+import com.example.helloworld.dto.common.ApiResponse;
+import com.example.helloworld.dto.common.PageResponse;
 import com.example.helloworld.entity.church.ChurchUrlPermission;
 import com.example.helloworld.service.church.ChurchUrlPermissionService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,7 +26,7 @@ public class ChurchUrlPermissionController {
      * 獲取所有 URL 權限配置（支持分頁和過濾）
      */
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getAllPermissions(
+    public ResponseEntity<ApiResponse<PageResponse<ChurchUrlPermission>>> getAllPermissions(
             @RequestParam(required = false) String urlPattern,
             @RequestParam(required = false) String httpMethod,
             @RequestParam(required = false) Boolean isPublic,
@@ -35,19 +37,16 @@ public class ChurchUrlPermissionController {
         try {
             Page<ChurchUrlPermission> permissionsPage = churchUrlPermissionService.getAllPermissions(
                 urlPattern, httpMethod, isPublic, requiredPermission, isActive, page, size);
-            Map<String, Object> response = new HashMap<>();
-            response.put("permissions", permissionsPage.getContent());
-            response.put("content", permissionsPage.getContent());
-            response.put("totalElements", permissionsPage.getTotalElements());
-            response.put("totalPages", permissionsPage.getTotalPages());
-            response.put("currentPage", permissionsPage.getNumber());
-            response.put("size", permissionsPage.getSize());
-            response.put("message", "獲取 URL 權限列表成功");
-            return ResponseEntity.ok(response);
+            PageResponse<ChurchUrlPermission> pageResponse = new PageResponse<>(
+                permissionsPage.getContent(),
+                permissionsPage.getTotalElements(),
+                permissionsPage.getTotalPages(),
+                permissionsPage.getNumber(),
+                permissionsPage.getSize()
+            );
+            return ResponseEntity.ok(ApiResponse.ok(pageResponse));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "獲取 URL 權限列表失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取 URL 權限列表失敗：" + e.getMessage()));
         }
     }
 
@@ -55,21 +54,16 @@ public class ChurchUrlPermissionController {
      * 根據 ID 獲取 URL 權限配置
      */
     @GetMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> getPermissionById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<ChurchUrlPermission>> getPermissionById(@PathVariable Long id) {
         try {
             Optional<ChurchUrlPermission> permission = churchUrlPermissionService.getPermissionById(id);
             if (permission.isPresent()) {
-                Map<String, Object> response = new HashMap<>();
-                response.put("permission", permission.get());
-                response.put("message", "獲取 URL 權限成功");
-                return ResponseEntity.ok(response);
+                return ResponseEntity.ok(ApiResponse.ok(permission.get()));
             } else {
-                return ResponseEntity.notFound().build();
+                return ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND).body(ApiResponse.fail("找不到指定的 URL 權限"));
             }
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "獲取 URL 權限失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取 URL 權限失敗：" + e.getMessage()));
         }
     }
 
@@ -77,19 +71,12 @@ public class ChurchUrlPermissionController {
      * 創建 URL 權限配置
      */
     @PostMapping
-    public ResponseEntity<Map<String, Object>> createPermission(@RequestBody ChurchUrlPermission permission) {
+    public ResponseEntity<ApiResponse<ChurchUrlPermission>> createPermission(@RequestBody ChurchUrlPermission permission) {
         try {
             ChurchUrlPermission created = churchUrlPermissionService.createPermission(permission);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "URL 權限配置創建成功");
-            response.put("permission", created);
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(created));
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "創建失敗: " + e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("創建失敗: " + e.getMessage()));
         }
     }
 
@@ -97,19 +84,12 @@ public class ChurchUrlPermissionController {
      * 更新 URL 權限配置
      */
     @PutMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> updatePermission(@PathVariable Long id, @RequestBody ChurchUrlPermission permission) {
+    public ResponseEntity<ApiResponse<ChurchUrlPermission>> updatePermission(@PathVariable Long id, @RequestBody ChurchUrlPermission permission) {
         try {
             ChurchUrlPermission updated = churchUrlPermissionService.updatePermission(id, permission);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "URL 權限配置更新成功");
-            response.put("permission", updated);
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(updated));
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "更新失敗: " + e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("更新失敗: " + e.getMessage()));
         }
     }
 
@@ -117,18 +97,12 @@ public class ChurchUrlPermissionController {
      * 刪除 URL 權限配置
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> deletePermission(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> deletePermission(@PathVariable Long id) {
         try {
             churchUrlPermissionService.deletePermission(id);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "URL 權限配置刪除成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(null));
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "刪除失敗: " + e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("刪除失敗: " + e.getMessage()));
         }
     }
 
@@ -136,17 +110,12 @@ public class ChurchUrlPermissionController {
      * 獲取所有啟用的 URL 權限配置（用於動態配置）
      */
     @GetMapping("/active")
-    public ResponseEntity<Map<String, Object>> getActivePermissions() {
+    public ResponseEntity<ApiResponse<List<ChurchUrlPermission>>> getActivePermissions() {
         try {
             List<ChurchUrlPermission> permissions = churchUrlPermissionService.getAllActivePermissions();
-            Map<String, Object> response = new HashMap<>();
-            response.put("permissions", permissions);
-            response.put("message", "獲取啟用的 URL 權限列表成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(permissions));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "獲取 URL 權限列表失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取 URL 權限列表失敗：" + e.getMessage()));
         }
     }
 }

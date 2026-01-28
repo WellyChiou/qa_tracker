@@ -1,5 +1,7 @@
 package com.example.helloworld.controller.church.checkin;
 
+import com.example.helloworld.dto.common.ApiResponse;
+import com.example.helloworld.dto.common.PageResponse;
 import com.example.helloworld.entity.church.Group;
 import com.example.helloworld.entity.church.checkin.Session;
 import com.example.helloworld.entity.church.checkin.SessionGroup;
@@ -51,7 +53,7 @@ public class AdminSessionController {
 
     // 獲取所有場次列表（支援篩選和分頁）
     @GetMapping
-    public ResponseEntity<Map<String, Object>> listAll(
+    public ResponseEntity<ApiResponse<PageResponse<Session>>> listAll(
             @RequestParam(required = false) String sessionCode,
             @RequestParam(required = false) String title,
             @RequestParam(required = false) String status,
@@ -140,68 +142,99 @@ public class AdminSessionController {
         
         Page<Session> sessionPage = new PageImpl<>(content, PageRequest.of(page, size), totalElements);
         
-        Map<String, Object> response = new HashMap<>();
-        response.put("content", content);
-        response.put("totalElements", totalElements);
-        response.put("totalPages", sessionPage.getTotalPages());
-        response.put("currentPage", page);
-        response.put("size", size);
+        PageResponse<Session> pageResponse = new PageResponse<>(
+            content,
+            totalElements,
+            sessionPage.getTotalPages(),
+            page,
+            size
+        );
         
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.ok(pageResponse));
     }
 
     // 獲取單一場次
     @GetMapping("/{id}")
-    public Session getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Session>> getById(@PathVariable Long id) {
         return sessionRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Session not found: " + id));
+                .map(session -> ResponseEntity.ok(ApiResponse.ok(session)))
+                .orElse(ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND).body(ApiResponse.fail("場次不存在")));
     }
 
     // 新增場次
     @PostMapping
-    public Session create(@RequestBody Session session) {
-        return sessionRepo.save(session);
+    public ResponseEntity<ApiResponse<Session>> create(@RequestBody Session session) {
+        try {
+            Session created = sessionRepo.save(session);
+            return ResponseEntity.ok(ApiResponse.ok(created));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.fail("創建場次失敗: " + e.getMessage()));
+        }
     }
 
     // 更新場次
     @PutMapping("/{id}")
-    public Session update(@PathVariable Long id, @RequestBody Session session) {
-        Session existing = sessionRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Session not found: " + id));
-        existing.setSessionType(session.getSessionType());
-        existing.setTitle(session.getTitle());
-        existing.setSessionDate(session.getSessionDate());
-        existing.setOpenAt(session.getOpenAt());
-        existing.setCloseAt(session.getCloseAt());
-        existing.setStatus(session.getStatus());
-        existing.setSessionCode(session.getSessionCode());
-        return sessionRepo.save(existing);
+    public ResponseEntity<ApiResponse<Session>> update(@PathVariable Long id, @RequestBody Session session) {
+        try {
+            Session existing = sessionRepo.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Session not found: " + id));
+            existing.setSessionType(session.getSessionType());
+            existing.setTitle(session.getTitle());
+            existing.setSessionDate(session.getSessionDate());
+            existing.setOpenAt(session.getOpenAt());
+            existing.setCloseAt(session.getCloseAt());
+            existing.setStatus(session.getStatus());
+            existing.setSessionCode(session.getSessionCode());
+            Session updated = sessionRepo.save(existing);
+            return ResponseEntity.ok(ApiResponse.ok(updated));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.fail("更新場次失敗: " + e.getMessage()));
+        }
     }
 
     // 刪除場次
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> delete(@PathVariable Long id) {
-        if (!sessionRepo.existsById(id)) {
-            return ResponseEntity.notFound().build();
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
+        try {
+            if (!sessionRepo.existsById(id)) {
+                return ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND).body(ApiResponse.fail("場次不存在"));
+            }
+            sessionRepo.deleteById(id);
+            return ResponseEntity.ok(ApiResponse.ok(null));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.fail("刪除場次失敗: " + e.getMessage()));
         }
-        sessionRepo.deleteById(id);
-        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/today")
-    public Object today() {
-        return sessionRepo.findBySessionDate(LocalDate.now());
+    public ResponseEntity<ApiResponse<List<Session>>> today() {
+        try {
+            List<Session> sessions = sessionRepo.findBySessionDate(LocalDate.now());
+            return ResponseEntity.ok(ApiResponse.ok(sessions));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取今天的場次失敗: " + e.getMessage()));
+        }
     }
 
     @GetMapping("/{id}/stats")
-    public Map<String, Object> stats(@PathVariable Long id) {
-        long checked = checkinRepo.countBySessionIdAndCanceledFalse(id);
-        return Map.of("checked", checked);
+    public ResponseEntity<ApiResponse<Map<String, Object>>> stats(@PathVariable Long id) {
+        try {
+            long checked = checkinRepo.countBySessionIdAndCanceledFalse(id);
+            Map<String, Object> stats = Map.of("checked", checked);
+            return ResponseEntity.ok(ApiResponse.ok(stats));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取統計資訊失敗: " + e.getMessage()));
+        }
     }
 
     @GetMapping("/{id}/checkins")
-    public Object list(@PathVariable Long id, @RequestParam(defaultValue = "false") boolean includeCanceled) {
-        return checkinRepo.findSessionRows(id, includeCanceled);
+    public ResponseEntity<ApiResponse<List<?>>> list(@PathVariable Long id, @RequestParam(defaultValue = "false") boolean includeCanceled) {
+        try {
+            List<?> checkins = checkinRepo.findSessionRows(id, includeCanceled);
+            return ResponseEntity.ok(ApiResponse.ok(checkins));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取簽到列表失敗: " + e.getMessage()));
+        }
     }
 
     @GetMapping("/{id}/checkins/export.csv")
@@ -228,43 +261,64 @@ public class AdminSessionController {
 
     // 取消簽到記錄（軟取消，保留稽核）
     @PatchMapping("/{sessionId}/checkins/{checkinId}/cancel")
-    public ResponseEntity<?> cancelCheckin(@PathVariable Long sessionId, @PathVariable Long checkinId, @RequestBody(required = false) Map<String, String> body) {
-        String note = body == null ? null : body.getOrDefault("note", null);
-        checkinService.cancelCheckin(checkinId, note);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<ApiResponse<Void>> cancelCheckin(@PathVariable Long sessionId, @PathVariable Long checkinId, @RequestBody(required = false) Map<String, String> body) {
+        try {
+            String note = body == null ? null : body.getOrDefault("note", null);
+            checkinService.cancelCheckin(checkinId, note);
+            return ResponseEntity.ok(ApiResponse.ok(null));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.fail("取消簽到失敗: " + e.getMessage()));
+        }
     }
 
     // 刪除簽到記錄（硬刪除，永久刪除）
     @DeleteMapping("/{sessionId}/checkins/{checkinId}")
-    public ResponseEntity<?> deleteCheckin(@PathVariable Long sessionId, @PathVariable Long checkinId) {
-        checkinService.deleteCheckin(checkinId);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<ApiResponse<Void>> deleteCheckin(@PathVariable Long sessionId, @PathVariable Long checkinId) {
+        try {
+            checkinService.deleteCheckin(checkinId);
+            return ResponseEntity.ok(ApiResponse.ok(null));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.fail("刪除簽到失敗: " + e.getMessage()));
+        }
     }
 
     // 恢復簽到記錄（只對已取消的記錄）
     @PatchMapping("/{sessionId}/checkins/{checkinId}/restore")
-    public ResponseEntity<?> restoreCheckin(@PathVariable Long sessionId, @PathVariable Long checkinId) {
-        checkinService.restoreCheckin(checkinId);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<ApiResponse<Void>> restoreCheckin(@PathVariable Long sessionId, @PathVariable Long checkinId) {
+        try {
+            checkinService.restoreCheckin(checkinId);
+            return ResponseEntity.ok(ApiResponse.ok(null));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.fail("恢復簽到失敗: " + e.getMessage()));
+        }
     }
 
     // 獲取尚未簽到的人員列表
     @GetMapping("/{id}/unchecked-persons")
-    public Object getUncheckedPersons(@PathVariable Long id) {
-        return checkinRepo.findUncheckedPersons(id);
+    public ResponseEntity<ApiResponse<List<?>>> getUncheckedPersons(@PathVariable Long id) {
+        try {
+            List<?> persons = checkinRepo.findUncheckedPersons(id);
+            return ResponseEntity.ok(ApiResponse.ok(persons));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取未簽到人員列表失敗: " + e.getMessage()));
+        }
     }
 
     // 批量補登
     @PostMapping("/{id}/batch-checkin")
-    public ResponseEntity<?> batchCheckin(@PathVariable Long id, @RequestBody List<Map<String, String>> requests) {
-        checkinService.batchManualCheckin(id, requests);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<ApiResponse<Void>> batchCheckin(@PathVariable Long id, @RequestBody List<Map<String, String>> requests) {
+        try {
+            checkinService.batchManualCheckin(id, requests);
+            return ResponseEntity.ok(ApiResponse.ok(null));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.fail("批量補登失敗: " + e.getMessage()));
+        }
     }
 
     // 獲取場次關聯的小組
     @GetMapping("/{id}/groups")
     @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
-    public ResponseEntity<Map<String, Object>> getSessionGroups(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getSessionGroups(@PathVariable Long id) {
         try {
             Session session = sessionRepo.findById(id)
                     .orElseThrow(() -> new RuntimeException("場次不存在：" + id));
@@ -294,21 +348,18 @@ public class AdminSessionController {
                 groups.add(groupInfo);
             }
             
-            Map<String, Object> response = new HashMap<>();
-            response.put("groups", groups);
-            response.put("message", "獲取場次關聯的小組成功");
-            return ResponseEntity.ok(response);
+            Map<String, Object> result = new HashMap<>();
+            result.put("groups", groups);
+            return ResponseEntity.ok(ApiResponse.ok(result));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "獲取場次關聯的小組失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取場次關聯的小組失敗：" + e.getMessage()));
         }
     }
 
     // 更新場次關聯的小組（批量）
     @PutMapping("/{id}/groups")
     @Transactional(transactionManager = "churchTransactionManager")
-    public ResponseEntity<Map<String, Object>> updateSessionGroups(@PathVariable Long id, @RequestBody Map<String, Object> request) {
+    public ResponseEntity<ApiResponse<Void>> updateSessionGroups(@PathVariable Long id, @RequestBody Map<String, Object> request) {
         try {
             Session session = sessionRepo.findById(id)
                     .orElseThrow(() -> new RuntimeException("場次不存在：" + id));
@@ -350,13 +401,9 @@ public class AdminSessionController {
                 sessionGroupRepository.save(sessionGroup);
             }
             
-            Map<String, Object> response = new HashMap<>();
-            response.put("message", "更新場次關聯的小組成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(null));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "更新場次關聯的小組失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("更新場次關聯的小組失敗：" + e.getMessage()));
         }
     }
 }

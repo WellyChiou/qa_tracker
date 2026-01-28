@@ -1,10 +1,12 @@
 package com.example.helloworld.controller.personal;
 
+import com.example.helloworld.dto.common.ApiResponse;
 import com.example.helloworld.entity.personal.Record;
 import com.example.helloworld.service.personal.RecordService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,7 +26,7 @@ public class RecordController {
     
     // 取得所有記錄（分頁）
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getRecords(
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getRecords(
         @RequestParam(required = false) Integer status,
         @RequestParam(required = false) Integer category,
         @RequestParam(required = false) String testPlan,
@@ -71,12 +73,11 @@ public class RecordController {
         stats.put("cancelled", cancelledCount);
         response.put("stats", stats);
         
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.ok(response));
     }
     
-    // 取得所有記錄（不分頁，用於匯出）
     @GetMapping("/export")
-    public ResponseEntity<List<Record>> getRecordsForExport(
+    public ResponseEntity<ApiResponse<List<Record>>> getRecordsForExport(
         @RequestParam(required = false) Integer status,
         @RequestParam(required = false) Integer category,
         @RequestParam(required = false) String testPlan,
@@ -92,66 +93,57 @@ public class RecordController {
             status, category, testPlan, bugFound, issueNumber, keyword,
             testStartDateFrom, testStartDateTo, etaDateFrom, etaDateTo
         );
-        return ResponseEntity.ok(records);
+        return ResponseEntity.ok(ApiResponse.ok(records));
     }
     
-    // 根據 ID 取得記錄
     @GetMapping("/{id}")
-    public ResponseEntity<Record> getRecordById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Record>> getRecordById(@PathVariable Long id) {
         Optional<Record> record = recordService.getRecordById(id);
-        return record.map(ResponseEntity::ok)
-                    .orElse(ResponseEntity.notFound().build());
+        return record.map(r -> ResponseEntity.ok(ApiResponse.ok(r)))
+            .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail("記錄不存在")));
     }
     
-    // 建立記錄
     @PostMapping
-    public ResponseEntity<Record> createRecord(@RequestBody Record record) {
+    public ResponseEntity<ApiResponse<Record>> createRecord(@RequestBody Record record) {
         Record created = recordService.createRecord(record);
-        return ResponseEntity.ok(created);
+        return ResponseEntity.ok(ApiResponse.ok(created));
     }
     
-    // 更新記錄
     @PutMapping("/{id}")
-    public ResponseEntity<Record> updateRecord(@PathVariable Long id, @RequestBody Record record) {
+    public ResponseEntity<ApiResponse<Record>> updateRecord(@PathVariable Long id, @RequestBody Record record) {
         try {
             Record updated = recordService.updateRecord(id, record);
-            return ResponseEntity.ok(updated);
+            return ResponseEntity.ok(ApiResponse.ok(updated));
         } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail(e.getMessage()));
         }
     }
     
-    // 刪除記錄
     @DeleteMapping("/{id}")
-    public ResponseEntity<Map<String, String>> deleteRecord(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> deleteRecord(@PathVariable Long id) {
         recordService.deleteRecord(id);
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "Record deleted successfully");
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.ok(null));
     }
     
-    // 統計執行中筆數
     @GetMapping("/stats/in-progress")
-    public ResponseEntity<Map<String, Long>> getInProgressCount() {
+    public ResponseEntity<ApiResponse<Map<String, Long>>> getInProgressCount() {
         long count = recordService.countInProgress();
         Map<String, Long> response = new HashMap<>();
         response.put("count", count);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
-    // 統計總記錄數（按年份篩選）
     @GetMapping("/stats/total")
-    public ResponseEntity<Map<String, Long>> getTotalRecordCount(@RequestParam(defaultValue = "#{T(java.time.LocalDate).now().getYear()}") int year) {
+    public ResponseEntity<ApiResponse<Map<String, Long>>> getTotalRecordCount(@RequestParam(defaultValue = "#{T(java.time.LocalDate).now().getYear()}") int year) {
         long count = recordService.countTotalRecordsByYear(year);
         Map<String, Long> response = new HashMap<>();
         response.put("count", count);
         response.put("year", (long) year);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
-    // 統計年度執行中和已完成數量
     @GetMapping("/stats/yearly")
-    public ResponseEntity<Map<String, Long>> getYearlyStats(@RequestParam(defaultValue = "#{T(java.time.LocalDate).now().getYear()}") int year) {
+    public ResponseEntity<ApiResponse<Map<String, Long>>> getYearlyStats(@RequestParam(defaultValue = "#{T(java.time.LocalDate).now().getYear()}") int year) {
         long totalCount = recordService.countTotalRecordsByYear(year);
         long inProgressCount = recordService.countInProgressByYear(year);
         long completedCount = recordService.countCompletedByYear(year);
@@ -161,6 +153,6 @@ public class RecordController {
         response.put("total", totalCount);
         response.put("inProgress", inProgressCount);
         response.put("completed", completedCount);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.ok(response));
     }
 }

@@ -177,12 +177,17 @@ async function load(){
     if(to.value) params.set('to', to.value)
     if(includeCanceled.value) params.set('includeCanceled', 'true')
     
-    const res = await apiRequest(`/church/checkin/admin/manual-checkins?${params.toString()}`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/checkin/admin/manual-checkins?${params.toString()}`, {
       method: 'GET'
-    }, '載入中...', true)
-    const data = await res.json() || []
-    rows.value = data
-    toast.success(`查詢成功，共 ${data.length} 筆補登記錄`, '補登稽核')
+    })
+    
+    if (data) {
+      rows.value = Array.isArray(data) ? data : (data.content || [])
+      toast.success(`查詢成功，共 ${rows.value.length} 筆補登記錄`, '補登稽核')
+    } else {
+      rows.value = []
+    }
   } catch (error) {
     console.error('查詢補登記錄失敗:', error)
     toast.error('查詢補登記錄失敗', '補登稽核')
@@ -198,9 +203,20 @@ async function exportExcel(){
     if(to.value) params.set('to', to.value)
     if(includeCanceled.value) params.set('includeCanceled', 'true')
     
-    const res = await apiRequest(`/church/checkin/admin/manual-checkins/export.xlsx?${params.toString()}`, {
-      method: 'GET'
-    }, '匯出中...', true)
+    // 匯出 Excel 需要直接使用 fetch，因為返回的是 blob，不是 JSON
+    const { getApiBaseUrl, getAccessToken } = await import('@/utils/api')
+    const apiUrl = `${getApiBaseUrl()}/church/checkin/admin/manual-checkins/export.xlsx?${params.toString()}`
+    const token = getAccessToken()
+    const headers = {}
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+    
+    const res = await fetch(apiUrl, {
+      method: 'GET',
+      headers,
+      credentials: 'include'
+    })
     
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}))

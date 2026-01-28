@@ -1,5 +1,7 @@
 package com.example.helloworld.controller.church;
 
+import com.example.helloworld.dto.common.ApiResponse;
+import com.example.helloworld.dto.common.PageResponse;
 import com.example.helloworld.entity.church.Activity;
 import com.example.helloworld.service.church.ActivityService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,26 +28,23 @@ public class ActivityAdminController {
      * 獲取所有活動（管理用，包含未啟用的，支援分頁）
      */
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getAllActivities(
+    public ResponseEntity<ApiResponse<PageResponse<Activity>>> getAllActivities(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         try {
             Pageable pageable = PageRequest.of(page, size, Sort.by("activityDate").descending());
             Page<Activity> activitiesPage = activityService.getAllActivities(pageable);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("data", activitiesPage.getContent());
-            response.put("content", activitiesPage.getContent());
-            response.put("totalElements", activitiesPage.getTotalElements());
-            response.put("totalPages", activitiesPage.getTotalPages());
-            response.put("currentPage", activitiesPage.getNumber());
-            response.put("size", activitiesPage.getSize());
-            return ResponseEntity.ok(response);
+            PageResponse<Activity> pageResponse = new PageResponse<>(
+                    activitiesPage.getContent(),
+                    activitiesPage.getTotalElements(),
+                    activitiesPage.getTotalPages(),
+                    activitiesPage.getNumber(),
+                    activitiesPage.getSize()
+            );
+            return ResponseEntity.ok(ApiResponse.ok(pageResponse));
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "獲取活動資訊失敗: " + e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("獲取活動資訊失敗: " + e.getMessage()));
         }
     }
 
@@ -53,19 +52,14 @@ public class ActivityAdminController {
      * 根據 ID 獲取活動
      */
     @GetMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> getActivityById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Activity>> getActivityById(@PathVariable Long id) {
         try {
             Activity activity = activityService.getActivityById(id)
                 .orElseThrow(() -> new RuntimeException("活動不存在: " + id));
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("data", activity);
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(activity));
         } catch (RuntimeException e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail(e.getMessage()));
         }
     }
 
@@ -73,19 +67,13 @@ public class ActivityAdminController {
      * 創建活動
      */
     @PostMapping
-    public ResponseEntity<Map<String, Object>> createActivity(@RequestBody Activity activity) {
+    public ResponseEntity<ApiResponse<Activity>> createActivity(@RequestBody Activity activity) {
         try {
             Activity created = activityService.createActivity(activity);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("data", created);
-            response.put("message", "活動已建立");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(created));
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "建立活動失敗: " + e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("建立活動失敗: " + e.getMessage()));
         }
     }
 
@@ -93,19 +81,13 @@ public class ActivityAdminController {
      * 更新活動
      */
     @PutMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> updateActivity(@PathVariable Long id, @RequestBody Activity activity) {
+    public ResponseEntity<ApiResponse<Activity>> updateActivity(@PathVariable Long id, @RequestBody Activity activity) {
         try {
             Activity updated = activityService.updateActivity(id, activity);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("data", updated);
-            response.put("message", "活動已更新");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(updated));
         } catch (RuntimeException e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail(e.getMessage()));
         }
     }
 
@@ -113,18 +95,13 @@ public class ActivityAdminController {
      * 刪除活動
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> deleteActivity(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<String>> deleteActivity(@PathVariable Long id) {
         try {
             activityService.deleteActivity(id);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "活動已刪除");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok("活動已刪除"));
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "刪除活動失敗: " + e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("刪除活動失敗: " + e.getMessage()));
         }
     }
 }

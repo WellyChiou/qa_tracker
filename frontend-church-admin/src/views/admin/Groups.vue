@@ -321,13 +321,13 @@ watch(recordsPerPage, () => {
 const loadGroups = async () => {
   try {
     const url = `/church/groups?page=${currentPage.value - 1}&size=${recordsPerPage.value}`
-    const response = await apiRequest(url, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(url, {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
+    if (data) {
       // 處理多種可能的數據結構
       let groupsData = []
       if (data.groups) {
@@ -381,14 +381,14 @@ const openAddModal = () => {
 
 const editGroup = async (id) => {
   try {
-    const response = await apiRequest(`/church/groups/${id}`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/groups/${id}`, {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      editingGroup.value = data.group
+    if (data) {
+      editingGroup.value = data.group || data
       showModal.value = true
     }
   } catch (error) {

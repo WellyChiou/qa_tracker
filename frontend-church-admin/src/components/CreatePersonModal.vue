@@ -135,14 +135,13 @@ const form = ref({
 
 const loadActiveGroups = async () => {
   try {
-    const response = await apiRequest('/church/groups/active', {
+    const data = await apiRequest('/church/groups/active', {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      activeGroups.value = data.groups || []
+    if (data) {
+      activeGroups.value = data.groups || data || []
     }
   } catch (error) {
     console.error('載入小組列表失敗:', error)
@@ -171,15 +170,15 @@ const handleSubmit = async () => {
     const personData = { ...form.value }
     delete personData.groupIds
     
-    const response = await apiRequest('/church/persons', {
+    const result = await apiRequest('/church/persons', {
       method: 'POST',
       body: JSON.stringify(personData)
     })
-
-    const result = await response.json()
     
-    if (response.ok && result.success !== false) {
-      const personId = result.person.id
+    if (result !== null) {
+      // 處理返回的數據
+      const personDataResult = result.person || result.data || result
+      const personId = personDataResult.id
       
       // 如果有選擇小組，設置小組關聯
       if (form.value.groupIds && form.value.groupIds.length > 0) {

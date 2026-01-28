@@ -1,9 +1,11 @@
 package com.example.helloworld.controller.personal;
 
+import com.example.helloworld.dto.common.ApiResponse;
 import com.example.helloworld.entity.personal.Expense;
 import com.example.helloworld.service.personal.ExpenseService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -33,7 +35,7 @@ public class ExpenseController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<Expense>> getExpenses(
+    public ResponseEntity<ApiResponse<Page<Expense>>> getExpenses(
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer month,
             @RequestParam(required = false) String member,
@@ -42,36 +44,35 @@ public class ExpenseController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Page<Expense> expenses = expenseService.getExpenses(year, month, member, type, mainCategory, page, size);
-        return ResponseEntity.ok(expenses);
+        return ResponseEntity.ok(ApiResponse.ok(expenses));
     }
 
     @GetMapping("/all")
-    public ResponseEntity<List<Expense>> getAllExpenses(
+    public ResponseEntity<ApiResponse<List<Expense>>> getAllExpenses(
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer month,
             @RequestParam(required = false) String member,
             @RequestParam(required = false) String type,
             @RequestParam(required = false) String mainCategory) {
-        // getAllExpenses 方法現在會自動過濾當前用戶的記錄
         List<Expense> expenses = expenseService.getAllExpenses(year, month, member, type, mainCategory);
-        return ResponseEntity.ok(expenses);
+        return ResponseEntity.ok(ApiResponse.ok(expenses));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Expense> getExpenseById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Expense>> getExpenseById(@PathVariable Long id) {
         return expenseService.getExpenseById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+                .map(e -> ResponseEntity.ok(ApiResponse.ok(e)))
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail("支出記錄不存在")));
     }
 
     @PostMapping
-    public ResponseEntity<Expense> createExpense(@RequestBody Expense expense) {
+    public ResponseEntity<ApiResponse<Expense>> createExpense(@RequestBody Expense expense) {
         Expense saved = expenseService.saveExpense(expense);
-        return ResponseEntity.ok(saved);
+        return ResponseEntity.ok(ApiResponse.ok(saved));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Expense> updateExpense(@PathVariable Long id, @RequestBody Expense expense) {
+    public ResponseEntity<ApiResponse<Expense>> updateExpense(@PathVariable Long id, @RequestBody Expense expense) {
         return expenseService.getExpenseById(id)
                 .map(existing -> {
                     if (expense.getDate() != null) existing.setDate(expense.getDate());
@@ -84,14 +85,14 @@ public class ExpenseController {
                     if (expense.getExchangeRate() != null) existing.setExchangeRate(expense.getExchangeRate());
                     if (expense.getDescription() != null) existing.setDescription(expense.getDescription());
                     if (expense.getUpdatedByUid() != null) existing.setUpdatedByUid(expense.getUpdatedByUid());
-                    return ResponseEntity.ok(expenseService.saveExpense(existing));
+                    return ResponseEntity.ok(ApiResponse.ok(expenseService.saveExpense(existing)));
                 })
-                .orElse(ResponseEntity.notFound().build());
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail("支出記錄不存在")));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteExpense(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> deleteExpense(@PathVariable Long id) {
         expenseService.deleteExpense(id);
-        return ResponseEntity.noContent().build(); // 返回 204 No Content
+        return ResponseEntity.ok(ApiResponse.ok(null));
     }
 }

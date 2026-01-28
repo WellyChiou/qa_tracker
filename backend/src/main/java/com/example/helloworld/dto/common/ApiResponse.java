@@ -1,4 +1,4 @@
-package com.example.helloworld.dto.church;
+package com.example.helloworld.dto.common;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

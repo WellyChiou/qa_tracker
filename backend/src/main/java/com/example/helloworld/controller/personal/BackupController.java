@@ -1,5 +1,6 @@
 package com.example.helloworld.controller.personal;
 
+import com.example.helloworld.dto.common.ApiResponse;
 import com.example.helloworld.service.personal.SystemSettingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,7 +32,7 @@ public class BackupController {
     private SystemSettingService systemSettingService;
 
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getBackupList() {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getBackupList() {
         try {
             String backupDir = System.getenv("BACKUP_DIR");
             if (backupDir == null || backupDir.isEmpty()) {
@@ -40,10 +41,10 @@ public class BackupController {
             Path backupPath = Paths.get(backupDir);
 
             if (!Files.exists(backupPath)) {
-                Map<String, Object> response = new HashMap<>();
-                response.put("backups", new ArrayList<>());
-                response.put("message", "備份目錄不存在");
-                return ResponseEntity.ok(response);
+                Map<String, Object> data = new HashMap<>();
+                data.put("backups", new ArrayList<>());
+                data.put("message", "備份目錄不存在");
+                return ResponseEntity.ok(ApiResponse.ok(data));
             }
 
             List<Map<String, Object>> backups;
@@ -84,20 +85,18 @@ public class BackupController {
                     .collect(Collectors.toList());
             }
 
-            Map<String, Object> response = new HashMap<>();
-            response.put("backups", backups);
-            response.put("message", "獲取備份列表成功");
-            return ResponseEntity.ok(response);
+            Map<String, Object> data = new HashMap<>();
+            data.put("backups", backups);
+            data.put("message", "獲取備份列表成功");
+            return ResponseEntity.ok(ApiResponse.ok(data));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "獲取備份列表失敗：" + e.getMessage());
             e.printStackTrace();
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取備份列表失敗：" + e.getMessage()));
         }
     }
 
     @PostMapping("/create")
-    public ResponseEntity<Map<String, Object>> createBackup() {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> createBackup() {
         try {
             String mysqlService = systemSettingService.getSettingValue("backup.mysql_service", "mysql");
             String mysqlRootPassword = systemSettingService.getSettingValue("backup.mysql_root_password", "rootpassword");
@@ -170,83 +169,48 @@ public class BackupController {
                 fullOutput.append("錯誤輸出:\n").append(stderrOutput.toString());
             }
             
-            Map<String, Object> response = new HashMap<>();
+            Map<String, Object> data = new HashMap<>();
             if (exitCode == 0) {
-                response.put("success", true);
-                response.put("message", "備份創建成功");
-                if (fullOutput.length() > 0) {
-                    response.put("output", fullOutput.toString());
-                }
-            } else {
-                response.put("success", false);
-                String errorMessage = "備份創建失敗，退出碼: " + exitCode;
-                if (stderrOutput.length() > 0) {
-                    errorMessage += "\n錯誤訊息:\n" + stderrOutput.toString();
-                }
-                if (stdoutOutput.length() > 0) {
-                    errorMessage += "\n標準輸出:\n" + stdoutOutput.toString();
-                }
-                response.put("message", errorMessage);
-                if (fullOutput.length() > 0) {
-                    response.put("output", fullOutput.toString());
-                }
+                data.put("success", true);
+                data.put("message", "備份創建成功");
+                if (fullOutput.length() > 0) data.put("output", fullOutput.toString());
+                return ResponseEntity.ok(ApiResponse.ok(data));
             }
-            return ResponseEntity.ok(response);
+            String errorMessage = "備份創建失敗，退出碼: " + exitCode;
+            if (stderrOutput.length() > 0) errorMessage += "\n錯誤訊息:\n" + stderrOutput.toString();
+            if (stdoutOutput.length() > 0) errorMessage += "\n標準輸出:\n" + stdoutOutput.toString();
+            return ResponseEntity.badRequest().body(ApiResponse.fail(errorMessage));
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "備份創建失敗: " + e.getMessage());
             e.printStackTrace();
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("備份創建失敗: " + e.getMessage()));
         }
     }
 
     @DeleteMapping("/delete")
-    public ResponseEntity<Map<String, Object>> deleteBackup(@RequestParam("path") String relativePath) {
+    public ResponseEntity<ApiResponse<Void>> deleteBackup(@RequestParam("path") String relativePath) {
         try {
             String backupDir = System.getenv("BACKUP_DIR");
             if (backupDir == null || backupDir.isEmpty()) {
                 backupDir = "/app/backups";
             }
-            
             relativePath = relativePath.replace("..", "").replaceAll("^/", "");
             Path backupPath = Paths.get(backupDir, relativePath);
-            
             Path normalizedBackupPath = backupPath.normalize();
             Path normalizedBackupDir = Paths.get(backupDir).normalize();
             if (!normalizedBackupPath.startsWith(normalizedBackupDir)) {
-                Map<String, Object> error = new HashMap<>();
-                error.put("success", false);
-                error.put("message", "無效的檔案路徑");
-                return ResponseEntity.badRequest().body(error);
+                return ResponseEntity.badRequest().body(ApiResponse.fail("無效的檔案路徑"));
             }
-            
-            // Remote: Safety check for qa_tracker
             if (!relativePath.startsWith("qa_tracker/") && !relativePath.startsWith("qa_tracker_")) {
-                Map<String, Object> error = new HashMap<>();
-                error.put("success", false);
-                error.put("message", "只能刪除 Personal 系統的備份檔案");
-                return ResponseEntity.badRequest().body(error);
+                return ResponseEntity.badRequest().body(ApiResponse.fail("只能刪除 Personal 系統的備份檔案"));
             }
-            
             if (Files.exists(backupPath)) {
                 Files.delete(backupPath);
-                Map<String, Object> response = new HashMap<>();
-                response.put("success", true);
-                response.put("message", "備份檔案刪除成功");
-                return ResponseEntity.ok(response);
-            } else {
-                Map<String, Object> response = new HashMap<>();
-                response.put("success", false);
-                response.put("message", "備份檔案不存在");
-                return ResponseEntity.notFound().build();
+                return ResponseEntity.ok(ApiResponse.ok(null));
             }
+            return ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND).body(ApiResponse.fail("備份檔案不存在"));
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "刪除失敗: " + e.getMessage());
             e.printStackTrace();
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("刪除失敗: " + e.getMessage()));
         }
     }
 

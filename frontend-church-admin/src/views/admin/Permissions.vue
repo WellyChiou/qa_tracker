@@ -252,25 +252,41 @@ const loadPermissions = async () => {
     params.append('page', (currentPage.value - 1).toString())
     params.append('size', recordsPerPage.value.toString())
     
-    const response = await apiRequest(`/church/admin/permissions?${params.toString()}`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/admin/permissions?${params.toString()}`, {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      permissions.value = data.permissions || data.content || data || []
+    if (data) {
+      // 處理 ApiResponse 格式或直接返回的資料
+      let responseData = data
+      if (data.success && data.data) {
+        responseData = data.data
+      } else if (data.data) {
+        responseData = data.data
+      }
+      
+      permissions.value = responseData.permissions || responseData.content || responseData || []
       
       // 更新分頁信息
-      if (data.totalElements !== undefined) {
-        totalRecords.value = data.totalElements
-        totalPages.value = data.totalPages || 1
+      if (responseData.totalElements !== undefined) {
+        totalRecords.value = responseData.totalElements
+        totalPages.value = responseData.totalPages || 1
         // 確保 currentPage 不超過 totalPages
         if (currentPage.value > totalPages.value) {
           currentPage.value = totalPages.value
           jumpPage.value = totalPages.value
         }
         // 同步 jumpPage 與 currentPage
+        jumpPage.value = currentPage.value
+      } else if (data.totalElements !== undefined) {
+        totalRecords.value = data.totalElements
+        totalPages.value = data.totalPages || 1
+        if (currentPage.value > totalPages.value) {
+          currentPage.value = totalPages.value
+          jumpPage.value = totalPages.value
+        }
         jumpPage.value = currentPage.value
       } else {
         totalRecords.value = permissions.value.length
@@ -291,13 +307,13 @@ const openAddModal = () => {
 
 const editPermission = async (id) => {
   try {
-    const response = await apiRequest(`/church/admin/permissions/${id}`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/admin/permissions/${id}`, {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
+    if (data) {
       selectedPermission.value = data.permission || data
       showModal.value = true
     } else {
@@ -324,12 +340,13 @@ const deletePermission = async (id) => {
   }
   
   try {
-    const response = await apiRequest(`/church/admin/permissions/${id}`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/admin/permissions/${id}`, {
       method: 'DELETE',
       credentials: 'include'
     })
     
-    if (response.ok) {
+    if (data !== null) {
       loadPermissions()
     } else {
       toast.error('刪除失敗')

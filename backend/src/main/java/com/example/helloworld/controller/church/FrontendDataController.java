@@ -1,7 +1,7 @@
 package com.example.helloworld.controller.church;
 
 import com.example.helloworld.dto.church.frontend.AboutResult;
-import com.example.helloworld.dto.church.ApiResponse;
+import com.example.helloworld.dto.common.ApiResponse;
 import com.example.helloworld.dto.church.frontend.ActivityResult;
 import com.example.helloworld.dto.church.frontend.AnnouncementResult;
 import com.example.helloworld.dto.church.frontend.GroupResult;

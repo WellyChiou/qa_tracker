@@ -480,14 +480,15 @@ watch(recordsPerPage, () => {
 
 const loadActivePersons = async () => {
   try {
-    const response = await apiRequest('/church/persons/active', {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest('/church/persons/active', {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      activePersons.value = data.persons || []
+    if (data) {
+      // 後端返回 ApiResponse<List<Person>>，apiRequest 會返回 List，不需要 data.persons
+      activePersons.value = Array.isArray(data) ? data : []
       // 如果已經選中了人員，更新搜索框顯示
       if (filters.value.personId && !personSearchText.value) {
         personSearchText.value = selectedPersonText.value
@@ -509,14 +510,14 @@ watch(() => filters.value.personId, (newId) => {
 
 const loadActiveGroups = async () => {
   try {
-    const response = await apiRequest('/church/groups/active', {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest('/church/groups/active', {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      activeGroups.value = data.groups || []
+    if (data) {
+      activeGroups.value = data.groups || data || []
     }
   } catch (error) {
     console.error('載入小組列表失敗:', error)
@@ -556,13 +557,13 @@ const query = async () => {
       }
     }
 
-    const response = await apiRequest(url, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(url, {
       method: 'GET',
       credentials: 'include'
-    }, '查詢中...', true)
+    })
     
-    if (response.ok) {
-      const data = await response.json()
+    if (data) {
       let attendanceRates = data.content || data.attendanceRates || []
       
       // 如果類別為「小組」且選擇了特定小組，則過濾結果（前端過濾，但這會影響分頁準確性）
@@ -600,8 +601,7 @@ const query = async () => {
       
       toast.success(`查詢成功，共 ${totalRecords.value} 筆資料`)
     } else {
-      const errorData = await response.json()
-      toast.error(errorData.error || '查詢失敗')
+      toast.error('查詢失敗')
     }
   } catch (error) {
     console.error('查詢出席率失敗:', error)
@@ -653,21 +653,20 @@ const handleAttendanceRateClick = async (item) => {
 
     const url = `/church/attendance/person/${item.personId}/sessions?category=${encodeURIComponent(category)}&year=${filters.value.year}${filters.value.includeHistorical ? '&includeHistorical=true' : ''}`
     
-    const response = await apiRequest(url, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(url, {
       method: 'GET',
       credentials: 'include'
-    }, '載入場次詳細資訊中...', true)
+    })
     
-    if (response.ok) {
-      const data = await response.json()
-      sessionDetails.value = data.sessionDetails || []
+    if (data) {
+      sessionDetails.value = data.sessionDetails || data || []
       // 數據加載完成後設置表頭凍結
       nextTick(() => {
         setupStickyHeader()
       })
     } else {
-      const errorData = await response.json()
-      toast.error(errorData.error || '載入場次詳細資訊失敗')
+      toast.error('載入場次詳細資訊失敗')
     }
   } catch (error) {
     console.error('載入場次詳細資訊失敗:', error)

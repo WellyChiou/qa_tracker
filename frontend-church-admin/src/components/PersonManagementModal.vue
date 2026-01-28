@@ -104,16 +104,14 @@ const selectedPerson = ref(null)
 const loadPersons = async () => {
   loading.value = true
   try {
-    const response = await apiRequest('/church/persons', {
+    const data = await apiRequest('/church/persons', {
       method: 'GET'
     })
-    const result = await response.json()
     
-    if (response.ok) {
-      // 後端返回格式為 { persons: [...], message: "..." }
-      persons.value = result.persons || result || []
-    } else {
-      console.error('載入人員清單失敗：', result)
+    if (data) {
+      // 處理 PageResponse 格式或直接列表
+      const personsData = data.content || data.persons || data || []
+      persons.value = Array.isArray(personsData) ? personsData : []
     }
   } catch (error) {
     console.error('載入人員清單失敗：', error)
@@ -162,13 +160,11 @@ const deletePerson = async (person) => {
   }
 
   try {
-    const response = await apiRequest(`/church/persons/${person.id}`, {
+    const result = await apiRequest(`/church/persons/${person.id}`, {
       method: 'DELETE'
     })
     
-    const result = await response.json()
-    
-    if (response.ok && result.success !== false) {
+    if (result !== null) {
       await loadPersons()
       toast.success('刪除成功')
     } else {

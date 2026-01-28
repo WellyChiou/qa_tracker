@@ -1,5 +1,7 @@
 package com.example.helloworld.controller.church;
 
+import com.example.helloworld.dto.common.ApiResponse;
+import com.example.helloworld.dto.common.PageResponse;
 import com.example.helloworld.entity.church.Person;
 import com.example.helloworld.entity.church.ServiceSchedule;
 import com.example.helloworld.entity.church.ServiceScheduleDate;
@@ -29,7 +31,7 @@ public class ServiceScheduleController {
      * 保存服事安排表
      */
     @PostMapping
-    public ResponseEntity<Map<String, Object>> saveSchedule(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> saveSchedule(@RequestBody Map<String, Object> request) {
         try {
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> scheduleData = (List<Map<String, Object>>) request.get("scheduleData");
@@ -40,19 +42,14 @@ public class ServiceScheduleController {
             response.put("year", schedule.getYear());
             response.put("createdAt", schedule.getCreatedAt());
             response.put("updatedAt", schedule.getUpdatedAt());
-            response.put("message", "安排表保存成功");
 
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(response));
         } catch (RuntimeException e) {
             // 處理年度衝突等業務邏輯錯誤
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail(e.getMessage()));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "保存失敗：" + e.getMessage());
             e.printStackTrace();
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("保存失敗：" + e.getMessage()));
         }
     }
 
@@ -60,24 +57,25 @@ public class ServiceScheduleController {
      * 獲取所有安排表（包含日期範圍信息，支持分頁和過濾）
      */
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getAllSchedules(
+    public ResponseEntity<ApiResponse<PageResponse<Map<String, Object>>>> getAllSchedules(
             @RequestParam(required = false) Integer year,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         try {
             Pageable pageable = PageRequest.of(page, size);
             Page<Map<String, Object>> schedulesPage = service.getAllSchedulesWithDateRange(year, pageable);
-            Map<String, Object> response = new HashMap<>();
-            response.put("content", schedulesPage.getContent());
-            response.put("totalElements", schedulesPage.getTotalElements());
-            response.put("totalPages", schedulesPage.getTotalPages());
-            response.put("currentPage", schedulesPage.getNumber());
-            response.put("size", schedulesPage.getSize());
-            return ResponseEntity.ok(response);
+            
+            PageResponse<Map<String, Object>> pageResponse = new PageResponse<>(
+                schedulesPage.getContent(),
+                schedulesPage.getTotalElements(),
+                schedulesPage.getTotalPages(),
+                schedulesPage.getNumber(),
+                schedulesPage.getSize()
+            );
+            
+            return ResponseEntity.ok(ApiResponse.ok(pageResponse));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "獲取服事表列表失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取服事表列表失敗：" + e.getMessage()));
         }
     }
 
@@ -85,7 +83,7 @@ public class ServiceScheduleController {
      * 根據年度獲取安排表（包含 dates 數據）
      */
     @GetMapping("/{year}")
-    public ResponseEntity<Map<String, Object>> getScheduleByYear(@PathVariable Integer year) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getScheduleByYear(@PathVariable Integer year) {
         return service.getScheduleByYear(year)
             .map(schedule -> {
                     Map<String, Object> response = new HashMap<>();
@@ -170,9 +168,9 @@ public class ServiceScheduleController {
                     response.put("scheduleData", new ArrayList<>());
                 }
                 
-                return ResponseEntity.ok(response);
+                return ResponseEntity.ok(ApiResponse.ok(response));
             })
-            .orElse(ResponseEntity.notFound().build());
+            .orElse(ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND).body(ApiResponse.fail("找不到指定年度的服事表")));
     }
 
     /**
@@ -189,7 +187,7 @@ public class ServiceScheduleController {
      * 更新安排表
      */
     @PutMapping("/{year}")
-    public ResponseEntity<Map<String, Object>> updateSchedule(@PathVariable Integer year, @RequestBody Map<String, Object> request) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> updateSchedule(@PathVariable Integer year, @RequestBody Map<String, Object> request) {
         try {
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> scheduleData = (List<Map<String, Object>>) request.get("scheduleData");
@@ -200,19 +198,14 @@ public class ServiceScheduleController {
             response.put("year", schedule.getYear());
             response.put("createdAt", schedule.getCreatedAt());
             response.put("updatedAt", schedule.getUpdatedAt());
-            response.put("message", "安排表更新成功");
 
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(response));
         } catch (RuntimeException e) {
             // 處理年度衝突等業務邏輯錯誤
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail(e.getMessage()));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "更新失敗：" + e.getMessage());
             e.printStackTrace();
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("更新失敗：" + e.getMessage()));
         }
     }
 
@@ -220,11 +213,13 @@ public class ServiceScheduleController {
      * 刪除安排表
      */
     @DeleteMapping("/{year}")
-    public ResponseEntity<Map<String, String>> deleteSchedule(@PathVariable Integer year) {
-        service.deleteSchedule(year);
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "安排表刪除成功");
-        return ResponseEntity.ok(response);
+    public ResponseEntity<ApiResponse<Void>> deleteSchedule(@PathVariable Integer year) {
+        try {
+            service.deleteSchedule(year);
+            return ResponseEntity.ok(ApiResponse.ok(null));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.fail("刪除失敗：" + e.getMessage()));
+        }
     }
 }
 

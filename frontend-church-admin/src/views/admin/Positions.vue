@@ -273,17 +273,17 @@ const loadPositions = async () => {
     params.append('page', (currentPage.value - 1).toString())
     params.append('size', recordsPerPage.value.toString())
     
-    const response = await apiRequest(`/church/positions?${params.toString()}`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/positions?${params.toString()}`, {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      positions.value = data.positions || data.content || data || []
-      
-      // 更新分頁信息
-      if (data.totalElements !== undefined) {
+    if (data) {
+      // 處理 PageResponse 格式
+      if (data.content !== undefined && data.totalElements !== undefined) {
+        // 這是 PageResponse 格式
+        positions.value = Array.isArray(data.content) ? data.content : []
         totalRecords.value = data.totalElements
         totalPages.value = data.totalPages || 1
         // 確保 currentPage 不超過 totalPages
@@ -291,13 +291,24 @@ const loadPositions = async () => {
           currentPage.value = totalPages.value
           jumpPage.value = totalPages.value
         }
-        // 同步 jumpPage 與 currentPage
         jumpPage.value = currentPage.value
       } else {
-        totalRecords.value = positions.value.length
-        totalPages.value = 1
-        currentPage.value = 1
-        jumpPage.value = 1
+        // 向後兼容：處理舊格式
+        positions.value = data.positions || data.content || data || []
+        if (data.totalElements !== undefined) {
+          totalRecords.value = data.totalElements
+          totalPages.value = data.totalPages || 1
+          if (currentPage.value > totalPages.value) {
+            currentPage.value = totalPages.value
+            jumpPage.value = totalPages.value
+          }
+          jumpPage.value = currentPage.value
+        } else {
+          totalRecords.value = positions.value.length
+          totalPages.value = 1
+          currentPage.value = 1
+          jumpPage.value = 1
+        }
       }
     }
   } catch (error) {
@@ -354,12 +365,13 @@ const deletePosition = async (id) => {
   }
   
   try {
-    const response = await apiRequest(`/church/positions/${id}`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/positions/${id}`, {
       method: 'DELETE',
       credentials: 'include'
     })
     
-    if (response.ok) {
+    if (data !== null) {
       loadPositions()
     } else {
       toast.error('刪除失敗')

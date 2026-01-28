@@ -1,11 +1,13 @@
 package com.example.helloworld.controller.personal;
 
+import com.example.helloworld.dto.common.ApiResponse;
 import com.example.helloworld.entity.personal.SystemSetting;
 import com.example.helloworld.repository.personal.SystemSettingRepository;
 import com.example.helloworld.service.personal.SystemSettingService;
 import com.example.helloworld.service.personal.ConfigurationRefreshService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,164 +27,115 @@ public class SystemSettingController {
     private ConfigurationRefreshService configurationRefreshService;
 
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getAllSettings() {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getAllSettings() {
         try {
             List<SystemSetting> settings = systemSettingService.getAllSettings();
-            
-            // Map Config entities to the structure expected by the frontend (SystemSetting-like)
-            // SystemSetting is already in the correct format, but we wrap it to match frontend expectation
-            
-            // If certain essential keys are missing, add them as defaults (so they appear in the UI)
             ensureDefaultSettingsExist(settings);
-            
-            // Reload after ensuring defaults
             settings = systemSettingService.getAllSettings();
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("settings", settings);
-            response.put("message", "獲取系統參數成功");
-            return ResponseEntity.ok(response);
+            Map<String, Object> data = new HashMap<>();
+            data.put("settings", settings);
+            data.put("message", "獲取系統參數成功");
+            return ResponseEntity.ok(ApiResponse.ok(data));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "獲取系統參數失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取系統參數失敗：" + e.getMessage()));
         }
     }
 
     @GetMapping("/{key}/value")
-    public ResponseEntity<Map<String, String>> getSettingValue(@PathVariable String key) {
+    public ResponseEntity<ApiResponse<Map<String, String>>> getSettingValue(@PathVariable String key) {
         String value = systemSettingService.getSettingValue(key, null);
-        Map<String, String> response = new HashMap<>();
+        Map<String, String> data = new HashMap<>();
         if (value != null) {
-            response.put("value", value);
-            return ResponseEntity.ok(response);
-        } else {
-            return ResponseEntity.notFound().build();
+            data.put("value", value);
+            return ResponseEntity.ok(ApiResponse.ok(data));
         }
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail("參數不存在"));
     }
 
     @GetMapping("/category/{category}")
-    public ResponseEntity<Map<String, Object>> getSettingsByCategory(@PathVariable String category) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getSettingsByCategory(@PathVariable String category) {
         try {
             List<SystemSetting> settings = systemSettingService.getSettingsByCategory(category);
-            Map<String, Object> response = new HashMap<>();
-            response.put("settings", settings);
-            response.put("message", "獲取系統參數成功");
-            return ResponseEntity.ok(response);
+            Map<String, Object> data = new HashMap<>();
+            data.put("settings", settings);
+            data.put("message", "獲取系統參數成功");
+            return ResponseEntity.ok(ApiResponse.ok(data));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "獲取系統參數失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取系統參數失敗：" + e.getMessage()));
         }
     }
 
     @GetMapping("/{key}")
-    public ResponseEntity<Map<String, Object>> getSettingByKey(@PathVariable String key) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getSettingByKey(@PathVariable String key) {
         try {
             Optional<SystemSetting> setting = systemSettingService.getSettingByKey(key);
             if (setting.isPresent()) {
-                Map<String, Object> response = new HashMap<>();
-                response.put("setting", setting.get());
-                response.put("message", "獲取系統參數成功");
-                return ResponseEntity.ok(response);
-            } else {
-                return ResponseEntity.notFound().build();
+                Map<String, Object> data = new HashMap<>();
+                data.put("setting", setting.get());
+                data.put("message", "獲取系統參數成功");
+                return ResponseEntity.ok(ApiResponse.ok(data));
             }
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail("參數不存在"));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "獲取系統參數失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取系統參數失敗：" + e.getMessage()));
         }
     }
 
     @PutMapping("/{key}")
-    public ResponseEntity<Map<String, Object>> updateSetting(
+    public ResponseEntity<ApiResponse<Map<String, Object>>> updateSetting(
             @PathVariable String key,
             @RequestBody Map<String, Object> request) {
         try {
             String value = (String) request.get("settingValue");
-            // Also accept 'description' if provided
             String description = (String) request.get("description");
-            
             SystemSetting update = new SystemSetting();
             update.setSettingValue(value);
-            if (description != null) {
-                update.setDescription(description);
-            }
-            
+            if (description != null) update.setDescription(description);
             SystemSetting saved = systemSettingService.updateSetting(key, update);
-            
-            // 更新配置後，刷新配置緩存
             try {
                 configurationRefreshService.refreshConfig(key);
             } catch (Exception ex) {
-                // Log warning but don't fail the request if cache refresh fails
                 System.err.println("Failed to refresh config cache: " + ex.getMessage());
             }
-            
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "更新系統參數成功");
-            response.put("setting", saved);
-            return ResponseEntity.ok(response);
+            Map<String, Object> data = new HashMap<>();
+            data.put("success", true);
+            data.put("message", "更新系統參數成功");
+            data.put("setting", saved);
+            return ResponseEntity.ok(ApiResponse.ok(data));
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "更新失敗: " + e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("更新失敗: " + e.getMessage()));
         }
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<Map<String, Object>> refreshConfig() {
+    public ResponseEntity<ApiResponse<Void>> refreshConfig() {
         try {
             configurationRefreshService.refreshConfig();
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "配置刷新成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(null));
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "配置刷新失敗: " + e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("配置刷新失敗: " + e.getMessage()));
         }
     }
     
     @PostMapping
-    public ResponseEntity<Map<String, Object>> createSetting(@RequestBody SystemSetting setting) {
+    public ResponseEntity<ApiResponse<SystemSetting>> createSetting(@RequestBody SystemSetting setting) {
         try {
             SystemSetting created = systemSettingService.createSetting(setting);
-            // 創建配置後，刷新配置緩存
             configurationRefreshService.refreshConfig(created.getSettingKey());
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "創建系統參數成功，配置已刷新");
-            response.put("setting", created);
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(created));
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "創建失敗: " + e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("創建失敗: " + e.getMessage()));
         }
     }
 
     @DeleteMapping("/{key}")
-    public ResponseEntity<Map<String, Object>> deleteSetting(@PathVariable String key) {
+    public ResponseEntity<ApiResponse<Void>> deleteSetting(@PathVariable String key) {
         try {
             systemSettingService.deleteSetting(key);
-            // 刪除配置後，刷新配置緩存
             configurationRefreshService.refreshConfig(key);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "刪除系統參數成功，配置已刷新");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(null));
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "刪除失敗: " + e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("刪除失敗: " + e.getMessage()));
         }
     }
     

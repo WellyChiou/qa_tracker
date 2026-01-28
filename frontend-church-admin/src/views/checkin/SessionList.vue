@@ -293,32 +293,42 @@ async function load() {
       ? `/church/checkin/admin/sessions?${queryString}&${paginationParams}` 
       : `/church/checkin/admin/sessions?${paginationParams}`
     
-    const res = await apiRequest(url, {
+    // apiRequest 現在會自動返回解析後的資料
+    const responseData = await apiRequest(url, {
       method: 'GET'
-    }, '載入中...', true)
-    const responseData = await res.json() || {}
+    })
     
-    // 處理分頁響應
-    if (responseData.content) {
-      sessions.value = responseData.content
-      totalRecords.value = responseData.totalElements || 0
-      totalPages.value = responseData.totalPages || 1
-      // 確保 currentPage 不超過 totalPages
-      if (currentPage.value > totalPages.value) {
-        currentPage.value = totalPages.value
-        jumpPage.value = totalPages.value
+    if (responseData) {
+      // 處理 ApiResponse 格式或直接返回的資料
+      let data = responseData
+      if (responseData.success && responseData.data) {
+        data = responseData.data
+      } else if (responseData.data) {
+        data = responseData.data
       }
-      // 同步 jumpPage 與 currentPage
-      jumpPage.value = currentPage.value
-      toast.success(`查詢成功，共 ${totalRecords.value} 筆場次`, '場次管理')
-    } else {
-      // 兼容舊格式（無分頁）
-      sessions.value = Array.isArray(responseData) ? responseData : []
-      totalRecords.value = sessions.value.length
-      totalPages.value = 1
-      currentPage.value = 1
-      jumpPage.value = 1
-      toast.success(`查詢成功，共 ${sessions.value.length} 筆場次`, '場次管理')
+      
+      // 處理分頁響應
+      if (data.content) {
+        sessions.value = data.content
+        totalRecords.value = data.totalElements || 0
+        totalPages.value = data.totalPages || 1
+        // 確保 currentPage 不超過 totalPages
+        if (currentPage.value > totalPages.value) {
+          currentPage.value = totalPages.value
+          jumpPage.value = totalPages.value
+        }
+        // 同步 jumpPage 與 currentPage
+        jumpPage.value = currentPage.value
+        toast.success(`查詢成功，共 ${totalRecords.value} 筆場次`, '場次管理')
+      } else {
+        // 兼容舊格式（無分頁）
+        sessions.value = Array.isArray(data) ? data : []
+        totalRecords.value = sessions.value.length
+        totalPages.value = 1
+        currentPage.value = 1
+        jumpPage.value = 1
+        toast.success(`查詢成功，共 ${sessions.value.length} 筆場次`, '場次管理')
+      }
     }
   } catch (error) {
     console.error('載入場次列表失敗:', error)
@@ -349,11 +359,13 @@ function onSessionTypeChange() {
 
 async function loadActiveGroups() {
   try {
-    const res = await apiRequest('/church/groups/active', {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest('/church/groups/active', {
       method: 'GET'
-    }, '', true)
-    const data = await res.json()
-    activeGroups.value = data.groups || []
+    })
+    if (data) {
+      activeGroups.value = data.groups || data || []
+    }
   } catch (error) {
     console.error('載入小組列表失敗:', error)
   }

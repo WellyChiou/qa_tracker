@@ -141,14 +141,20 @@ const loadPositionPersons = async () => {
   if (!props.position?.id) return
   
   try {
-    const response = await apiRequest(`/church/positions/${props.position.id}/persons`, {
+    const data = await apiRequest(`/church/positions/${props.position.id}/persons`, {
       method: 'GET'
     })
-    const result = await response.json()
-    saturdayPersons.value = result.persons?.saturday || []
-    sundayPersons.value = result.persons?.sunday || []
-    originalSaturdayPersons.value = clone(saturdayPersons.value)
-    originalSundayPersons.value = clone(sundayPersons.value)
+    if (data) {
+      // 後端返回 ApiResponse<Map<String, List<...>>>，Map 結構是 { "saturday": [...], "sunday": [...] }
+      // 不需要 data.persons，直接使用 data.saturday 和 data.sunday
+      saturdayPersons.value = Array.isArray(data.saturday) ? data.saturday : []
+      sundayPersons.value = Array.isArray(data.sunday) ? data.sunday : []
+      originalSaturdayPersons.value = clone(saturdayPersons.value)
+      originalSundayPersons.value = clone(sundayPersons.value)
+    } else {
+      saturdayPersons.value = []
+      sundayPersons.value = []
+    }
   } catch (error) {
     console.error('載入崗位人員失敗：', error)
     toast.error('載入崗位人員失敗：' + error.message)
@@ -222,7 +228,7 @@ const saveChanges = async () => {
         const o = origById.get(p.id)
         if (o && o.includeInAutoSchedule !== p.includeInAutoSchedule) {
           await apiRequest(`/church/positions/position-persons/${p.id}/include-in-auto-schedule`, {
-            method: 'PATCH',
+            method: 'PUT',
             body: JSON.stringify({ includeInAutoSchedule: p.includeInAutoSchedule }),
             credentials: 'include'
           })

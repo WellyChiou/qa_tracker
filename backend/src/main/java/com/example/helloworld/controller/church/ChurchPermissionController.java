@@ -1,5 +1,7 @@
 package com.example.helloworld.controller.church;
 
+import com.example.helloworld.dto.common.ApiResponse;
+import com.example.helloworld.dto.common.PageResponse;
 import com.example.helloworld.entity.church.ChurchPermission;
 import com.example.helloworld.service.church.ChurchPermissionService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,7 +26,7 @@ public class ChurchPermissionController {
      * 獲取所有權限（支持分頁和過濾）
      */
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getAllPermissions(
+    public ResponseEntity<ApiResponse<PageResponse<ChurchPermission>>> getAllPermissions(
             @RequestParam(required = false) String permissionCode,
             @RequestParam(required = false) String resource,
             @RequestParam(required = false) String action,
@@ -32,19 +34,16 @@ public class ChurchPermissionController {
             @RequestParam(defaultValue = "20") int size) {
         try {
             Page<ChurchPermission> permissionsPage = churchPermissionService.getAllPermissions(permissionCode, resource, action, page, size);
-            Map<String, Object> response = new HashMap<>();
-            response.put("permissions", permissionsPage.getContent());
-            response.put("content", permissionsPage.getContent());
-            response.put("totalElements", permissionsPage.getTotalElements());
-            response.put("totalPages", permissionsPage.getTotalPages());
-            response.put("currentPage", permissionsPage.getNumber());
-            response.put("size", permissionsPage.getSize());
-            response.put("message", "獲取權限列表成功");
-            return ResponseEntity.ok(response);
+            PageResponse<ChurchPermission> pageResponse = new PageResponse<>(
+                permissionsPage.getContent(),
+                permissionsPage.getTotalElements(),
+                permissionsPage.getTotalPages(),
+                permissionsPage.getNumber(),
+                permissionsPage.getSize()
+            );
+            return ResponseEntity.ok(ApiResponse.ok(pageResponse));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "獲取權限列表失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取權限列表失敗：" + e.getMessage()));
         }
     }
 
@@ -52,21 +51,16 @@ public class ChurchPermissionController {
      * 根據 ID 獲取權限
      */
     @GetMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> getPermissionById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<ChurchPermission>> getPermissionById(@PathVariable Long id) {
         try {
             Optional<ChurchPermission> permission = churchPermissionService.getPermissionById(id);
             if (permission.isPresent()) {
-                Map<String, Object> response = new HashMap<>();
-                response.put("permission", permission.get());
-                response.put("message", "獲取權限成功");
-                return ResponseEntity.ok(response);
+                return ResponseEntity.ok(ApiResponse.ok(permission.get()));
             } else {
-                return ResponseEntity.notFound().build();
+                return ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND).body(ApiResponse.fail("找不到指定的權限"));
             }
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "獲取權限失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取權限失敗：" + e.getMessage()));
         }
     }
 
@@ -74,17 +68,12 @@ public class ChurchPermissionController {
      * 根據資源獲取權限
      */
     @GetMapping("/resource/{resource}")
-    public ResponseEntity<Map<String, Object>> getPermissionsByResource(@PathVariable String resource) {
+    public ResponseEntity<ApiResponse<List<ChurchPermission>>> getPermissionsByResource(@PathVariable String resource) {
         try {
             List<ChurchPermission> permissions = churchPermissionService.getPermissionsByResource(resource);
-            Map<String, Object> response = new HashMap<>();
-            response.put("permissions", permissions);
-            response.put("message", "獲取權限列表成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(permissions));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "獲取權限列表失敗：" + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取權限列表失敗：" + e.getMessage()));
         }
     }
 
@@ -92,19 +81,12 @@ public class ChurchPermissionController {
      * 創建權限
      */
     @PostMapping
-    public ResponseEntity<Map<String, Object>> createPermission(@RequestBody ChurchPermission permission) {
+    public ResponseEntity<ApiResponse<ChurchPermission>> createPermission(@RequestBody ChurchPermission permission) {
         try {
             ChurchPermission created = churchPermissionService.createPermission(permission);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "權限創建成功");
-            response.put("permission", created);
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(created));
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "創建失敗: " + e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("創建失敗: " + e.getMessage()));
         }
     }
 
@@ -112,19 +94,12 @@ public class ChurchPermissionController {
      * 更新權限
      */
     @PutMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> updatePermission(@PathVariable Long id, @RequestBody ChurchPermission permission) {
+    public ResponseEntity<ApiResponse<ChurchPermission>> updatePermission(@PathVariable Long id, @RequestBody ChurchPermission permission) {
         try {
             ChurchPermission updated = churchPermissionService.updatePermission(id, permission);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "權限更新成功");
-            response.put("permission", updated);
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(updated));
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "更新失敗: " + e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("更新失敗: " + e.getMessage()));
         }
     }
 
@@ -132,18 +107,12 @@ public class ChurchPermissionController {
      * 刪除權限
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> deletePermission(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> deletePermission(@PathVariable Long id) {
         try {
             churchPermissionService.deletePermission(id);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "權限刪除成功");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(null));
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "刪除失敗: " + e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest().body(ApiResponse.fail("刪除失敗: " + e.getMessage()));
         }
     }
 }

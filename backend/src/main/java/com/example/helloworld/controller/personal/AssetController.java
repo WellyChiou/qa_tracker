@@ -1,10 +1,12 @@
 package com.example.helloworld.controller.personal;
 
+import com.example.helloworld.dto.common.ApiResponse;
 import com.example.helloworld.entity.personal.Asset;
 import com.example.helloworld.service.personal.AssetService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,34 +22,31 @@ public class AssetController {
     private AssetService assetService;
 
     @GetMapping
-    public ResponseEntity<List<Asset>> getAllAssets() {
+    public ResponseEntity<ApiResponse<List<Asset>>> getAllAssets() {
         List<Asset> assets = assetService.getAllAssets();
-        return ResponseEntity.ok(assets);
+        return ResponseEntity.ok(ApiResponse.ok(assets));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Asset> getAssetById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Asset>> getAssetById(@PathVariable Long id) {
         return assetService.getAssetById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+                .map(a -> ResponseEntity.ok(ApiResponse.ok(a)))
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail("資產不存在")));
     }
 
     @PostMapping
-    public ResponseEntity<Asset> createAsset(@RequestBody Asset asset) {
+    public ResponseEntity<ApiResponse<Asset>> createAsset(@RequestBody Asset asset) {
         Asset saved = assetService.saveAsset(asset);
-        return ResponseEntity.ok(saved);
+        return ResponseEntity.ok(ApiResponse.ok(saved));
     }
 
     @Autowired
     private ObjectMapper objectMapper;
 
     @PutMapping("/{id}")
-    public ResponseEntity<Asset> updateAsset(@PathVariable Long id, @RequestBody JsonNode jsonNode) {
+    public ResponseEntity<ApiResponse<Asset>> updateAsset(@PathVariable Long id, @RequestBody JsonNode jsonNode) {
         return assetService.getAssetById(id)
                 .map(existing -> {
-                    // 使用 JsonNode 來檢查欄位是否真的存在於 JSON 中
-                    // 這樣可以避免因為預設值而意外更新欄位
-                    
                     if (jsonNode.has("stockCode")) {
                         existing.setStockCode(jsonNode.get("stockCode").asText(null));
                     }
@@ -68,7 +67,6 @@ public class AssetController {
                             existing.setPurchaseDate(java.time.LocalDate.parse(purchaseDateNode.asText()));
                         }
                     }
-                    // 對於 BigDecimal 欄位，只有當 JSON 中明確包含該欄位時才更新
                     if (jsonNode.has("quantity")) {
                         JsonNode quantityNode = jsonNode.get("quantity");
                         if (!quantityNode.isNull()) {
@@ -108,15 +106,14 @@ public class AssetController {
                     if (jsonNode.has("updatedByUid")) {
                         existing.setUpdatedByUid(jsonNode.get("updatedByUid").asText(null));
                     }
-                    
-                    return ResponseEntity.ok(assetService.saveAsset(existing));
+                    return ResponseEntity.ok(ApiResponse.ok(assetService.saveAsset(existing)));
                 })
-                .orElse(ResponseEntity.notFound().build());
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail("資產不存在")));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteAsset(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> deleteAsset(@PathVariable Long id) {
         assetService.deleteAsset(id);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(ApiResponse.ok(null));
     }
 }

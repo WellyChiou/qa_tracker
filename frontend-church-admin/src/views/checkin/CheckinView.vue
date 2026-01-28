@@ -57,11 +57,10 @@ function formatDateTime(dt){
 
 async function loadSessionInfo(){
   try {
-    const res = await apiRequest(`/church/checkin/public/sessions/${code}`, {
+    const data = await apiRequest(`/church/checkin/public/sessions/${code}`, {
       method: 'GET'
-    }, '', false)
-    if (res.ok) {
-      const data = await res.json()
+    })
+    if (data) {
       sessionInfo.value = {
         title: data.title || '',
         openAt: data.openAt || null,
@@ -91,14 +90,12 @@ async function submit(){
       return
     }
 
-    const tokenRes = await apiRequest(`/church/checkin/public/sessions/${code}/token`, {
+    const tokenData = await apiRequest(`/church/checkin/public/sessions/${code}/token`, {
       method: 'GET'
-    }, '', false)
-    if (!tokenRes.ok) {
-      const errorData = await tokenRes.json().catch(() => ({}))
-      throw new Error(errorData.code || 'TOKEN_ERROR')
+    })
+    if (!tokenData || !tokenData.token) {
+      throw new Error('TOKEN_ERROR')
     }
-    const tokenData = await tokenRes.json()
 
     // 直接使用 fetch 而不是 apiRequest，以便更好地處理錯誤響應
     const checkinUrl = `/api/church/checkin/public/sessions/${code}/checkin`

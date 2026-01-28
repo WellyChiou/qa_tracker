@@ -361,12 +361,12 @@ async function load(){
   } else {
     // 列表模式：載入今天的場次
     try {
-      const res = await apiRequest('/church/checkin/admin/sessions/today', {
+      // apiRequest 現在會自動返回解析後的資料
+      const data = await apiRequest('/church/checkin/admin/sessions/today', {
         method: 'GET'
-      }, '載入中...', true)
-      const data = await res.json()
-      sessions.value = data || []
-      toast.success(`查詢成功，共 ${data?.length || 0} 筆場次`, '簽到管理')
+      })
+      sessions.value = Array.isArray(data) ? data : (data?.sessions || [])
+      toast.success(`查詢成功，共 ${sessions.value.length} 筆場次`, '簽到管理')
       await refreshAll()
     } catch (error) {
       console.error('載入場次失敗:', error)
@@ -378,10 +378,11 @@ async function load(){
 async function loadSession() {
   try {
     const sessionId = route.params.id
-    const res = await apiRequest(`/church/checkin/admin/sessions/${sessionId}`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/checkin/admin/sessions/${sessionId}`, {
       method: 'GET'
-    }, '載入中...', true)
-    currentSession.value = await res.json()
+    })
+    currentSession.value = data?.session || data || null
     
     // 填充編輯表單
     if (currentSession.value) {
@@ -494,17 +495,18 @@ async function refreshAll(){
 
 async function loadSessionGroups(sessionId) {
   try {
-    const response = await apiRequest(`/church/checkin/admin/sessions/${sessionId}/groups`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/checkin/admin/sessions/${sessionId}/groups`, {
       method: 'GET'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      sessionGroups.value[sessionId] = data.groups || []
+    if (data) {
+      sessionGroups.value[sessionId] = data.groups || data || []
       // 如果是編輯模式，更新編輯表單中的 groupIds
       if (isEditMode.value && route.params.id === String(sessionId)) {
         // 確保 groupIds 是數字數組
-        editForm.value.groupIds = (data.groups || []).map(g => {
+        const groups = data.groups || data || []
+        editForm.value.groupIds = groups.map(g => {
           const id = g.id
           return typeof id === 'string' ? parseInt(id) : id
         })
@@ -522,13 +524,13 @@ async function loadSessionGroups(sessionId) {
 
 async function loadActiveGroups() {
   try {
-    const response = await apiRequest('/church/groups/active', {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest('/church/groups/active', {
       method: 'GET'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      activeGroups.value = data.groups || []
+    if (data) {
+      activeGroups.value = data.groups || data || []
     }
   } catch (error) {
     console.error('載入活躍小組失敗:', error)
@@ -538,23 +540,23 @@ async function loadActiveGroups() {
 
 async function refreshCheckins(sessionId){
   try {
-    const statsRes = await apiRequest(`/church/checkin/admin/sessions/${sessionId}/stats`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const statsData = await apiRequest(`/church/checkin/admin/sessions/${sessionId}/stats`, {
       method: 'GET'
-    }, '', true)
-    if(statsRes.ok){
-      stats.value[sessionId] = await statsRes.json()
+    })
+    if(statsData){
+      stats.value[sessionId] = statsData
     }
     
     const includeCanceled = showCanceled.value[sessionId] || false
-    const checkinsRes = await apiRequest(`/church/checkin/admin/sessions/${sessionId}/checkins?includeCanceled=${includeCanceled}`, {
+    const checkinsData = await apiRequest(`/church/checkin/admin/sessions/${sessionId}/checkins?includeCanceled=${includeCanceled}`, {
       method: 'GET'
-    }, '', true)
-    if(checkinsRes.ok){
-      const checkinsData = await checkinsRes.json() || []
+    })
+    if(checkinsData){
       checkins.value[sessionId] = Array.isArray(checkinsData) ? checkinsData : []
       // 查詢成功時不顯示 toast，避免頻繁提示（因為有自動刷新）
     } else {
-      console.error(`場次 ${sessionId} 獲取簽到列表失敗:`, checkinsRes.status)
+      console.error(`場次 ${sessionId} 獲取簽到列表失敗`)
       checkins.value[sessionId] = []
       toast.error('查詢簽到記錄失敗', '簽到管理')
     }
@@ -570,12 +572,12 @@ async function refreshCheckins(sessionId){
 
 async function loadUncheckedPersons(sessionId) {
   try {
-    const res = await apiRequest(`/church/checkin/admin/sessions/${sessionId}/unchecked-persons`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/checkin/admin/sessions/${sessionId}/unchecked-persons`, {
       method: 'GET'
-    }, '', true)
-    if (res.ok) {
-      const data = await res.json() || []
-      uncheckedPersons.value[sessionId] = data
+    })
+    if (data) {
+      uncheckedPersons.value[sessionId] = Array.isArray(data) ? data : (data?.persons || [])
       // 初始化選中和備註狀態
       if (!selectedPersons.value[sessionId]) {
         selectedPersons.value[sessionId] = {}
@@ -648,32 +650,44 @@ async function batchManualCheckin(sessionId) {
   }
   
   try {
-    await apiRequest(`/church/checkin/admin/sessions/${sessionId}/batch-checkin`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const result = await apiRequest(`/church/checkin/admin/sessions/${sessionId}/batch-checkin`, {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify(requests)
-    }, '補登中...', true)
+    })
     
-    toast.success(`成功補登 ${requests.length} 位人員`, '補登')
-    
-    // 清空選中和備註
-    selectedPersons.value[sessionId] = {}
-    personNotes.value[sessionId] = {}
-    
-    // 重新載入數據
-    await refreshCheckins(sessionId)
+    // 如果返回成功（即使沒有數據），也視為成功
+    if (result !== null) {
+      toast.success(`成功補登 ${requests.length} 位人員`, '補登')
+      
+      // 清空選中和備註
+      selectedPersons.value[sessionId] = {}
+      personNotes.value[sessionId] = {}
+      
+      // 重新載入數據
+      await refreshCheckins(sessionId)
+    } else {
+      toast.error('批量補登失敗', '補登')
+    }
   } catch (error) {
     console.error('批量補登失敗:', error)
     let message = '批量補登失敗'
     if (error.response) {
       try {
-        const json = await error.response.json()
-        if (json.code === 'BATCH_CHECKIN_PARTIAL_FAILURE') {
+        // 嘗試解析錯誤響應
+        const json = await error.response.json().catch(() => null)
+        if (json && json.code === 'BATCH_CHECKIN_PARTIAL_FAILURE') {
           // 部分失敗的情況，顯示詳細錯誤信息
           message = json.message || '批量補登部分失敗，請查看詳情'
           toast.warning(message, '補登', { duration: 0 }) // 錯誤信息不自動消失
-        } else {
+        } else if (json) {
           message = json.message || '批量補登失敗'
           toast.error(message, '補登')
+        } else {
+          toast.error('批量補登失敗', '補登')
         }
       } catch (parseError) {
         toast.error('批量補登失敗', '補登')
@@ -686,9 +700,20 @@ async function batchManualCheckin(sessionId) {
 
 async function exportExcel(sessionId){
   try {
-    const res = await apiRequest(`/church/checkin/admin/sessions/${sessionId}/checkins/export.xlsx`, {
-      method: 'GET'
-    }, '匯出中...', true)
+    // 匯出 Excel 需要直接使用 fetch，因為返回的是 blob，不是 JSON
+    const { getApiBaseUrl, getAccessToken } = await import('@/utils/api')
+    const apiUrl = `${getApiBaseUrl()}/church/checkin/admin/sessions/${sessionId}/checkins/export.xlsx`
+    const token = getAccessToken()
+    const headers = {}
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+    
+    const res = await fetch(apiUrl, {
+      method: 'GET',
+      headers,
+      credentials: 'include'
+    })
     
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}))
@@ -820,22 +845,26 @@ async function manualAdd(sessionId){
     let toastType = 'error'
     if (e.response) {
       try {
-        const json = await e.response.json()
-        code = json.code || 'FAILED'
-        // 如果有後端返回的 message，優先使用
-        message = json.message || message
-        if (code === 'CANCELED_EXISTS') {
-          message = json.message || '此會員的簽到記錄已存在但已被取消，請從簽到名單中恢復簽到狀態。'
-          toastType = 'warning' // 使用 warning 類型，因為這不是真正的錯誤，而是提示
-        } else if (code === 'ALREADY_CHECKED_IN_MANUAL') {
-          message = json.message || '已簽到(補登)'
-          toastType = 'info' // 使用 info 類型，因為這只是提示信息
-        } else if (code === 'ALREADY_CHECKED_IN') {
-          message = json.message || '此會員已簽到（或已補登）'
-          toastType = 'warning' // 使用 warning 類型
-        } else if (code === 'MEMBER_NOT_FOUND') {
-          message = json.message || '查無此會員編號'
-          toastType = 'error'
+        // 嘗試解析錯誤響應
+        const json = await e.response.json().catch(() => null)
+        if (json) {
+          code = json.code || 'FAILED'
+          // 如果有後端返回的 message，優先使用
+          message = json.message || message
+          
+          if (code === 'CANCELED_EXISTS') {
+            message = json.message || '此會員的簽到記錄已存在但已被取消，請從簽到名單中恢復簽到狀態。'
+            toastType = 'warning' // 使用 warning 類型，因為這不是真正的錯誤，而是提示
+          } else if (code === 'ALREADY_CHECKED_IN_MANUAL') {
+            message = json.message || '已簽到(補登)'
+            toastType = 'info' // 使用 info 類型，因為這只是提示信息
+          } else if (code === 'ALREADY_CHECKED_IN') {
+            message = json.message || '此會員已簽到（或已補登）'
+            toastType = 'warning' // 使用 warning 類型
+          } else if (code === 'MEMBER_NOT_FOUND') {
+            message = json.message || '查無此會員編號'
+            toastType = 'error'
+          }
         }
       } catch (parseError) {
         // 如果無法解析 JSON，使用默認錯誤訊息

@@ -190,6 +190,10 @@ const totalPages = ref(1)
 
 // 過濾後的列表
 const filteredList = computed(() => {
+  // 確保 persons.value 是數組
+  if (!Array.isArray(persons.value)) {
+    return []
+  }
   let filtered = [...persons.value]
   
   if (filters.value.personName) {
@@ -286,26 +290,44 @@ watch(recordsPerPage, () => {
 const loadPersons = async () => {
   try {
     const url = `/church/persons?page=${currentPage.value - 1}&size=${recordsPerPage.value}`
-    const response = await apiRequest(url, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(url, {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
+    if (data) {
+      // 處理 ApiResponse 格式或直接返回的資料
+      let responseData = data
+      if (data.success && data.data) {
+        responseData = data.data
+      } else if (data.data) {
+        responseData = data.data
+      }
+      
       // 後端返回格式：{ "persons": [...], "message": "..." }
-      persons.value = data.persons || data.content || data || []
+      // 確保 persons.value 始終是數組
+      const personsData = responseData.persons || responseData.content || responseData
+      persons.value = Array.isArray(personsData) ? personsData : []
       
       // 更新分頁信息
-      if (data.totalElements !== undefined) {
-        totalRecords.value = data.totalElements
-        totalPages.value = data.totalPages || 1
+      if (responseData.totalElements !== undefined) {
+        totalRecords.value = responseData.totalElements
+        totalPages.value = responseData.totalPages || 1
         // 確保 currentPage 不超過 totalPages
         if (currentPage.value > totalPages.value) {
           currentPage.value = totalPages.value
           jumpPage.value = totalPages.value
         }
         // 同步 jumpPage 與 currentPage
+        jumpPage.value = currentPage.value
+      } else if (data.totalElements !== undefined) {
+        totalRecords.value = data.totalElements
+        totalPages.value = data.totalPages || 1
+        if (currentPage.value > totalPages.value) {
+          currentPage.value = totalPages.value
+          jumpPage.value = totalPages.value
+        }
         jumpPage.value = currentPage.value
       } else {
         totalRecords.value = persons.value.length
@@ -324,14 +346,16 @@ const loadPersons = async () => {
 
 const loadGroups = async () => {
   try {
-    const response = await apiRequest('/church/groups', {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest('/church/groups', {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      groups.value = data.groups || []
+    if (data) {
+      // 確保 groups.value 始終是數組
+      const groupsData = data.groups || data
+      groups.value = Array.isArray(groupsData) ? groupsData : []
     }
   } catch (error) {
     console.error('載入小組失敗:', error)
@@ -341,10 +365,12 @@ const loadGroups = async () => {
 const getGroupNames = (personId) => {
   if (!personId) return null
   const personGroups = personGroupsMap.value[personId] || []
-  if (personGroups.length === 0) return null
+  if (!Array.isArray(personGroups) || personGroups.length === 0) return null
   // 只顯示活躍的小組
   const activeGroups = personGroups.filter(g => g.isActive)
   if (activeGroups.length === 0) return null
+  // 確保 groups.value 是數組
+  if (!Array.isArray(groups.value)) return null
   return activeGroups.map(g => {
     const group = groups.value.find(gr => gr.id === g.groupId)
     return group ? group.groupName : null
@@ -353,14 +379,14 @@ const getGroupNames = (personId) => {
 
 const loadPersonGroups = async (personId) => {
   try {
-    const response = await apiRequest(`/church/persons/${personId}/groups`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/persons/${personId}/groups`, {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      personGroupsMap.value[personId] = data.groups || []
+    if (data) {
+      personGroupsMap.value[personId] = data.groups || data || []
     }
   } catch (error) {
     console.error(`載入人員 ${personId} 的小組列表失敗:`, error)
@@ -375,15 +401,15 @@ const loadAllPersonGroups = async () => {
   
   try {
     const personIds = persons.value.map(person => person.id)
-    const response = await apiRequest('/church/persons/groups/batch', {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest('/church/persons/groups/batch', {
       method: 'POST',
       body: JSON.stringify({ personIds }),
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      const personGroups = data.personGroups || {}
+    if (data) {
+      const personGroups = data.personGroups || data || {}
       
       // 將批量查詢結果存入 personGroupsMap
       // 注意：JSON 中的數字 key 會被轉換為字符串，需要轉換回數字
@@ -405,6 +431,8 @@ const openAddModal = () => {
 }
 
 const editPerson = (id) => {
+  // 確保 persons.value 是數組
+  if (!Array.isArray(persons.value)) return
   // 找到要編輯的人員
   const person = persons.value.find(p => p.id === id)
   if (person) {
@@ -463,12 +491,13 @@ const deletePerson = async (id) => {
   }
   
   try {
-    const response = await apiRequest(`/church/persons/${id}`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/persons/${id}`, {
       method: 'DELETE',
       credentials: 'include'
     })
     
-    if (response.ok) {
+    if (data !== null) {
       loadPersons()
     } else {
       toast.error('刪除失敗')

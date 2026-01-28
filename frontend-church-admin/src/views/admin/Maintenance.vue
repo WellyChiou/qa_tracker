@@ -152,7 +152,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import AdminLayout from '@/components/AdminLayout.vue'
 import { toast } from '@shared/composables/useToast'
-import { apiRequest } from '@/utils/api'
+import { apiRequest, getApiBaseUrl, getAccessToken } from '@/utils/api'
 
 const route = useRoute()
 const activeTab = ref(route.query.tab || 'settings')
@@ -179,7 +179,10 @@ const showNotification = (message, type = 'info', duration = 3000) => {
 }
 
 const categories = computed(() => {
-  const cats = new Set(settings.value.map(s => s.category))
+  if (!Array.isArray(settings.value) || settings.value.length === 0) {
+    return []
+  }
+  const cats = new Set(settings.value.map(s => s?.category).filter(c => c != null))
   return Array.from(cats).sort()
 })
 
@@ -194,22 +197,31 @@ const getCategoryName = (category) => {
 }
 
 const getSettingsByCategory = (category) => {
-  return settings.value.filter(s => s.category === category)
+  if (!Array.isArray(settings.value)) {
+    return []
+  }
+  return settings.value.filter(s => s && s.category === category)
 }
 
 const loadSettings = async () => {
   try {
-    const response = await apiRequest('/church/admin/system-settings', {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest('/church/admin/system-settings', {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      settings.value = data.settings || []
+    if (data) {
+      // 後端返回 ApiResponse<List<SystemSetting>>，apiRequest 會返回 data 字段（即 List）
+      // 所以 data 直接是數組，不需要檢查 data.settings
+      settings.value = Array.isArray(data) ? data : (data.settings || data.data || [])
+    } else {
+      settings.value = []
     }
   } catch (err) {
+    console.error('載入系統參數失敗:', err)
     showNotification('載入系統參數失敗: ' + err.message, 'error')
+    settings.value = []
   }
 }
 
@@ -220,7 +232,8 @@ const saveSetting = async (setting) => {
   savedSettings.value.delete(setting.settingKey)
   
   try {
-    const response = await apiRequest(`/church/admin/system-settings/${setting.settingKey}`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/admin/system-settings/${setting.settingKey}`, {
       method: 'PUT',
       body: JSON.stringify({
         settingValue: setting.settingValue
@@ -228,15 +241,13 @@ const saveSetting = async (setting) => {
       credentials: 'include'
     })
     
-    if (response.ok) {
+    if (data !== null) {
+      // apiRequest 成功返回數據，表示儲存成功
       savedSettings.value.add(setting.settingKey)
       setTimeout(() => {
         savedSettings.value.delete(setting.settingKey)
       }, 2000)
       showNotification('設定已儲存', 'success')
-    } else {
-      const data = await response.json()
-      showNotification(data.message || '儲存失敗', 'error')
     }
   } catch (err) {
     showNotification('儲存失敗: ' + err.message, 'error')
@@ -249,22 +260,18 @@ const refreshConfig = async () => {
   refreshingConfig.value = true
   
   try {
-    const response = await apiRequest('/church/admin/system-settings/refresh', {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest('/church/admin/system-settings/refresh', {
       method: 'POST',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      if (data.success) {
-        showNotification('配置刷新成功，新的配置已生效', 'success')
-        loadSettings()
-      } else {
-        showNotification(data.message || '配置刷新失敗', 'error')
-      }
+    if (data !== null) {
+      // apiRequest 成功返回數據，表示刷新成功
+      showNotification('配置刷新成功，新的配置已生效', 'success')
+      loadSettings()
     } else {
-      const data = await response.json()
-      showNotification(data.message || '配置刷新失敗', 'error')
+      showNotification('配置刷新失敗', 'error')
     }
   } catch (err) {
     showNotification('配置刷新失敗: ' + err.message, 'error')
@@ -275,13 +282,13 @@ const refreshConfig = async () => {
 
 const loadBackups = async () => {
   try {
-    const response = await apiRequest('/church/admin/backups', {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest('/church/admin/backups', {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
+    if (data) {
       backups.value = data.backups || []
     }
   } catch (err) {
@@ -297,22 +304,18 @@ const createBackup = async () => {
   creatingBackup.value = true
   
   try {
-    const response = await apiRequest('/church/admin/backups/create', {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest('/church/admin/backups/create', {
       method: 'POST',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      if (data.success) {
-        showNotification('備份創建成功', 'success')
-        loadBackups()
-      } else {
-        showNotification(data.message || '備份創建失敗', 'error')
-      }
+    if (data !== null) {
+      // apiRequest 成功返回數據，表示創建成功
+      showNotification('備份創建成功', 'success')
+      loadBackups()
     } else {
-      const data = await response.json()
-      showNotification(data.message || '備份創建失敗', 'error')
+      showNotification('備份創建失敗', 'error')
     }
   } catch (err) {
     showNotification('備份創建失敗: ' + err.message, 'error')
@@ -325,8 +328,17 @@ const downloadBackup = async (relativePath) => {
   try {
     // 從相對路徑中提取檔案名稱
     const filename = relativePath.split('/').pop() || relativePath
-    const response = await apiRequest(`/church/admin/backups/download?path=${encodeURIComponent(relativePath)}`, {
+    // 下載檔案需要直接使用 fetch，因為返回的是 blob，不是 JSON
+    const apiUrl = `${getApiBaseUrl()}/church/admin/backups/download?path=${encodeURIComponent(relativePath)}`
+    const token = getAccessToken()
+    const headers = {}
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+    
+    const response = await fetch(apiUrl, {
       method: 'GET',
+      headers,
       credentials: 'include'
     })
     
@@ -341,6 +353,8 @@ const downloadBackup = async (relativePath) => {
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
       showNotification('備份檔案下載開始', 'success')
+    } else {
+      showNotification('下載失敗', 'error')
     }
   } catch (err) {
     showNotification('下載失敗: ' + err.message, 'error')
@@ -355,19 +369,18 @@ const deleteBackup = async (relativePath) => {
   }
   
   try {
-    const response = await apiRequest(`/church/admin/backups/delete?path=${encodeURIComponent(relativePath)}`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/admin/backups/delete?path=${encodeURIComponent(relativePath)}`, {
       method: 'DELETE',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
-      if (data.success) {
-        showNotification('備份檔案刪除成功', 'success')
-        loadBackups()
-      } else {
-        showNotification(data.message || '刪除失敗', 'error')
-      }
+    if (data !== null) {
+      // apiRequest 成功返回數據，表示刪除成功
+      showNotification('備份檔案刪除成功', 'success')
+      loadBackups()
+    } else {
+      showNotification('刪除失敗', 'error')
     }
   } catch (err) {
     showNotification('刪除失敗: ' + err.message, 'error')

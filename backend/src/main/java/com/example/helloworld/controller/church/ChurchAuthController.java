@@ -1,5 +1,9 @@
 package com.example.helloworld.controller.church;
 
+import com.example.helloworld.dto.common.ApiResponse;
+import com.example.helloworld.dto.church.auth.CurrentUserResponse;
+import com.example.helloworld.dto.church.auth.LoginResponse;
+import com.example.helloworld.dto.church.auth.RefreshTokenResponse;
 import com.example.helloworld.entity.church.ChurchUser;
 import com.example.helloworld.repository.church.ChurchUserRepository;
 import com.example.helloworld.service.personal.TokenBlacklistService;
@@ -48,40 +52,47 @@ public class ChurchAuthController {
      * 獲取當前登入用戶資訊
      */
     @GetMapping("/current-user")
-    public ResponseEntity<Map<String, Object>> getCurrentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        
-        if (authentication == null || !authentication.isAuthenticated() || 
-            authentication.getPrincipal().equals("anonymousUser")) {
-            return ResponseEntity.ok(Map.of("authenticated", false));
+    public ResponseEntity<ApiResponse<CurrentUserResponse>> getCurrentUser() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            
+            if (authentication == null || !authentication.isAuthenticated() || 
+                authentication.getPrincipal().equals("anonymousUser")) {
+                CurrentUserResponse response = new CurrentUserResponse();
+                response.setAuthenticated(false);
+                return ResponseEntity.ok(ApiResponse.ok(response));
+            }
+
+            String username = authentication.getName();
+            ChurchUser user = churchUserRepository.findByUsername(username).orElse(null);
+            
+            if (user == null) {
+                CurrentUserResponse response = new CurrentUserResponse();
+                response.setAuthenticated(false);
+                return ResponseEntity.ok(ApiResponse.ok(response));
+            }
+
+            CurrentUserResponse response = new CurrentUserResponse();
+            response.setAuthenticated(true);
+            response.setUid(user.getUid());
+            response.setUsername(user.getUsername());
+            response.setEmail(user.getEmail());
+            response.setDisplayName(user.getDisplayName());
+            response.setPhotoUrl(user.getPhotoUrl());
+            response.setMenus(churchMenuService.getAdminMenus());
+
+            return ResponseEntity.ok(ApiResponse.ok(response));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("獲取用戶資訊失敗: " + e.getMessage()));
         }
-
-        String username = authentication.getName();
-        ChurchUser user = churchUserRepository.findByUsername(username).orElse(null);
-        
-        if (user == null) {
-            return ResponseEntity.ok(Map.of("authenticated", false));
-        }
-
-        Map<String, Object> userInfo = new HashMap<>();
-        userInfo.put("authenticated", true);
-        userInfo.put("uid", user.getUid());
-        userInfo.put("username", user.getUsername());
-        userInfo.put("email", user.getEmail());
-        userInfo.put("displayName", user.getDisplayName());
-        userInfo.put("photoUrl", user.getPhotoUrl());
-        
-        // 獲取後台菜單
-        userInfo.put("menus", churchMenuService.getAdminMenus());
-
-        return ResponseEntity.ok(userInfo);
     }
 
     /**
      * 登入
      */
     @PostMapping("/login")
-    public ResponseEntity<Map<String, Object>> login(@RequestBody Map<String, String> loginRequest) {
+    public ResponseEntity<ApiResponse<LoginResponse>> login(@RequestBody Map<String, String> loginRequest) {
         try {
             String username = loginRequest.get("username");
             String password = loginRequest.get("password");
@@ -103,36 +114,23 @@ public class ChurchAuthController {
             // 生成 Refresh Token（如果啟用）
             String refreshToken = jwtUtil.generateChurchRefreshToken(username);
 
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "登入成功");
-            response.put("username", username);
-            response.put("accessToken", accessToken);
-            response.put("tokenType", "Bearer");
-            
-            // 只有當 Refresh Token 啟用時才返回
-            if (refreshToken != null) {
-                response.put("refreshToken", refreshToken);
-            }
+            LoginResponse loginResponse = new LoginResponse();
+            loginResponse.setUsername(username);
+            loginResponse.setAccessToken(accessToken);
+            loginResponse.setTokenType("Bearer");
+            loginResponse.setRefreshToken(refreshToken);
 
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(loginResponse));
         } catch (org.springframework.security.authentication.BadCredentialsException e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "登入失敗: 用戶名或密碼錯誤");
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("登入失敗: 用戶名或密碼錯誤"));
         } catch (org.springframework.security.core.userdetails.UsernameNotFoundException e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "登入失敗: 用戶不存在");
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("登入失敗: 用戶不存在"));
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "登入失敗: " + e.getMessage());
-            response.put("errorType", e.getClass().getSimpleName());
             e.printStackTrace(); // 輸出詳細錯誤到日誌
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("登入失敗: " + e.getMessage()));
         }
     }
 
@@ -140,14 +138,12 @@ public class ChurchAuthController {
      * 刷新 Access Token
      */
     @PostMapping("/refresh")
-    public ResponseEntity<Map<String, Object>> refreshToken(@RequestBody Map<String, String> request) {
+    public ResponseEntity<ApiResponse<RefreshTokenResponse>> refreshToken(@RequestBody Map<String, String> request) {
         try {
             String refreshToken = request.get("refreshToken");
             if (refreshToken == null || refreshToken.isEmpty()) {
-                Map<String, Object> error = new HashMap<>();
-                error.put("success", false);
-                error.put("message", "Refresh Token 不能為空");
-                return ResponseEntity.badRequest().body(error);
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.fail("Refresh Token 不能為空"));
             }
 
             // 驗證 Refresh Token
@@ -155,34 +151,27 @@ public class ChurchAuthController {
             String system = jwtUtil.extractSystem(refreshToken);
             
             if (!"church".equals(system)) {
-                Map<String, Object> error = new HashMap<>();
-                error.put("success", false);
-                error.put("message", "無效的 Refresh Token");
-                return ResponseEntity.badRequest().body(error);
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.fail("無效的 Refresh Token"));
             }
 
             Boolean isValid = jwtUtil.validateChurchRefreshToken(refreshToken, username);
             if (!isValid) {
-                Map<String, Object> error = new HashMap<>();
-                error.put("success", false);
-                error.put("message", "Refresh Token 無效或已過期");
-                return ResponseEntity.badRequest().body(error);
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.fail("Refresh Token 無效或已過期"));
             }
 
             // 生成新的 Access Token
             String newAccessToken = jwtUtil.generateChurchAccessToken(username);
 
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("accessToken", newAccessToken);
-            response.put("tokenType", "Bearer");
+            RefreshTokenResponse response = new RefreshTokenResponse();
+            response.setAccessToken(newAccessToken);
+            response.setTokenType("Bearer");
 
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.ok(response));
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("success", false);
-            error.put("message", "刷新 Token 失敗: " + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("刷新 Token 失敗: " + e.getMessage()));
         }
     }
 
@@ -190,21 +179,23 @@ public class ChurchAuthController {
      * 登出（將 Token 加入黑名單）
      */
     @PostMapping("/logout")
-    public ResponseEntity<Map<String, Object>> logout(HttpServletRequest request) {
-        // 從 Authorization header 提取 Token
-        String authHeader = request.getHeader("Authorization");
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7);
-            // 將 Token 加入黑名單
-            tokenBlacklistService.addToBlacklist(token);
+    public ResponseEntity<ApiResponse<String>> logout(HttpServletRequest request) {
+        try {
+            // 從 Authorization header 提取 Token
+            String authHeader = request.getHeader("Authorization");
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String token = authHeader.substring(7);
+                // 將 Token 加入黑名單
+                tokenBlacklistService.addToBlacklist(token);
+            }
+            
+            SecurityContextHolder.clearContext();
+            
+            return ResponseEntity.ok(ApiResponse.ok("登出成功"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("登出失敗: " + e.getMessage()));
         }
-        
-        SecurityContextHolder.clearContext();
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("success", true);
-        response.put("message", "登出成功");
-        return ResponseEntity.ok(response);
     }
 }
 

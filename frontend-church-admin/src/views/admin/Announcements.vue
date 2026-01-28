@@ -365,13 +365,13 @@ const formatDate = (dateString) => {
 const loadAnnouncements = async () => {
   try {
     const url = `/church/admin/announcements?page=${currentPage.value - 1}&size=${recordsPerPage.value}`
-    const response = await apiRequest(url, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(url, {
       method: 'GET',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
+    if (data) {
       // 處理多種可能的數據結構
       let announcementsData = []
       if (data.success && data.data) {
@@ -457,15 +457,15 @@ const saveAnnouncement = async () => {
       : '/church/admin/announcements'
     const method = editingAnnouncement.value ? 'PUT' : 'POST'
     
-    const response = await apiRequest(url, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify(formData.value)
     })
     
-    if (response.ok) {
-      const data = await response.json()
+    if (data) {
       if (data.success) {
         toast.success('儲存成功')
         closeModal()
@@ -484,13 +484,13 @@ const deleteAnnouncement = async (id) => {
   if (!confirm('確定要刪除這個公告嗎？')) return
   
   try {
-    const response = await apiRequest(`/church/admin/announcements/${id}`, {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiRequest(`/church/admin/announcements/${id}`, {
       method: 'DELETE',
       credentials: 'include'
     })
     
-    if (response.ok) {
-      const data = await response.json()
+    if (data) {
       if (data.success) {
         toast.success('刪除成功')
         loadAnnouncements()
