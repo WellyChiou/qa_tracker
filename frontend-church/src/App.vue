@@ -35,7 +35,11 @@
                 {{ menu.menuName }}
                 <span class="nav-dropdown__arrow">▼</span>
               </button>
-              <div class="nav-dropdown__menu">
+              <div
+                class="nav-dropdown__menu"
+                @mouseenter="openDropdownId = menu.id"
+                @mouseleave="!isMobile && (openDropdownId = null)"
+              >
                 <router-link
                   v-for="child in menu.children"
                   :key="child.id"
