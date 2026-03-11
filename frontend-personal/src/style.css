@@ -67,7 +67,7 @@
 }
 
 body {
-  font-family: 'Avenir Next', 'Segoe UI', 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+  font-family: 'Manrope', 'Avenir Next', 'Segoe UI', 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: var(--text-primary);
@@ -505,6 +505,67 @@ button, .btn {
 
 .records-table td{
   font-size: 14px;
+}
+
+.table-wrap {
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.05);
+  padding: 6px;
+  overflow-x: auto;
+}
+
+.table-grid {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 6px;
+}
+
+.table-grid th {
+  text-align: left;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  color: rgba(15, 23, 42, 0.62);
+  padding: 10px 12px;
+}
+
+.table-grid td {
+  padding: 10px 12px;
+  vertical-align: middle;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.table-grid tbody tr {
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
+}
+
+.table-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.table-actions .btn,
+.table-actions button {
+  padding: 8px 10px;
+  font-size: 13px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: #fff;
+  cursor: pointer;
+}
+
+.status-active {
+  color: #16a34a;
+  font-weight: 700;
+}
+
+.status-inactive {
+  color: #ef4444;
+  font-weight: 700;
 }
 
 .page-size-select,

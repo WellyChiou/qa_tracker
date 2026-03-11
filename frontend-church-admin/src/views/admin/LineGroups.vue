@@ -59,8 +59,6 @@
               <thead>
                 <tr>
                   <th>群組名稱</th>
-                  <th>群組 ID</th>
-                  <th>群組代碼</th>
                   <th>成員數</th>
                   <th>狀態</th>
                   <th>操作</th>
@@ -74,8 +72,6 @@
                   @click="selectGroup(group)"
                 >
                   <td>{{ group.groupName || '未命名群組' }}</td>
-                  <td class="mono">{{ group.groupId }}</td>
-                  <td>{{ group.groupCode || '-' }}</td>
                   <td>{{ group.memberCount || 0 }}</td>
                   <td>
                     <span :class="['status-badge', group.isActive ? 'status-active' : 'status-inactive']">
@@ -117,7 +113,6 @@
               <thead>
                 <tr>
                   <th>顯示名稱</th>
-                  <th>LINE User ID</th>
                   <th>管理員</th>
                   <th>加入時間</th>
                   <th>操作</th>
@@ -126,7 +121,6 @@
               <tbody>
                 <tr v-for="member in members" :key="member.id">
                   <td>{{ member.displayName || '-' }}</td>
-                  <td class="mono">{{ member.userId }}</td>
                   <td>{{ member.isAdmin ? '是' : '否' }}</td>
                   <td>{{ formatDateTime(member.joinedAt) }}</td>
                   <td>
@@ -409,13 +403,87 @@ onMounted(async () => {
 <style scoped>
 .line-groups-page {
   display: grid;
-  gap: 24px;
+  gap: 20px;
+  padding: 12px 4px 28px;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(2, 6, 23, 0.08);
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.06);
+}
+
+.page-header h2 {
+  margin: 0 0 6px;
+}
+
+.page-header p {
+  margin: 0;
+  color: var(--muted-text, #667085);
 }
 
 .workspace-grid {
   display: grid;
-  grid-template-columns: 1.05fr 0.95fr;
-  gap: 24px;
+  grid-template-columns: 1.08fr 0.92fr;
+  gap: 18px;
+}
+
+.card.surface-card {
+  padding: 14px;
+}
+
+.card.surface-card .card__body {
+  padding: 0;
+}
+
+.card.surface-card {
+  padding: 14px;
+}
+
+.card.surface-card .card__body {
+  padding: 0;
+}
+
+.overview-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.overview-card {
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(2, 6, 23, 0.08);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.06);
+}
+
+.overview-card span {
+  display: block;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(15, 23, 42, 0.6);
+  font-weight: 800;
+}
+
+.overview-card strong {
+  display: block;
+  margin: 4px 0 6px;
+  font-size: 24px;
+  letter-spacing: -0.02em;
+}
+
+.overview-card p {
+  margin: 0;
+  color: rgba(15, 23, 42, 0.62);
+  font-weight: 600;
 }
 
 .panel-head,
@@ -423,11 +491,11 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
 }
 
 .panel-head {
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 
 .panel-head h3 {
@@ -440,7 +508,10 @@ onMounted(async () => {
 }
 
 .toolbar {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
+  padding: 0 4px;
+  flex-wrap: wrap;
+  row-gap: 8px;
 }
 
 .select-small {
@@ -449,6 +520,11 @@ onMounted(async () => {
 
 .table-wrap {
   overflow-x: auto;
+  border: 1px solid rgba(2, 6, 23, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.05);
+  padding: 6px;
 }
 
 .mono {
@@ -456,8 +532,39 @@ onMounted(async () => {
   font-size: 12px;
 }
 
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 6px;
+}
+
+th, td {
+  padding: 10px 12px;
+  vertical-align: middle;
+}
+
+th {
+  font-size: 13px;
+  color: rgba(15, 23, 42, 0.6);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
 tbody tr.is-selected {
-  background: rgba(14, 116, 144, 0.08);
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.table-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.table-actions .btn {
+  min-width: 46px;
+  height: 36px;
+  padding: 6px 10px;
+  font-size: 13px;
 }
 
 .modal-backdrop {
@@ -503,14 +610,14 @@ tbody tr.is-selected {
 }
 
 .modal-body {
-  padding: 22px;
+  padding: 18px;
   display: grid;
-  gap: 16px;
+  gap: 14px;
 }
 
 .field {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .field span {
@@ -531,6 +638,27 @@ tbody tr.is-selected {
 @media (max-width: 1100px) {
   .workspace-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .select-small {
+    max-width: none;
+    width: 100%;
+  }
+
+  th, td {
+    padding: 10px;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
   }
 }
 </style>

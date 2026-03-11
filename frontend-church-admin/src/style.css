@@ -7,33 +7,33 @@
 @import url('../../shared/styles/utilities.css');
 @import url('../../shared/styles/components.css');
 :root{
-  --bg:#eef4ff;
+  --bg:#f7faff;
   --surface:#ffffff;
-  --surface-2:#f8fbff;
+  --surface-2:#f6f9ff;
   --text:#0f172a;
-  --muted:rgba(15,23,42,.65);
+  --muted:rgba(15,23,42,.64);
   --border:rgba(2,6,23,.10);
   --border-strong:rgba(2,6,23,.18);
-  --shadow:0 14px 30px rgba(15,23,42,.08);
-  --shadow-sm:0 8px 18px rgba(15,23,42,.07);
+  --shadow:0 18px 40px rgba(15,23,42,.08);
+  --shadow-sm:0 10px 22px rgba(15,23,42,.07);
   --radius:14px;
   --radius-sm:10px;
-  --ring:0 0 0 4px rgba(59,130,246,.18);
+  --ring:0 0 0 4px rgba(37,99,235,.18);
 
-  --primary:#1d4ed8;
-  --primary-600:#1e40af;
+  --primary:#1e3a8a;
+  --primary-600:#1d4ed8;
   --danger:#ef4444;
   --success:#16a34a;
   --warning:#f59e0b;
 
-  --nav-bg:rgba(255,255,255,.78);
+  --nav-bg:rgba(255,255,255,.82);
   --nav-border:rgba(2,6,23,.10);
 }
 
 *{ margin:0; padding:0; box-sizing:border-box; }
 html,body{ height:100%; }
 body{
-  font-family:'Avenir Next','Segoe UI','Helvetica Neue',Arial,'Microsoft JhengHei',sans-serif;
+  font-family:'Manrope','Avenir Next','Segoe UI','Helvetica Neue',Arial,'Microsoft JhengHei',sans-serif;
   -webkit-font-smoothing:antialiased;
   -moz-osx-font-smoothing:grayscale;
   color:var(--text);
@@ -65,6 +65,7 @@ a:hover{ text-decoration:none; }
   border:1px solid var(--border);
   border-radius:var(--radius);
   box-shadow:var(--shadow-sm);
+  padding:10px 14px 14px;
 }
 
 .card--flat{
@@ -234,39 +235,87 @@ label{ color:var(--muted); font-size:13px; font-weight:700; }
 }
 .admin-content .page-actions{ display:flex; gap:10px; flex-wrap:wrap; }
 
-/* Tables: works for plain <table> used in views */
-.admin-content table{
-  width:100%;
-  border-collapse:separate;
-  border-spacing:0;
-  overflow:hidden;
-}
-.admin-content table thead th{
-  position:sticky;
-  top:0;
-  z-index:1;
-  font-size:12px;
-  letter-spacing:.02em;
-  color:rgba(15,23,42,.62);
-  background:var(--surface-2);
-  text-align:left;
-  padding:10px 12px;
-  border-bottom:1px solid var(--border);
-}
-.admin-content table tbody td{
-  padding:10px 12px;
-  border-bottom:1px solid rgba(2,6,23,.06);
-  font-size:14px;
-}
-.admin-content table tbody tr:hover td{
-  background:rgba(37,99,235,.04);
-}
+/* Tables v2 */
 .table-wrap{
   border:1px solid var(--border);
-  border-radius:var(--radius);
+  border-radius:14px;
   overflow:auto;
-  background:var(--surface);
-  box-shadow:var(--shadow-sm);
+  background:rgba(255,255,255,.92);
+  box-shadow:0 14px 30px rgba(15,23,42,.05);
+  padding:6px;
+}
+.table-grid{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0 6px;
+}
+.table-grid thead th{
+  text-align:left;
+  font-size:13px;
+  letter-spacing:.02em;
+  color:rgba(15,23,42,.6);
+  padding:10px 12px;
+  background:transparent;
+}
+.table-grid td{
+  padding:10px 12px;
+  vertical-align:middle;
+  background:rgba(255,255,255,.92);
+  border:1px solid rgba(2,6,23,.06);
+}
+.table-grid tbody tr{
+  box-shadow:0 10px 22px rgba(15,23,42,.06);
+}
+.table-grid .table-actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.table-grid .table-actions .btn{
+  padding:8px 10px;
+  font-size:13px;
+  height:34px;
+}
+
+/* Fallback: any table inside card uses新版間距 */
+.card table{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0 6px;
+}
+.card thead th{
+  text-align:left;
+  font-size:13px;
+  letter-spacing:.02em;
+  color:rgba(15,23,42,.6);
+  padding:10px 12px;
+}
+.card tbody td{
+  padding:10px 12px;
+  vertical-align:middle;
+  background:rgba(255,255,255,.92);
+  border:1px solid rgba(2,6,23,.06);
+}
+.card tbody tr{
+  box-shadow:0 10px 22px rgba(15,23,42,.06);
+}
+.card .table-actions{
+  display:flex;
+  gap:8px;
+  align-items:center;
+}
+.card .table-actions .btn{
+  padding:8px 10px;
+  font-size:13px;
+  height:34px;
+}
+.status-active{
+  color:#16a34a;
+  font-weight:700;
+}
+.status-inactive{
+  color:#ef4444;
+  font-weight:700;
 }
 
 /* Badges / chips */

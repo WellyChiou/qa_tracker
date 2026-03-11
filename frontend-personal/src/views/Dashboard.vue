@@ -3,40 +3,22 @@
     <TopNavbar />
 
     <div class="container">
-      <section class="hero-panel">
-        <div class="hero-copy">
+      <section class="page-head card">
+        <div>
           <span class="hero-kicker">Control Surface</span>
-          <h2>把個人系統的關鍵操作，壓縮成一個易讀且即時的工作台。</h2>
-          <p>
-            你可以先確認服務健康狀態，再快速切進常用功能，不需要先翻找選單。
-          </p>
+          <h2>個人控制台</h2>
+          <p>直接進入常用模組，並快速確認服務健康狀態。</p>
         </div>
 
-        <div class="hero-stats">
-          <article class="status-item status-item--spotlight">
-            <strong>前端</strong>
-            <div class="status-value success">在線</div>
-            <small>Vue / Nginx</small>
-          </article>
-          <article class="status-item">
-            <strong>後端</strong>
-            <div class="status-value" :class="backendStatus">
-              {{ backendStatusText }}
-            </div>
-            <small>Spring Boot API</small>
-          </article>
-          <article class="status-item">
-            <strong>資料庫</strong>
-            <div class="status-value success">正常</div>
-            <small>MySQL</small>
-          </article>
-          <article class="status-item">
-            <strong>認證</strong>
-            <div class="status-value" :class="authStatus">
-              {{ authStatusText }}
-            </div>
-            <small>目前工作區狀態</small>
-          </article>
+        <div class="status-pills">
+          <div class="pill">
+            <span>後端</span>
+            <strong :class="backendStatus">{{ backendStatusText }}</strong>
+          </div>
+          <div class="pill">
+            <span>認證</span>
+            <strong :class="authStatus">{{ authStatusText }}</strong>
+          </div>
         </div>
       </section>
 
@@ -149,153 +131,96 @@ onMounted(async () => {
 .dashboard {
   min-height: 100vh;
   background:
-    radial-gradient(circle at 12% 18%, rgba(14, 165, 233, 0.16), transparent 28%),
-    radial-gradient(circle at 82% 20%, rgba(37, 99, 235, 0.16), transparent 30%),
-    linear-gradient(180deg, #eff6ff 0%, #f8fafc 100%);
+    radial-gradient(circle at 12% 18%, rgba(37, 99, 235, 0.12), transparent 26%),
+    radial-gradient(circle at 82% 20%, rgba(34, 197, 94, 0.1), transparent 28%),
+    linear-gradient(180deg, #f7faff 0%, #f0f6ff 100%);
   color: var(--text-primary);
   position: relative;
 }
 
-.dashboard::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0));
-  pointer-events: none;
-  z-index: 0;
-}
-
 .container {
-  max-width: 1280px;
-  margin: 1.35rem auto 0;
+  max-width: 1200px;
+  margin: 1.25rem auto 0;
   padding: 0 1rem 2rem;
   position: relative;
   z-index: 1;
 }
 
-.hero-panel {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-  gap: 1.2rem;
-  margin-bottom: 1.2rem;
-}
-
-.hero-copy,
-.status-card {
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(24px);
-  border-radius: 30px;
-  padding: 1.5rem;
-  box-shadow: 0 28px 54px rgba(15, 23, 42, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  transition: var(--transition);
-}
-
-.hero-copy {
+.page-head {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  min-height: 320px;
-  background:
-    linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(37, 99, 235, 0.92)),
-    rgba(15, 23, 42, 0.9);
-  color: white;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.35rem;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.08);
 }
 
 .hero-kicker,
 .section-kicker {
   display: inline-flex;
   align-items: center;
-  padding: 0.42rem 0.7rem;
+  padding: 0.36rem 0.64rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  font-size: 0.74rem;
+  background: rgba(37, 99, 235, 0.12);
+  border: 1px solid rgba(37, 99, 235, 0.16);
+  font-size: 0.7rem;
   font-weight: 900;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
+  color: #1d4ed8;
 }
 
-.hero-copy h2 {
-  margin: 1rem 0 0.8rem;
-  max-width: 14ch;
-  font-size: clamp(2.2rem, 4vw, 3.7rem);
-  line-height: 0.95;
-  letter-spacing: -0.05em;
+.page-head h2 {
+  margin: 0.5rem 0 0.3rem;
+  font-size: clamp(1.8rem, 3vw, 2.4rem);
+  letter-spacing: -0.03em;
 }
 
-.hero-copy p {
+.page-head p {
   margin: 0;
-  max-width: 44rem;
-  color: rgba(255, 255, 255, 0.78);
-  font-size: 1rem;
-  line-height: 1.8;
+  color: rgba(15, 23, 42, 0.62);
   font-weight: 600;
 }
 
-.hero-stats {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
+.status-pills {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
-.status-item {
-  padding: 1.15rem;
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(14px);
-  border-radius: 24px;
+.pill {
+  padding: 0.65rem 0.85rem;
+  background: rgba(248, 250, 252, 0.92);
   border: 1px solid rgba(148, 163, 184, 0.16);
-  transition: var(--transition);
-  position: relative;
-  overflow: hidden;
-  min-height: 148px;
+  border-radius: 14px;
+  min-width: 120px;
 }
 
-.status-item--spotlight {
-  background: linear-gradient(145deg, rgba(14, 165, 233, 0.12), rgba(255, 255, 255, 0.94));
+.pill span {
+  display: block;
+  font-size: 0.78rem;
+  color: rgba(15, 23, 42, 0.58);
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
-.status-item:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 22px 36px rgba(15, 23, 42, 0.12);
+.pill strong {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
 }
 
-.status-value {
-  margin: 0.8rem 0 0.45rem;
-  font-size: 1.7rem;
-  font-weight: 900;
-  letter-spacing: -0.04em;
-}
-
-.status-value.success {
+.pill strong.success {
   color: #059669;
 }
 
-.status-value.error {
+.pill strong.error {
   color: #dc2626;
-}
-
-.status-item strong,
-.status-item small {
-  display: block;
-}
-
-.status-item strong {
-  color: rgba(15, 23, 42, 0.62);
-  font-size: 0.8rem;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-}
-
-.status-item small {
-  color: rgba(15, 23, 42, 0.48);
-  font-size: 0.82rem;
-  font-weight: 700;
 }
 
 .section-head {
@@ -383,17 +308,24 @@ a.menu-card {
 }
 
 @media (max-width: 960px) {
-  .hero-panel {
-    grid-template-columns: 1fr;
-  }
-
-  .hero-copy h2 {
-    max-width: none;
-  }
-
   .section-head {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .page-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .status-pills {
+    width: 100%;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .pill {
+    flex: 1 1 140px;
   }
 }
 
@@ -402,14 +334,9 @@ a.menu-card {
     padding: 0 0.85rem 1.2rem;
   }
 
-  .hero-copy,
-  .status-card {
-    padding: 1.15rem;
-    border-radius: 24px;
-  }
-
-  .hero-stats {
-    grid-template-columns: 1fr;
+  .page-head {
+    padding: 1rem 1.1rem;
+    border-radius: 18px;
   }
 }
 </style>

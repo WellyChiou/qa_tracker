@@ -91,7 +91,8 @@
           <div class="table-header">
             <h3>菜單列表 (共 {{ totalRecords }} 筆)</h3>
           </div>
-          <table>
+          <div class="table-wrap">
+          <table class="table-grid">
             <thead>
               <tr>
                 <th>菜單代碼</th>
@@ -109,7 +110,7 @@
                 <td>{{ menu.menuCode }}</td>
                 <td>{{ menu.menuName }}</td>
                 <td>{{ menu.menuType === 'frontend' ? '前台' : '後台' }}</td>
-                <td>{{ menu.url || '-' }}</td>
+                <td class="url-cell" :title="menu.url || '-'">{{ menu.url || '-' }}</td>
                 <td>{{ menu.orderIndex }}</td>
                 <td>
                   <span :class="menu.isActive ? 'status-active' : 'status-inactive'">
@@ -128,6 +129,7 @@
               </tr>
             </tbody>
           </table>
+          </div>
           
           <!-- 分頁 -->
           <div class="pagination">
@@ -515,6 +517,60 @@ onMounted(() => {
   display:flex;
   gap:10px;
   flex-wrap:wrap;
+}
+
+.table-wrap{
+  border:1px solid rgba(2,6,23,.08);
+  border-radius:14px;
+  background:rgba(255,255,255,.92);
+  box-shadow:0 14px 30px rgba(15,23,42,.05);
+  padding:6px;
+  overflow-x:auto;
+}
+
+.table-grid{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0 6px;
+}
+
+.table-grid th{
+  text-align:left;
+  font-size:13px;
+  color:rgba(15,23,42,.6);
+  font-weight:800;
+  letter-spacing:0.02em;
+  padding:10px 12px;
+}
+
+.table-grid td{
+  vertical-align:middle;
+  background:rgba(255,255,255,.92);
+  border:1px solid rgba(2,6,23,.06);
+  padding:10px 12px;
+}
+
+.table-grid tbody tr{
+  box-shadow:0 10px 22px rgba(15,23,42,.06);
+}
+
+.table-actions{
+  display:flex;
+  gap:8px;
+  align-items:center;
+}
+
+.table-actions .btn{
+  padding:8px 10px;
+  font-size:13px;
+  height:34px;
+}
+
+.url-cell{
+  max-width:220px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
 
 /* Mobile tweaks */

@@ -4,24 +4,24 @@
    ============================================ */
 
 :root {
-  /* 主色調 */
-  --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  --primary-color: #667eea;
-  --primary-dark: #5568d3;
+  /* 主色調：深藍 + 綠 */
+  --primary-gradient: linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #22c55e 100%);
+  --primary-color: #1e3a8a;
+  --primary-dark: #1e3a8a;
   --primary-600: #1d4ed8;
-  --secondary-color: #764ba2;
+  --secondary-color: #22c55e;
   
   /* 背景色 */
-  --bg-primary: #f8fafc;
+  --bg-primary: #f7faff;
   --bg-secondary: #ffffff;
-  --bg-card: rgba(255, 255, 255, 0.95);
+  --bg-card: rgba(255, 255, 255, 0.94);
   --bg-overlay: rgba(0, 0, 0, 0.5);
   --surface: #ffffff;
   --surface-2: #fbfbfe;
   
   /* 文字顏色 */
-  --text-primary: #1e293b;
-  --text-secondary: #64748b;
+  --text-primary: #0f172a;
+  --text-secondary: #42526b;
   --text-muted: #94a3b8;
   --text-white: #ffffff;
   --text: #0f172a;

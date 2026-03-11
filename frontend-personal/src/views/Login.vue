@@ -7,31 +7,34 @@
 
     <div class="login-grid">
       <section class="login-intro">
-        <div class="intro-badge">Personal Workspace</div>
-        <h1>把每天要處理的事情，收斂成一個乾淨的工作台。</h1>
-        <p>
-          這裡整合個人記帳、系統設定、排程與資料維護。登入後可以直接回到你常用的管理流程。
-        </p>
+        <div class="intro-brand">
+          <span class="intro-dot"></span>
+          <span class="intro-name">Personal Console</span>
+        </div>
+        <h1>登入個人工作台</h1>
+        <p>專注帳務、排程與設定的個人入口，維持輕量、快速、隱私可靠的日常作業。</p>
 
         <div class="intro-points">
           <div class="intro-point">
-            <strong>集中式導覽</strong>
-            <span>常用操作從同一個入口進入，不再跳來跳去。</span>
+            <span class="point-badge">01</span>
+            <div>
+              <strong>快速進入</strong>
+              <span>常用操作集中，少一步導覽。</span>
+            </div>
           </div>
           <div class="intro-point">
-            <strong>即時狀態</strong>
-            <span>登入前先確認後端是否在線，降低誤判。</span>
-          </div>
-          <div class="intro-point">
-            <strong>穩定工作流</strong>
-            <span>保留既有認證與 API，不重寫邏輯只優化體驗。</span>
+            <span class="point-badge">02</span>
+            <div>
+              <strong>穩定連線</strong>
+              <span>登入前先檢查後端狀態，避免誤判。</span>
+            </div>
           </div>
         </div>
       </section>
 
       <section class="login-card">
         <div class="card-top">
-          <span class="card-kicker">Secure Sign-in</span>
+          <span class="card-kicker">Secure Access</span>
           <h2>登入系統</h2>
           <p>輸入帳號與密碼，進入個人控制台。</p>
         </div>
@@ -58,13 +61,29 @@
 
           <div class="form-group">
             <label for="password">密碼</label>
-            <input
-              id="password"
-              v-model="password"
-              type="password"
-              required
-              placeholder="請輸入密碼"
-            />
+            <div class="password-field">
+              <input
+                id="password"
+                v-model="password"
+                :type="showPassword ? 'text' : 'password'"
+                required
+                placeholder="請輸入密碼"
+                @keydown="handleCaps"
+                @keyup="handleCaps"
+                @focus="handleCaps"
+              />
+              <button
+                type="button"
+                class="toggle-visibility"
+                @click="showPassword = !showPassword"
+                :aria-label="showPassword ? '隱藏密碼' : '顯示密碼'"
+                :title="showPassword ? '隱藏密碼' : '顯示密碼'"
+              >
+                <span v-if="showPassword">🙈</span>
+                <span v-else>👁</span>
+              </button>
+            </div>
+            <p v-if="capsLockOn" class="caps-hint">Caps Lock 已開啟，請注意大小寫。</p>
           </div>
 
           <div v-if="error" class="error-message">{{ error }}</div>
@@ -93,6 +112,8 @@ const password = ref('')
 const loading = ref(false)
 const error = ref('')
 const systemStatus = ref('checking') // 'checking', 'online', 'offline'
+const showPassword = ref(false)
+const capsLockOn = ref(false)
 
 const checkSystemStatus = async () => {
   try {
@@ -163,6 +184,10 @@ const handleLogin = async () => {
     loading.value = false
   }
 }
+
+const handleCaps = (event) => {
+  capsLockOn.value = event.getModifierState && event.getModifierState('CapsLock')
+}
 </script>
 
 <style scoped>
@@ -170,7 +195,7 @@ const handleLogin = async () => {
   min-height: 100vh;
   position: relative;
   overflow: hidden;
-  padding: 2rem;
+  padding: 1.8rem;
   background:
     radial-gradient(circle at 12% 18%, rgba(14, 165, 233, 0.18), transparent 28%),
     radial-gradient(circle at 82% 22%, rgba(37, 99, 235, 0.18), transparent 32%),
@@ -211,87 +236,112 @@ const handleLogin = async () => {
 
 .login-grid {
   width: 100%;
-  max-width: 1180px;
+  max-width: 1040px;
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(360px, 440px);
-  gap: 2rem;
+  grid-template-columns: minmax(0, 0.92fr) minmax(380px, 430px);
+  gap: 1.6rem;
   position: relative;
   z-index: 1;
 }
 
 .login-intro {
-  padding: 2.5rem 1rem 2.5rem 0;
+  padding: 1.25rem 1rem 1.25rem 0;
 }
 
-.intro-badge,
-.card-kicker {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.45rem 0.75rem;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(59, 130, 246, 0.14);
-  color: #1d4ed8;
-  font-size: 0.76rem;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+.intro-brand{
+  display:flex;
+  align-items:center;
+  gap:.7rem;
+  margin-bottom:.9rem;
+}
+
+.intro-dot{
+  width:11px;
+  height:11px;
+  border-radius:999px;
+  background:linear-gradient(135deg, #0f172a, #2563eb);
+  box-shadow:0 0 0 6px rgba(15,23,42,.06);
+}
+
+.intro-name{
+  color:rgba(15,23,42,.64);
+  font-size:.9rem;
+  font-weight:800;
+  letter-spacing:.08em;
+  text-transform:uppercase;
 }
 
 .login-intro h1 {
-  margin: 1rem 0 1rem;
-  max-width: 12ch;
-  font-size: clamp(2.5rem, 4.6vw, 4.6rem);
-  line-height: 0.94;
-  letter-spacing: -0.05em;
+  margin: .4rem 0 .9rem;
+  max-width: 16ch;
+  font-size: clamp(2rem, 3.8vw, 3rem);
+  line-height: 1.05;
+  letter-spacing: -0.04em;
   color: #0f172a;
 }
 
 .login-intro p {
-  max-width: 42rem;
+  max-width: 32rem;
   margin: 0;
-  color: rgba(15, 23, 42, 0.66);
-  font-size: 1.05rem;
+  color: rgba(15, 23, 42, 0.64);
+  font-size: 0.98rem;
   line-height: 1.8;
   font-weight: 600;
 }
 
 .intro-points {
-  margin-top: 2rem;
+  margin-top: 1.25rem;
   display: grid;
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
 }
 
 .intro-point {
-  padding: 1.05rem 1.15rem;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.06);
+  padding: 0.9rem 1rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.06);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.point-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #0f172a 0%, #2563eb 100%);
+  color: #fff;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  font-size: 0.9rem;
 }
 
 .intro-point strong {
   display: block;
   color: #0f172a;
-  font-size: 1rem;
-  margin-bottom: 0.35rem;
+  font-size: 0.95rem;
+  margin-bottom: 0.2rem;
 }
 
 .intro-point span {
   color: rgba(15, 23, 42, 0.6);
   font-weight: 600;
-  font-size: 0.94rem;
+  font-size: 0.9rem;
 }
 
 .login-card {
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(24px);
-  border-radius: 32px;
-  padding: 2rem;
-  box-shadow: 0 32px 70px rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(18px);
+  border-radius: 28px;
+  padding: 2.1rem;
+  box-shadow: 0 28px 56px rgba(15, 23, 42, 0.12);
   width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(148, 163, 184, 0.12);
   position: relative;
   align-self: center;
 }
@@ -305,25 +355,25 @@ const handleLogin = async () => {
 
 .card-top p {
   margin: 0;
-  color: rgba(15, 23, 42, 0.58);
+  color: rgba(15, 23, 42, 0.6);
   font-weight: 600;
 }
 
 .login-form {
   display: flex;
   flex-direction: column;
-  gap: 1.15rem;
-  margin-top: 1.5rem;
+  gap: 1rem;
+  margin-top: 1.2rem;
 }
 
 .system-status {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  padding: 0.85rem 1rem;
-  background: rgba(248, 250, 252, 0.9);
-  border-radius: 18px;
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  padding: 0.8rem 1rem;
+  background: rgba(248, 250, 252, 0.92);
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
   font-size: 0.9rem;
 }
 
@@ -359,6 +409,12 @@ const handleLogin = async () => {
   gap: 0.45rem;
 }
 
+.password-field {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
 .form-group label {
   color: var(--text-primary);
   font-weight: 700;
@@ -368,7 +424,7 @@ const handleLogin = async () => {
 .form-group input {
   padding: 15px 18px;
   border: 1px solid rgba(148, 163, 184, 0.26);
-  border-radius: 18px;
+  border-radius: 16px;
   font-size: 15px;
   transition: var(--transition);
   background: rgba(255, 255, 255, 0.88);
@@ -379,6 +435,36 @@ const handleLogin = async () => {
   outline: none;
   border-color: #2563eb;
   box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.toggle-visibility {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--text-primary);
+  padding: 8px 10px;
+  min-width: 40px;
+  height: 42px;
+  border-radius: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.toggle-visibility:hover {
+  background: rgba(2, 6, 23, 0.04);
+  border-color: rgba(2, 6, 23, 0.16);
+}
+
+.caps-hint {
+  margin: 0.3rem 0 0;
+  color: #b45309;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .error-message {
@@ -392,11 +478,11 @@ const handleLogin = async () => {
 }
 
 .login-button {
-  padding: 16px;
+  padding: 15px;
   background: linear-gradient(135deg, #0f172a 0%, #2563eb 100%);
   color: white;
   border: none;
-  border-radius: 18px;
+  border-radius: 16px;
   font-size: 16px;
   font-weight: 800;
   letter-spacing: 0.01em;

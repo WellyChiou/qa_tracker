@@ -68,15 +68,31 @@
 
           <div class="form-group">
             <label for="password">密碼</label>
-            <input
-              id="password"
-              v-model="password"
-              type="password"
-              class="login-input"
-              required
-              placeholder="請輸入密碼"
-              autocomplete="current-password"
-            />
+            <div class="password-field">
+              <input
+                id="password"
+                v-model="password"
+                :type="showPassword ? 'text' : 'password'"
+                class="login-input"
+                required
+                placeholder="請輸入密碼"
+                autocomplete="current-password"
+                @keydown="handleCaps"
+                @keyup="handleCaps"
+                @focus="handleCaps"
+              />
+              <button
+                type="button"
+                class="toggle-visibility"
+                @click="showPassword = !showPassword"
+                :aria-label="showPassword ? '隱藏密碼' : '顯示密碼'"
+                :title="showPassword ? '隱藏密碼' : '顯示密碼'"
+              >
+                <span v-if="showPassword">🙈</span>
+                <span v-else>👁</span>
+              </button>
+            </div>
+            <p v-if="capsLockOn" class="caps-hint">Caps Lock 已開啟，請注意大小寫。</p>
           </div>
 
           <div v-if="error" class="error-message">{{ error }}</div>
@@ -109,6 +125,8 @@ const password = ref('')
 const loading = ref(false)
 const error = ref('')
 const systemStatus = ref('checking') // 'checking', 'online', 'offline'
+const showPassword = ref(false)
+const capsLockOn = ref(false)
 
 const checkSystemStatus = async () => {
   try {
@@ -180,6 +198,10 @@ const handleLogin = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const handleCaps = (event) => {
+  capsLockOn.value = event.getModifierState && event.getModifierState('CapsLock')
 }
 </script>
 
@@ -396,6 +418,13 @@ const handleLogin = async () => {
 }
 
 .form-group{ display:flex; flex-direction:column; gap:9px; }
+
+.password-field{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
 .login-input{
   border-radius:18px;
   padding:14px 14px;
@@ -406,6 +435,35 @@ const handleLogin = async () => {
 
 .login-input::placeholder{
   color:rgba(15,23,42,.34);
+}
+
+.toggle-visibility{
+  border:1px solid rgba(2,6,23,.10);
+  background:rgba(255,255,255,.9);
+  color:var(--text);
+  padding:8px 10px;
+  min-width:40px;
+  height:42px;
+  border-radius:12px;
+  font-weight:800;
+  cursor:pointer;
+  transition:background .12s ease, border-color .12s ease;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:16px;
+}
+
+.toggle-visibility:hover{
+  background:rgba(2,6,23,.04);
+  border-color:rgba(2,6,23,.16);
+}
+
+.caps-hint{
+  margin:4px 0 0;
+  color:#b45309;
+  font-size:12px;
+  font-weight:800;
 }
 
 .login-button{

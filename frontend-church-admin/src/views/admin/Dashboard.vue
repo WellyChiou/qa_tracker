@@ -2,86 +2,32 @@
   <AdminLayout>
     <div class="admin-page" data-ui="admin-v1">
       <div class="container container--admin">
-        <section class="dashboard-hero card">
-          <div class="dashboard-hero__copy">
-            <span class="dashboard-kicker">Operations Overview</span>
-            <h2>把教會內容、服事排班與現場作業放在同一個總覽。</h2>
-            <p>
-              這裡是後台的起點。先看整體量體，再從常用捷徑進到人員、崗位、服事表與內容維運。
-            </p>
-
-            <div class="dashboard-hero__metrics">
-              <article class="metric-chip">
-                <span>服事表</span>
-                <strong>{{ scheduleCount }}</strong>
-              </article>
-              <article class="metric-chip">
-                <span>人員</span>
-                <strong>{{ personCount }}</strong>
-              </article>
-              <article class="metric-chip">
-                <span>崗位</span>
-                <strong>{{ positionCount }}</strong>
-              </article>
-            </div>
+        <section class="page-head card">
+          <div>
+            <span class="dashboard-kicker">Operations Workspace</span>
+            <h2>後台儀表板</h2>
+            <p>重點入口與核心數量一眼掌握，直接進到常用操作。</p>
           </div>
 
-          <div class="dashboard-hero__panel">
-            <article class="panel-card panel-card--primary">
-              <span>今日重點</span>
-              <strong>{{ summaryHeadline }}</strong>
-              <p>{{ summaryText }}</p>
-            </article>
-
-            <div class="panel-grid">
-              <article class="panel-card">
-                <span>資料規模</span>
-                <strong>{{ totalManagedItems }}</strong>
-                <p>目前已納入管理的核心資料總數。</p>
-              </article>
-              <article class="panel-card">
-                <span>快速入口</span>
-                <strong>{{ quickActions.length }}</strong>
-                <p>後台已開啟的常用操作捷徑。</p>
-              </article>
+          <div class="head-stats">
+            <div class="chip">
+              <span>服事表</span>
+              <strong>{{ scheduleCount }}</strong>
+            </div>
+            <div class="chip">
+              <span>人員</span>
+              <strong>{{ personCount }}</strong>
+            </div>
+            <div class="chip">
+              <span>崗位</span>
+              <strong>{{ positionCount }}</strong>
+            </div>
+            <div class="chip ghost">
+              <span>常用入口</span>
+              <strong>{{ quickActions.length }}</strong>
             </div>
           </div>
         </section>
-
-        <div class="dashboard-stats">
-          <div class="card stat-card">
-            <div class="stat-left">
-              <div class="stat-badge">📋</div>
-              <div>
-                <div class="stat-label">服事表</div>
-                <div class="stat-value">{{ scheduleCount }}</div>
-              </div>
-            </div>
-            <div class="stat-hint muted">近期待辦與排班</div>
-          </div>
-
-          <div class="card stat-card">
-            <div class="stat-left">
-              <div class="stat-badge">👥</div>
-              <div>
-                <div class="stat-label">人員</div>
-                <div class="stat-value">{{ personCount }}</div>
-              </div>
-            </div>
-            <div class="stat-hint muted">同工 / 會眾資料</div>
-          </div>
-
-          <div class="card stat-card">
-            <div class="stat-left">
-              <div class="stat-badge">🎯</div>
-              <div>
-                <div class="stat-label">崗位</div>
-                <div class="stat-value">{{ positionCount }}</div>
-              </div>
-            </div>
-            <div class="stat-hint muted">服事角色與分工</div>
-          </div>
-        </div>
 
         <section class="dashboard-grid">
           <div class="card">
@@ -211,186 +157,110 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.dashboard-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
-  gap: 0.85rem;
-  padding: 0.9rem;
-  background: linear-gradient(140deg, rgba(15, 23, 42, 0.96), rgba(29, 78, 216, 0.92));
-  color: white;
-  overflow: hidden;
+.page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.35rem;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  box-shadow: 0 20px 44px rgba(15, 23, 42, 0.08);
 }
 
 .dashboard-kicker {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: fit-content;
-  padding: 0.34rem 0.56rem;
+  padding: 0.32rem 0.6rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  font-size: 0.66rem;
+  background: rgba(37, 99, 235, 0.12);
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  font-size: 0.7rem;
   font-weight: 900;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
+  color: #1e3a8a;
 }
 
-.dashboard-hero h2 {
-  margin: 0.75rem 0 0.65rem;
-  max-width: 14ch;
-  font-size: clamp(1.6rem, 3vw, 2.5rem);
-  line-height: 1;
-  letter-spacing: -0.05em;
+.page-head h2 {
+  margin: 0.5rem 0 0.25rem;
+  font-size: clamp(1.7rem, 3vw, 2.2rem);
+  letter-spacing: -0.03em;
 }
 
-.dashboard-hero p {
+.page-head p {
   margin: 0;
-  max-width: 42rem;
-  color: rgba(255, 255, 255, 0.78);
-  font-size: 0.9rem;
-  line-height: 1.65;
+  color: rgba(15, 23, 42, 0.62);
   font-weight: 600;
 }
 
-.dashboard-hero__metrics {
-  margin-top: 1rem;
+.head-stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.8rem;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.65rem;
+  min-width: 360px;
 }
 
-.metric-chip,
-.panel-card {
-  padding: 0.85rem;
+.chip {
+  padding: 0.75rem 0.85rem;
   border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(12px);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(248, 250, 252, 0.92);
 }
 
-.metric-chip span,
-.panel-card span {
+.chip.ghost {
+  background: rgba(37, 99, 235, 0.06);
+  border-color: rgba(37, 99, 235, 0.14);
+  color: #1d4ed8;
+}
+
+.chip span {
   display: block;
-  color: rgba(255, 255, 255, 0.62);
-  font-size: 0.66rem;
-  font-weight: 800;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-}
-
-.metric-chip strong,
-.panel-card strong {
-  display: block;
-  margin-top: 0.45rem;
-  font-size: 1.55rem;
-  line-height: 1;
-  letter-spacing: -0.05em;
-}
-
-.metric-chip strong {
-  font-size: 1.7rem;
-}
-
-.panel-card p {
-  margin-top: 0.35rem;
-  color: rgba(255, 255, 255, 0.74);
   font-size: 0.8rem;
-  line-height: 1.55;
-}
-
-.dashboard-hero__panel {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-}
-
-.panel-card--primary {
-  min-height: 148px;
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.08));
-}
-
-.panel-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.85rem;
-}
-
-.dashboard-stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.stat-card {
-  padding: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.stat-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-
-.stat-badge {
-  width: 42px;
-  height: 42px;
-  display: grid;
-  place-items: center;
-  border-radius: 14px;
-  background: rgba(2, 6, 23, 0.04);
-  border: 1px solid rgba(2, 6, 23, 0.06);
-  font-size: 18px;
-  flex: 0 0 auto;
-}
-
-.stat-label {
-  font-size: 12px;
-  color: rgba(2, 6, 23, 0.6);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(15, 23, 42, 0.58);
   font-weight: 800;
 }
 
-.stat-value {
-  font-size: 22px;
-  font-weight: 900;
+.chip strong {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 1.15rem;
   letter-spacing: -0.02em;
-  line-height: 1.1;
-}
-
-.stat-hint {
-  font-size: 12px;
-  white-space: nowrap;
 }
 
 .section-title {
   font-size: 14px;
   font-weight: 900;
   letter-spacing: -0.01em;
+  padding-left: 6px;
+}
+
+.card__head {
+  padding: 6px 8px 4px;
 }
 
 .dashboard-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.9fr);
-  gap: 12px;
+  gap: 16px;
+  margin-top: 12px;
 }
 
 .action-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
 }
 
 .action-tile {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 12px;
-  border-radius: 12px;
+  padding: 14px;
+  border-radius: 14px;
   border: 1px solid rgba(2, 6, 23, 0.1);
   background: rgba(255, 255, 255, 0.85);
   text-decoration: none;
@@ -429,18 +299,20 @@ onMounted(() => {
 
 .insights-card {
   align-self: start;
+  min-height: 100%;
 }
 
 .insights-list {
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 
 .insight-item {
-  padding: 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(2, 6, 23, 0.08);
-  background: rgba(248, 250, 252, 0.9);
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(2, 6, 23, 0.06);
+  background: rgba(248, 250, 252, 0.92);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
 }
 
 .insight-item strong {
@@ -460,16 +332,24 @@ onMounted(() => {
 }
 
 @media (max-width: 900px) {
-  .dashboard-hero,
-  .dashboard-grid,
-  .dashboard-hero__metrics,
-  .panel-grid,
-  .dashboard-stats {
+  .dashboard-grid {
     grid-template-columns: 1fr;
   }
+}
 
-  .stat-hint {
-    display: none;
+@media (max-width: 640px) {
+  .page-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .head-stats {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .dashboard-grid {
+    margin-top: 8px;
   }
 }
 </style>
