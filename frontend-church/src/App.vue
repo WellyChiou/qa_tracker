@@ -250,6 +250,9 @@ onMounted(() => {
 }
 
 .site-chrome {
+  position: sticky;
+  top: 0;
+  z-index: 9999;
   padding: 0.85rem 0 0;
 }
 
