@@ -2,9 +2,30 @@
   <AdminLayout>
     <div class="admin-users">
       <div class="page-header">
-        <h2>用戶管理</h2>
+        <div>
+          <h2>用戶管理</h2>
+          <p>集中管理登入帳號、角色與個別權限，維持後台使用者秩序。</p>
+        </div>
         <button @click="openAddModal" class="btn btn-primary">+ 新增用戶</button>
       </div>
+
+      <section class="overview-strip">
+        <article class="overview-card overview-card--accent">
+          <span>目前用戶</span>
+          <strong>{{ totalRecords }}</strong>
+          <p>後台目前可管理的帳號總筆數。</p>
+        </article>
+        <article class="overview-card">
+          <span>當前頁面</span>
+          <strong>{{ filteredList.length }}</strong>
+          <p>這一頁實際符合條件的帳號資料。</p>
+        </article>
+        <article class="overview-card">
+          <span>查詢狀態</span>
+          <strong>{{ filters.username || filters.email || filters.roleId || filters.isEnabled !== '' ? '已套用' : '全部' }}</strong>
+          <p>可透過帳號、Email、角色與狀態快速鎖定目標使用者。</p>
+        </article>
+      </section>
 
       <!-- 查詢條件 -->
       <details class="filters filters--collapsible" open>
@@ -63,7 +84,7 @@
         </div>
       </details>
 
-      <div class="users-list">
+      <div class="users-list card surface-card">
         <div v-if="filteredList.length === 0" class="empty-state">
           <p>{{ users.length === 0 ? '尚無用戶資料' : '沒有符合條件的資料' }}</p>
         </div>
@@ -83,7 +104,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="user in users" :key="user.uid">
+              <tr v-for="user in filteredList" :key="user.uid">
                 <td>{{ user.username }}</td>
                 <td>{{ user.displayName || '-' }}</td>
                 <td>{{ user.email || '-' }}</td>
@@ -757,6 +778,63 @@ onMounted(() => {
   gap:14px;
 }
 
+.overview-strip{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:12px;
+}
+
+.overview-card{
+  padding:16px;
+  border-radius:20px;
+  border:1px solid rgba(2,6,23,.08);
+  background:rgba(255,255,255,.88);
+  box-shadow:var(--shadow-sm);
+}
+
+.overview-card span{
+  display:block;
+  color:rgba(2,6,23,.56);
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+
+.overview-card strong{
+  display:block;
+  margin-top:8px;
+  font-size:28px;
+  line-height:1;
+  letter-spacing:-0.04em;
+}
+
+.overview-card p{
+  margin:8px 0 0;
+  color:rgba(2,6,23,.62);
+  font-size:13px;
+  line-height:1.6;
+  font-weight:700;
+}
+
+.overview-card--accent{
+  background:linear-gradient(140deg, rgba(15,23,42,.96), rgba(29,78,216,.92));
+}
+
+.overview-card--accent span,
+.overview-card--accent strong,
+.overview-card--accent p{
+  color:white;
+}
+
+.overview-card--accent p{
+  color:rgba(255,255,255,.76);
+}
+
+.surface-card{
+  padding:16px;
+}
+
 /* Header */
 .admin-users .page-header{
   display:flex;
@@ -808,6 +886,9 @@ onMounted(() => {
 
 /* Mobile tweaks */
 @media (max-width: 640px){
+  .overview-strip{
+    grid-template-columns:1fr;
+  }
 }
 
 .transfer{

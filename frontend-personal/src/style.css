@@ -3,21 +3,21 @@
    ============================================ */
 
 /* 引用共用樣式 */
-@import url('../shared/styles/variables.css');
-@import url('../shared/styles/utilities.css');
-@import url('../shared/styles/components.css');
+@import url('../../shared/styles/variables.css');
+@import url('../../shared/styles/utilities.css');
+@import url('../../shared/styles/components.css');
 
 :root {
   /* 主色調 */
-  --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  --primary-color: #667eea;
-  --primary-dark: #5568d3;
-  --secondary-color: #764ba2;
+  --primary-gradient: linear-gradient(135deg, #0f172a 0%, #2563eb 58%, #06b6d4 100%);
+  --primary-color: #2563eb;
+  --primary-dark: #1d4ed8;
+  --secondary-color: #06b6d4;
   
   /* 背景色 */
-  --bg-primary: #f8fafc;
+  --bg-primary: #eef6ff;
   --bg-secondary: #ffffff;
-  --bg-card: rgba(255, 255, 255, 0.95);
+  --bg-card: rgba(255, 255, 255, 0.92);
   --bg-overlay: rgba(0, 0, 0, 0.5);
   
   /* 文字顏色 */
@@ -38,14 +38,14 @@
   
   /* 邊框和陰影 */
   --border-color: #e2e8f0;
-  --border-radius: 12px;
-  --border-radius-lg: 16px;
-  --border-radius-xl: 20px;
+  --border-radius: 10px;
+  --border-radius-lg: 14px;
+  --border-radius-xl: 18px;
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  --shadow: 0 3px 10px rgba(15, 23, 42, 0.08);
+  --shadow-md: 0 10px 24px rgba(15, 23, 42, 0.1);
+  --shadow-lg: 0 18px 36px rgba(15, 23, 42, 0.12);
+  --shadow-xl: 0 24px 48px rgba(15, 23, 42, 0.16);
   
   /* 間距 */
   --spacing-xs: 0.25rem;
@@ -67,11 +67,14 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+  font-family: 'Avenir Next', 'Segoe UI', 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: var(--text-primary);
-  background-color: var(--bg-primary);
+  background:
+    radial-gradient(circle at 12% 18%, rgba(14, 165, 233, 0.08), transparent 24%),
+    radial-gradient(circle at 88% 12%, rgba(37, 99, 235, 0.08), transparent 24%),
+    var(--bg-primary);
   line-height: 1.6;
 }
 
@@ -206,11 +209,12 @@ button, .btn {
 
 /* Bootstrap btn 微調（如果頁面用到 bootstrap btn） */
 .btn {
-  border-radius: 999px;
+  border-radius: 10px;
   font-weight: 800;
   letter-spacing: 0.02em;
   transition: var(--transition-fast);
   box-shadow: var(--shadow-sm);
+  padding: 0.62rem 0.95rem;
 }
 
 .btn:hover {
@@ -220,14 +224,14 @@ button, .btn {
 
 /* 讓常用的小按鈕也一致 */
 .btn-sm {
-  border-radius: 999px;
+  border-radius: 10px;
   font-weight: 800;
   letter-spacing: 0.02em;
 }
 
 /* 角色 / 權限 pill（全域後備，避免其它頁面未定義） */
 .btn-roles, .btn-permissions {
-  border-radius: 999px;
+  border-radius: 10px;
   border: 2px solid #e5e7eb;
   background: #fff;
   color: #0f172a;
@@ -457,4 +461,92 @@ button, .btn {
     width: 100%;
     min-width: 0;
   }
+}
+
+/* ============================================
+   Final consistency pass
+   ============================================ */
+.modal-overlay{
+  padding: 18px;
+  background: rgba(15, 23, 42, 0.48);
+}
+
+.modal-panel,
+.gitlab-modal-panel{
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.14);
+}
+
+.modal-header,
+.gitlab-modal-header{
+  padding: 14px 16px;
+}
+
+.modal-body,
+.gitlab-modal-body{
+  padding: 16px;
+}
+
+.form-group label,
+.filter-group label{
+  font-size: 12px;
+  letter-spacing: 0.01em;
+}
+
+.table-wrap,
+.records-table{
+  border-radius: 14px;
+}
+
+.records-table th{
+  font-size: 12px;
+}
+
+.records-table td{
+  font-size: 14px;
+}
+
+.page-size-select,
+.page-input{
+  min-height: 40px;
+  border-radius: 10px;
+}
+
+.pick-head{
+  padding: 12px 14px;
+}
+
+.pick-title{
+  font-size: 16px;
+  letter-spacing: 0.02em;
+}
+
+.pick-search{
+  padding: 9px 12px;
+  border-radius: 10px;
+}
+
+.pick-item{
+  padding: 11px 12px;
+  margin-bottom: 10px;
+  border-radius: 12px;
+}
+
+.pick-name{
+  font-size: 16px;
+}
+
+.pick-code{
+  font-size: 13px;
+}
+
+.pick-sub{
+  font-size: 12px;
+}
+
+.btn-pill{
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 13px;
 }

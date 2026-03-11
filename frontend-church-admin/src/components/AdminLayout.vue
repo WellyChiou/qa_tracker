@@ -125,6 +125,11 @@
 
     <main class="admin-main">
       <div class="admin-content">
+        <div class="admin-page-meta">
+          <span class="admin-page-meta__section">Church Admin</span>
+          <span class="admin-page-meta__divider">/</span>
+          <span class="admin-page-meta__title">{{ pageTitle }}</span>
+        </div>
         <slot />
       </div>
     </main>
@@ -457,16 +462,16 @@ onUnmounted(() => {
   position:sticky;
   top:0;
   z-index:50;
-  background:var(--nav-bg);
-  border-bottom:1px solid var(--nav-border);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background:rgba(255,255,255,.94);
+  border-bottom:1px solid rgba(2,6,23,.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .navbar-container{
-  max-width:1100px;
+  max-width:1180px;
   margin:0 auto;
-  padding:12px 16px;
+  padding:8px 20px;
   display:flex;
   align-items:center;
   gap:14px;
@@ -476,16 +481,15 @@ onUnmounted(() => {
   display:flex;
   align-items:center;
   gap:10px;
-  padding:8px 10px;
-  border-radius:14px;
-  border:1px solid rgba(2,6,23,.08);
-  background:rgba(255,255,255,.7);
-  box-shadow:0 6px 18px rgba(2,6,23,.06);
+  padding:0;
+  border:none;
+  background:transparent;
+  box-shadow:none;
 }
 
 .logo-image{
-  width:30px;
-  height:30px;
+  width:28px;
+  height:28px;
   object-fit:contain;
   border-radius:10px;
 }
@@ -501,7 +505,7 @@ onUnmounted(() => {
   flex:1;
   display:flex;
   align-items:center;
-  gap:8px;
+  gap:4px;
   flex-wrap:wrap;
 }
 
@@ -510,38 +514,38 @@ onUnmounted(() => {
 .menu-item{
   display:inline-flex;
   align-items:center;
-  gap:8px;
+  gap:6px;
   padding:8px 10px;
-  border-radius:14px;
+  border-radius:10px;
   border:1px solid transparent;
   background:transparent;
   cursor:pointer;
   color:rgba(15,23,42,.82);
   font-weight:800;
-  font-size:13px;
+  font-size:12px;
   transition:background .12s ease, border-color .12s ease, transform .12s ease;
   user-select:none;
 }
 .menu-item:hover{
-  background:rgba(2,6,23,.04);
+  background:rgba(2,6,23,.045);
   border-color:rgba(2,6,23,.08);
-  transform:translateY(-1px);
+  transform:none;
 }
 .menu-item.active{
-  background:rgba(37,99,235,.10);
-  border-color:rgba(37,99,235,.22);
-  color:var(--primary);
+  background:rgba(37,99,235,.08);
+  border-color:rgba(37,99,235,.16);
+  color:rgba(29,78,216,.95);
 }
 
 .menu-icon{
-  width:18px;
+  width:16px;
   text-align:center;
   opacity:.9;
 }
 .menu-text{ white-space:nowrap; }
 .arrow{
   margin-left:2px;
-  font-size:10px;
+  font-size:9px;
   opacity:.7;
 }
 
@@ -551,8 +555,8 @@ onUnmounted(() => {
   top:calc(100% + 8px);
   left:0;
   min-width:220px;
-  padding:10px;
-  border-radius:16px;
+  padding:8px;
+  border-radius:12px;
   border:1px solid rgba(2,6,23,.10);
   background:rgba(255,255,255,.92);
   backdrop-filter: blur(10px);
@@ -563,11 +567,11 @@ onUnmounted(() => {
 .submenu-item{
   display:flex;
   align-items:center;
-  gap:10px;
-  padding:10px 10px;
-  border-radius:14px;
+  gap:8px;
+  padding:8px 9px;
+  border-radius:10px;
   font-weight:800;
-  font-size:13px;
+  font-size:12px;
   color:rgba(15,23,42,.82);
   border:1px solid transparent;
   transition:background .12s ease, border-color .12s ease, transform .12s ease;
@@ -575,7 +579,7 @@ onUnmounted(() => {
 .submenu-item:hover{
   background:rgba(2,6,23,.04);
   border-color:rgba(2,6,23,.08);
-  transform:translateY(-1px);
+  transform:none;
 }
 .submenu-item.active{
   background:rgba(37,99,235,.10);
@@ -583,7 +587,7 @@ onUnmounted(() => {
   color:var(--primary);
 }
 .submenu-icon{
-  width:18px;
+  width:16px;
   text-align:center;
   opacity:.85;
 }
@@ -597,15 +601,15 @@ onUnmounted(() => {
 .user-info{
   display:flex;
   align-items:center;
-  gap:10px;
-  padding:6px 8px;
-  border-radius:14px;
+  gap:8px;
+  padding:5px 8px;
+  border-radius:10px;
   border:1px solid rgba(2,6,23,.08);
-  background:rgba(255,255,255,.7);
+  background:rgba(248,250,252,.9);
 }
 .user-name{
   font-weight:900;
-  font-size:13px;
+  font-size:12px;
   color:rgba(15,23,42,.85);
 }
 .logout-button{
@@ -613,20 +617,46 @@ onUnmounted(() => {
   background:rgba(239,68,68,.10);
   color:#b91c1c;
   font-weight:900;
-  font-size:12px;
-  padding:8px 10px;
-  border-radius:12px;
+  font-size:11px;
+  padding:7px 9px;
+  border-radius:10px;
   cursor:pointer;
   transition:transform .12s ease, background .12s ease;
 }
-.logout-button:hover{ transform:translateY(-1px); background:rgba(239,68,68,.14); }
+.logout-button:hover{ transform:none; background:rgba(239,68,68,.14); }
 
 /* Main content */
 .admin-main{ width:100%; }
 .admin-content{
-  max-width:1100px;
+  max-width:1180px;
   margin:0 auto;
-  padding:18px 16px 32px;
+  padding:18px 20px 28px;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+
+.admin-page-meta{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  color:rgba(15,23,42,.56);
+  font-size:12px;
+  font-weight:800;
+}
+
+.admin-page-meta__section{
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:rgba(29,78,216,.92);
+}
+
+.admin-page-meta__title{
+  color:rgba(15,23,42,.8);
+}
+
+.admin-page-meta__divider{
+  color:rgba(15,23,42,.32);
 }
 
 
@@ -776,5 +806,6 @@ onUnmounted(() => {
   .navbar-user .user-name{ display:none; }
   .user-info{ padding:6px 6px; }
   .logout-button{ padding:8px 10px; }
+  .admin-hero{ grid-template-columns:1fr; }
 }
 </style>

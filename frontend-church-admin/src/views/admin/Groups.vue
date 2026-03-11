@@ -2,9 +2,30 @@
   <AdminLayout>
     <div class="admin-groups">
       <div class="page-header">
-        <h2>小組管理</h2>
+        <div>
+          <h2>小組管理</h2>
+          <p>管理小組資料、狀態與成員規模，建立穩定的小組架構。</p>
+        </div>
         <button @click="openAddModal" class="btn btn-primary">+ 新增小組</button>
       </div>
+
+      <section class="overview-strip">
+        <article class="overview-card overview-card--accent">
+          <span>目前小組</span>
+          <strong>{{ totalRecords }}</strong>
+          <p>後台目前可管理的小組總數。</p>
+        </article>
+        <article class="overview-card">
+          <span>當前頁面</span>
+          <strong>{{ filteredList.length }}</strong>
+          <p>這一頁實際符合條件的小組資料。</p>
+        </article>
+        <article class="overview-card">
+          <span>篩選狀態</span>
+          <strong>{{ filters.groupName || filters.category || filters.meetingLocation || filters.status ? '已套用' : '全部' }}</strong>
+          <p>可透過名稱、區分、地點與狀態快速整理小組。</p>
+        </article>
+      </section>
 
       <!-- 查詢條件 -->
       <details class="filters filters--collapsible" open>
@@ -66,7 +87,7 @@
         </div>
       </details>
 
-      <div class="groups-list">
+      <div class="groups-list card surface-card">
         <div v-if="filteredList.length === 0" class="empty-state">
           <p>{{ groups.length === 0 ? '尚無小組資料' : '沒有符合條件的資料' }}</p>
         </div>
@@ -87,7 +108,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="group in groups" :key="group.id">
+              <tr v-for="group in filteredList" :key="group.id">
                 <td>{{ group.groupName || '-' }}</td>
                 <td class="col-desc" :title="group.description || '-'">{{ group.description || '-' }}</td>
                 <td>{{ group.memberCount || 0 }}</td>
@@ -449,6 +470,64 @@ onMounted(() => {
   padding: 20px;
 }
 
+.overview-strip{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:12px;
+  margin-bottom:14px;
+}
+
+.overview-card{
+  padding:16px;
+  border-radius:20px;
+  border:1px solid rgba(2,6,23,.08);
+  background:rgba(255,255,255,.88);
+  box-shadow:0 10px 24px rgba(15,23,42,.08);
+}
+
+.overview-card span{
+  display:block;
+  color:rgba(2,6,23,.56);
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+
+.overview-card strong{
+  display:block;
+  margin-top:8px;
+  font-size:28px;
+  line-height:1;
+  letter-spacing:-0.04em;
+}
+
+.overview-card p{
+  margin:8px 0 0;
+  color:rgba(2,6,23,.62);
+  font-size:13px;
+  line-height:1.6;
+  font-weight:700;
+}
+
+.overview-card--accent{
+  background:linear-gradient(140deg, rgba(15,23,42,.96), rgba(29,78,216,.92));
+}
+
+.overview-card--accent span,
+.overview-card--accent strong,
+.overview-card--accent p{
+  color:white;
+}
+
+.overview-card--accent p{
+  color:rgba(255,255,255,.76);
+}
+
+.surface-card{
+  padding:16px;
+}
+
 .page-header {
   display: flex;
   justify-content: space-between;
@@ -537,6 +616,12 @@ th {
   border-top: 1px solid #eee;
 }
 
+@media (max-width: 640px) {
+  .overview-strip {
+    grid-template-columns: 1fr;
+  }
+}
+
 .pagination-left {
   display: flex;
   align-items: center;
@@ -593,4 +678,3 @@ td.col-desc:hover {
   overflow-wrap: break-word;
 }
 </style>
-

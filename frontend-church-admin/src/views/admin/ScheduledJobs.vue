@@ -3,12 +3,33 @@
     <div class="admin-page">
       <header class="header">
         <div class="header-top">
-          <h1>⏰ 定時任務管理</h1>
+          <div>
+            <h1>⏰ 定時任務管理</h1>
+            <p class="header-subtitle">集中管理排程任務、執行狀態與歷史紀錄。</p>
+          </div>
           <button class="btn btn-primary" @click="showAddModal = true">新增任務</button>
         </div>
       </header>
 
       <main class="main-content">
+        <section class="overview-strip">
+          <article class="overview-card overview-card--accent">
+            <span>目前任務</span>
+            <strong>{{ jobs.length }}</strong>
+            <p>目前已建立的排程任務數量。</p>
+          </article>
+          <article class="overview-card">
+            <span>啟用中</span>
+            <strong>{{ jobs.filter(job => job.enabled).length }}</strong>
+            <p>目前處於啟用狀態的排程任務。</p>
+          </article>
+          <article class="overview-card">
+            <span>最近執行</span>
+            <strong>{{ Object.keys(jobExecutions).length }}</strong>
+            <p>已載入最新執行結果的任務數。</p>
+          </article>
+        </section>
+
         <div class="card">
           <div class="card__body">
             <div class="table-wrap">
@@ -779,6 +800,67 @@ onUnmounted(() => {
 
 /* 描述欄位樣式已移至 TruncatedText 元件 */
 
+.header-subtitle{
+  margin-top:6px;
+  color:var(--muted);
+  font-size:14px;
+  font-weight:700;
+}
+
+.overview-strip{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:12px;
+  margin-bottom:14px;
+}
+
+.overview-card{
+  padding:16px;
+  border-radius:20px;
+  border:1px solid rgba(2,6,23,.08);
+  background:rgba(255,255,255,.88);
+  box-shadow:var(--shadow-sm);
+}
+
+.overview-card span{
+  display:block;
+  color:rgba(2,6,23,.56);
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+
+.overview-card strong{
+  display:block;
+  margin-top:8px;
+  font-size:28px;
+  line-height:1;
+  letter-spacing:-0.04em;
+}
+
+.overview-card p{
+  margin:8px 0 0;
+  color:rgba(2,6,23,.62);
+  font-size:13px;
+  line-height:1.6;
+  font-weight:700;
+}
+
+.overview-card--accent{
+  background:linear-gradient(140deg, rgba(15,23,42,.96), rgba(29,78,216,.92));
+}
+
+.overview-card--accent span,
+.overview-card--accent strong,
+.overview-card--accent p{
+  color:white;
+}
+
+.overview-card--accent p{
+  color:rgba(255,255,255,.76);
+}
+
 /* Actions: two buttons per row */
 .action-grid{
   display:grid;
@@ -788,6 +870,7 @@ onUnmounted(() => {
 .action-grid .btn-sm{ width:100%; white-space:nowrap; }
 @media (max-width: 640px){
   .action-grid{ grid-template-columns: 1fr; }
+  .overview-strip{ grid-template-columns: 1fr; }
 }
 
 .exec-cell{ display:flex; align-items:center; justify-content:center; gap:10px; }

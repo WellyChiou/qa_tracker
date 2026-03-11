@@ -9,9 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -106,17 +104,4 @@ public class ChurchUrlPermissionController {
         }
     }
 
-    /**
-     * 獲取所有啟用的 URL 權限配置（用於動態配置）
-     */
-    @GetMapping("/active")
-    public ResponseEntity<ApiResponse<List<ChurchUrlPermission>>> getActivePermissions() {
-        try {
-            List<ChurchUrlPermission> permissions = churchUrlPermissionService.getAllActivePermissions();
-            return ResponseEntity.ok(ApiResponse.ok(permissions));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取 URL 權限列表失敗：" + e.getMessage()));
-        }
-    }
 }
-

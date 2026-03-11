@@ -2,9 +2,30 @@
   <AdminLayout>
     <div class="admin-church-info">
       <div class="page-header">
-        <h2>教會資訊管理</h2>
-        <button @click="openAddModal" class="btn btn-primary">+ 新增資訊</button>
+        <div>
+          <h2>教會資訊管理</h2>
+          <p>管理公開站會用到的基本資訊與顯示順序。</p>
+        </div>
+        <button @click="openAddModal" class="btn btn-primary">新增資訊</button>
       </div>
+
+      <section class="overview-strip">
+        <article class="overview-card overview-card--accent">
+          <span>目前資訊</span>
+          <strong>{{ totalRecords }}</strong>
+          <p>目前已建立的教會資訊資料總數。</p>
+        </article>
+        <article class="overview-card">
+          <span>當前頁面</span>
+          <strong>{{ filteredList.length }}</strong>
+          <p>這一頁實際符合條件的資訊資料。</p>
+        </article>
+        <article class="overview-card">
+          <span>查詢狀態</span>
+          <strong>{{ filters.infoKey || filters.infoValue || filters.isActive !== '' ? '已套用' : '全部' }}</strong>
+          <p>可透過鍵值、內容與狀態快速收斂教會資訊。</p>
+        </article>
+      </section>
 
       <!-- 查詢條件 -->
       <details class="filters filters--collapsible" open>
@@ -54,13 +75,13 @@
         </div>
       </details>
 
-      <div class="church-info-list">
+      <div class="church-info-list card surface-card">
         <div v-if="filteredList.length === 0" class="empty-state">
           <p>{{ churchInfoList.length === 0 ? '尚無教會資訊資料' : '沒有符合條件的資料' }}</p>
         </div>
         <div v-else class="info-table">
           <div class="table-header">
-            <h3>教會資訊列表 (共 {{ totalRecords }} 筆)</h3>
+            <h3>資訊列表 (共 {{ totalRecords }} 筆)</h3>
           </div>
           <table>
             <thead>
@@ -73,7 +94,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="info in churchInfoList" :key="info.id">
+              <tr v-for="info in filteredList" :key="info.id">
                 <td>{{ info.infoKey }}</td>
                 <td class="info-value">{{ info.infoValue || '-' }}</td>
                 <td>{{ info.displayOrder }}</td>
@@ -448,6 +469,63 @@ onMounted(() => {
   gap:14px;
 }
 
+.overview-strip{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:12px;
+}
+
+.overview-card{
+  padding:16px;
+  border-radius:20px;
+  border:1px solid rgba(2,6,23,.08);
+  background:rgba(255,255,255,.88);
+  box-shadow:var(--shadow-sm);
+}
+
+.overview-card span{
+  display:block;
+  color:rgba(2,6,23,.56);
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+
+.overview-card strong{
+  display:block;
+  margin-top:8px;
+  font-size:28px;
+  line-height:1;
+  letter-spacing:-0.04em;
+}
+
+.overview-card p{
+  margin:8px 0 0;
+  color:rgba(2,6,23,.62);
+  font-size:13px;
+  line-height:1.6;
+  font-weight:700;
+}
+
+.overview-card--accent{
+  background:linear-gradient(140deg, rgba(15,23,42,.96), rgba(29,78,216,.92));
+}
+
+.overview-card--accent span,
+.overview-card--accent strong,
+.overview-card--accent p{
+  color:white;
+}
+
+.overview-card--accent p{
+  color:rgba(255,255,255,.76);
+}
+
+.surface-card{
+  padding:16px;
+}
+
 /* Header */
 .admin-church-info .page-header{
   display:flex;
@@ -458,7 +536,7 @@ onMounted(() => {
   margin-bottom:2px;
 }
 .admin-church-info .page-header h2{
-  font-size:22px;
+  font-size:18px;
   font-weight:900;
   letter-spacing:-0.02em;
 }
@@ -467,8 +545,36 @@ onMounted(() => {
 .admin-church-info .description{
   color:var(--muted);
   font-weight:700;
-  font-size:14px;
+  font-size:13px;
   margin-top:6px;
+}
+
+.overview-strip{
+  gap:10px;
+}
+
+.overview-card{
+  padding:13px;
+  border-radius:14px;
+}
+
+.overview-card span{
+  font-size:11px;
+  letter-spacing:.08em;
+}
+
+.overview-card strong{
+  margin-top:6px;
+  font-size:22px;
+}
+
+.overview-card p{
+  margin:6px 0 0;
+  font-size:12px;
+}
+
+.surface-card{
+  padding:14px;
 }
 /* Lists / table wrap */
 .admin-church-info .table-container,
@@ -499,5 +605,8 @@ onMounted(() => {
 
 /* Mobile tweaks */
 @media (max-width: 640px){
+  .overview-strip{
+    grid-template-columns:1fr;
+  }
 }
 </style>

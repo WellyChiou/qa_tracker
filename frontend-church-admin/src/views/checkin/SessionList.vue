@@ -2,9 +2,30 @@
   <AdminLayout>
     <div class="admin-session-list">
       <div class="page-header">
-        <h2>場次管理</h2>
-        <button @click="openAddModal" class="btn btn-primary">+ 新增場次</button>
+        <div>
+          <h2>場次管理</h2>
+          <p>維護聚會場次、開放時間與狀態。</p>
+        </div>
+        <button @click="openAddModal" class="btn btn-primary">新增場次</button>
       </div>
+
+      <section class="overview-strip">
+        <article class="overview-card overview-card--accent">
+          <span>場次總數</span>
+          <strong>{{ totalRecords }}</strong>
+          <p>目前條件下可管理的場次總筆數。</p>
+        </article>
+        <article class="overview-card">
+          <span>當前頁面</span>
+          <strong>{{ filteredList.length }}</strong>
+          <p>此頁顯示的場次筆數，依後端分頁結果同步。</p>
+        </article>
+        <article class="overview-card">
+          <span>篩選狀態</span>
+          <strong>{{ filters.sessionCode || filters.title || filters.status || filters.sessionType || filters.groupId || filters.startDate || filters.endDate ? '已套用' : '全部' }}</strong>
+          <p>可依場次代碼、名稱、型態、日期與狀態快速縮小範圍。</p>
+        </article>
+      </section>
 
       <!-- 查詢條件 -->
       <details class="filters filters--collapsible" open>
@@ -87,13 +108,13 @@
             </div>
             <div class="filter-group">
               <button @click="load" class="btn btn-primary">查詢</button>
-              <button @click="resetFilters" class="btn btn-secondary">清除條件</button>
+              <button @click="resetFilters" class="btn btn-secondary">清除</button>
             </div>
           </div>
         </div>
       </details>
 
-      <div class="sessions-list">
+      <div class="sessions-list card surface-card">
         <div v-if="filteredList.length === 0" class="empty-state">
           <p>{{ sessions.length === 0 ? '尚無場次資料' : '沒有符合條件的資料' }}</p>
         </div>
@@ -511,14 +532,79 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
   margin-bottom: 16px;
 }
 
 .page-header h2 {
   margin: 0;
-  font-size: 24px;
-  font-weight: 700;
+  font-size: 18px;
+  font-weight: 800;
   color: var(--text);
+}
+
+.page-header p {
+  margin: 6px 0 0;
+  max-width: 700px;
+  color: var(--text-muted);
+  line-height: 1.55;
+  font-size: 13px;
+}
+
+.overview-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.overview-card {
+  padding: 13px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92));
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
+}
+
+.overview-card span {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.overview-card strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--text);
+}
+
+.overview-card p {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  line-height: 1.5;
+  font-size: 12px;
+}
+
+.overview-card--accent {
+  background: linear-gradient(135deg, rgba(180, 83, 9, 0.92), rgba(194, 65, 12, 0.92));
+  border-color: transparent;
+}
+
+.overview-card--accent span,
+.overview-card--accent strong,
+.overview-card--accent p {
+  color: #fff7ed;
+}
+
+.surface-card {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.08);
 }
 
 .empty-state {
@@ -538,15 +624,15 @@ onMounted(() => {
 }
 
 .table-header {
-  padding: 16px 20px;
+  padding: 11px 14px;
   border-bottom: 1px solid var(--border);
   background: var(--bg);
 }
 
 .table-header h3 {
   margin: 0;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
   color: var(--text);
 }
 
@@ -557,10 +643,10 @@ table {
 
 table th,
 table td {
-  padding: 12px 16px;
+  padding: 10px 12px;
   text-align: left;
   border-bottom: 1px solid var(--border);
-  font-size: 14px;
+  font-size: 13px;
 }
 
 table th {
@@ -575,10 +661,10 @@ table td {
 
 .status-badge {
   display: inline-block;
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .status-active {
@@ -598,27 +684,27 @@ table td {
 
 .table-actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
 }
 
 .btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 12px;
-  border-radius: 8px;
+  padding: 7px 10px;
+  border-radius: 10px;
   border: 1px solid var(--border);
   background: var(--btn-bg);
   color: var(--text);
   cursor: pointer;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   transition: all 0.2s ease;
 }
 
 .btn:hover {
   background: var(--btn-hover-bg);
-  transform: translateY(-1px);
+  transform: none;
 }
 
 .btn-primary {
@@ -671,7 +757,7 @@ table td {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
+  padding: 11px 14px;
   border-top: 1px solid var(--border);
   background: var(--bg);
 }
@@ -680,22 +766,22 @@ table td {
 .pagination-right {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .pagination-label {
-  font-size: 14px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 
 .page-size-select,
 .page-input {
-  padding: 6px 10px;
+  padding: 6px 9px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 10px;
   background: var(--input-bg);
   color: var(--text);
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .page-input {
@@ -705,7 +791,7 @@ table td {
 
 /* Filters 樣式（參考 Persons.vue） */
 .filters {
-  margin-bottom: 20px;
+  margin-bottom: 14px;
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -715,7 +801,7 @@ table td {
 .filters summary {
   list-style: none;
   cursor: pointer;
-  padding: 16px 20px;
+  padding: 12px 14px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -733,15 +819,15 @@ table td {
 
 .filters__title h3 {
   margin: 0;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
   color: var(--text);
 }
 
 .filters__badge {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-muted);
-  padding: 2px 8px;
+  padding: 2px 7px;
   background: var(--bg);
   border-radius: 4px;
 }
@@ -755,14 +841,14 @@ table td {
 }
 
 .filters__content {
-  padding: 20px;
+  padding: 14px;
   border-top: 1px solid var(--border);
 }
 
 .filter-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
+  gap: 12px;
 }
 
 .filter-group {
@@ -772,23 +858,33 @@ table td {
 }
 
 .filter-group label {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
   color: var(--text);
 }
 
 .form-input {
-  padding: 10px 12px;
+  padding: 9px 11px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--input-bg);
   color: var(--text);
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .form-input:focus {
   outline: none;
   border-color: var(--primary);
 }
-</style>
 
+@media (max-width: 900px) {
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .overview-strip {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

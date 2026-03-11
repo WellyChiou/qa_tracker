@@ -3,34 +3,52 @@
     <TopNavbar />
 
     <div class="container">
-      <div class="status-card">
-        <h2>🔍 系統狀態</h2>
-        <div class="status-grid">
-          <div class="status-item">
-            <strong>前端 (Vue/Nginx)</strong>
-            <div class="status-value success">✓ 運行中</div>
-          </div>
-          <div class="status-item">
-            <strong>後端 (Java Spring Boot)</strong>
+      <section class="hero-panel">
+        <div class="hero-copy">
+          <span class="hero-kicker">Control Surface</span>
+          <h2>把個人系統的關鍵操作，壓縮成一個易讀且即時的工作台。</h2>
+          <p>
+            你可以先確認服務健康狀態，再快速切進常用功能，不需要先翻找選單。
+          </p>
+        </div>
+
+        <div class="hero-stats">
+          <article class="status-item status-item--spotlight">
+            <strong>前端</strong>
+            <div class="status-value success">在線</div>
+            <small>Vue / Nginx</small>
+          </article>
+          <article class="status-item">
+            <strong>後端</strong>
             <div class="status-value" :class="backendStatus">
               {{ backendStatusText }}
             </div>
-          </div>
-          <div class="status-item">
-            <strong>資料庫 (MySQL)</strong>
-            <div class="status-value success">已連接</div>
-          </div>
-          <div class="status-item">
-            <strong>認證狀態</strong>
+            <small>Spring Boot API</small>
+          </article>
+          <article class="status-item">
+            <strong>資料庫</strong>
+            <div class="status-value success">正常</div>
+            <small>MySQL</small>
+          </article>
+          <article class="status-item">
+            <strong>認證</strong>
             <div class="status-value" :class="authStatus">
               {{ authStatusText }}
             </div>
-          </div>
+            <small>目前工作區狀態</small>
+          </article>
         </div>
-      </div>
+      </section>
 
-      <div class="status-card">
-        <h2>🚀 快速訪問</h2>
+      <section class="status-card">
+        <div class="section-head">
+          <div>
+            <span class="section-kicker">Quick Routes</span>
+            <h3>快速訪問</h3>
+          </div>
+          <p>常用功能直接進入，減少切換成本。</p>
+        </div>
+
         <div class="menu-grid">
           <router-link
             v-for="menuItem in dashboardMenus"
@@ -38,14 +56,15 @@
             :to="normalizeMenuUrl(menuItem.url)"
             class="menu-card"
           >
-            <div class="menu-icon">{{ menuItem.icon || '📄' }}</div>
+            <div class="menu-icon">{{ menuItem.icon || '◦' }}</div>
             <div class="menu-title">{{ menuItem.menuName }}</div>
+            <div class="menu-desc">前往 {{ menuItem.menuName }} 模組</div>
           </router-link>
           <div v-if="dashboardMenus.length === 0" class="no-menu">
-            暫無可用菜單
+            暫無可用入口
           </div>
         </div>
-      </div>
+      </section>
     </div>
   </div>
 </template>
@@ -129,9 +148,11 @@ onMounted(async () => {
 <style scoped>
 .dashboard {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  background-attachment: fixed;
-  color: white;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(14, 165, 233, 0.16), transparent 28%),
+    radial-gradient(circle at 82% 20%, rgba(37, 99, 235, 0.16), transparent 30%),
+    linear-gradient(180deg, #eff6ff 0%, #f8fafc 100%);
+  color: var(--text-primary);
   position: relative;
 }
 
@@ -142,137 +163,181 @@ onMounted(async () => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: 
-    radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
-    radial-gradient(circle at 80% 80%, rgba(118, 75, 162, 0.3) 0%, transparent 50%);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0));
   pointer-events: none;
   z-index: 0;
 }
 
 .container {
-  max-width: 1200px;
-  margin: var(--spacing-2xl) auto;
-  padding: 0 var(--spacing-xl);
+  max-width: 1280px;
+  margin: 1.35rem auto 0;
+  padding: 0 1rem 2rem;
   position: relative;
   z-index: 1;
 }
 
+.hero-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: 1.2rem;
+  margin-bottom: 1.2rem;
+}
+
+.hero-copy,
 .status-card {
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(20px);
-  border-radius: var(--border-radius-xl);
-  padding: var(--spacing-2xl);
-  box-shadow: var(--shadow-xl);
-  margin-bottom: var(--spacing-xl);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(24px);
+  border-radius: 30px;
+  padding: 1.5rem;
+  box-shadow: 0 28px 54px rgba(15, 23, 42, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.7);
   transition: var(--transition);
 }
 
-.status-card:hover {
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+.hero-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 320px;
+  background:
+    linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(37, 99, 235, 0.92)),
+    rgba(15, 23, 42, 0.9);
+  color: white;
 }
 
-.status-card h2 {
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: var(--spacing-xl);
-  text-align: center;
-  background: linear-gradient(135deg, #ffffff 0%, rgba(255, 255, 255, 0.8) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+.hero-kicker,
+.section-kicker {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.42rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
-.status-grid {
+.hero-copy h2 {
+  margin: 1rem 0 0.8rem;
+  max-width: 14ch;
+  font-size: clamp(2.2rem, 4vw, 3.7rem);
+  line-height: 0.95;
+  letter-spacing: -0.05em;
+}
+
+.hero-copy p {
+  margin: 0;
+  max-width: 44rem;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 1rem;
+  line-height: 1.8;
+  font-weight: 600;
+}
+
+.hero-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: var(--spacing-lg);
-  margin-top: var(--spacing-lg);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
 }
 
 .status-item {
-  padding: var(--spacing-xl);
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(10px);
-  border-radius: var(--border-radius-lg);
-  text-align: center;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 1.15rem;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(14px);
+  border-radius: 24px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
   transition: var(--transition);
   position: relative;
   overflow: hidden;
+  min-height: 148px;
 }
 
-.status-item::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.5) 0%, transparent 100%);
+.status-item--spotlight {
+  background: linear-gradient(145deg, rgba(14, 165, 233, 0.12), rgba(255, 255, 255, 0.94));
 }
 
 .status-item:hover {
   transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.status-item strong {
-  display: block;
-  margin-bottom: var(--spacing-md);
-  font-size: 0.95rem;
-  opacity: 0.95;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  box-shadow: 0 22px 36px rgba(15, 23, 42, 0.12);
 }
 
 .status-value {
-  font-size: 1.3rem;
-  font-weight: 700;
+  margin: 0.8rem 0 0.45rem;
+  font-size: 1.7rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
 }
 
 .status-value.success {
-  color: #4ade80;
-  text-shadow: 0 2px 10px rgba(74, 222, 128, 0.3);
+  color: #059669;
 }
 
 .status-value.error {
-  color: #f87171;
-  text-shadow: 0 2px 10px rgba(248, 113, 113, 0.3);
+  color: #dc2626;
+}
+
+.status-item strong,
+.status-item small {
+  display: block;
+}
+
+.status-item strong {
+  color: rgba(15, 23, 42, 0.62);
+  font-size: 0.8rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.status-item small {
+  color: rgba(15, 23, 42, 0.48);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.section-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.15rem;
+}
+
+.section-head h3 {
+  margin: 0.7rem 0 0;
+  font-size: 1.8rem;
+  letter-spacing: -0.04em;
+}
+
+.section-head p {
+  margin: 0;
+  color: rgba(15, 23, 42, 0.58);
+  font-weight: 600;
 }
 
 .menu-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: var(--spacing-lg);
-  margin-top: var(--spacing-lg);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
 }
 
 .menu-card {
-  padding: var(--spacing-xl);
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(20px);
-  border-radius: var(--border-radius-lg);
-  text-align: center;
+  padding: 1.15rem;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(18px);
+  border-radius: 24px;
+  text-align: left;
   text-decoration: none;
-  color: white;
+  color: var(--text-primary);
   transition: var(--transition);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  display: block;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
   position: relative;
-  overflow: hidden;
-}
-
-.menu-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.5) 0%, transparent 100%);
 }
 
 a.menu-card {
@@ -280,33 +345,71 @@ a.menu-card {
 }
 
 .menu-card:hover {
-  background: rgba(255, 255, 255, 0.25);
-  transform: translateY(-6px) scale(1.02);
-  box-shadow: var(--shadow-xl);
+  background: rgba(255, 255, 255, 0.98);
+  transform: translateY(-4px);
+  box-shadow: 0 22px 36px rgba(15, 23, 42, 0.12);
 }
 
 .menu-icon {
-  font-size: 3.5rem;
-  margin-bottom: var(--spacing-md);
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
-  transition: var(--transition);
-}
-
-.menu-card:hover .menu-icon {
-  transform: scale(1.1) rotate(5deg);
+  width: 3rem;
+  height: 3rem;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(14, 165, 233, 0.12));
+  color: #1d4ed8;
+  font-size: 1.45rem;
 }
 
 .menu-title {
-  font-size: 1.1rem;
+  font-size: 1.08rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.menu-desc {
+  color: rgba(15, 23, 42, 0.55);
+  font-size: 0.86rem;
   font-weight: 600;
 }
 
 .no-menu {
   grid-column: 1/-1;
   text-align: center;
-  opacity: 0.8;
-  padding: var(--spacing-2xl);
-  font-size: 1.1rem;
+  color: rgba(15, 23, 42, 0.52);
+  padding: 2rem;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+@media (max-width: 960px) {
+  .hero-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-copy h2 {
+    max-width: none;
+  }
+
+  .section-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .container {
+    padding: 0 0.85rem 1.2rem;
+  }
+
+  .hero-copy,
+  .status-card {
+    padding: 1.15rem;
+    border-radius: 24px;
+  }
+
+  .hero-stats {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
-

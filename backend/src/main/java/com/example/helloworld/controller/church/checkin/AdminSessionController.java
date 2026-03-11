@@ -10,7 +10,6 @@ import com.example.helloworld.repository.church.checkin.CheckinRepository;
 import com.example.helloworld.repository.church.checkin.SessionRepository;
 import com.example.helloworld.repository.church.checkin.SessionGroupRepository;
 import com.example.helloworld.service.church.checkin.CheckinService;
-import com.example.helloworld.service.church.checkin.CsvService;
 import com.example.helloworld.service.church.checkin.ExcelService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -35,16 +34,14 @@ import java.util.Set;
 public class AdminSessionController {
     private final SessionRepository sessionRepo;
     private final CheckinRepository checkinRepo;
-    private final CsvService csvService;
     private final ExcelService excelService;
     private final CheckinService checkinService;
     private final SessionGroupRepository sessionGroupRepository;
     private final GroupRepository groupRepository;
 
-    public AdminSessionController(SessionRepository sessionRepo, CheckinRepository checkinRepo, CsvService csvService, ExcelService excelService, CheckinService checkinService, SessionGroupRepository sessionGroupRepository, GroupRepository groupRepository) {
+    public AdminSessionController(SessionRepository sessionRepo, CheckinRepository checkinRepo, ExcelService excelService, CheckinService checkinService, SessionGroupRepository sessionGroupRepository, GroupRepository groupRepository) {
         this.sessionRepo = sessionRepo;
         this.checkinRepo = checkinRepo;
-        this.csvService = csvService;
         this.excelService = excelService;
         this.checkinService = checkinService;
         this.sessionGroupRepository = sessionGroupRepository;
@@ -237,15 +234,6 @@ public class AdminSessionController {
         }
     }
 
-    @GetMapping("/{id}/checkins/export.csv")
-    public ResponseEntity<byte[]> exportCsv(@PathVariable Long id) {
-        byte[] bytes = csvService.exportSessionCheckins(id);
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"session-checkins-" + id + ".csv\"")
-                .contentType(new MediaType("text", "csv"))
-                .body(bytes);
-    }
-
     @GetMapping("/{id}/checkins/export.xlsx")
     public ResponseEntity<byte[]> exportExcel(@PathVariable Long id) {
         try {
@@ -407,4 +395,3 @@ public class AdminSessionController {
         }
     }
 }
-

@@ -1,213 +1,38 @@
-// 支持環境變量配置，開發環境使用默認值
-// 生產環境：使用當前域名（Nginx 反向代理）
-// 開發環境：使用 8080 端口
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
-  (import.meta.env.DEV 
-    ? `${window.location.protocol}//${window.location.hostname}:8080/api/personal`
-    : `${window.location.protocol}//${window.location.hostname}/api/personal`)
+import { createApiClient } from '@shared/utils/apiClient'
 
-// 全局 loading 狀態管理
-let loadingCount = 0
-let loadingMessage = '載入中...'
-let loadingCallbacks = {
-  show: null,
-  hide: null
-}
-
-// 設置 loading 回調函數（由 useLoading composable 調用）
-export function setLoadingCallbacks(show, hide) {
-  loadingCallbacks.show = show
-  loadingCallbacks.hide = hide
-}
-
-/**
- * 獲取 Access Token（從 localStorage）
- */
-function getAccessToken() {
-  return localStorage.getItem('personal_access_token')
-}
-
-/**
- * 獲取 Refresh Token（從 localStorage）
- */
-function getRefreshToken() {
-  return localStorage.getItem('personal_refresh_token')
-}
-
-/**
- * 設置 Access Token 和 Refresh Token（保存到 localStorage）
- */
-export function setTokens(accessToken, refreshToken) {
-  if (accessToken) {
-    localStorage.setItem('personal_access_token', accessToken)
-  } else {
-    localStorage.removeItem('personal_access_token')
+const personalApiClient = createApiClient({
+  accessTokenKey: 'personal_access_token',
+  refreshTokenKey: 'personal_refresh_token',
+  authExpiredMessage: '認證已過期，請重新登入',
+  credentials: 'omit',
+  getApiBaseUrl() {
+    return import.meta.env.VITE_API_BASE_URL || (
+      import.meta.env.DEV
+        ? `${window.location.protocol}//${window.location.hostname}:8080/api/personal`
+        : `${window.location.protocol}//${window.location.hostname}/api/personal`
+    )
+  },
+  isAuthRelatedRequest(url) {
+    return url.includes('/auth/')
+  },
+  refreshEndpoint: '/auth/refresh',
+  rejectRedirected: true,
+  shouldAttachToken(url) {
+    const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register')
+    return !isAuthEndpoint
   }
-  if (refreshToken) {
-    localStorage.setItem('personal_refresh_token', refreshToken)
-  } else {
-    localStorage.removeItem('personal_refresh_token')
-  }
-}
+})
 
-/**
- * 清除所有 Token
- */
-function clearTokens() {
-  localStorage.removeItem('personal_access_token')
-  localStorage.removeItem('personal_refresh_token')
-}
-
-/**
- * 刷新 Access Token
- */
-async function refreshAccessToken() {
-  const refreshToken = getRefreshToken()
-  if (!refreshToken) {
-    throw new Error('沒有 Refresh Token')
-  }
-
-  try {
-    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ refreshToken }),
-      credentials: 'omit'
-    })
-
-    if (!response.ok) {
-      throw new Error('刷新 Token 失敗')
-    }
-
-    const json = await response.json()
-    // 支援 ApiResponse 格式：{ success, data: { accessToken, tokenType } }
-    const data = (json && json.data !== undefined) ? json.data : json
-    if (data && data.accessToken) {
-      localStorage.setItem('personal_access_token', data.accessToken)
-      return data.accessToken
-    }
-    throw new Error('刷新 Token 響應無效')
-  } catch (error) {
-    clearTokens()
-    throw error
-  }
-}
+export const setLoadingCallbacks = personalApiClient.setLoadingCallbacks
+export const setTokens = personalApiClient.setTokens
+const clearTokens = personalApiClient.clearTokens
 
 class ApiService {
   async request(url, options = {}) {
-    const showLoader = options.showLoading !== false // 默認顯示 loading
-    
-    try {
-      if (showLoader && loadingCallbacks.show) {
-        loadingCallbacks.show(options.loadingMessage || '載入中...')
-      }
-      
-      // 判斷是否需要 JWT Token
-      const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register')
-      const needsToken = !isAuthEndpoint
-      
-      // 準備 headers
-      const headers = {
-        'Content-Type': 'application/json',
-        ...options.headers
-      }
-      
-      // 如果需要 Token，添加到 Authorization header
-      if (needsToken) {
-        const token = getAccessToken()
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`
-        }
-      }
-      
-      let response = await fetch(`${API_BASE_URL}${url}`, {
-        ...options,
-        headers,
-        credentials: 'omit' // 不再使用 session cookies
-      })
-      
-      // 處理 401 未授權錯誤（Token 無效或過期）
-      if (response.status === 401 && needsToken) {
-        // 嘗試使用 Refresh Token 刷新 Access Token（如果有 Refresh Token）
-        const refreshToken = getRefreshToken()
-        if (refreshToken) {
-          try {
-            const newAccessToken = await refreshAccessToken()
-            // 使用新的 Access Token 重試請求
-            headers['Authorization'] = `Bearer ${newAccessToken}`
-            response = await fetch(`${API_BASE_URL}${url}`, {
-              ...options,
-              headers,
-              credentials: 'omit'
-            })
-          } catch (error) {
-            // 刷新失敗，清除所有 Token
-            clearTokens()
-            // 如果是認證相關的請求，不拋出異常，讓調用者處理
-            if (url.includes('/auth/')) {
-              // 繼續處理原始響應
-            } else {
-              // 其他請求，拋出異常
-              throw new Error('認證已過期，請重新登入')
-            }
-          }
-        } else {
-          // 沒有 Refresh Token，清除 Access Token
-          clearTokens()
-        }
-      }
-      
-      // 檢查是否是重定向（3xx 狀態碼）
-      if (response.redirected) {
-        throw new Error('請求被重定向，可能是認證失敗')
-      }
-      
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(errorText || `請求失敗: ${response.status}`)
-      }
-      
-      // 處理空響應（204 No Content）
-      if (response.status === 204) {
-        return null
-      }
-      
-      // 嘗試解析 JSON，如果響應體為空則返回 null
-      const text = await response.text()
-      if (!text || text.trim().length === 0) {
-        return null
-      }
-      
-      try {
-        const apiResponse = JSON.parse(text)
-        
-        // 統一處理 ApiResponse 格式（檢查是否有 success 欄位）
-        if (apiResponse && typeof apiResponse.success === 'boolean') {
-          if (!apiResponse.success) {
-            throw new Error(apiResponse.message || '請求失敗')
-          }
-          // 成功時返回 data 欄位（如果有），否則返回原始回應（向後兼容）
-          return apiResponse.data !== undefined ? apiResponse.data : apiResponse
-        }
-        
-        // 如果不是 ApiResponse 格式，返回原始回應（向後兼容）
-        return apiResponse
-      } catch (e) {
-        // 如果 JSON 解析失敗，拋出錯誤
-        if (e instanceof SyntaxError) {
-          console.warn('響應不是有效的 JSON:', text)
-          return null
-        }
-        // 如果是我們拋出的錯誤（ApiResponse.fail），直接拋出
-        throw e
-      }
-    } finally {
-      if (showLoader && loadingCallbacks.hide) {
-        loadingCallbacks.hide()
-      }
-    }
+    return personalApiClient.request(url, options, {
+      loadingMessage: options.loadingMessage || '載入中...',
+      showLoading: options.showLoading !== false
+    })
   }
 
   // Auth API

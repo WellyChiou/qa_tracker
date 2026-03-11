@@ -9,9 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -101,35 +99,4 @@ public class ChurchRoleController {
         }
     }
 
-    /**
-     * 為角色分配權限
-     */
-    @PostMapping("/{id}/permissions")
-    public ResponseEntity<ApiResponse<ChurchRole>> assignPermissions(
-            @PathVariable Long id, 
-            @RequestBody Map<String, Object> request) {
-        try {
-            @SuppressWarnings("unchecked")
-            List<?> permissionIdsRaw = (List<?>) request.get("permissionIds");
-            // 將 Integer 或 Long 轉換為 Long，處理 JSON 解析後的類型問題
-            List<Long> permissionIds = permissionIdsRaw.stream()
-                .map(idValue -> {
-                    if (idValue instanceof Long) {
-                        return (Long) idValue;
-                    } else if (idValue instanceof Integer) {
-                        return ((Integer) idValue).longValue();
-                    } else if (idValue instanceof Number) {
-                        return ((Number) idValue).longValue();
-                    } else {
-                        throw new IllegalArgumentException("無效的權限 ID 類型: " + idValue.getClass().getName());
-                    }
-                })
-                .collect(java.util.stream.Collectors.toList());
-            ChurchRole role = churchRoleService.assignPermissions(id, permissionIds);
-            return ResponseEntity.ok(ApiResponse.ok(role));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.fail("分配失敗: " + e.getMessage()));
-        }
-    }
 }
-

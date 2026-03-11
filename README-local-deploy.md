@@ -25,3 +25,11 @@ Usage:
 ```bash
 ./deploy_local.sh
 ./verify_local.sh
+```
+
+## Local URLs
+
+- Personal frontend: `http://localhost/personal/`
+- Church frontend: `http://localhost/church/`
+- Church admin: `http://localhost/church-admin/`
+- Backend API: `http://localhost/api`

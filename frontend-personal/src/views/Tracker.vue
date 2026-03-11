@@ -3,7 +3,7 @@
     <TopNavbar />
     <header class="header">
       <div class="header-top">
-        <h1>QA Tracker</h1>
+        <h1>QA 追蹤</h1>
       </div>
 
       <!-- 年份選擇器 -->
@@ -23,11 +23,11 @@
         </div>
         <div class="summary-item">
           <span class="label">執行中</span>
-          <span class="amount in-progress">{{ inProgressCount }}</span>
+          <span class="amount in-progress">{{ yearlyInProgressCount }}</span>
         </div>
         <div class="summary-item">
           <span class="label">已完成</span>
-          <span class="amount completed">{{ completedCount }}</span>
+          <span class="amount completed">{{ yearlyCompletedCount }}</span>
         </div>
       </div>
     </header>
@@ -231,19 +231,19 @@
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
               </svg>
-              新增 Issue
+              新增
             </button>
             <button class="btn btn-info" @click="loadRecords">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
               </svg>
-              搜尋
+              查詢
             </button>
             <button class="btn btn-warning" @click="filterByInProgress">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
-              ① 執行中({{ inProgressCount }})
+              執行中 {{ filteredInProgressCount }}
             </button>
             <button class="btn btn-secondary" @click="clearFilters">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -253,11 +253,17 @@
             </button>
           </div>
           <div class="buttons-right">
+            <button class="btn btn-info" @click="copyInProgressLines">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16h8M8 12h8m-6-4h6M8 8H6a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-2M10 4h8a2 2 0 012 2v8a2 2 0 01-2 2h-8a2 2 0 01-2-2V6a2 2 0 012-2z"/>
+              </svg>
+              複製執行中
+            </button>
             <button class="btn btn-success" @click="exportExcel">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
               </svg>
-              匯出 Excel
+              匯出
             </button>
             <button class="btn btn-warning" @click="openGitlabModal">
               <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -574,8 +580,9 @@ const filters = ref({
 
 // notification 已改用全局 toast 系統
 
-const inProgressCount = ref(0) // 查詢結果中執行中的數量
-const completedCount = ref(0) // 查詢結果中已完成的數量
+const yearlyInProgressCount = ref(0) // 年度統計中的執行中數量
+const yearlyCompletedCount = ref(0) // 年度統計中的已完成數量
+const filteredInProgressCount = ref(0) // 目前查詢結果中的執行中數量
 
 const getStatusText = (status) => {
   const statusMap = {
@@ -640,13 +647,13 @@ const loadYearlyStats = async (year = selectedYear.value, showLoading = true) =>
   try {
     const response = await apiService.getYearlyStats(year, showLoading)
     totalRecordsByYear.value = response.total || 0
-    inProgressCount.value = response.inProgress || 0
-    completedCount.value = response.completed || 0
+    yearlyInProgressCount.value = response.inProgress || 0
+    yearlyCompletedCount.value = response.completed || 0
   } catch (error) {
     console.error('載入年度統計失敗:', error)
     totalRecordsByYear.value = 0
-    inProgressCount.value = 0
-    completedCount.value = 0
+    yearlyInProgressCount.value = 0
+    yearlyCompletedCount.value = 0
   }
 }
 
@@ -655,48 +662,50 @@ const handleYearChange = async () => {
   await loadYearlyStats(selectedYear.value)
 }
 
+const buildRecordQueryParams = ({ forceStatus, page, size } = {}) => {
+  const params = {
+    page: page ?? currentPage.value - 1,
+    size: size ?? recordsPerPage.value,
+    status: forceStatus ?? filters.value.status,
+    category: filters.value.category,
+    issueNumber: filters.value.issueNumber,
+    keyword: filters.value.keyword || undefined,
+    testPlan: filters.value.testPlan || undefined,
+    bugFound: filters.value.bugFound
+  }
+
+  if (filters.value.testStartDateRange && filters.value.testStartDateRange.length > 0) {
+    const sortedDates = [...filters.value.testStartDateRange].sort()
+    if (sortedDates[0]) {
+      params.testStartDateFrom = sortedDates[0]
+    }
+    if (sortedDates.length > 1 && sortedDates[1]) {
+      params.testStartDateTo = sortedDates[1]
+    }
+  }
+
+  if (filters.value.etaDateRange && filters.value.etaDateRange.length > 0) {
+    const sortedDates = [...filters.value.etaDateRange].sort()
+    if (sortedDates[0]) {
+      params.etaDateFrom = sortedDates[0]
+    }
+    if (sortedDates.length > 1 && sortedDates[1]) {
+      params.etaDateTo = sortedDates[1]
+    }
+  }
+
+  Object.keys(params).forEach(key => {
+    if (params[key] === null || params[key] === undefined || params[key] === '') {
+      delete params[key]
+    }
+  })
+
+  return params
+}
+
 const loadRecords = async () => {
   try {
-    const params = {
-      page: currentPage.value - 1,
-      size: recordsPerPage.value,
-      status: filters.value.status,
-      category: filters.value.category,
-      issueNumber: filters.value.issueNumber,
-      keyword: filters.value.keyword || undefined,
-      testPlan: filters.value.testPlan || undefined,
-      bugFound: filters.value.bugFound
-    }
-    
-    // 處理開始測試日期範圍
-    if (filters.value.testStartDateRange && filters.value.testStartDateRange.length > 0) {
-      const sortedDates = [...filters.value.testStartDateRange].sort()
-      if (sortedDates[0]) {
-        params.testStartDateFrom = sortedDates[0]
-      }
-      if (sortedDates.length > 1 && sortedDates[1]) {
-        params.testStartDateTo = sortedDates[1]
-      }
-    }
-    
-    // 處理預計交付日期範圍
-    if (filters.value.etaDateRange && filters.value.etaDateRange.length > 0) {
-      const sortedDates = [...filters.value.etaDateRange].sort()
-      if (sortedDates[0]) {
-        params.etaDateFrom = sortedDates[0]
-      }
-      if (sortedDates.length > 1 && sortedDates[1]) {
-        params.etaDateTo = sortedDates[1]
-      }
-    }
-    
-    // 移除 null 和 undefined 值
-    Object.keys(params).forEach(key => {
-      if (params[key] === null || params[key] === undefined || params[key] === '') {
-        delete params[key]
-      }
-    })
-    
+    const params = buildRecordQueryParams()
     const response = await apiService.getRecords(params)
     records.value = response.content || []
     totalRecords.value = response.totalElements || 0
@@ -704,8 +713,9 @@ const loadRecords = async () => {
     
     // 更新統計信息（查詢結果中的狀態統計）
     if (response.stats) {
-      // 注意：這裡的統計是查詢結果的統計，不是年度統計
-      // 年度統計由 loadYearlyStats 單獨處理
+      filteredInProgressCount.value = response.stats.inProgress || 0
+    } else {
+      filteredInProgressCount.value = 0
     }
 
     // 載入年度統計（總記錄數、執行中、已完成）
@@ -811,51 +821,42 @@ const clearFilters = () => {
   loadRecords()
 }
 
+const copyInProgressLines = async () => {
+  try {
+    const params = buildRecordQueryParams({
+      forceStatus: 1,
+      page: 0,
+      size: 10000
+    })
+
+    const response = await apiService.getRecords(params)
+    const rows = response.content || []
+
+    if (rows.length === 0) {
+      toast.info('目前沒有可複製的執行中資料')
+      return
+    }
+
+    const lines = rows.map((record) => {
+      const issueNumber = record.issueNumber ?? ''
+      const memo = (record.memo ?? '').toString().replace(/\r?\n/g, ' ').trim()
+      return `IMP_${issueNumber}:${memo}`
+    })
+
+    await navigator.clipboard.writeText(lines.join('\n'))
+    toast.success(`已複製 ${lines.length} 筆執行中資料`)
+  } catch (error) {
+    console.error('複製執行中資料失敗:', error)
+    toast.error('複製失敗: ' + (error.message || '未知錯誤'))
+  }
+}
+
 const exportExcel = async () => {
   try {
     showNotification('正在準備匯出 Excel...', 'info')
     
     // 使用當前篩選條件獲取所有記錄
-    const params = {
-      status: filters.value.status,
-      category: filters.value.category,
-      issueNumber: filters.value.issueNumber,
-      keyword: filters.value.keyword || undefined,
-      testPlan: filters.value.testPlan || undefined,
-      bugFound: filters.value.bugFound,
-      page: 0,
-      size: 10000 // 獲取大量記錄用於匯出
-    }
-    
-    // 處理開始測試日期範圍
-    if (filters.value.testStartDateRange && filters.value.testStartDateRange.length > 0) {
-      const sortedDates = [...filters.value.testStartDateRange].sort()
-      if (sortedDates[0]) {
-        params.testStartDateFrom = sortedDates[0]
-      }
-      if (sortedDates.length > 1 && sortedDates[1]) {
-        params.testStartDateTo = sortedDates[1]
-    }
-    }
-
-    // 處理預計交付日期範圍
-    if (filters.value.etaDateRange && filters.value.etaDateRange.length > 0) {
-      const sortedDates = [...filters.value.etaDateRange].sort()
-      if (sortedDates[0]) {
-        params.etaDateFrom = sortedDates[0]
-      }
-      if (sortedDates.length > 1 && sortedDates[1]) {
-        params.etaDateTo = sortedDates[1]
-      }
-    }
-    
-    // 移除 null 和 undefined 值
-    Object.keys(params).forEach(key => {
-      if (params[key] === null || params[key] === undefined || params[key] === '') {
-        delete params[key]
-      }
-    })
-    
+    const params = buildRecordQueryParams({ page: 0, size: 10000 })
     const response = await apiService.getRecords(params)
     const allRecords = response.content || []
     
@@ -1414,9 +1415,9 @@ onUnmounted(() => {
 .header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  padding: 30px;
-  border-radius: 15px;
-  margin-bottom: 30px;
+  padding: 22px;
+  border-radius: 14px;
+  margin-bottom: 22px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.1);
 }
 
@@ -1424,14 +1425,15 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 14px;
 }
 
 .header h1 {
-  font-size: 2.5em;
+  font-size: clamp(2rem, 3.6vw, 2.7rem);
   margin: 0;
   text-align: center;
   flex: 1;
+  letter-spacing: -0.03em;
 }
 
 .user-info {
@@ -1462,15 +1464,15 @@ onUnmounted(() => {
 .summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: var(--spacing-lg);
-  margin-bottom: var(--spacing-xl);
+  gap: 0.85rem;
+  margin-bottom: 1.25rem;
 }
 
 .summary-item {
   background: rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(20px);
-  padding: var(--spacing-xl);
-  border-radius: var(--border-radius-lg);
+  padding: 1.1rem;
+  border-radius: 14px;
   text-align: center;
   border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: var(--shadow-lg);
@@ -1481,7 +1483,7 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 120px;
+  min-height: 104px;
 }
 
 .summary-item::before {
@@ -1495,24 +1497,24 @@ onUnmounted(() => {
 }
 
 .summary-item:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-xl);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lg);
   background: rgba(255, 255, 255, 0.2);
 }
 
 .summary-item .label {
   display: block;
-  margin-bottom: var(--spacing-md);
+  margin-bottom: 0.5rem;
   opacity: 0.95;
-  font-size: 0.95rem;
-  font-weight: 500;
+  font-size: 0.76rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.08em;
 }
 
 .summary-item .amount {
-  font-size: 2rem;
-  font-weight: 700;
+  font-size: 1.7rem;
+  font-weight: 800;
   line-height: 1.2;
 }
 
@@ -1531,8 +1533,8 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   gap: 12px;
-  margin-bottom: 20px;
-  padding: 12px 20px;
+  margin-bottom: 14px;
+  padding: 10px 14px;
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
   border-radius: 12px;
@@ -1540,7 +1542,7 @@ onUnmounted(() => {
 }
 
 .year-filter-label {
-  font-size: 0.95rem;
+  font-size: 0.82rem;
   font-weight: 600;
   color: #e2e8f0;
   margin: 0;
@@ -1550,8 +1552,8 @@ onUnmounted(() => {
   background: rgba(255, 255, 255, 0.95);
   border: 2px solid rgba(0, 0, 0, 0.1);
   border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 0.9rem;
+  padding: 8px 10px;
+  font-size: 0.84rem;
   font-weight: 600;
   color: #1e293b;
   cursor: pointer;
@@ -1573,7 +1575,7 @@ onUnmounted(() => {
 }
 
 .main-content {
-  max-width: 1400px;
+  max-width: 1180px;
   margin: 0 auto;
   position: relative;
   z-index: 1;
@@ -1595,26 +1597,26 @@ onUnmounted(() => {
 
 .modal-panel {
   width: 100%;
-  max-width: 56rem;
+  max-width: 50rem;
   background: white;
-  border-radius: 1rem;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  border-radius: 0.875rem;
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.14);
   border: 1px solid #e2e8f0;
-  margin: 2rem 0;
+  margin: 1rem 0;
 }
 
 .modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.25rem 1.5rem;
+  padding: 1rem 1.25rem;
   border-bottom: 1px solid #e2e8f0;
   background: linear-gradient(to right, #f8fafc, white);
-  border-radius: 1rem 1rem 0 0;
+  border-radius: 0.875rem 0.875rem 0 0;
 }
 
 .modal-title {
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   font-weight: 700;
   color: #1e293b;
   margin: 0;
@@ -1627,14 +1629,14 @@ onUnmounted(() => {
 }
 
 .modal-body {
-  padding: 1.5rem;
+  padding: 1.25rem;
 }
 
 .list-section {
   background: white;
-  border-radius: 1rem;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-  padding: 1.5rem;
+  border-radius: 0.875rem;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+  padding: 1.25rem;
   border: 1px solid #e2e8f0;
 }
 
@@ -1645,7 +1647,7 @@ onUnmounted(() => {
 }
 
 .section-title h2 {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: #1e293b;
   margin: 0;
@@ -1656,8 +1658,8 @@ onUnmounted(() => {
 
 .filters-block {
   background: #f8fafc;
-  border-radius: 0.75rem;
-  padding: 1.25rem;
+  border-radius: 0.875rem;
+  padding: 1rem;
   margin-bottom: 1rem;
   border: 1px solid #e2e8f0;
 }
@@ -1678,8 +1680,8 @@ onUnmounted(() => {
 .form-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  gap: 0.875rem;
+  margin-bottom: 1.25rem;
 }
 
 .form-group {
@@ -1694,19 +1696,19 @@ onUnmounted(() => {
 
 .form-group label {
   display: block;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   color: #475569;
-  margin-bottom: 0.375rem;
+  margin-bottom: 0.25rem;
 }
 
 .form-group input,
 .form-group select,
 .form-group textarea {
   width: 100%;
-  padding: 0.625rem 0.875rem;
-  border-radius: 0.75rem;
-  border: 1.5px solid #cbd5e1;
+  padding: 0.7rem 0.8rem;
+  border-radius: 0.65rem;
+  border: 1px solid #cbd5e1;
   outline: none;
   background: white;
   transition: all 0.2s ease;
@@ -1742,8 +1744,8 @@ onUnmounted(() => {
 .form-actions {
   display: flex;
   gap: var(--spacing-md);
-  margin-top: var(--spacing-lg);
-  padding-top: var(--spacing-lg);
+  margin-top: 1rem;
+  padding-top: 1rem;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -1766,14 +1768,14 @@ onUnmounted(() => {
 .buttons-right {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
 .btn {
-  padding: 0.75rem 1.25rem;
-  border-radius: 0.75rem;
+  padding: 0.65rem 1rem;
+  border-radius: 0.65rem;
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: 0.84rem;
   transition: all 0.2s ease;
   border: none;
   cursor: pointer;
@@ -1782,7 +1784,7 @@ onUnmounted(() => {
   justify-content: center;
   gap: 0.5rem;
   white-space: nowrap;
-  min-height: 2.5rem;
+  min-height: 2.35rem;
 }
 
 .btn:hover {
@@ -1834,16 +1836,16 @@ onUnmounted(() => {
 }
 
 .btn-secondary {
-  padding: 0.75rem 1.25rem;
-  border-radius: 0.75rem;
-  border: 1.5px solid #cbd5e1;
+  padding: 0.65rem 1rem;
+  border-radius: 0.65rem;
+  border: 1px solid #cbd5e1;
   background: white;
   color: #475569;
   font-weight: 600;
   font-size: 0.875rem;
   transition: all 0.2s ease;
   cursor: pointer;
-  min-height: 2.5rem;
+  min-height: 2.35rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1898,18 +1900,18 @@ onUnmounted(() => {
 }
 
 .filter-group label {
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   color: #475569;
-  margin-bottom: 0.375rem;
+  margin-bottom: 0.25rem;
 }
 
 .filter-group input,
 .filter-group select {
   width: 100%;
-  padding: 0.625rem 0.875rem;
-  border-radius: 0.75rem;
-  border: 1.5px solid #cbd5e1;
+  padding: 0.7rem 0.8rem;
+  border-radius: 0.65rem;
+  border: 1px solid #cbd5e1;
   outline: none;
   background: white;
   transition: all 0.2s ease;
@@ -1937,21 +1939,21 @@ onUnmounted(() => {
 .table-wrap {
   overflow-x: auto;
   border: 1px solid #e2e8f0;
-  border-radius: 1rem;
+  border-radius: 0.875rem;
 }
 
 .records-table {
   width: 100%;
-  min-width: 1600px;
+  min-width: 1320px;
   table-layout: fixed;
   border-collapse: collapse;
   background: white;
-  font-size: 0.875rem;
+  font-size: 0.84rem;
 }
 
 .records-table th,
 .records-table td {
-  padding: 0.75rem;
+  padding: 0.65rem 0.75rem;
   text-align: left;
   border-bottom: 1px solid #e2e8f0;
   white-space: normal;
@@ -1968,7 +1970,7 @@ onUnmounted(() => {
   color: #475569;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
 }
 
 .records-table tbody tr {
@@ -2136,8 +2138,8 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: var(--spacing-lg);
-  margin-top: var(--spacing-xl);
+  gap: 0.85rem;
+  margin-top: 1.2rem;
   flex-wrap: wrap;
 }
 
@@ -2150,7 +2152,7 @@ onUnmounted(() => {
 .pagination-right {
   display: flex;
   align-items: center;
-  gap: var(--spacing-lg);
+  gap: 0.75rem;
 }
 
 .page-size-select {
@@ -2185,15 +2187,15 @@ onUnmounted(() => {
 }
 
 .pagination button {
-  padding: 0.625rem 1.25rem;
-  border: 1.5px solid #cbd5e1;
-  border-radius: 0.75rem;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.65rem;
   background: white;
   color: #475569;
   cursor: pointer;
   transition: all 0.2s ease;
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: 0.82rem;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -2202,8 +2204,8 @@ onUnmounted(() => {
 .pagination button:hover:not(:disabled) {
   background: #f8fafc;
   border-color: #94a3b8;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transform: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
 }
 
 .pagination button:disabled {

@@ -189,54 +189,6 @@ public class GroupController {
     }
 
     /**
-     * 獲取未加入小組的人員列表（編輯時使用，排除當前小組的成員）
-     */
-    @GetMapping("/{id}/non-members")
-    @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
-    public ResponseEntity<ApiResponse<List<Person>>> getNonGroupMembers(@PathVariable Long id) {
-        try {
-            List<Person> nonMembers = groupService.getNonGroupMembers(id);
-            // 在事務內初始化懶加載的關聯，避免序列化時出現 LazyInitializationException
-            for (Person person : nonMembers) {
-                if (person.getGroupPersons() != null) {
-                    person.getGroupPersons().size(); // 觸發初始化
-                }
-                if (person.getPositionPersons() != null) {
-                    person.getPositionPersons().size(); // 觸發初始化
-                }
-            }
-            return ResponseEntity.ok(ApiResponse.ok(nonMembers));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.fail("獲取未加入小組的人員列表失敗：" + e.getMessage()));
-        }
-    }
-
-    /**
-     * 獲取未加入任何小組的人員列表（新增時使用）
-     */
-    @GetMapping("/non-members")
-    @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
-    public ResponseEntity<ApiResponse<List<Person>>> getPersonsWithoutGroup() {
-        try {
-            List<Person> nonMembers = groupService.getPersonsWithoutGroup();
-            // 在事務內初始化懶加載的關聯，避免序列化時出現 LazyInitializationException
-            for (Person person : nonMembers) {
-                if (person.getGroupPersons() != null) {
-                    person.getGroupPersons().size(); // 觸發初始化
-                }
-                if (person.getPositionPersons() != null) {
-                    person.getPositionPersons().size(); // 觸發初始化
-                }
-            }
-            return ResponseEntity.ok(ApiResponse.ok(nonMembers));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.fail("獲取未加入任何小組的人員列表失敗：" + e.getMessage()));
-        }
-    }
-
-    /**
      * 批量添加成員到小組（支援角色設定）
      */
     @PostMapping("/{id}/members")
@@ -288,29 +240,6 @@ public class GroupController {
     }
 
     /**
-     * 更新成員角色
-     */
-    @PutMapping("/{id}/members/{personId}/role")
-    public ResponseEntity<ApiResponse<String>> updateMemberRole(
-            @PathVariable Long id,
-            @PathVariable Long personId,
-            @RequestBody Map<String, String> request) {
-        try {
-            String role = request.get("role");
-            if (role == null || (!role.equals("MEMBER") && !role.equals("LEADER") && !role.equals("ASSISTANT_LEADER"))) {
-                return ResponseEntity.badRequest()
-                        .body(ApiResponse.fail("無效的角色：" + role));
-            }
-            
-            groupService.updateMemberRole(id, personId, role);
-            return ResponseEntity.ok(ApiResponse.ok("更新成員角色成功"));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.fail("更新成員角色失敗：" + e.getMessage()));
-        }
-    }
-
-    /**
      * 從小組移除成員
      */
     @DeleteMapping("/{id}/members/{personId}")
@@ -326,4 +255,3 @@ public class GroupController {
         }
     }
 }
-

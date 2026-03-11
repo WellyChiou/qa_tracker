@@ -277,10 +277,13 @@ async function save() {
     let sessionId
     if (props.session && props.session.id) {
       // 更新
-      const response = await apiRequest(`/church/checkin/admin/sessions/${props.session.id}`, {
+      const data = await apiRequest(`/church/checkin/admin/sessions/${props.session.id}`, {
         method: 'PUT',
         body: JSON.stringify(payload)
       }, '儲存中...', true)
+      if (data === null) {
+        throw new Error('更新場次失敗')
+      }
       sessionId = props.session.id
       toast.success('場次已更新')
     } else {
@@ -513,4 +516,3 @@ function close() {
   color: var(--text);
 }
 </style>
-

@@ -174,32 +174,6 @@ public class PersonManagementController {
     }
 
     /**
-     * 搜尋人員
-     */
-    @GetMapping("/search")
-    @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
-    public ResponseEntity<ApiResponse<List<Person>>> searchPersons(@RequestParam String keyword) {
-        try {
-            List<Person> persons = positionService.getAllPersons().stream()
-                .filter(p -> p.getPersonName().contains(keyword) || 
-                           (p.getDisplayName() != null && p.getDisplayName().contains(keyword)))
-                .toList();
-            // 在事務內初始化懶加載的關聯
-            for (Person person : persons) {
-                if (person.getGroupPersons() != null) {
-                    person.getGroupPersons().size(); // 觸發初始化
-                }
-                if (person.getPositionPersons() != null) {
-                    person.getPositionPersons().size(); // 觸發初始化
-                }
-            }
-            return ResponseEntity.ok(ApiResponse.ok(persons));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.fail("搜尋失敗：" + e.getMessage()));
-        }
-    }
-
-    /**
      * 獲取人員所屬的小組列表（包含加入時間、是否活躍）
      */
     @GetMapping("/{id}/groups")
@@ -329,4 +303,3 @@ public class PersonManagementController {
         }
     }
 }
-

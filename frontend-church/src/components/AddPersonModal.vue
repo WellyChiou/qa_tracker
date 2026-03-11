@@ -112,10 +112,9 @@ const filteredPersons = computed(() => {
 
 const loadPersons = async () => {
   try {
-    const response = await apiRequest('/church/persons/active', {
+    const result = await apiRequest('/church/persons/active', {
       method: 'GET'
     })
-    const result = await response.json()
     persons.value = result.persons || []
   } catch (error) {
     console.error('載入人員列表失敗：', error)
@@ -129,20 +128,12 @@ const searchPersons = () => {
 
 const selectPerson = async (person) => {
   try {
-    const response = await apiRequest(
+    await apiRequest(
       `/church/positions/${props.positionId}/persons/${person.id}?dayType=${props.dayType}`,
       { method: 'POST' }
     )
-    
-    const result = await response.json()
-    
-    if (response.ok && result.success !== false) {
-      emit('added')
-      closeModal()
-    } else {
-      console.error('添加失敗響應：', result)
-      alert('添加失敗：' + (result.error || '未知錯誤'))
-    }
+    emit('added')
+    closeModal()
   } catch (error) {
     console.error('添加人員失敗：', error)
     alert('添加失敗：' + (error.message || '網絡錯誤'))
@@ -365,4 +356,3 @@ onMounted(() => {
   height: 1rem;
 }
 </style>
-

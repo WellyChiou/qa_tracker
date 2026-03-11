@@ -9,9 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -65,19 +63,6 @@ public class ChurchPermissionController {
     }
 
     /**
-     * 根據資源獲取權限
-     */
-    @GetMapping("/resource/{resource}")
-    public ResponseEntity<ApiResponse<List<ChurchPermission>>> getPermissionsByResource(@PathVariable String resource) {
-        try {
-            List<ChurchPermission> permissions = churchPermissionService.getPermissionsByResource(resource);
-            return ResponseEntity.ok(ApiResponse.ok(permissions));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取權限列表失敗：" + e.getMessage()));
-        }
-    }
-
-    /**
      * 創建權限
      */
     @PostMapping
@@ -116,4 +101,3 @@ public class ChurchPermissionController {
         }
     }
 }
-

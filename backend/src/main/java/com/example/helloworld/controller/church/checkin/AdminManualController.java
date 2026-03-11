@@ -3,7 +3,6 @@ package com.example.helloworld.controller.church.checkin;
 import com.example.helloworld.dto.common.ApiResponse;
 import com.example.helloworld.repository.church.checkin.CheckinRepository;
 import com.example.helloworld.service.church.checkin.CheckinService;
-import com.example.helloworld.service.church.checkin.CsvService;
 import com.example.helloworld.service.church.checkin.ExcelService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -23,13 +22,11 @@ public class AdminManualController {
 
     private final CheckinRepository checkinRepo;
     private final CheckinService checkinService;
-    private final CsvService csvService;
     private final ExcelService excelService;
 
-    public AdminManualController(CheckinRepository checkinRepo, CheckinService checkinService, CsvService csvService, ExcelService excelService) {
+    public AdminManualController(CheckinRepository checkinRepo, CheckinService checkinService, ExcelService excelService) {
         this.checkinRepo = checkinRepo;
         this.checkinService = checkinService;
-        this.csvService = csvService;
         this.excelService = excelService;
     }
 
@@ -72,20 +69,6 @@ public class AdminManualController {
         }
     }
 
-    @GetMapping("/export.csv")
-    public ResponseEntity<byte[]> exportCsv(
-            @RequestParam(required = false) String q,
-            @RequestParam(required = false) String from,
-            @RequestParam(required = false) String to,
-            @RequestParam(defaultValue = "false") boolean includeCanceled
-    ) {
-        byte[] bytes = csvService.exportManualCheckins(q, parseStart(from), parseEnd(to), includeCanceled);
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"manual-checkins.csv\"")
-                .contentType(new MediaType("text", "csv"))
-                .body(bytes);
-    }
-
     @GetMapping("/export.xlsx")
     public ResponseEntity<byte[]> exportExcel(
             @RequestParam(required = false) String q,
@@ -116,4 +99,3 @@ public class AdminManualController {
         return d.atTime(23, 59, 59);
     }
 }
-

@@ -8,6 +8,24 @@
         </div>
       </div>
 
+      <section class="overview-strip">
+        <article class="overview-card overview-card--accent">
+          <span>系統參數</span>
+          <strong>{{ settings.length }}</strong>
+          <p>目前已載入的系統設定項目數量。</p>
+        </article>
+        <article class="overview-card">
+          <span>備份檔案</span>
+          <strong>{{ backups.length }}</strong>
+          <p>目前已載入的備份檔案數量。</p>
+        </article>
+        <article class="overview-card">
+          <span>目前頁籤</span>
+          <strong>{{ activeTab === 'settings' ? '系統參數' : '備份管理' }}</strong>
+          <p>可在系統設定與備份作業之間快速切換。</p>
+        </article>
+      </section>
+
       <!-- 標籤頁 -->
       <div class="tabs-seg" role="tablist" aria-label="Maintenance tabs">
         <button 
@@ -421,6 +439,59 @@ onMounted(() => {
   gap:14px;
 }
 
+.overview-strip{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:12px;
+}
+
+.overview-card{
+  padding:16px;
+  border-radius:20px;
+  border:1px solid rgba(2,6,23,.08);
+  background:rgba(255,255,255,.88);
+  box-shadow:var(--shadow-sm);
+}
+
+.overview-card span{
+  display:block;
+  color:rgba(2,6,23,.56);
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+
+.overview-card strong{
+  display:block;
+  margin-top:8px;
+  font-size:28px;
+  line-height:1;
+  letter-spacing:-0.04em;
+}
+
+.overview-card p{
+  margin:8px 0 0;
+  color:rgba(2,6,23,.62);
+  font-size:13px;
+  line-height:1.6;
+  font-weight:700;
+}
+
+.overview-card--accent{
+  background:linear-gradient(140deg, rgba(15,23,42,.96), rgba(29,78,216,.92));
+}
+
+.overview-card--accent span,
+.overview-card--accent strong,
+.overview-card--accent p{
+  color:white;
+}
+
+.overview-card--accent p{
+  color:rgba(255,255,255,.76);
+}
+
 /* Tabs */
 .tabs-seg{
   display:inline-flex;
@@ -565,6 +636,7 @@ onMounted(() => {
 .btn-delete:hover{ background:rgba(239,68,68,.14); }
 
 @media (max-width: 640px){
+  .overview-strip{ grid-template-columns:1fr; }
   .section-actions{ justify-content:flex-start; }
   .settings-grid{ grid-template-columns:1fr; }
 }

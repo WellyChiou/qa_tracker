@@ -13,10 +13,63 @@
           </p>
 
           <div class="hero-actions">
-            <router-link to="/activities" class="btn btn-primary">查看最新活動</router-link>
-            <router-link to="/about" class="btn btn-ghost">了解教會</router-link>
-            <router-link to="/contact" class="btn btn-ghost">聯絡我們</router-link>
+            <router-link to="/activities" class="btn btn-primary">近期活動</router-link>
+            <router-link to="/about" class="btn btn-ghost">認識教會</router-link>
+            <router-link to="/contact" class="btn btn-ghost">聯絡</router-link>
           </div>
+        </div>
+
+        <div class="hero-side">
+          <div class="hero-side__card">
+            <span class="hero-side__label">本週節奏</span>
+            <strong>{{ churchInfo.home_main_service_time || '每週日上午 10:00' }}</strong>
+            <p>{{ churchInfo.home_main_service_location || '榮耀堂' }}</p>
+          </div>
+
+          <div class="hero-side__grid">
+            <article class="hero-side__mini">
+              <span>活動</span>
+              <strong>{{ upcomingActivities.length }}</strong>
+              <small>近期可參與</small>
+            </article>
+            <article class="hero-side__mini">
+              <span>公告</span>
+              <strong>{{ pinnedAnnouncements.length }}</strong>
+              <small>置頂更新</small>
+            </article>
+            <article class="hero-side__mini">
+              <span>代禱</span>
+              <strong>{{ urgentPrayerRequests.length }}</strong>
+              <small>緊急事項</small>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--tight" v-if="churchInfo">
+      <div class="container">
+        <div class="welcome-strip">
+          <article class="welcome-strip__card">
+            <span class="welcome-strip__eyebrow">主日聚會</span>
+            <strong>{{ churchInfo.home_main_service_time || '每週日上午 10:00' }}</strong>
+            <p>{{ churchInfo.home_main_service_location || '歡迎現場一起敬拜與交流。' }}</p>
+          </article>
+
+          <article
+            class="welcome-strip__card"
+            v-if="churchInfo.home_saturday_service_time || churchInfo.home_saturday_service_location"
+          >
+            <span class="welcome-strip__eyebrow">晚崇聚會</span>
+            <strong>{{ churchInfo.home_saturday_service_time || '歡迎參與' }}</strong>
+            <p>{{ churchInfo.home_saturday_service_location || '適合週末較晚到的你。' }}</p>
+          </article>
+
+          <article class="welcome-strip__card welcome-strip__card--accent">
+            <span class="welcome-strip__eyebrow">初次來訪</span>
+            <strong>先從活動與聯絡開始</strong>
+            <p>先認識教會，再找到適合你的聚會節奏與連結方式。</p>
+          </article>
         </div>
       </div>
     </section>
@@ -82,7 +135,7 @@
         </div>
 
         <div class="center" style="margin-top:18px">
-          <router-link to="/announcements" class="btn btn-ghost">查看全部消息 →</router-link>
+          <router-link to="/announcements" class="btn btn-ghost">全部消息</router-link>
         </div>
       </div>
     </section>
@@ -114,7 +167,7 @@
         </div>
 
         <div class="center" style="margin-top:18px">
-          <router-link to="/prayer-requests" class="btn btn-ghost">查看全部代禱事項 →</router-link>
+          <router-link to="/prayer-requests" class="btn btn-ghost">全部代禱</router-link>
         </div>
       </div>
     </section>
@@ -153,7 +206,7 @@
         </div>
 
         <div class="center" style="margin-top:18px">
-          <router-link to="/activities" class="btn btn-ghost">查看全部活動 →</router-link>
+          <router-link to="/activities" class="btn btn-ghost">全部活動</router-link>
         </div>
       </div>
     </section>
@@ -237,14 +290,8 @@ const formatActivityTime = (startTime, endTime) => {
 
 const loadChurchInfo = async () => {
   try {
-    const response = await apiRequest('/church/public/church-info', { method: 'GET' }, '載入教會資訊', false)
-
-    if (response.ok) {
-      const data = await response.json()
-      if (data.success && data.data) {
-        churchInfo.value = data.data
-      }
-    }
+    const data = await apiRequest('/church/public/church-info', { method: 'GET' }, '載入教會資訊', false)
+    churchInfo.value = data || null
   } catch (error) {
     console.error('載入教會資訊失敗:', error)
   }
@@ -252,14 +299,8 @@ const loadChurchInfo = async () => {
 
 const loadActivities = async () => {
   try {
-    const response = await apiRequest('/church/public/activities', { method: 'GET' }, '載入活動資訊', false)
-
-    if (response.ok) {
-      const data = await response.json()
-      if (data.success && data.data) {
-        activities.value = data.data
-      }
-    }
+    const data = await apiRequest('/church/public/activities', { method: 'GET' }, '載入活動資訊', false)
+    activities.value = Array.isArray(data) ? data : []
   } catch (error) {
     console.error('載入活動資訊失敗:', error)
   }
@@ -267,14 +308,8 @@ const loadActivities = async () => {
 
 const loadAnnouncements = async () => {
   try {
-    const response = await apiRequest('/church/public/announcements', { method: 'GET' }, '載入公告', false)
-
-    if (response.ok) {
-      const data = await response.json()
-      if (data.success && data.data) {
-        announcements.value = data.data
-      }
-    }
+    const data = await apiRequest('/church/public/announcements', { method: 'GET' }, '載入公告', false)
+    announcements.value = Array.isArray(data) ? data : []
   } catch (error) {
     console.error('載入公告失敗:', error)
   }
@@ -282,14 +317,8 @@ const loadAnnouncements = async () => {
 
 const loadPrayerRequests = async () => {
   try {
-    const response = await apiRequest('/church/public/prayer-requests', { method: 'GET' }, '載入代禱事項', false)
-
-    if (response.ok) {
-      const data = await response.json()
-      if (data.success && data.data) {
-        prayerRequests.value = data.data
-      }
-    }
+    const data = await apiRequest('/church/public/prayer-requests', { method: 'GET' }, '載入代禱事項', false)
+    prayerRequests.value = Array.isArray(data) ? data : []
   } catch (error) {
     console.error('載入代禱事項失敗:', error)
   }
@@ -306,3 +335,153 @@ const loadData = async () => {
 
 onMounted(loadData)
 </script>
+
+<style scoped>
+.hero-surface {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.8fr);
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.hero-side {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.hero-side__card,
+.hero-side__mini,
+.welcome-strip__card {
+  border-radius: 16px;
+  border: 1px solid rgba(23, 33, 47, 0.08);
+  background: rgba(255, 255, 255, 0.74);
+  box-shadow: 0 14px 30px rgba(23, 33, 47, 0.08);
+  backdrop-filter: blur(14px);
+}
+
+.hero-side__card {
+  padding: 1.05rem;
+  min-height: 150px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.96), rgba(244, 237, 223, 0.84));
+}
+
+.hero-side__label,
+.welcome-strip__eyebrow {
+  display: inline-flex;
+  width: fit-content;
+  padding: 0.32rem 0.56rem;
+  border-radius: 999px;
+  background: rgba(190, 140, 66, 0.12);
+  color: #8a5a1f;
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.hero-side__card strong,
+.welcome-strip__card strong {
+  margin-top: 0.7rem;
+  color: #17212f;
+  font-size: 1.35rem;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+}
+
+.hero-side__card p,
+.welcome-strip__card p {
+  margin: 0.45rem 0 0;
+  color: rgba(23, 33, 47, 0.62);
+  font-weight: 600;
+  line-height: 1.65;
+}
+
+.hero-side__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.hero-side__mini {
+  padding: 0.85rem 0.8rem;
+  min-height: 112px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.hero-side__mini span {
+  color: rgba(23, 33, 47, 0.56);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hero-side__mini strong {
+  color: #17212f;
+  font-size: 1.6rem;
+  line-height: 1;
+  letter-spacing: -0.05em;
+}
+
+.hero-side__mini small {
+  color: rgba(23, 33, 47, 0.56);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.welcome-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.welcome-strip__card {
+  padding: 1rem;
+  min-height: 142px;
+}
+
+.welcome-strip__card--accent {
+  background:
+    linear-gradient(140deg, rgba(28, 76, 130, 0.96), rgba(70, 126, 188, 0.9));
+}
+
+.welcome-strip__card--accent .welcome-strip__eyebrow {
+  background: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.welcome-strip__card--accent strong,
+.welcome-strip__card--accent p {
+  color: white;
+}
+
+.welcome-strip__card--accent p {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+@media (max-width: 980px) {
+  .hero-surface,
+  .welcome-strip {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .hero-side__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-side__mini,
+  .hero-side__card,
+  .welcome-strip__card {
+    min-height: auto;
+  }
+}
+</style>

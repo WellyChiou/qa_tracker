@@ -146,20 +146,13 @@ const loadChurchInfo = async () => {
   siteLoadError.value = ''
 
   try {
-    const response = await apiRequest('/church/public/church-info', { method: 'GET' }, '載入聯絡資訊', false)
+    const data = await apiRequest('/church/public/church-info', { method: 'GET' }, '載入聯絡資訊', false)
 
-    if (!response?.ok) {
-      site.value = null
-      siteLoadError.value = '載入失敗，請稍後再試。'
-      return
-    }
-
-    const data = await response.json()
-    if (data?.success && data?.data) {
-      site.value = data.data
+    if (data) {
+      site.value = data
     } else {
       site.value = null
-      siteLoadError.value = data?.message || '載入失敗，資料格式不正確。'
+      siteLoadError.value = '載入失敗，資料格式不正確。'
     }
   } catch (error) {
     console.error('載入站台資訊失敗:', error)
@@ -178,7 +171,7 @@ const submitForm = async () => {
   submitMessage.value = ''
 
   try {
-    const response = await apiRequest(
+    const data = await apiRequest(
       '/church/public/contact-submissions',
       {
         method: 'POST',
@@ -187,18 +180,9 @@ const submitForm = async () => {
       '提交中...',
       false
     )
-
-    const data = await response.json()
-
-    if (response.ok && data.success) {
-      submitStatus.value = 'success'
-      submitMessage.value = data.message || '感謝您的留言！我們會盡快與您聯繫。'
-
-      form.value = { name: '', email: '', phone: '', message: '' }
-    } else {
-      submitStatus.value = 'error'
-      submitMessage.value = data.message || '提交失敗，請稍後再試。'
-    }
+    submitStatus.value = 'success'
+    submitMessage.value = data?.message || '感謝您的留言！我們會盡快與您聯繫。'
+    form.value = { name: '', email: '', phone: '', message: '' }
   } catch (error) {
     submitStatus.value = 'error'
     submitMessage.value = '提交失敗：' + error.message

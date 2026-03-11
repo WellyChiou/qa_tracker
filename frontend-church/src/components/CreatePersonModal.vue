@@ -106,21 +106,13 @@ const handleSubmit = async () => {
 
   saving.value = true
   try {
-    const response = await apiRequest('/church/persons', {
+    const result = await apiRequest('/church/persons', {
       method: 'POST',
       body: JSON.stringify(form.value)
     })
-
-    const result = await response.json()
-    
-    if (response.ok && result.success !== false) {
-      emit('created', result.person)
-      resetForm()
-      closeModal()
-    } else {
-      console.error('創建失敗響應：', result)
-      alert('創建失敗：' + (result.error || '未知錯誤'))
-    }
+    emit('created', result.person)
+    resetForm()
+    closeModal()
   } catch (error) {
     console.error('創建人員失敗：', error)
     alert('創建失敗：' + (error.message || '網絡錯誤'))
@@ -299,4 +291,3 @@ watch(() => props.show, (newVal) => {
   height: 1rem;
 }
 </style>
-

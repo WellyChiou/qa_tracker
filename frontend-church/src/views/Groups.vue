@@ -93,14 +93,8 @@ const groupsWithFormattedData = computed(() => {
 const loadGroups = async () => {
   isLoading.value = true
   try {
-    const response = await apiRequest('/church/public/groups', { method: 'GET' }, '載入小組資訊', false)
-
-    if (response.ok) {
-      const data = await response.json()
-      if (data.success && data.data) {
-        groups.value = data.data
-      }
-    }
+    const data = await apiRequest('/church/public/groups', { method: 'GET' }, '載入小組資訊', false)
+    groups.value = Array.isArray(data) ? data : []
   } catch (error) {
     console.error('載入小組資訊失敗:', error)
   } finally {

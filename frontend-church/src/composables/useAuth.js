@@ -27,18 +27,15 @@ export function useAuth() {
     // 創建新的請求
     checkAuthPromise = (async () => {
     try {
-      const response = await apiRequest('/church/auth/current-user', {
+      const user = await apiRequest('/church/auth/current-user', {
         method: 'GET'
       })
       
-      if (response.ok) {
-        const user = await response.json()
-        if (user && user.authenticated) {
-          currentUser.value = user
-          isAuthenticated.value = true
-            lastCheckTime = Date.now()
-          return true
-        }
+      if (user && user.authenticated) {
+        currentUser.value = user
+        isAuthenticated.value = true
+        lastCheckTime = Date.now()
+        return true
       }
     } catch (error) {
       console.error('認證檢查失敗:', error)
@@ -59,18 +56,11 @@ export function useAuth() {
 
   const login = async (username, password) => {
     try {
-      const response = await apiRequest('/church/auth/login', {
+      const result = await apiRequest('/church/auth/login', {
         method: 'POST',
         body: JSON.stringify({ username, password })
       })
-      
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || '登入失敗')
-      }
-      
-      const result = await response.json()
-      
+
       // 保存 Access Token 和 Refresh Token（如果有的話）
       if (result.accessToken) {
         setTokens(result.accessToken, result.refreshToken || null)
@@ -114,4 +104,3 @@ export function useAuth() {
     getUser
   }
 }
-

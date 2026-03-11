@@ -848,10 +848,10 @@ const calculateYear = () => {
 // 檢查該年度是否已有服事表
 const checkYearExists = async (year) => {
   try {
-    const response = await apiRequest(`/church/service-schedules/year/${year}`, {
+    const data = await apiRequest(`/church/service-schedules/${year}`, {
       method: 'GET'
     })
-    return response.ok
+    return data !== null
   } catch (error) {
     // 如果查詢失敗（例如 404），表示該年度沒有服事表
     return false
@@ -905,7 +905,7 @@ const saveSchedule = async () => {
       return result
     })
 
-    const response = await apiRequest('/church/service-schedules', {
+    const result = await apiRequest('/church/service-schedules', {
       method: 'POST',
       body: JSON.stringify({
         scheduleData: scheduleDataForBackend,
@@ -913,9 +913,7 @@ const saveSchedule = async () => {
       })
     }, '保存服事表中...')
 
-    const result = await response.json()
-    
-    if (response.ok && result.success !== false) {
+    if (result) {
       showNotification('服事表保存成功！', 'success', 3000)
       currentScheduleYear.value = result.year
       editingScheduleYear.value = result.year // 設置編輯年度，這樣下次就可以使用「更新」按鈕
@@ -924,9 +922,6 @@ const saveSchedule = async () => {
       // 保持編輯模式，讓用戶可以繼續調整
       // isEditing.value = false // 不退出編輯模式，讓用戶可以繼續調整
       await loadHistory() // 重新載入歷史記錄
-    } else {
-      const errorMsg = result.error || '未知錯誤'
-      showNotification('保存失敗：' + errorMsg, 'error', 5000)
     }
   } catch (error) {
     const errorMsg = error.message || '未知錯誤'
@@ -944,11 +939,10 @@ const saveSchedule = async () => {
 // 載入歷史記錄
 const loadHistory = async () => {
   try {
-    const response = await apiRequest('/church/service-schedules', {
+    const result = await apiRequest('/church/service-schedules', {
       method: 'GET'
     }, '載入歷史記錄中...')
-    const result = await response.json()
-    historyList.value = result || []
+    historyList.value = Array.isArray(result) ? result : []
   } catch (error) {
     console.error('載入歷史記錄失敗：', error)
     showNotification('載入歷史記錄失敗：' + error.message, 'error', 3000)
@@ -958,12 +952,11 @@ const loadHistory = async () => {
 // 載入指定的服事表
 const loadSchedule = async (year) => {
   try {
-    const response = await apiRequest(`/church/service-schedules/${year}`, {
+    const data = await apiRequest(`/church/service-schedules/${year}`, {
       method: 'GET'
     }, '載入服事表中...')
-    const data = await response.json()
     
-    if (response.ok) {
+    if (data) {
       // 載入年度
       currentScheduleYear.value = data.year
       
@@ -1079,8 +1072,6 @@ const loadSchedule = async (year) => {
       isLoadedFromHistory.value = true // 標記為從歷史記錄載入
       
       showNotification('服事表載入成功！', 'success', 3000)
-    } else {
-      showNotification('載入失敗：' + (data.error || '未知錯誤'), 'error', 3000)
     }
   } catch (error) {
     showNotification('載入失敗：' + error.message, 'error', 3000)
@@ -1090,12 +1081,11 @@ const loadSchedule = async (year) => {
 // 編輯指定的服事表
 const editSchedule = async (year) => {
   try {
-    const response = await apiRequest(`/church/service-schedules/${year}`, {
+    const data = await apiRequest(`/church/service-schedules/${year}`, {
       method: 'GET'
     }, '載入服事表中...')
-    const data = await response.json()
     
-    if (response.ok) {
+    if (data) {
       // 載入年度
       currentScheduleYear.value = data.year
       
@@ -1708,7 +1698,7 @@ const updateSchedule = async () => {
       return result
     })
 
-    const response = await apiRequest(`/church/service-schedules/${editingScheduleYear.value}`, {
+    const result = await apiRequest(`/church/service-schedules/${editingScheduleYear.value}`, {
       method: 'PUT',
       body: JSON.stringify({
         scheduleData: scheduleDataForBackend,
@@ -1716,9 +1706,7 @@ const updateSchedule = async () => {
       })
     }, '更新服事表中...')
 
-    const result = await response.json()
-    
-    if (response.ok) {
+    if (result) {
       showNotification('服事表更新成功！', 'success', 3000)
       // 如果年度改變了，更新當前年度
       if (result.year && result.year !== editingScheduleYear.value) {
@@ -1730,9 +1718,6 @@ const updateSchedule = async () => {
       originalSchedule.value = []
       isLoadedFromHistory.value = true // 更新後仍然是從歷史記錄載入的狀態
       await loadHistory() // 重新載入歷史記錄
-    } else {
-      const errorMsg = result.error || '未知錯誤'
-      showNotification('更新失敗：' + errorMsg, 'error', 5000)
     }
   } catch (error) {
     const errorMsg = error.message || '未知錯誤'
@@ -1868,13 +1853,12 @@ const exportSchedule = () => {
 // 載入崗位配置（從新的 API）
 const loadPositionConfig = async () => {
   try {
-    const response = await apiRequest('/church/positions/config/full', {
+    const result = await apiRequest('/church/positions/config/full', {
       method: 'GET'
     }, '載入崗位配置中...')
-    const result = await response.json()
     console.log('載入崗位配置響應：', result)
       
-    if (response.ok && result.config) {
+    if (result?.config) {
       if (Object.keys(result.config).length > 0) {
         // 轉換為舊格式以保持兼容性
         const config = result.config
@@ -1937,7 +1921,7 @@ const loadPositionConfig = async () => {
         positionConfig.value = {}
       }
     } else {
-      console.error('載入崗位配置失敗，HTTP 狀態：', response.status, result)
+      console.error('載入崗位配置失敗：資料格式不正確', result)
       positionConfig.value = {}
     }
   } catch (error) {
@@ -2078,32 +2062,26 @@ const loadCurrentWeekSchedule = async () => {
     
     // 載入當年的服事表
     try {
-      const response = await apiRequest(`/church/service-schedules/${currentYear}`, {
+      const data = await apiRequest(`/church/service-schedules/${currentYear}`, {
         method: 'GET'
       }, '載入本週服事人員中...')
       
-      if (response.ok) {
-        const data = await response.json()
+      if (data?.scheduleData && Array.isArray(data.scheduleData)) {
+        const saturdayData = data.scheduleData.find(item => item.date === weekDates.saturday)
+        const sundayData = data.scheduleData.find(item => item.date === weekDates.sunday)
         
-        if (data.scheduleData && Array.isArray(data.scheduleData)) {
-          // 找出本週六、週日的資料
-          const saturdayData = data.scheduleData.find(item => item.date === weekDates.saturday)
-          const sundayData = data.scheduleData.find(item => item.date === weekDates.sunday)
-          
-          // 調試信息：檢查找到的資料
-          if (saturdayData) {
-            console.log('找到週六資料：', saturdayData)
-            console.log('週六資料的 keys：', Object.keys(saturdayData))
-          }
-          if (sundayData) {
-            console.log('找到週日資料：', sundayData)
-            console.log('週日資料的 keys：', Object.keys(sundayData))
-          }
-          
-          currentWeekSchedule.value = {
-            saturday: saturdayData || null,
-            sunday: sundayData || null
-          }
+        if (saturdayData) {
+          console.log('找到週六資料：', saturdayData)
+          console.log('週六資料的 keys：', Object.keys(saturdayData))
+        }
+        if (sundayData) {
+          console.log('找到週日資料：', sundayData)
+          console.log('週日資料的 keys：', Object.keys(sundayData))
+        }
+        
+        currentWeekSchedule.value = {
+          saturday: saturdayData || null,
+          sunday: sundayData || null
         }
       }
     } catch (error) {

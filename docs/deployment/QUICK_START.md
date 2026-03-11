@@ -82,7 +82,9 @@ ls -la
 
 應該會看到：
 - `docker-compose.yml`
-- `frontend/`
+- `frontend-personal/`
+- `frontend-church/`
+- `frontend-church-admin/`
 - `backend/`
 - `README.md`
 等檔案
@@ -402,4 +404,3 @@ docker compose exec mysql bash
 4. 配置域名和 SSL 證書（參考 [HTTPS 完整指南](./HTTPS_COMPLETE_GUIDE.md)）
 
 祝您部署順利！🎉
-

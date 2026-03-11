@@ -128,30 +128,4 @@ public class ChurchRoleService {
         churchRoleRepository.deleteById(id);
     }
 
-    /**
-     * 為角色分配權限
-     */
-    @Transactional(transactionManager = "churchTransactionManager")
-    public ChurchRole assignPermissions(Long roleId, List<Long> permissionIds) {
-        ChurchRole role = churchRoleRepository.findById(roleId)
-            .orElseThrow(() -> new RuntimeException("角色不存在: " + roleId));
-
-        Set<ChurchPermission> permissions = new HashSet<>();
-        for (Long permissionId : permissionIds) {
-            ChurchPermission permission = churchPermissionRepository.findById(permissionId)
-                .orElseThrow(() -> new RuntimeException("權限不存在: " + permissionId));
-            permissions.add(permission);
-        }
-
-        role.setPermissions(permissions);
-        ChurchRole saved = churchRoleRepository.save(role);
-        
-        // 確保在事務內初始化懶加載的權限集合
-        if (saved.getPermissions() != null) {
-            saved.getPermissions().size();
-        }
-        
-        return saved;
-    }
 }
-

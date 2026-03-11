@@ -13,7 +13,8 @@
 
 ### 系統分離
 
-- **前端**：`frontend-church/` - 教會網站（前台 + 後台）
+- **前台**：`frontend-church/` - 教會公開網站
+- **後台**：`frontend-church-admin/` - 教會管理系統
 - **後端**：`backend/` - 共用後端，通過 package 結構分離（`controller/church/`, `service/church/`）
 
 ## 設定步驟
@@ -250,4 +251,3 @@ mysql -u root -p church < mysql/church-admin-setup.sql
 3. **權限獨立**：教會系統有自己的權限管理系統
 4. **菜單動態**：前台和後台菜單都從資料庫動態載入
 5. **暫時保留**：前台的編輯功能暫時保留，等後台完成後再移除
-

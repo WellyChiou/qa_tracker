@@ -2,7 +2,10 @@
   <AdminLayout>
     <div class="admin-checkin">
       <div class="page-header">
-        <h2>{{ isEditMode ? '編輯場次' : '簽到管理' }}</h2>
+        <div>
+          <h2>{{ isEditMode ? '編輯場次' : '簽到管理' }}</h2>
+          <p>{{ isEditMode ? '調整單一場次設定、小組關聯與開放時間，避免現場簽到設定失準。' : '集中查看今日場次、簽到名單、未簽到成員與 QR Code 狀態。' }}</p>
+        </div>
         <div class="actions">
           <button v-if="isEditMode" class="btn btn-secondary" @click="goBack">返回列表</button>
           <button v-else class="btn btn-secondary" @click="load">重新整理</button>
@@ -10,8 +13,26 @@
         </div>
       </div>
 
+      <section class="overview-strip">
+        <article class="overview-card overview-card--accent">
+          <span>{{ isEditMode ? '目前場次' : '今日場次' }}</span>
+          <strong>{{ sessions.length }}</strong>
+          <p>{{ isEditMode ? '正在編輯的場次已同步帶入簽到與小組資料。' : '列表顯示今日可簽到的場次數量。' }}</p>
+        </article>
+        <article class="overview-card">
+          <span>已簽到人數</span>
+          <strong>{{ sessions.reduce((sum, s) => sum + (stats[s.id]?.checked || 0), 0) }}</strong>
+          <p>依目前頁面所有場次累計已完成簽到的人數。</p>
+        </article>
+        <article class="overview-card">
+          <span>頁面模式</span>
+          <strong>{{ isEditMode ? '編輯' : '即時監看' }}</strong>
+          <p>{{ isEditMode ? '可調整場次資訊並同步更新小組關聯。' : '每 5 秒自動更新簽到資料，支援 QR 與補登作業。' }}</p>
+        </article>
+      </section>
+
       <!-- 編輯表單 -->
-      <div v-if="isEditMode && showEditForm" class="edit-form-card">
+      <div v-if="isEditMode && showEditForm" class="edit-form-card card surface-card">
         <h3>場次資訊</h3>
         <form @submit.prevent="saveSession" class="edit-form">
           <div class="form-row">
@@ -915,7 +936,8 @@ onBeforeUnmount(() => { if(timer) clearInterval(timer) })
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  gap: 16px;
+  margin-bottom: 24px;
 }
 
 .page-header h2 {
@@ -923,6 +945,68 @@ onBeforeUnmount(() => { if(timer) clearInterval(timer) })
   font-size: 24px;
   font-weight: 700;
   color: var(--text);
+}
+
+.page-header p {
+  margin: 8px 0 0;
+  max-width: 760px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.overview-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.overview-card {
+  padding: 20px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92));
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
+}
+
+.overview-card span {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.overview-card strong {
+  display: block;
+  margin-top: 10px;
+  font-size: 32px;
+  line-height: 1;
+  color: var(--text);
+}
+
+.overview-card p {
+  margin: 12px 0 0;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+.overview-card--accent {
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.92), rgba(30, 64, 175, 0.92));
+  border-color: transparent;
+}
+
+.overview-card--accent span,
+.overview-card--accent strong,
+.overview-card--accent p {
+  color: #eff6ff;
+}
+
+.surface-card {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 24px 50px rgba(15, 23, 42, 0.08);
 }
 
 .actions {
@@ -1397,5 +1481,18 @@ onBeforeUnmount(() => { if(timer) clearInterval(timer) })
 .group-tag {
   color: #0066cc;
 }
-</style>
 
+@media (max-width: 900px) {
+  .page-header,
+  .row,
+  .right {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .overview-strip,
+  .row2 {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

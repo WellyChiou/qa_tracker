@@ -158,48 +158,6 @@ public class GroupService {
         return groupPersonRepository.findActiveMembersByGroupId(groupId);
     }
 
-    // 獲取未加入小組的人員列表（只返回沒有加入任何活躍小組的人員）
-    @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
-    public List<Person> getNonGroupMembers(Long groupId) {
-        // 獲取所有活躍人員
-        List<Person> allActivePersons = personRepository.findByIsActiveTrueOrderByPersonNameAsc();
-        
-        // 獲取所有已加入任何活躍小組的人員ID
-        List<GroupPerson> allActiveGroupPersons = groupPersonRepository.findAll().stream()
-                .filter(gp -> gp.getIsActive() != null && gp.getIsActive())
-                .collect(java.util.stream.Collectors.toList());
-        List<Long> allMemberIds = allActiveGroupPersons.stream()
-                .map(gp -> gp.getPersonId() != null ? gp.getPersonId() : gp.getPerson().getId())
-                .distinct()
-                .collect(java.util.stream.Collectors.toList());
-        
-        // 只返回沒有加入任何活躍小組的人員
-        return allActivePersons.stream()
-                .filter(p -> !allMemberIds.contains(p.getId()))
-                .collect(java.util.stream.Collectors.toList());
-    }
-
-    // 獲取未加入任何活躍小組的人員列表（用於新增小組時）
-    @Transactional(transactionManager = "churchTransactionManager", readOnly = true)
-    public List<Person> getPersonsWithoutGroup() {
-        // 獲取所有活躍人員
-        List<Person> allActivePersons = personRepository.findByIsActiveTrueOrderByPersonNameAsc();
-        
-        // 獲取所有已加入任何活躍小組的人員ID
-        List<GroupPerson> allActiveGroupPersons = groupPersonRepository.findAll().stream()
-                .filter(gp -> gp.getIsActive() != null && gp.getIsActive())
-                .collect(java.util.stream.Collectors.toList());
-        List<Long> allMemberIds = allActiveGroupPersons.stream()
-                .map(gp -> gp.getPersonId() != null ? gp.getPersonId() : gp.getPerson().getId())
-                .distinct()
-                .collect(java.util.stream.Collectors.toList());
-        
-        // 只返回沒有加入任何活躍小組的人員
-        return allActivePersons.stream()
-                .filter(p -> !allMemberIds.contains(p.getId()))
-                .collect(java.util.stream.Collectors.toList());
-    }
-
     // 批量添加成員到小組（支援多小組）
     @Transactional(transactionManager = "churchTransactionManager")
     public void addMembersToGroup(Long groupId, List<Long> personIds, LocalDate joinedAt) {
@@ -341,18 +299,4 @@ public class GroupService {
         }
     }
 
-    // 更新成員角色
-    @Transactional(transactionManager = "churchTransactionManager")
-    public void updateMemberRole(Long groupId, Long personId, String role) {
-        GroupPerson groupPerson = groupPersonRepository.findByGroupIdAndPersonIdAndIsActiveTrue(groupId, personId)
-                .orElseThrow(() -> new RuntimeException("人員不在該小組中或已離開"));
-        
-        if (role == null || (!role.equals("MEMBER") && !role.equals("LEADER") && !role.equals("ASSISTANT_LEADER"))) {
-            throw new RuntimeException("無效的角色：" + role);
-        }
-        
-        groupPerson.setRole(role);
-        groupPersonRepository.save(groupPerson);
-    }
 }
-

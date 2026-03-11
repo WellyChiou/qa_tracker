@@ -899,11 +899,11 @@ const hideTradingFeesConfig = () => {
 }
 
 .main-content {
-  max-width: 1200px;
+  max-width: 1180px;
   margin: 0 auto;
   display: grid;
   grid-template-columns: 1fr;
-  gap: 30px;
+  gap: 22px;
 }
 
 /* Modal 樣式 */
@@ -922,33 +922,33 @@ const hideTradingFeesConfig = () => {
 
 .modal-panel {
   width: 100%;
-  max-width: 56rem;
+  max-width: 46rem;
   background: white;
-  border-radius: 1rem;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  border-radius: 0.875rem;
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.14);
   border: 1px solid #e2e8f0;
-  margin: 2rem 0;
+  margin: 1rem 0;
 }
 
 .modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.25rem 1.5rem;
+  padding: 1rem 1.25rem;
   border-bottom: 1px solid #e2e8f0;
   background: linear-gradient(to right, #f8fafc, white);
-  border-radius: 1rem 1rem 0 0;
+  border-radius: 0.875rem 0.875rem 0 0;
 }
 
 .modal-title {
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   font-weight: 700;
   color: #1e293b;
   margin: 0;
 }
 
 .modal-body {
-  padding: 1.5rem;
+  padding: 1.25rem;
 }
 
 .add-record-button {
@@ -966,9 +966,9 @@ const hideTradingFeesConfig = () => {
 .filters,
 .records-list {
   background: white;
-  padding: 30px;
-  border-radius: 15px;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+  padding: 22px;
+  border-radius: 14px;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
   width: 100%;
   max-width: 100%;
 }
@@ -976,17 +976,17 @@ const hideTradingFeesConfig = () => {
 .filters h2,
 .records-list h2 {
   color: #667eea;
-  margin-bottom: 20px;
-  font-size: 1.5em;
+  margin-bottom: 16px;
+  font-size: 1.3rem;
   border-bottom: 2px solid #f0f0f0;
-  padding-bottom: 10px;
+  padding-bottom: 8px;
 }
 
 .form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
-  margin-bottom: 30px;
+  gap: 14px;
+  margin-bottom: 20px;
 }
 
 .form-group {
@@ -1002,20 +1002,20 @@ const hideTradingFeesConfig = () => {
 
 .form-group label {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   font-weight: bold;
   color: #555;
-  font-size: 1em;
+  font-size: 0.82rem;
 }
 
 .form-group input,
 .form-group select,
 .form-group textarea {
   width: 100%;
-  padding: 12px 15px;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
-  font-size: 1em;
+  padding: 10px 12px;
+  border: 1px solid #d6deea;
+  border-radius: 10px;
+  font-size: 0.9rem;
   transition: all 0.3s;
   box-sizing: border-box;
   background: #fafafa;
@@ -1029,7 +1029,6 @@ const hideTradingFeesConfig = () => {
   border-color: #667eea;
   background: white;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-  transform: translateY(-1px);
 }
 
 .form-group input::placeholder,
@@ -1048,16 +1047,16 @@ const hideTradingFeesConfig = () => {
 }
 
 .btn {
-  padding: 14px 28px;
+  padding: 10px 16px;
   border: none;
-  border-radius: var(--border-radius);
-  font-size: 15px;
+  border-radius: 10px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: var(--transition);
   position: relative;
   overflow: hidden;
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow);
 }
 
 .btn::before {
@@ -1074,8 +1073,8 @@ const hideTradingFeesConfig = () => {
 }
 
 .btn:hover::before {
-  width: 300px;
-  height: 300px;
+  width: 220px;
+  height: 220px;
 }
 
 .btn-primary {
@@ -1085,7 +1084,7 @@ const hideTradingFeesConfig = () => {
 }
 
 .btn-primary:hover {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
 }
 
@@ -1097,7 +1096,7 @@ const hideTradingFeesConfig = () => {
 
 .btn-secondary:hover {
   background: #5a6268;
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   box-shadow: 0 5px 15px rgba(108, 117, 125, 0.4);
 }
 
@@ -1109,7 +1108,7 @@ const hideTradingFeesConfig = () => {
 
 .btn-reset:hover {
   background: #e9ecef;
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
 }
 
@@ -1128,16 +1127,16 @@ const hideTradingFeesConfig = () => {
 .filter-group label {
   font-weight: bold;
   color: #555;
-  font-size: 0.95em;
+  font-size: 0.82rem;
 }
 
 .filter-group select {
   padding: 10px 12px;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
+  border: 1px solid #d6deea;
+  border-radius: 10px;
   background: #fafafa;
   color: #333;
-  font-size: 0.95em;
+  font-size: 0.9rem;
   transition: all 0.3s;
 }
 
@@ -1157,14 +1156,14 @@ const hideTradingFeesConfig = () => {
   width: 100%;
   border-collapse: collapse;
   background: white;
-  border-radius: 8px;
+  border-radius: 10px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
 
 .records-table th,
 .records-table td {
-  padding: 12px 15px;
+  padding: 10px 12px;
   text-align: left;
   border-bottom: 1px solid #e0e0e0;
 }
@@ -1172,7 +1171,7 @@ const hideTradingFeesConfig = () => {
 .records-table th {
   background: #f8f9fa;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.78rem;
   color: #495057;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -1516,4 +1515,3 @@ const hideTradingFeesConfig = () => {
   border-color: rgba(255, 255, 255, 0.4);
 }
 </style>
-

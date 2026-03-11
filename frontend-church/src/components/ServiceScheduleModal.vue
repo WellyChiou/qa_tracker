@@ -481,10 +481,10 @@ const calculatedYear = computed(() => {
 // 檢查該年度是否已有服事表
 const checkYearExists = async (year) => {
   try {
-    const response = await apiRequest(`/church/service-schedules/year/${year}`, {
+    const data = await apiRequest(`/church/service-schedules/${year}`, {
       method: 'GET'
     })
-    return response.ok
+    return data !== null
   } catch (error) {
     return false
   }
@@ -510,13 +510,10 @@ const availableYearsForCreate = computed(() => {
 // 載入已存在的年份列表
 const loadExistingYears = async () => {
   try {
-    const response = await apiRequest('/church/service-schedules', {
+    const schedules = await apiRequest('/church/service-schedules', {
       method: 'GET'
     })
-    if (response.ok) {
-      const schedules = await response.json()
-      existingYears.value = schedules.map(s => s.year).filter(y => y != null)
-    }
+    existingYears.value = Array.isArray(schedules) ? schedules.map(s => s.year).filter(y => y != null) : []
   } catch (error) {
     console.error('載入已存在年份失敗:', error)
   }
@@ -726,13 +723,12 @@ const getPersonIdByName = (personName, posCode, item) => {
 
 const loadScheduleForEdit = async (scheduleYear) => {
   try {
-    const response = await apiRequest(`/church/service-schedules/${scheduleYear}`, {
+    const data = await apiRequest(`/church/service-schedules/${scheduleYear}`, {
       method: 'GET',
       credentials: 'include'
     }, '載入服事表中...')
-    const data = await response.json()
-    
-    if (response.ok) {
+
+    if (data) {
       localScheduleYear.value = data.year
       editingScheduleYear.value = scheduleYear
       
@@ -832,8 +828,6 @@ const loadScheduleForEdit = async (scheduleYear) => {
       localUseRandomAssignment.value = false
       
       showNotification('服事表載入成功！', 'success', 3000)
-    } else {
-      showNotification('載入失敗：' + (data.error || '未知錯誤'), 'error', 3000)
     }
   } catch (error) {
     showNotification('載入失敗：' + error.message, 'error', 3000)
@@ -842,12 +836,11 @@ const loadScheduleForEdit = async (scheduleYear) => {
 
 const loadScheduleForView = async (scheduleYear) => {
   try {
-    const response = await apiRequest(`/church/service-schedules/${scheduleYear}`, {
+    const data = await apiRequest(`/church/service-schedules/${scheduleYear}`, {
       method: 'GET'
     }, '載入服事表中...')
-    const data = await response.json()
-    
-    if (response.ok) {
+
+    if (data) {
       localScheduleYear.value = data.year
       
       if (data.scheduleData && Array.isArray(data.scheduleData) && data.scheduleData.length > 0) {
@@ -1638,7 +1631,7 @@ const saveSchedule = async () => {
       return result
     })
 
-    const response = await apiRequest('/church/service-schedules', {
+    const result = await apiRequest('/church/service-schedules', {
       method: 'POST',
       body: JSON.stringify({
         scheduleData: scheduleDataForBackend,
@@ -1646,9 +1639,7 @@ const saveSchedule = async () => {
       })
     }, '保存服事表中...')
 
-    const result = await response.json()
-    
-    if (response.ok && result.success !== false) {
+    if (result) {
       showNotification('服事表保存成功！', 'success', 3000)
       editingScheduleYear.value = result.year
       localScheduleYear.value = result.year
@@ -1657,9 +1648,6 @@ const saveSchedule = async () => {
       setTimeout(() => {
         closeModal()
       }, 1500)
-    } else {
-      const errorMsg = result.error || '未知錯誤'
-      showNotification('保存失敗：' + errorMsg, 'error', 5000)
     }
   } catch (error) {
     const errorMsg = error.message || '未知錯誤'
@@ -1722,7 +1710,7 @@ const updateSchedule = async () => {
       return result
     })
 
-    const response = await apiRequest(`/church/service-schedules/${editingScheduleYear.value}`, {
+    const result = await apiRequest(`/church/service-schedules/${editingScheduleYear.value}`, {
       method: 'PUT',
       body: JSON.stringify({
         scheduleData: scheduleDataForBackend,
@@ -1730,9 +1718,7 @@ const updateSchedule = async () => {
       })
     }, '更新服事表中...')
 
-    const result = await response.json()
-    
-    if (response.ok) {
+    if (result) {
       showNotification('服事表更新成功！', 'success', 3000)
       // 如果年度改變了，更新當前年度
       if (result.year && result.year !== editingScheduleYear.value) {

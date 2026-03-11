@@ -127,22 +127,7 @@ public class ChurchUserService {
         }
 
         ChurchUser saved = churchUserRepository.save(user);
-        
-        // 確保在事務內初始化所有懶加載的關聯
-        if (saved.getRoles() != null) {
-            saved.getRoles().size();
-            // 初始化角色的權限
-            for (var role : saved.getRoles()) {
-                if (role.getPermissions() != null) {
-                    role.getPermissions().size();
-                }
-            }
-        }
-        if (saved.getPermissions() != null) {
-            saved.getPermissions().size();
-        }
-        
-        return saved;
+        return getUserWithAssociations(saved.getUid());
     }
 
     /**
@@ -198,23 +183,8 @@ public class ChurchUserService {
             existing.setPermissions(userUpdate.getPermissions());
         }
 
-        ChurchUser saved = churchUserRepository.save(existing);
-        
-        // 確保在事務內初始化所有懶加載的關聯
-        if (saved.getRoles() != null) {
-            saved.getRoles().size();
-            // 初始化角色的權限
-            for (var role : saved.getRoles()) {
-                if (role.getPermissions() != null) {
-                    role.getPermissions().size();
-                }
-            }
-        }
-        if (saved.getPermissions() != null) {
-            saved.getPermissions().size();
-        }
-        
-        return saved;
+        churchUserRepository.save(existing);
+        return getUserWithAssociations(uid);
     }
 
     /**
@@ -241,23 +211,8 @@ public class ChurchUserService {
         }
 
         user.setRoles(roles);
-        ChurchUser saved = churchUserRepository.save(user);
-        
-        // 確保在事務內初始化所有懶加載的關聯
-        if (saved.getRoles() != null) {
-            saved.getRoles().size();
-            // 初始化角色的權限
-            for (var role : saved.getRoles()) {
-                if (role.getPermissions() != null) {
-                    role.getPermissions().size();
-                }
-            }
-        }
-        if (saved.getPermissions() != null) {
-            saved.getPermissions().size();
-        }
-        
-        return saved;
+        churchUserRepository.save(user);
+        return getUserWithAssociations(uid);
     }
 
     /**
@@ -276,22 +231,26 @@ public class ChurchUserService {
         }
 
         user.setPermissions(permissions);
-        ChurchUser saved = churchUserRepository.save(user);
-        
-        // 確保在事務內初始化所有懶加載的關聯
-        if (saved.getRoles() != null) {
-            saved.getRoles().size();
-            for (var role : saved.getRoles()) {
-                if (role.getPermissions() != null) {
-                    role.getPermissions().size();
+        churchUserRepository.save(user);
+        return getUserWithAssociations(uid);
+    }
+
+    private ChurchUser getUserWithAssociations(String uid) {
+        return churchUserRepository.findByUidWithRolesAndPermissions(uid)
+            .map(user -> {
+                if (user.getRoles() != null) {
+                    user.getRoles().size();
+                    for (var role : user.getRoles()) {
+                        if (role.getPermissions() != null) {
+                            role.getPermissions().size();
+                        }
+                    }
                 }
-            }
-        }
-        if (saved.getPermissions() != null) {
-            saved.getPermissions().size();
-        }
-        
-        return saved;
+                if (user.getPermissions() != null) {
+                    user.getPermissions().size();
+                }
+                return user;
+            })
+            .orElseThrow(() -> new RuntimeException("用戶不存在: " + uid));
     }
 }
-

@@ -2,9 +2,30 @@
   <AdminLayout>
     <div class="admin-service-schedule">
       <div class="page-header">
-        <h2>服事表管理</h2>
+        <div>
+          <h2>服事表管理</h2>
+          <p>整理年度服事配置與區間，讓主日排班更容易追蹤與維護。</p>
+        </div>
         <button @click="openAddModal" class="btn btn-primary">+ 新增服事表</button>
       </div>
+
+      <section class="overview-strip">
+        <article class="overview-card overview-card--accent">
+          <span>目前服事表</span>
+          <strong>{{ totalRecords }}</strong>
+          <p>後台目前可維護的服事表總數。</p>
+        </article>
+        <article class="overview-card">
+          <span>當前頁面</span>
+          <strong>{{ schedules.length }}</strong>
+          <p>目前這一頁實際載入的年度服事表。</p>
+        </article>
+        <article class="overview-card">
+          <span>年份篩選</span>
+          <strong>{{ filters.year || '全部' }}</strong>
+          <p>可直接聚焦單一年度的排班配置與日期區間。</p>
+        </article>
+      </section>
 
       <!-- 查詢條件 -->
       <details class="filters filters--collapsible" open>
@@ -32,7 +53,7 @@
         </div>
       </details>
 
-      <div class="schedule-list">
+      <div class="schedule-list card surface-card">
         <div v-if="schedules.length === 0" class="empty-state">
           <p>尚無服事表</p>
         </div>
@@ -399,6 +420,63 @@ onMounted(() => {
   gap:14px;
 }
 
+.overview-strip{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:12px;
+}
+
+.overview-card{
+  padding:16px;
+  border-radius:20px;
+  border:1px solid rgba(2,6,23,.08);
+  background:rgba(255,255,255,.88);
+  box-shadow:var(--shadow-sm);
+}
+
+.overview-card span{
+  display:block;
+  color:rgba(2,6,23,.56);
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+
+.overview-card strong{
+  display:block;
+  margin-top:8px;
+  font-size:28px;
+  line-height:1;
+  letter-spacing:-0.04em;
+}
+
+.overview-card p{
+  margin:8px 0 0;
+  color:rgba(2,6,23,.62);
+  font-size:13px;
+  line-height:1.6;
+  font-weight:700;
+}
+
+.overview-card--accent{
+  background:linear-gradient(140deg, rgba(15,23,42,.96), rgba(29,78,216,.92));
+}
+
+.overview-card--accent span,
+.overview-card--accent strong,
+.overview-card--accent p{
+  color:white;
+}
+
+.overview-card--accent p{
+  color:rgba(255,255,255,.76);
+}
+
+.surface-card{
+  padding:16px;
+}
+
 /* Header */
 .admin-service-schedule .page-header{
   display:flex;
@@ -450,5 +528,8 @@ onMounted(() => {
 
 /* Mobile tweaks */
 @media (max-width: 640px){
+  .overview-strip{
+    grid-template-columns:1fr;
+  }
 }
 </style>

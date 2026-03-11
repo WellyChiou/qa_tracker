@@ -55,14 +55,6 @@ public class ChurchPermissionService {
     }
 
     /**
-     * 根據資源獲取權限
-     */
-    @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
-    public List<ChurchPermission> getPermissionsByResource(String resource) {
-        return churchPermissionRepository.findByResource(resource);
-    }
-
-    /**
      * 創建權限
      */
     @Transactional(transactionManager = "churchTransactionManager")
@@ -115,4 +107,3 @@ public class ChurchPermissionService {
         churchPermissionRepository.deleteById(id);
     }
 }
-

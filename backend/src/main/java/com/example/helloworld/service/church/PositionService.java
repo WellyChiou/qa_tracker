@@ -403,26 +403,6 @@ public class PositionService {
     }
 
     /**
-     * 更新崗位人員的排序
-     */
-    @Transactional
-    public void updatePositionPersonOrder(Long positionId, String dayType, List<Long> personIds) {
-        List<PositionPerson> positionPersons = positionPersonRepository
-            .findByPositionIdAndDayType(positionId, dayType);
-        
-        Map<Long, PositionPerson> personMap = positionPersons.stream()
-            .collect(Collectors.toMap(pp -> pp.getPerson().getId(), pp -> pp));
-        
-        for (int i = 0; i < personIds.size(); i++) {
-            PositionPerson pp = personMap.get(personIds.get(i));
-            if (pp != null) {
-                pp.setSortOrder(i);
-                positionPersonRepository.save(pp);
-            }
-        }
-    }
-
-    /**
      * 更新崗位人員的 includeInAutoSchedule 狀態
      */
     @Transactional(transactionManager = "churchTransactionManager")
@@ -460,4 +440,3 @@ public class PositionService {
         return config;
     }
 }
-

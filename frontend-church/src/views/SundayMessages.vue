@@ -84,16 +84,10 @@ const messagesWithFormattedData = computed(() => {
 const loadMessages = async () => {
   isLoading.value = true
   try {
-    const response = await apiRequest('/church/public/sunday-messages', {
+    const data = await apiRequest('/church/public/sunday-messages', {
       method: 'GET'
     }, '載入主日信息', false)
-    
-    if (response.ok) {
-      const data = await response.json()
-      if (data.success && data.data) {
-        messages.value = data.data
-      }
-    }
+    messages.value = Array.isArray(data) ? data : []
   } catch (error) {
     console.error('載入主日信息失敗:', error)
   } finally {

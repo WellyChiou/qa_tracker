@@ -76,14 +76,8 @@ const prayerRequestsWithFormattedData = computed(() => {
 const loadPrayerRequests = async () => {
   isLoading.value = true
   try {
-    const response = await apiRequest('/church/public/prayer-requests', { method: 'GET' }, '載入代禱事項', false)
-
-    if (response.ok) {
-      const data = await response.json()
-      if (data.success && data.data) {
-        prayerRequests.value = data.data
-      }
-    }
+    const data = await apiRequest('/church/public/prayer-requests', { method: 'GET' }, '載入代禱事項', false)
+    prayerRequests.value = Array.isArray(data) ? data : []
   } catch (error) {
     console.error('載入代禱事項失敗:', error)
   } finally {
@@ -93,4 +87,3 @@ const loadPrayerRequests = async () => {
 
 onMounted(loadPrayerRequests)
 </script>
-

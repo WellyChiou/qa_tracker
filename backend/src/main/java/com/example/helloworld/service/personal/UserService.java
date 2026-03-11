@@ -53,7 +53,7 @@ public class UserService {
      */
     @Transactional(readOnly = true)
     public Optional<User> getUserByUid(String uid) {
-        return userRepository.findById(uid);
+        return userRepository.findByUidWithRolesAndPermissions(uid);
     }
 
     /**
@@ -90,7 +90,8 @@ public class UserService {
             user.setProviderId("local");
         }
 
-        return userRepository.save(user);
+        User savedUser = userRepository.save(user);
+        return getUserWithAssociations(savedUser.getUid());
     }
 
     /**
@@ -143,7 +144,8 @@ public class UserService {
         }
         // 如果 roles 為 null，表示前端沒有發送角色信息，保留現有角色不變
 
-        return userRepository.save(existing);
+        userRepository.save(existing);
+        return getUserWithAssociations(uid);
     }
 
     /**
@@ -169,7 +171,8 @@ public class UserService {
             .collect(Collectors.toSet());
 
         user.setRoles(roles);
-        return userRepository.save(user);
+        userRepository.save(user);
+        return getUserWithAssociations(uid);
     }
 
     /**
@@ -187,7 +190,13 @@ public class UserService {
             .collect(Collectors.toSet());
 
         user.setPermissions(permissions);
-        return userRepository.save(user);
+        userRepository.save(user);
+        return getUserWithAssociations(uid);
+    }
+
+    private User getUserWithAssociations(String uid) {
+        return userRepository.findByUidWithRolesAndPermissions(uid)
+            .orElseThrow(() -> new RuntimeException("用戶不存在: " + uid));
     }
 
     /**

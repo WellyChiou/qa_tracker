@@ -2,14 +2,35 @@
   <AdminLayout>
     <div class="admin-checkin-manual">
       <div class="page-header">
-        <h2>補登稽核</h2>
+        <div>
+          <h2>補登稽核</h2>
+          <p>集中檢視人工補登、取消與匯出記錄，保留完整稽核脈絡供後台追查。</p>
+        </div>
         <div class="actions">
           <button class="btn btn-secondary" @click="back">返回後台</button>
           <button class="btn btn-primary" @click="exportExcel">匯出 Excel</button>
         </div>
       </div>
 
-    <div class="filters">
+    <section class="overview-strip">
+      <article class="overview-card overview-card--accent">
+        <span>補登筆數</span>
+        <strong>{{ rows.length }}</strong>
+        <p>目前條件下列出的補登與取消稽核記錄。</p>
+      </article>
+      <article class="overview-card">
+        <span>查詢區間</span>
+        <strong>{{ from || '-' }}</strong>
+        <p>{{ to ? `至 ${to}` : '未設定結束日期' }}</p>
+      </article>
+      <article class="overview-card">
+        <span>稽核模式</span>
+        <strong>{{ includeCanceled ? '含取消' : '有效記錄' }}</strong>
+        <p>取消補登採軟取消，不會直接刪除原始資料。</p>
+      </article>
+    </section>
+
+    <div class="filters card surface-card">
       <input class="input" v-model="q" placeholder="搜尋：姓名 / 會員編號 / 場次" @keyup.enter="load"/>
       <div class="dates">
         <input class="input" type="date" v-model="from" />
@@ -21,6 +42,7 @@
 
     <div class="hint">取消補登採「軟取消」保留稽核：不會真的刪資料。</div>
 
+    <div class="card surface-card">
     <table class="table">
       <thead>
         <tr>
@@ -68,6 +90,7 @@
         </tr>
       </tbody>
     </table>
+    </div>
     </div>
   </AdminLayout>
 </template>
@@ -272,7 +295,8 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  gap: 16px;
+  margin-bottom: 24px;
 }
 
 .page-header h2 {
@@ -280,6 +304,68 @@ onMounted(() => {
   font-size: 24px;
   font-weight: 700;
   color: var(--text);
+}
+
+.page-header p {
+  margin: 8px 0 0;
+  max-width: 680px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.overview-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.overview-card {
+  padding: 20px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92));
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
+}
+
+.overview-card span {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.overview-card strong {
+  display: block;
+  margin-top: 10px;
+  font-size: 32px;
+  line-height: 1;
+  color: var(--text);
+}
+
+.overview-card p {
+  margin: 12px 0 0;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+.overview-card--accent {
+  background: linear-gradient(135deg, rgba(15, 118, 110, 0.92), rgba(21, 128, 61, 0.92));
+  border-color: transparent;
+}
+
+.overview-card--accent span,
+.overview-card--accent strong,
+.overview-card--accent p {
+  color: #f8fafc;
+}
+
+.surface-card {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 24px 50px rgba(15, 23, 42, 0.08);
 }
 
 .actions {
@@ -292,10 +378,7 @@ onMounted(() => {
   gap: 10px;
   flex-wrap: wrap;
   margin: 16px 0;
-  padding: 16px;
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  padding: 18px;
 }
 
 .dates {
@@ -335,9 +418,9 @@ onMounted(() => {
 .table {
   width: 100%;
   border-collapse: collapse;
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  background: transparent;
+  border: 0;
+  border-radius: 20px;
   overflow: hidden;
 }
 
@@ -428,5 +511,20 @@ onMounted(() => {
 .canceled {
   opacity: 0.55;
 }
-</style>
 
+@media (max-width: 900px) {
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .actions,
+  .dates {
+    width: 100%;
+  }
+
+  .overview-strip {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

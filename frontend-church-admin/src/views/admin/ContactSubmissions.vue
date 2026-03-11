@@ -2,12 +2,33 @@
   <AdminLayout>
     <div class="admin-contact-submissions">
       <div class="page-header">
-        <h2>聯絡表單管理</h2>
+        <div>
+          <h2>聯絡表單管理</h2>
+          <p>追蹤公開站台聯絡表單來訊，掌握未讀狀態與回覆節奏。</p>
+        </div>
         <div class="stats">
           <span class="stat-item">未讀：{{ stats.unread || 0 }}</span>
           <span class="stat-item">已讀：{{ stats.read || 0 }}</span>
         </div>
       </div>
+
+      <section class="overview-strip">
+        <article class="overview-card overview-card--accent">
+          <span>總來訊</span>
+          <strong>{{ totalRecords }}</strong>
+          <p>目前已載入的聯絡表單總筆數。</p>
+        </article>
+        <article class="overview-card">
+          <span>未讀數</span>
+          <strong>{{ stats.unread || 0 }}</strong>
+          <p>需要優先處理的未讀表單訊息。</p>
+        </article>
+        <article class="overview-card">
+          <span>查詢狀態</span>
+          <strong>{{ filters.name || filters.email || filters.isRead !== '' || filters.startDate || filters.endDate ? '已套用' : '全部' }}</strong>
+          <p>可透過姓名、Email、日期與已讀狀態快速過濾。</p>
+        </article>
+      </section>
 
       <!-- 查詢條件 -->
       <details class="filters filters--collapsible" open>
@@ -73,7 +94,7 @@
         </div>
       </details>
 
-      <div class="submissions-list">
+      <div class="submissions-list card surface-card">
         <div v-if="submissionsList.length === 0 && !loading" class="empty-state">
           <p>尚無聯絡表單記錄</p>
         </div>
@@ -455,6 +476,63 @@ onMounted(() => {
   gap:14px;
 }
 
+.overview-strip{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:12px;
+}
+
+.overview-card{
+  padding:16px;
+  border-radius:20px;
+  border:1px solid rgba(2,6,23,.08);
+  background:rgba(255,255,255,.88);
+  box-shadow:var(--shadow-sm);
+}
+
+.overview-card span{
+  display:block;
+  color:rgba(2,6,23,.56);
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+
+.overview-card strong{
+  display:block;
+  margin-top:8px;
+  font-size:28px;
+  line-height:1;
+  letter-spacing:-0.04em;
+}
+
+.overview-card p{
+  margin:8px 0 0;
+  color:rgba(2,6,23,.62);
+  font-size:13px;
+  line-height:1.6;
+  font-weight:700;
+}
+
+.overview-card--accent{
+  background:linear-gradient(140deg, rgba(15,23,42,.96), rgba(29,78,216,.92));
+}
+
+.overview-card--accent span,
+.overview-card--accent strong,
+.overview-card--accent p{
+  color:white;
+}
+
+.overview-card--accent p{
+  color:rgba(255,255,255,.76);
+}
+
+.surface-card{
+  padding:16px;
+}
+
 /* Header */
 .admin-contact-submissions .page-header{
   display:flex;
@@ -506,5 +584,8 @@ onMounted(() => {
 
 /* Mobile tweaks */
 @media (max-width: 640px){
+  .overview-strip{
+    grid-template-columns:1fr;
+  }
 }
 </style>

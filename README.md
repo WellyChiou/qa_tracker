@@ -1,32 +1,23 @@
 # Docker Vue + Java + MySQL 專案
 
 這是一個使用 Docker Compose 架設的完整全端專案，包含：
-- **前端**: Vue (使用 Nginx 提供靜態文件服務)
-- **後端**: Java Spring Boot
-- **資料庫**: MySQL 8.0
+- **3 個前端站台**：`frontend-personal`、`frontend-church`、`frontend-church-admin`
+- **1 個共用後端**：`backend`（Java Spring Boot）
+- **資料庫**：MySQL 8.0
+- **反向代理**：Nginx
 
 ## 專案結構
 
 ```
 docker-vue-java-mysql/
 ├── docker-compose.yml      # Docker Compose 配置
-├── frontend/               # 前端目錄
-│   ├── Dockerfile
-│   └── app/
-│       └── index.html      # 前端頁面
-├── backend/                # 後端目錄
-│   ├── Dockerfile
-│   ├── pom.xml             # Maven 配置
-│   └── src/
-│       └── main/
-│           ├── java/
-│           │   └── com/example/helloworld/
-│           │       ├── HelloWorldApplication.java
-│           │       └── controller/
-│           │           └── HelloController.java
-│           └── resources/
-│               └── application.properties
-└── README.md
+├── frontend-personal/      # 個人系統前端（/personal/）
+├── frontend-church/        # 教會前台網站（/church/）
+├── frontend-church-admin/  # 教會後台管理系統（/church-admin/）
+├── backend/                # 共用後端 API（/api）
+├── nginx/                  # Nginx 反向代理設定
+├── mysql/                  # MySQL schema 與腳本
+└── scripts/                # 部署、診斷、維運腳本
 ```
 
 ## 快速開始
@@ -54,17 +45,17 @@ docker-compose up -d --build
 - 構建所有 Docker 映像
 - 啟動 MySQL 資料庫
 - 啟動 Java 後端
-- 啟動 Vue 前端
+- 啟動 3 個 Vue 前端站台
+- 啟動 Nginx 反向代理
 
 ### 3. 驗證部署
 
 打開瀏覽器訪問：
 
-- **前端**: http://localhost
-  - 應該會看到 "Hello World!" 頁面，表示前端部署成功
-
-- **後端 API**: http://localhost:8080/api/hello
-  - 應該會看到 JSON 回應：`{"message":"Hello World!","status":"success","service":"Java Spring Boot Backend"}`
+- **個人前端**: `http://localhost/personal/`
+- **教會前台**: `http://localhost/church/`
+- **教會後台**: `http://localhost/church-admin/`
+- **後端 API**: `http://localhost/api`
 
 ### 4. 停止服務
 
@@ -78,11 +69,14 @@ docker compose down
 docker compose down -v
 ```
 
-## 服務端口
+## 服務與路由
 
-- **前端 (Nginx)**: 80
-- **後端 (Spring Boot)**: 8080
-- **MySQL**: 3306
+- **Nginx**: `80`, `443`
+- **個人前端**: `/personal/`
+- **教會前台**: `/church/`
+- **教會後台**: `/church-admin/`
+- **後端 API**: `/api`
+- **MySQL**: `3306`
 
 ## 資料庫資訊
 
@@ -143,13 +137,10 @@ curl http://localhost:8080/api/hello
 
 ## 下一步
 
-現在您已經成功看到 "Hello World"，可以開始：
+現在可以依需求開發對應子系統：
 
-1. 開發 Vue 前端應用
-2. 擴展 Java 後端 API
-3. 設計 MySQL 資料庫結構
-4. 整合前後端功能
-
-祝開發順利！🎉
-
+1. `frontend-personal` 個人系統功能
+2. `frontend-church` 教會公開網站內容
+3. `frontend-church-admin` 教會後台管理功能
+4. `backend` 共用 API、認證與資料庫邏輯
 

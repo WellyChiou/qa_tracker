@@ -264,7 +264,7 @@ const calculatedYear = computed(() => {
 // 檢查該年度是否已有服事表
 const checkYearExists = async (year) => {
   try {
-    const data = await apiRequest(`/church/service-schedules/year/${year}`, {
+    const data = await apiRequest(`/church/service-schedules/${year}`, {
       method: 'GET'
     })
     return data !== null
@@ -2272,4 +2272,3 @@ th {
   background-position:0 0, 0 100%, 0 0, 0 100%;
 }
 </style>
-

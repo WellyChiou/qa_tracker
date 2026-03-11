@@ -188,22 +188,6 @@ public class PositionManagementController {
     }
 
     /**
-     * 更新崗位人員排序
-     */
-    @PutMapping("/{id}/persons/order")
-    public ResponseEntity<ApiResponse<Void>> updatePositionPersonOrder(
-            @PathVariable Long id,
-            @RequestParam String dayType,
-            @RequestBody List<Long> personIds) {
-        try {
-            positionService.updatePositionPersonOrder(id, dayType, personIds);
-            return ResponseEntity.ok(ApiResponse.ok(null));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.fail("更新排序失敗：" + e.getMessage()));
-        }
-    }
-
-    /**
      * 獲取完整的崗位配置
      */
     @GetMapping("/config/full")
@@ -216,4 +200,3 @@ public class PositionManagementController {
         }
     }
 }
-
