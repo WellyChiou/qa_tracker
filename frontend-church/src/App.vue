@@ -34,15 +34,15 @@
                 <span class="nav-dropdown__arrow">▼</span>
               </button>
               <div class="nav-dropdown__menu" @click.stop>
-                <router-link
+                <button
                   v-for="child in menu.children"
                   :key="child.id"
-                  :to="child.url || '#'"
-                  @click="closeMenuAndDropdown"
                   class="nav-dropdown__item"
+                  type="button"
+                  @click="handleChildClick(child)"
                 >
                   {{ child.menuName }}
-                </router-link>
+                </button>
               </div>
             </div>
 
@@ -102,12 +102,14 @@
 <script setup>
 import { ref, computed, watch, onUnmounted, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useLoading } from '@/composables/useLoading'
 import { apiRequest } from '@/utils/api'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import ToastHost from '@shared/components/ToastHost.vue'
 
 const route = useRoute()
+const router = useRouter()
 const navRef = ref(null)
 
 // Mobile (<=768px): disable route transitions / reveal
@@ -149,6 +151,13 @@ const toggleDropdown = (menuId) => {
 const closeMenuAndDropdown = () => {
   closeMenu()
   openDropdownId.value = null
+}
+
+const handleChildClick = (child) => {
+  if (child?.url) {
+    router.push(child.url)
+  }
+  closeMenuAndDropdown()
 }
 
 // 初始化 loading 系統（註冊回調到 API 服務）
