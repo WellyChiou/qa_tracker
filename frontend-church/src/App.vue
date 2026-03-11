@@ -33,7 +33,7 @@
                 {{ menu.menuName }}
                 <span class="nav-dropdown__arrow">▼</span>
               </button>
-              <div class="nav-dropdown__menu">
+              <div class="nav-dropdown__menu" @click.stop>
                 <router-link
                   v-for="child in menu.children"
                   :key="child.id"

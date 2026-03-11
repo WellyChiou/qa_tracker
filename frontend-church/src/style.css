@@ -561,7 +561,7 @@ a:hover { text-decoration: underline; }
   visibility: hidden;
   transform: translateY(-8px);
   transition: all 200ms ease;
-  z-index: 4000;
+  z-index: 6000;
   pointer-events: auto;
 }
 
@@ -579,6 +579,8 @@ a:hover { text-decoration: underline; }
   font-weight: 600;
   transition: all 150ms ease;
   cursor: pointer;
+  touch-action: manipulation;
+  pointer-events: auto;
 }
 
 .nav-dropdown__item:hover {
