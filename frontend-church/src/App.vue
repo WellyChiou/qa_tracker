@@ -34,15 +34,15 @@
                 <span class="nav-dropdown__arrow">▼</span>
               </button>
               <div class="nav-dropdown__menu" @click.stop>
-                <button
+                <router-link
                   v-for="child in menu.children"
                   :key="child.id"
+                  :to="child.url || '#'"
                   class="nav-dropdown__item"
-                  type="button"
-                  @click="handleChildClick(child)"
+                  @click="closeMenuAndDropdown"
                 >
                   {{ child.menuName }}
-                </button>
+                </router-link>
               </div>
             </div>
 

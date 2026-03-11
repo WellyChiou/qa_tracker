@@ -581,6 +581,10 @@ a:hover { text-decoration: underline; }
   cursor: pointer;
   touch-action: manipulation;
   pointer-events: auto;
+  border: none;
+  width: 100%;
+  text-align: left;
+  background: transparent;
 }
 
 .nav-dropdown__item:hover {
