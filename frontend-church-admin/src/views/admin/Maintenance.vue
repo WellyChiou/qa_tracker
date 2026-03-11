@@ -59,6 +59,13 @@
             <div class="category-card">
               <div class="category-head">
                 <h3 class="category-title">{{ getCategoryName(category) }}</h3>
+                <button
+                  v-if="category === 'linebot'"
+                  @click="showTestMessageModal = true"
+                  class="btn btn-primary btn-sm"
+                >
+                  測試群組訊息
+                </button>
               </div>
               <div class="category-body">
                 <div class="settings-grid">
@@ -159,7 +166,42 @@
             </table>
           </div>
         </div>
-	      </div></div>
+      </div></div>
+
+      <div v-if="showTestMessageModal" class="modal-overlay" @click.self="showTestMessageModal = false">
+        <div class="modal-content">
+          <h3>發送測試群組訊息</h3>
+          <form @submit.prevent="sendTestMessage">
+            <div class="form-group">
+              <label>群組 ID (Group ID) *</label>
+              <input
+                v-model="testMessage.groupId"
+                type="text"
+                required
+                class="form-input"
+                placeholder="輸入 LINE 群組 ID (C...)"
+              />
+              <small class="form-text text-muted">可以從 church LINE webhook 日誌中找到群組 ID</small>
+            </div>
+            <div class="form-group">
+              <label>訊息內容 *</label>
+              <textarea
+                v-model="testMessage.message"
+                required
+                class="form-input"
+                rows="4"
+                placeholder="輸入要發送的測試訊息..."
+              ></textarea>
+            </div>
+            <div class="modal-actions">
+              <button type="submit" :disabled="sendingTestMessage" class="btn btn-primary">
+                {{ sendingTestMessage ? '發送中...' : '發送' }}
+              </button>
+              <button type="button" @click="showTestMessageModal = false" class="btn btn-secondary">取消</button>
+            </div>
+          </form>
+        </div>
+      </div>
 
 	    </div>
   </AdminLayout>
@@ -180,6 +222,12 @@ const creatingBackup = ref(false)
 const refreshingConfig = ref(false)
 const savingSettings = ref(new Set())
 const savedSettings = ref(new Set())
+const showTestMessageModal = ref(false)
+const sendingTestMessage = ref(false)
+const testMessage = ref({
+  groupId: 'C421bdbec9e301e1d93fe9aceef84243c',
+  message: ''
+})
 
 // 通知組件引用
 // 顯示通知（使用共用 Toast 系統）
@@ -295,6 +343,47 @@ const refreshConfig = async () => {
     showNotification('配置刷新失敗: ' + err.message, 'error')
   } finally {
     refreshingConfig.value = false
+  }
+}
+
+const sendTestMessage = async () => {
+  if (!testMessage.value.groupId || !testMessage.value.message) {
+    showNotification('請填寫群組 ID 和訊息內容', 'error')
+    return
+  }
+
+  sendingTestMessage.value = true
+
+  try {
+    const apiUrl = `${getApiBaseUrl()}/church/line/test/group-push`
+    const token = getAccessToken()
+    const headers = {
+      'Content-Type': 'application/json'
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers,
+      credentials: 'include',
+      body: JSON.stringify(testMessage.value)
+    })
+
+    const data = await response.json()
+
+    if (response.ok && data.success) {
+      showNotification('測試訊息發送成功', 'success')
+      showTestMessageModal.value = false
+      testMessage.value.message = ''
+    } else {
+      showNotification(data.message || '發送失敗', 'error')
+    }
+  } catch (err) {
+    showNotification('發送失敗: ' + err.message, 'error')
+  } finally {
+    sendingTestMessage.value = false
   }
 }
 
@@ -556,6 +645,10 @@ onMounted(() => {
   letter-spacing:.02em;
   color:rgba(15,23,42,.72);
 }
+.btn-sm{
+  padding:8px 12px;
+  font-size:12px;
+}
 .category-body{ padding:12px 14px 14px; }
 
 /* Settings grid */
@@ -605,6 +698,64 @@ onMounted(() => {
   padding:3px 8px;
   border-radius:999px;
   display:inline-block;
+}
+
+.modal-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(15,23,42,.38);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  z-index:50;
+}
+
+.modal-content{
+  width:min(100%, 560px);
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:20px;
+  box-shadow:var(--shadow-lg);
+  padding:20px;
+}
+
+.modal-content h3{
+  margin:0 0 16px;
+  font-size:20px;
+  font-weight:900;
+  color:rgba(15,23,42,.9);
+}
+
+.form-group{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  margin-bottom:14px;
+}
+
+.form-group label{
+  font-size:13px;
+  font-weight:800;
+  color:rgba(15,23,42,.78);
+}
+
+.form-text{
+  display:block;
+  margin-top:4px;
+  font-size:12px;
+  color:rgba(15,23,42,.55);
+}
+
+.text-muted{
+  color:rgba(15,23,42,.55);
+}
+
+.modal-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  margin-top:18px;
 }
 
 /* Backups */

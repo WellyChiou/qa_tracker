@@ -37,15 +37,6 @@ if lsof -Pi :80 -sTCP:LISTEN -t >/dev/null 2>&1 ; then
     fi
 fi
 
-if lsof -Pi :8080 -sTCP:LISTEN -t >/dev/null 2>&1 ; then
-    echo "⚠️  警告: 端口 8080 已被佔用"
-    read -p "是否繼續？(y/n) " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        exit 1
-    fi
-fi
-
 # 檢查必要的文件
 echo ""
 echo "檢查項目文件..."
@@ -54,8 +45,13 @@ if [ ! -f "docker-compose.yml" ]; then
     exit 1
 fi
 
-if [ ! -d "backend" ]; then
-    echo "❌ 錯誤: 找不到 backend 目錄"
+if [ ! -d "backend-personal" ]; then
+    echo "❌ 錯誤: 找不到 backend-personal 目錄"
+    exit 1
+fi
+
+if [ ! -d "backend-church" ]; then
+    echo "❌ 錯誤: 找不到 backend-church 目錄"
     exit 1
 fi
 
@@ -105,7 +101,7 @@ docker compose down 2>/dev/null || true
 # 強制刪除可能殘留的容器（避免名稱衝突）
 # ⚠️ 注意：只刪除容器，不會刪除 volume（資料庫資料會保留）
 echo "清理殘留容器（資料庫資料會保留）..."
-docker rm -f mysql_db java_backend vue_personal nginx_proxy certbot 2>/dev/null || true
+docker rm -f mysql_db java_backend_personal java_backend_church vue_personal vue_frontend_church vue_frontend_church_admin nginx_proxy certbot 2>/dev/null || true
 
 # 構建並啟動所有服務
 echo ""
@@ -164,12 +160,15 @@ echo ""
 if [ -f "certbot/conf/live/power-light-church.duckdns.org/fullchain.pem" ]; then
     echo "服務訪問地址（HTTPS）："
     echo "  - 前端: https://power-light-church.duckdns.org"
-    echo "  - 後端 API: https://power-light-church.duckdns.org/api"
-    echo "  - LINE Bot Webhook: https://power-light-church.duckdns.org/api/line/webhook"
+    echo "  - 個人後端 API: https://power-light-church.duckdns.org/api/**"
+    echo "  - 教會後端 API: https://power-light-church.duckdns.org/api/church/**"
+    echo "  - 個人 LINE Webhook: https://power-light-church.duckdns.org/api/personal/line/webhook"
+    echo "  - 教會 LINE Webhook: https://power-light-church.duckdns.org/api/church/line/webhook"
 else
     echo "服務訪問地址（HTTP）："
     echo "  - 前端: http://power-light-church.duckdns.org"
-    echo "  - 後端 API: http://power-light-church.duckdns.org/api"
+    echo "  - 個人後端 API: http://power-light-church.duckdns.org/api/**"
+    echo "  - 教會後端 API: http://power-light-church.duckdns.org/api/church/**"
     echo ""
     echo "⚠️  HTTPS 設置："
     echo "  如需設置 HTTPS，請執行："
@@ -177,7 +176,8 @@ else
 fi
 echo ""
 echo "數據庫信息："
-echo "  - 數據庫名: qa_tracker"
+echo "  - 個人資料庫: qa_tracker"
+echo "  - 教會資料庫: church"
 echo "  - 用戶名: appuser"
 echo "  - 密碼: apppassword"
 echo "  - Root 密碼: rootpassword"
@@ -188,4 +188,3 @@ echo ""
 echo "停止服務："
 echo "  docker compose down"
 echo ""
-

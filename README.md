@@ -2,7 +2,7 @@
 
 這是一個使用 Docker Compose 架設的完整全端專案，包含：
 - **3 個前端站台**：`frontend-personal`、`frontend-church`、`frontend-church-admin`
-- **1 個共用後端**：`backend`（Java Spring Boot）
+- **2 個後端專案**：`backend-personal`、`backend-church`（Java Spring Boot）
 - **資料庫**：MySQL 8.0
 - **反向代理**：Nginx
 
@@ -14,7 +14,8 @@ docker-vue-java-mysql/
 ├── frontend-personal/      # 個人系統前端（/personal/）
 ├── frontend-church/        # 教會前台網站（/church/）
 ├── frontend-church-admin/  # 教會後台管理系統（/church-admin/）
-├── backend/                # 共用後端 API（/api）
+├── backend-personal/       # 個人系統後端 API
+├── backend-church/         # 教會系統後端 API
 ├── nginx/                  # Nginx 反向代理設定
 ├── mysql/                  # MySQL schema 與腳本
 └── scripts/                # 部署、診斷、維運腳本
@@ -44,7 +45,7 @@ docker-compose up -d --build
 這個命令會：
 - 構建所有 Docker 映像
 - 啟動 MySQL 資料庫
-- 啟動 Java 後端
+- 啟動 personal / church 兩個 Java 後端
 - 啟動 3 個 Vue 前端站台
 - 啟動 Nginx 反向代理
 
@@ -55,7 +56,8 @@ docker-compose up -d --build
 - **個人前端**: `http://localhost/personal/`
 - **教會前台**: `http://localhost/church/`
 - **教會後台**: `http://localhost/church-admin/`
-- **後端 API**: `http://localhost/api`
+- **個人後端 API**: `http://localhost/api/**`
+- **教會後端 API**: `http://localhost/api/church/**`
 
 ### 4. 停止服務
 
@@ -75,7 +77,8 @@ docker compose down -v
 - **個人前端**: `/personal/`
 - **教會前台**: `/church/`
 - **教會後台**: `/church-admin/`
-- **後端 API**: `/api`
+- **個人後端 API**: `/api/**`
+- **教會後端 API**: `/api/church/**`
 - **MySQL**: `3306`
 
 ## 資料庫資訊
@@ -130,7 +133,7 @@ docker compose ps
 docker compose logs
 
 # 3. 測試服務
-curl http://localhost:8080/api/hello
+curl http://localhost/api/hello
 ```
 
 詳細的故障排除步驟請參考 [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
@@ -142,5 +145,5 @@ curl http://localhost:8080/api/hello
 1. `frontend-personal` 個人系統功能
 2. `frontend-church` 教會公開網站內容
 3. `frontend-church-admin` 教會後台管理功能
-4. `backend` 共用 API、認證與資料庫邏輯
-
+4. `backend-personal` 個人系統 API、認證與排程
+5. `backend-church` 教會系統 API、認證與排程

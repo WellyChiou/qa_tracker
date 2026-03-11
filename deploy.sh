@@ -54,8 +54,13 @@ if [ ! -f "docker-compose.yml" ]; then
     exit 1
 fi
 
-if [ ! -d "backend" ]; then
-    echo "❌ 錯誤: 找不到 backend 目錄"
+if [ ! -d "backend-personal" ]; then
+    echo "❌ 錯誤: 找不到 backend-personal 目錄"
+    exit 1
+fi
+
+if [ ! -d "backend-church" ]; then
+    echo "❌ 錯誤: 找不到 backend-church 目錄"
     exit 1
 fi
 
@@ -188,4 +193,3 @@ echo ""
 echo "停止服務："
 echo "  docker compose down"
 echo ""
-

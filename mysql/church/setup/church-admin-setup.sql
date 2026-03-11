@@ -13,7 +13,7 @@ USE church;
 -- 預設帳號：admin
 -- 預設密碼：admin123（請在首次登入後立即修改）
 -- 使用 BCrypt 加密（cost factor 10）
--- 您可以使用 backend 的 /api/utils/generate-bcrypt-hash 端點來生成新的密碼 hash
+-- 您可以使用 personal 後端的 /api/utils/generate-bcrypt-hash 端點來生成新的密碼 hash
 
 INSERT INTO users (
     uid,
@@ -97,4 +97,3 @@ GROUP BY u.uid, u.username, u.email, u.display_name, u.is_enabled, u.is_account_
 -- 4. 要生成新的密碼 hash，可以使用：
 --    POST /api/utils/generate-bcrypt-hash
 --    Body: { "password": "您的新密碼" }
-

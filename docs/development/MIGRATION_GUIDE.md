@@ -188,15 +188,15 @@ docker compose up -d --build
 docker compose ps
 
 # 查看日誌
-docker compose logs backend
-docker compose logs frontend
+docker compose logs backend-personal
+docker compose logs frontend-personal
 ```
 
 ### 5.2 驗證 API
 
 ```bash
-# 測試後端 API
-curl http://localhost:8080/api/records/stats/in-progress
+# 測試個人系統後端 API
+curl http://localhost/api/records/stats/in-progress
 
 # 應該會看到 JSON 回應
 ```
@@ -208,7 +208,7 @@ curl http://localhost:8080/api/records/stats/in-progress
 ### 6.1 在瀏覽器訪問
 
 - **前端**: http://38.54.89.136
-- **後端 API**: http://38.54.89.136:8080/api/records
+- **後端 API**: http://38.54.89.136/api/records
 
 ### 6.2 功能測試
 
@@ -237,7 +237,7 @@ sudo ss -tulpn | grep :3306
 
 ```bash
 # 檢查後端日誌
-docker compose logs backend
+docker compose logs backend-personal
 
 # 測試資料庫連線
 docker compose exec mysql mysql -u appuser -papppassword qa_tracker -e "SELECT 1;"
@@ -287,4 +287,3 @@ docker compose exec mysql mysql -u appuser -papppassword qa_tracker -e "SELECT 1
 - Docker 容器日誌
 
 祝遷移順利！🚀
-

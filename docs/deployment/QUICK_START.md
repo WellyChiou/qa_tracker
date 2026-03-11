@@ -85,7 +85,8 @@ ls -la
 - `frontend-personal/`
 - `frontend-church/`
 - `frontend-church-admin/`
-- `backend/`
+- `backend-personal/`
+- `backend-church/`
 - `README.md`
 等檔案
 
@@ -245,8 +246,11 @@ docker compose ps
 
 應該會看到三個容器都是 `Up` 狀態：
 - `mysql_db` - MySQL 資料庫
-- `java_backend` - Java 後端
-- `vue_frontend` - Vue 前端
+- `java_backend_personal` - 個人系統後端
+- `java_backend_church` - 教會系統後端
+- `vue_personal` - 個人系統前端
+- `vue_frontend_church` - 教會前台
+- `vue_frontend_church_admin` - 教會後台
 
 ### 查看日誌（如果有問題）
 
@@ -255,8 +259,9 @@ docker compose ps
 docker compose logs
 
 # 查看特定服務日誌
-docker compose logs backend
-docker compose logs frontend
+docker compose logs backend-personal
+docker compose logs backend-church
+docker compose logs frontend-personal
 docker compose logs mysql
 
 # 即時查看日誌
@@ -275,7 +280,7 @@ docker compose logs -f
   - 應該會看到漂亮的 "Hello World!" 頁面
   - 如果修改了端口（例如改為 3000），則訪問 `http://your-server-ip:3000`
 
-- **後端 API**: `http://your-server-ip:8080/api/hello`
+- **後端 API**: `http://your-server-ip/api/hello`
   - 應該會看到 JSON 回應：
   ```json
   {
@@ -292,7 +297,7 @@ docker compose logs -f
 curl http://localhost
 
 # 測試後端 API
-curl http://localhost:8080/api/hello
+curl http://localhost/api/hello
 ```
 
 ---
@@ -363,7 +368,8 @@ docker compose up -d --build
 docker stats
 
 # 進入容器內部（除錯用）
-docker compose exec backend bash
+docker compose exec backend-personal bash
+docker compose exec backend-church bash
 docker compose exec mysql bash
 ```
 
@@ -374,8 +380,8 @@ docker compose exec mysql bash
 當您看到以下情況，代表部署成功：
 
 ✅ 瀏覽器訪問 `http://your-server-ip` 看到 "Hello World!" 頁面  
-✅ 瀏覽器訪問 `http://your-server-ip:8080/api/hello` 看到 JSON 回應  
-✅ `docker compose ps` 顯示三個容器都是 `Up` 狀態  
+✅ 瀏覽器訪問 `http://your-server-ip/api/hello` 看到 JSON 回應  
+✅ `docker compose ps` 顯示 personal / church 後端與前端容器都是 `Up` 狀態  
 
 ---
 

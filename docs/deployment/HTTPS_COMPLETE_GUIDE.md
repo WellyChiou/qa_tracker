@@ -40,7 +40,7 @@
 
 ```yaml
 services:
-  # ... 現有的 mysql, backend, frontend 服務 ...
+  # ... 現有的 mysql、backend-personal、backend-church、frontend 服務 ...
 
   # Nginx 反向代理（處理 HTTPS）
   nginx:
@@ -55,8 +55,11 @@ services:
       - ./certbot/conf:/etc/letsencrypt:ro
       - ./certbot/www:/var/www/certbot:ro
     depends_on:
-      - frontend
-      - backend
+      - frontend-personal
+      - frontend-church
+      - frontend-church-admin
+      - backend-personal
+      - backend-church
     restart: unless-stopped
     command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
 
@@ -92,8 +95,12 @@ http {
         server frontend-personal:80;
     }
 
-    upstream backend {
-        server backend:8080;
+    upstream backend-personal {
+        server backend-personal:8080;
+    }
+
+    upstream backend-church {
+        server backend-church:8080;
     }
 
     # HTTP 服務器（重定向到 HTTPS）
@@ -137,9 +144,18 @@ http {
             proxy_set_header X-Forwarded-Proto $scheme;
         }
 
-        # 後端 API
-        location /api {
-            proxy_pass http://backend;
+        # 教會後端 API
+        location /api/church/ {
+            proxy_pass http://backend-church;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        # 個人系統後端 API
+        location /api/ {
+            proxy_pass http://backend-personal;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -171,7 +187,7 @@ docker-compose restart nginx
 ### 步驟 5：更新 docker-compose.yml 中的 Webhook URL
 
 ```yaml
-LINE_BOT_WEBHOOK_URL: https://yourdomain.com/api/line/webhook
+LINE_BOT_WEBHOOK_URL: https://yourdomain.com/api/personal/line/webhook
 ```
 
 ### 步驟 6：更新 docker-compose.yml 端口映射
@@ -186,7 +202,7 @@ frontend:
 ```
 
 ```yaml
-backend:
+backend-personal:
   ports:
     # 移除對外端口，僅內部使用
     # - "8080:8080"  # 移除這行
@@ -533,4 +549,3 @@ docker-compose logs nginx
 ---
 
 完成以上步驟後，您就擁有一個穩定的 HTTPS 配置，可以長期使用！
-

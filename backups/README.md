@@ -3,12 +3,17 @@
 ## 概述
 
 資料庫備份功能已整合到後端 Java 應用中，透過容器內執行的備份腳本自動備份 `qa_tracker` 和 `church` 兩個資料庫。
+目前由兩個後端專案分別承接：
+
+- `backend-personal`：個人系統備份流程
+- `backend-church`：教會系統備份流程
 
 ## 備份腳本位置
 
-- **`backend/backup-database-container.sh`** - 容器內備份腳本
-  - 由 Dockerfile 複製到容器內的 `/app/backup-database.sh`
-  - 透過後端 Java 應用執行（排程任務或手動觸發）
+- **`backend-personal/personal-backup-database.sh`** - 個人系統容器內備份腳本
+- **`backend-church/church-backup-database.sh`** - 教會系統容器內備份腳本
+  - 由各自 Dockerfile 複製到容器內
+  - 透過對應後端 Java 應用執行（排程任務或手動觸發）
 
 ## 使用方式
 
@@ -89,7 +94,8 @@ ls -la /root/project/work/backups
 
 3. 查看後端日誌：
 ```bash
-docker compose logs backend | grep "備份"
+docker compose logs backend-personal | grep "備份"
+docker compose logs backend-church | grep "備份"
 ```
 
 ### 備份檔案過大

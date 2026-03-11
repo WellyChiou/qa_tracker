@@ -21,12 +21,12 @@ services:
       timeout: 5s
       retries: 5
 
-  # Java 後端 (Spring Boot)
-  backend:
+  # Personal Java 後端 (Spring Boot)
+  backend-personal:
     build:
-      context: ./backend
+      context: ./backend-personal
       dockerfile: Dockerfile
-    container_name: java_backend
+    container_name: java_backend_personal
     # 移除對外端口，由 nginx 反向代理處理
     # ports:
     #   - "8080:8080"
@@ -45,9 +45,10 @@ services:
       #- /root/project/work/backups:/app/backups
       - ../backups:/app/backups
       #- /root/project/work/logs/backend:/app/logs
-      - ../logs/backend:/app/logs
+      - ../logs/backend-personal:/app/logs
       - ./keys:/opt/keys:ro
     environment:
+      APP_DOMAIN: personal
       TZ: Asia/Taipei
       BACKUP_DIR: /app/backups
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/qa_tracker?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=utf8&useUnicode=true
@@ -61,6 +62,38 @@ services:
       # 這些環境變數已不再使用，但保留作為備用（如果資料庫配置失敗時使用）
     restart: unless-stopped
 
+  # Church Java 後端 (Spring Boot)
+  backend-church:
+    build:
+      context: ./backend-church
+      dockerfile: Dockerfile
+    container_name: java_backend_church
+    depends_on:
+      mysql:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        tag: "{{.Name}}"
+    volumes:
+      - ../uploads:/app/uploads
+      - ../backups:/app/backups
+      - ../logs/backend-church:/app/logs
+      - ./keys:/opt/keys:ro
+    environment:
+      APP_DOMAIN: church
+      TZ: Asia/Taipei
+      BACKUP_DIR: /app/backups
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/qa_tracker?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=utf8&useUnicode=true
+      SPRING_DATASOURCE_USERNAME: appuser
+      SPRING_DATASOURCE_PASSWORD: apppassword
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
+      LOGGING_FILE_PATH: /app/logs
+      LOGGING_FILE_NAME: ${LOGGING_FILE_PATH:-/app/logs}/application.log
+    restart: unless-stopped
+
   # 個人網站前端
   frontend-personal:
     build:
@@ -71,7 +104,7 @@ services:
     # ports:
     #   - "80:80"
     depends_on:
-      - backend
+      - backend-personal
     restart: unless-stopped
     #healthcheck:
       #test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
@@ -95,7 +128,7 @@ services:
     container_name: vue_frontend_church
     # 移除對外端口，由 nginx 反向代理處理
     depends_on:
-      - backend
+      - backend-church
     restart: unless-stopped
     #healthcheck:
       #test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
@@ -119,7 +152,7 @@ services:
     container_name: vue_frontend_church_admin
     # 移除對外端口，由 nginx 反向代理處理
     depends_on:
-      - backend
+      - backend-church
     restart: unless-stopped
     #healthcheck:
       #test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
@@ -154,7 +187,8 @@ services:
       - frontend-personal
       - frontend-church
       - frontend-church-admin
-      - backend
+      - backend-personal
+      - backend-church
     restart: unless-stopped
     command: >
       /bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done &
@@ -168,5 +202,3 @@ services:
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
-
-

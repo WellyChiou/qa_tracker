@@ -32,4 +32,5 @@ Usage:
 - Personal frontend: `http://localhost/personal/`
 - Church frontend: `http://localhost/church/`
 - Church admin: `http://localhost/church-admin/`
-- Backend API: `http://localhost/api`
+- Personal backend API: `http://localhost/api/**`
+- Church backend API: `http://localhost/api/church/**`

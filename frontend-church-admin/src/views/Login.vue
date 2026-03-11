@@ -161,7 +161,9 @@ const handleLogin = async () => {
     }
     
     // 登入成功後，前往後台首頁
-    const redirect = route.query.redirect || '/admin'
+    const redirect = typeof route.query.redirect === 'string' && route.query.redirect
+      ? route.query.redirect
+      : '/'
     router.push(redirect)
   } catch (err) {
     error.value = err.message || '登入失敗，請檢查用戶名和密碼'

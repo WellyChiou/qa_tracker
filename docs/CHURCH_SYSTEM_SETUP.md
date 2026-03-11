@@ -15,7 +15,8 @@
 
 - **前台**：`frontend-church/` - 教會公開網站
 - **後台**：`frontend-church-admin/` - 教會管理系統
-- **後端**：`backend/` - 共用後端，通過 package 結構分離（`controller/church/`, `service/church/`）
+- **教會後端**：`backend-church/` - 教會專用後端 API
+- **個人後端**：`backend-personal/` - 個人系統專用後端 API
 
 ## 設定步驟
 

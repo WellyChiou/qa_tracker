@@ -28,7 +28,7 @@
 
 1. **在 `docker-compose.yml` 中添加 volume：**
 ```yaml
-backend:
+backend-church:
   volumes:
     - church_uploads:/app/uploads/church
     # 或者映射到主機目錄
@@ -53,7 +53,7 @@ volumes:
 
 在 `docker-compose.yml` 中：
 ```yaml
-backend:
+backend-church:
   volumes:
     - ./uploads/church:/app/uploads/church
 ```
@@ -71,7 +71,7 @@ backend:
 
 1. 在 `docker-compose.yml` 中：
 ```yaml
-backend:
+backend-church:
   volumes:
     - ./uploads/church:/app/uploads/church
 
@@ -136,7 +136,7 @@ qa_tracker/
 ### 1. 修改 docker-compose.yml
 
 ```yaml
-backend:
+backend-church:
   volumes:
     - ./uploads/church:/app/uploads/church  # 新增
 
@@ -177,4 +177,3 @@ mkdir -p uploads/church/sunday-messages
 - ✅ 容易備份（備份 `uploads/` 目錄）
 - ✅ 性能好（Nginx 直接提供服務）
 - ✅ 簡單易維護
-

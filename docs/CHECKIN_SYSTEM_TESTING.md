@@ -357,14 +357,14 @@ curl -X GET "http://localhost/api/church/checkin/public/sessions/SUN20241221/tok
 # 檢查 nginx 容器是否運行
 docker ps | grep nginx
 
-# 檢查後端容器是否運行
-docker ps | grep backend
+# 檢查教會後端容器是否運行
+docker ps | grep backend-church
 
 # 檢查 nginx 日誌
 docker logs nginx_proxy
 
-# 檢查後端日誌
-docker logs java_backend
+# 檢查教會後端日誌
+docker logs java_backend_church
 
 # 測試 nginx 轉發
 curl http://localhost/api/hello
@@ -373,8 +373,8 @@ curl http://localhost/api/hello
 **方法 3：如果使用 nginx，檢查配置**
 ```bash
 # 確認 nginx 配置包含以下內容：
-# location /api {
-#     proxy_pass http://backend:8080;
+# location /api/church/ {
+#     proxy_pass http://backend-church:8080;
 #     proxy_set_header Host $host;
 #     proxy_set_header X-Real-IP $remote_addr;
 # }
@@ -457,4 +457,3 @@ WHERE id = 1;
 - **MySQL Workbench**：查看資料庫記錄
 
 完成以上測試後，簽到系統應該可以正常運作！
-

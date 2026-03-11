@@ -203,7 +203,7 @@ failed to resolve source metadata for docker.io/library/maven:3.8.6-openjdk-17-s
 
 **解決方案：**
 
-修改 `backend/Dockerfile`：
+修改 `backend-personal/Dockerfile` 或 `backend-church/Dockerfile`：
 
 ```dockerfile
 # 舊的（不存在）
@@ -233,7 +233,7 @@ FROM eclipse-temurin:17-jre-jammy
 
 #### 步驟 1: 添加 CORS 配置
 
-創建文件 `backend/src/main/java/com/example/helloworld/config/CorsConfig.java`：
+創建文件 `backend-personal/src/main/java/com/example/helloworld/config/CorsConfig.java` 或 `backend-church/src/main/java/com/example/helloworld/config/CorsConfig.java`：
 
 ```java
 package com.example.helloworld.config;
@@ -280,24 +280,25 @@ public class CorsConfig {
 docker compose down
 
 # 重新構建後端
-docker compose up -d --build backend
+docker compose up -d --build backend-personal backend-church
 ```
 
 #### 步驟 3: 檢查後端日誌
 
 ```bash
 # 查看後端日誌
-docker compose logs backend
+docker compose logs backend-personal
+docker compose logs backend-church
 
 # 持續查看日誌
-docker compose logs -f backend
+docker compose logs -f backend-personal backend-church
 ```
 
 #### 步驟 4: 測試後端 API
 
 ```bash
 # 在虛擬主機上測試
-curl http://localhost:8080/api/hello
+curl http://localhost/api/hello
 
 # 應該會看到 JSON 回應
 ```
@@ -374,8 +375,9 @@ docker compose up -d --build frontend
 docker compose ps
 
 # 查看特定容器狀態
-docker compose ps backend
-docker compose ps frontend
+docker compose ps backend-personal
+docker compose ps backend-church
+docker compose ps frontend-personal
 docker compose ps mysql
 ```
 
@@ -386,15 +388,17 @@ docker compose ps mysql
 docker compose logs
 
 # 查看特定服務日誌
-docker compose logs backend
-docker compose logs frontend
+docker compose logs backend-personal
+docker compose logs backend-church
+docker compose logs frontend-personal
 docker compose logs mysql
 
 # 持續查看日誌（實時）
 docker compose logs -f
 
 # 查看最近 50 行日誌
-docker compose logs --tail=50 backend
+docker compose logs --tail=50 backend-personal
+docker compose logs --tail=50 backend-church
 ```
 
 ### 測試服務
@@ -404,7 +408,7 @@ docker compose logs --tail=50 backend
 curl http://localhost
 
 # 測試後端 API
-curl http://localhost:8080/api/hello
+curl http://localhost/api/hello
 
 # 測試資料庫連接
 docker compose exec mysql mysql -u appuser -papppassword testdb
@@ -414,14 +418,16 @@ docker compose exec mysql mysql -u appuser -papppassword testdb
 
 ```bash
 # 進入後端容器
-docker compose exec backend bash
+docker compose exec backend-personal bash
+docker compose exec backend-church bash
 
 # 進入 MySQL 容器
 docker compose exec mysql bash
 
 # 檢查端口監聽
-docker compose exec backend ss -tuln | grep 8080
-docker compose exec frontend ss -tuln | grep 80
+docker compose exec backend-personal ss -tuln | grep 8080
+docker compose exec backend-church ss -tuln | grep 8080
+docker compose exec frontend-personal ss -tuln | grep 80
 ```
 
 ### 資源使用情況
@@ -431,7 +437,7 @@ docker compose exec frontend ss -tuln | grep 80
 docker stats
 
 # 查看特定容器資源使用
-docker stats java_backend vue_frontend mysql_db
+docker stats java_backend_personal java_backend_church vue_personal mysql_db
 ```
 
 ### 重啟服務
@@ -441,8 +447,9 @@ docker stats java_backend vue_frontend mysql_db
 docker compose restart
 
 # 重啟特定服務
-docker compose restart backend
-docker compose restart frontend
+docker compose restart backend-personal
+docker compose restart backend-church
+docker compose restart frontend-personal
 
 # 停止所有服務
 docker compose down
@@ -458,8 +465,8 @@ docker compose down -v
 docker compose up -d --build
 
 # 重新構建特定服務
-docker compose up -d --build backend
-docker compose up -d --build frontend
+docker compose up -d --build backend-personal backend-church
+docker compose up -d --build frontend-personal
 ```
 
 ---
@@ -518,7 +525,7 @@ Container exited with code 1
 
 - [ ] 所有容器都是 `Up` 狀態：`docker compose ps`
 - [ ] 前端可以訪問：`curl http://localhost`
-- [ ] 後端 API 可以訪問：`curl http://localhost:8080/api/hello`
+- [ ] 後端 API 可以訪問：`curl http://localhost/api/hello`
 - [ ] 瀏覽器可以訪問前端頁面
 - [ ] 前端可以成功連接後端（顯示「✓ 運行中」）
 
@@ -526,7 +533,7 @@ Container exited with code 1
 
 1. 檢查容器狀態：`docker compose ps`
 2. 查看日誌：`docker compose logs`
-3. 測試服務：`curl http://localhost:8080/api/hello`
+3. 測試服務：`curl http://localhost/api/hello`
 4. 檢查端口：`sudo ss -tulpn | grep -E ':(80|8080)'`
 5. 檢查防火牆：`sudo ufw status` 或 `sudo firewall-cmd --list-ports`
 6. 檢查雲服務商安全組設置
@@ -563,4 +570,3 @@ docker system prune -a
 
 **最後更新：** 2024年
 **維護者：** 請根據實際情況更新本文檔
-

@@ -108,10 +108,10 @@ WHERE config_key = 'gitlab_token';
 "
 ```
 
-### 步驟 3: 重新啟動後端（如果需要）
+### 步驟 3: 重新啟動個人系統後端（如果需要）
 
 ```bash
-docker compose restart backend
+docker compose restart backend-personal
 ```
 
 ---
@@ -165,4 +165,3 @@ curl http://38.54.89.136:8080/api/config/gitlab_token
 1. 資料庫中的 Token 是否正確設定
 2. 後端 API 是否正常運行
 3. Token 是否有正確的權限
-

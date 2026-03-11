@@ -11,6 +11,8 @@ Thumbs.db
 
 # Java
 target/
+backend-personal/target/
+backend-church/target/
 *.class
 *.jar
 *.war

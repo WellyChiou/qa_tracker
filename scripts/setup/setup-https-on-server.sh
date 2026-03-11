@@ -74,8 +74,12 @@ http {
         server frontend-church-admin:80;
     }
 
-    upstream backend {
-        server backend:8080;
+    upstream backend-personal {
+        server backend-personal:8080;
+    }
+
+    upstream backend-church {
+        server backend-church:8080;
     }
 
     server {
@@ -110,8 +114,16 @@ http {
             proxy_set_header X-Forwarded-Proto $scheme;
         }
 
-        location /api {
-            proxy_pass http://backend;
+        location /api/church/ {
+            proxy_pass http://backend-church;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location /api/ {
+            proxy_pass http://backend-personal;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -205,4 +217,3 @@ else
     echo "  docker-compose logs nginx"
     exit 1
 fi
-

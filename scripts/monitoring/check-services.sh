@@ -4,7 +4,7 @@ echo "=== Docker 容器狀態 ==="
 docker ps -a
 
 echo -e "\n=== 容器健康檢查 ==="
-for container in nginx_proxy java_backend vue_personal vue_frontend_church mysql_db; do
+for container in nginx_proxy java_backend_personal java_backend_church vue_personal vue_frontend_church vue_frontend_church_admin mysql_db; do
     if docker ps | grep -q $container; then
         echo "✓ $container 正在運行"
     else
@@ -30,7 +30,8 @@ df -h | head -2
 free -h 2>/dev/null | head -2 || vm_stat 2>/dev/null | head -5
 
 echo -e "\n=== 後端健康檢查 ==="
-curl -s --max-time 5 http://localhost:8080/api/hello 2>&1 | head -3 || echo "後端無法訪問"
+curl -s --max-time 5 http://localhost/api/hello 2>&1 | head -3 || echo "Personal 後端無法訪問"
+curl -s --max-time 5 http://localhost/api/church/auth/current-user 2>&1 | head -3 || echo "Church 後端無法訪問"
 
 echo -e "\n=== Nginx 配置檢查 ==="
 docker exec nginx_proxy nginx -t 2>&1 || echo "Nginx 容器未運行或無法訪問"

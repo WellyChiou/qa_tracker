@@ -8,6 +8,10 @@ const routes = [
     component: () => import('@/views/Login.vue')
   },
   {
+    path: '/admin',
+    redirect: '/'
+  },
+  {
     path: '/',
     name: 'AdminDashboard',
     component: () => import('@/views/admin/Dashboard.vue'),
@@ -29,6 +33,12 @@ const routes = [
     path: '/groups',
     name: 'AdminGroups',
     component: () => import('@/views/admin/Groups.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/line-groups',
+    name: 'AdminLineGroups',
+    component: () => import('@/views/admin/LineGroups.vue'),
     meta: { requiresAuth: true }
   },
   {
@@ -183,4 +193,3 @@ router.beforeEach(async (to, from, next) => {
 })
 
 export default router
-

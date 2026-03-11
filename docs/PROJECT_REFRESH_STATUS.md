@@ -7,7 +7,8 @@ This repository is currently organized as:
 - `frontend-personal`: personal member-facing site
 - `frontend-church`: public church-facing site
 - `frontend-church-admin`: church admin backend UI
-- `backend`: shared Java backend API
+- `backend-personal`: personal Java backend API
+- `backend-church`: church Java backend API
 - `nginx` + `mysql`: deployment infrastructure
 
 The old `frontend-invest` folder has been removed from the active project structure and documentation.
@@ -31,7 +32,7 @@ The old `frontend-invest` folder has been removed from the active project struct
 
 ### Docs
 
-Updated these files to reflect the real 3-frontend + 1-backend structure:
+Updated these files to reflect the real 3-frontend + 2-backend structure:
 
 - `README.md`
 - `README-local-deploy.md`
@@ -106,7 +107,8 @@ Build verification completed successfully on March 11, 2026:
 - `frontend-personal`: `npm run build`
 - `frontend-church`: `npm run build`
 - `frontend-church-admin`: `npm run build`
-- `backend`: `mvn -q -DskipTests compile`
+- `backend-personal`: Docker build success
+- `backend-church`: Docker build success
 
 Not yet completed:
 
