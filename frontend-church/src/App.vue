@@ -18,7 +18,7 @@
           </span>
         </router-link>
 
-        <nav class="nav" :class="{ 'nav--open': isMenuOpen }">
+        <nav class="nav" :class="{ 'nav--open': isMenuOpen }" ref="navRef">
           <template v-for="menu in displayMenus" :key="menu.id">
             <div
               v-if="menu.children && menu.children.length > 0"
@@ -33,10 +33,7 @@
                 {{ menu.menuName }}
                 <span class="nav-dropdown__arrow">▼</span>
               </button>
-              <div
-                class="nav-dropdown__menu"
-                @mouseleave="!isMobile && (openDropdownId = null)"
-              >
+              <div class="nav-dropdown__menu">
                 <router-link
                   v-for="child in menu.children"
                   :key="child.id"
@@ -111,13 +108,24 @@ import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import ToastHost from '@shared/components/ToastHost.vue'
 
 const route = useRoute()
+const navRef = ref(null)
 
 // Mobile (<=768px): disable route transitions / reveal
 const isMobile = ref(false)
 const updateIsMobile = () => { isMobile.value = window.innerWidth <= 768 }
 updateIsMobile()
 window.addEventListener('resize', updateIsMobile)
-onUnmounted(() => window.removeEventListener('resize', updateIsMobile))
+const handleClickOutside = (event) => {
+  if (!navRef.value) return
+  if (!navRef.value.contains(event.target)) {
+    openDropdownId.value = null
+  }
+}
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateIsMobile)
+  document.removeEventListener('click', handleClickOutside)
+})
 const frontendMenus = ref([])
 const isMenuOpen = ref(false)
 const openDropdownId = ref(null)
@@ -176,6 +184,7 @@ watch(
 
 onMounted(() => {
   loadFrontendMenus()
+  document.addEventListener('click', handleClickOutside)
 })
 </script>
 
