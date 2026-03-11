@@ -8,24 +8,28 @@
 
     <div class="login-shell">
       <section class="login-intro">
+        <div class="login-brand">
+          <span class="login-brand__dot"></span>
+          <span class="login-brand__name">Aurora Church Admin</span>
+        </div>
         <span class="login-kicker">Church Admin</span>
-        <h1>把內容維運、同工資料與現場流程集中在同一個後台。</h1>
+        <h1>教會後台管理系統</h1>
         <p>
-          這個入口是給教會管理者使用，登入後可直接管理公告、活動、服事表、點名與排程作業。
+          給教會管理者與授權同工使用，集中處理內容維運、服事排程、簽到作業與權限設定。
         </p>
 
         <div class="intro-grid">
           <article class="intro-card">
-            <strong>內容維運</strong>
-            <span>公告、主日信息、前台選單與教會介紹集中更新。</span>
+            <strong>內容管理</strong>
+            <span>公告、主日信息與網站內容可在同一處維護。</span>
           </article>
           <article class="intro-card">
-            <strong>同工管理</strong>
-            <span>人員、角色、權限與服事排班同一套資料來源。</span>
+            <strong>同工與權限</strong>
+            <span>角色、帳號、權限與後台入口保持一致。</span>
           </article>
           <article class="intro-card">
-            <strong>現場作業</strong>
-            <span>聚會點名、手動補登與任務排程可從後台直接掌握。</span>
+            <strong>現場流程</strong>
+            <span>服事表、簽到與排程任務可以直接掌握。</span>
           </article>
         </div>
       </section>
@@ -38,12 +42,15 @@
         </div>
 
         <form @submit.prevent="handleLogin" class="login-form">
-          <div class="system-status">
-            <span class="status-icon">●</span>
-            <span class="status-label">系統狀態</span>
-            <span :class="['status-text', systemStatus === 'online' ? 'status-online' : systemStatus === 'checking' ? 'status-checking' : 'status-offline']">
-              {{ systemStatus === 'online' ? '運行中' : systemStatus === 'checking' ? '檢查中...' : '離線' }}
-            </span>
+          <div class="system-status-card">
+            <div class="system-status">
+              <span class="status-icon">●</span>
+              <span class="status-label">系統狀態</span>
+              <span :class="['status-text', systemStatus === 'online' ? 'status-online' : systemStatus === 'checking' ? 'status-checking' : 'status-offline']">
+                {{ systemStatus === 'online' ? '運行中' : systemStatus === 'checking' ? '檢查中...' : '離線' }}
+              </span>
+            </div>
+            <p class="system-status-hint">登入前會先確認後端服務可用，避免進入後台後才發現服務異常。</p>
           </div>
 
           <div class="form-group">
@@ -52,8 +59,9 @@
               id="username"
               v-model="username"
               type="text"
+              class="login-input"
               required
-              placeholder="請輸入用戶名"
+              placeholder="例如：church_admin"
               autocomplete="username"
             />
           </div>
@@ -64,6 +72,7 @@
               id="password"
               v-model="password"
               type="password"
+              class="login-input"
               required
               placeholder="請輸入密碼"
               autocomplete="current-password"
@@ -79,6 +88,7 @@
 
         <div class="login-footer">
           <p>只有具備權限的教會管理者可登入此系統。</p>
+          <p>若登入後無法看到功能選單，通常是角色權限尚未配置完成。</p>
         </div>
       </div>
     </div>
@@ -227,15 +237,39 @@ const handleLogin = async () => {
 .login-shell{
   position:relative;
   z-index:1;
-  width:min(1160px, 100%);
+  width:min(1140px, 100%);
   display:grid;
-  grid-template-columns:minmax(0, 1.15fr) minmax(360px, 430px);
-  gap:2rem;
+  grid-template-columns:minmax(0, .92fr) minmax(400px, 480px);
+  gap:2.2rem;
   align-items:center;
 }
 
 .login-intro{
-  padding:1.5rem 1rem 1.5rem 0;
+  padding:1rem 1rem 1rem 0;
+  max-width:32rem;
+}
+
+.login-brand{
+  display:flex;
+  align-items:center;
+  gap:.65rem;
+  margin-bottom:1rem;
+}
+
+.login-brand__dot{
+  width:12px;
+  height:12px;
+  border-radius:999px;
+  background:linear-gradient(135deg, #2563eb, #14b8a6);
+  box-shadow:0 0 0 6px rgba(37,99,235,.08);
+}
+
+.login-brand__name{
+  color:rgba(15,23,42,.68);
+  font-size:.9rem;
+  font-weight:800;
+  letter-spacing:.06em;
+  text-transform:uppercase;
 }
 
 .login-kicker,
@@ -255,42 +289,43 @@ const handleLogin = async () => {
 }
 
 .login-intro h1{
-  margin:1rem 0 1rem;
-  max-width:12ch;
-  font-size:clamp(2.6rem, 5vw, 4.8rem);
-  line-height:.94;
-  letter-spacing:-.05em;
+  margin:1rem 0 .9rem;
+  max-width:none;
+  font-size:clamp(2.2rem, 4vw, 3.35rem);
+  line-height:1.02;
+  letter-spacing:-.04em;
   color:var(--text);
 }
 
 .login-intro p{
   margin:0;
-  max-width:42rem;
+  max-width:31rem;
   color:var(--muted);
-  font-size:1.02rem;
-  line-height:1.8;
+  font-size:1rem;
+  line-height:1.82;
   font-weight:600;
 }
 
 .intro-grid{
-  margin-top:2rem;
+  margin-top:1.75rem;
   display:grid;
-  gap:1rem;
+  grid-template-columns:1fr;
+  gap:.85rem;
 }
 
 .intro-card{
-  padding:1.1rem 1.15rem;
-  border-radius:22px;
-  background:rgba(255,255,255,.72);
-  border:1px solid rgba(255,255,255,.54);
-  box-shadow:0 16px 34px rgba(15,23,42,.08);
+  padding:1rem 1.05rem;
+  border-radius:18px;
+  background:rgba(255,255,255,.7);
+  border:1px solid rgba(255,255,255,.56);
+  box-shadow:0 12px 28px rgba(15,23,42,.06);
 }
 
 .intro-card strong{
   display:block;
-  margin-bottom:.35rem;
+  margin-bottom:.22rem;
   color:var(--text);
-  font-size:1rem;
+  font-size:.96rem;
 }
 
 .intro-card span{
@@ -300,19 +335,19 @@ const handleLogin = async () => {
 }
 
 .login-card{
-  width:min(460px, 100%);
-  background:rgba(255,255,255,.82);
-  border:1px solid rgba(2,6,23,.10);
-  border-radius:30px;
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  padding:24px 22px;
+  width:min(480px, 100%);
+  background:linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.84));
+  border:1px solid rgba(255,255,255,.68);
+  border-radius:34px;
+  box-shadow:0 24px 60px rgba(15,23,42,.14);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding:30px 28px 24px;
 }
 
 .card-top h2{
-  margin:.95rem 0 .55rem;
-  font-size:2rem;
+  margin:1rem 0 .6rem;
+  font-size:2.15rem;
   font-weight:900;
   letter-spacing:-0.04em;
   color:var(--text);
@@ -323,18 +358,27 @@ const handleLogin = async () => {
   color:var(--muted);
   font-weight:600;
   font-size:14px;
+  line-height:1.75;
 }
 
-.login-form{ margin-top:16px; display:flex; flex-direction:column; gap:12px; }
+.login-form{
+  margin-top:20px;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+
+.system-status-card{
+  padding:14px;
+  border-radius:20px;
+  border:1px solid rgba(2,6,23,.08);
+  background:linear-gradient(180deg, rgba(248,250,252,.92), rgba(255,255,255,.75));
+}
 
 .system-status{
   display:flex;
   align-items:center;
   gap:8px;
-  padding:10px 12px;
-  border-radius:16px;
-  border:1px solid rgba(2,6,23,.08);
-  background:rgba(255,255,255,.7);
 }
 .status-icon{font-size:12px}
 .status-label{ color:rgba(15,23,42,.60); font-weight:800; font-size:12px; }
@@ -343,51 +387,72 @@ const handleLogin = async () => {
 .status-checking{ color:var(--warning); }
 .status-offline{ color:#b91c1c; }
 
-.form-group{ display:flex; flex-direction:column; gap:8px; }
-.form-label{ font-size:13px; font-weight:900; color:rgba(15,23,42,.72); }
+.system-status-hint{
+  margin:.55rem 0 0;
+  color:rgba(15,23,42,.58);
+  font-size:12px;
+  line-height:1.7;
+  font-weight:700;
+}
+
+.form-group{ display:flex; flex-direction:column; gap:9px; }
 .login-input{
-  border-radius:16px;
-  padding:12px 12px;
+  border-radius:18px;
+  padding:14px 14px;
+  background:rgba(255,255,255,.92);
+  border:1px solid rgba(2,6,23,.10);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.4);
+}
+
+.login-input::placeholder{
+  color:rgba(15,23,42,.34);
 }
 
 .login-button{
-  margin-top:4px;
+  margin-top:8px;
   border:none;
   width:100%;
-  padding:12px 14px;
-  border-radius:16px;
-  background:var(--primary);
+  padding:14px 16px;
+  border-radius:18px;
+  background:linear-gradient(135deg, var(--primary), #0f5fe0);
   color:white;
   font-weight:900;
   font-size:14px;
+  letter-spacing:.02em;
   cursor:pointer;
   transition:transform .12s ease, background .12s ease, box-shadow .12s ease;
-  box-shadow:0 10px 24px rgba(37,99,235,.22);
+  box-shadow:0 14px 30px rgba(37,99,235,.24);
 }
 .login-button:hover{ transform:translateY(-1px); background:var(--primary-600); }
 .login-button:active{ transform:translateY(0); box-shadow:none; }
 
 .error-message{
-  margin-top:8px;
-  padding:10px 12px;
+  margin-top:2px;
+  padding:12px 14px;
   border-radius:16px;
   border:1px solid rgba(239,68,68,.20);
   background:rgba(239,68,68,.08);
   color:#b91c1c;
   font-weight:800;
   font-size:13px;
+  line-height:1.7;
 }
 
 .login-footer{
-  margin-top:16px;
+  margin-top:18px;
+  padding-top:16px;
+  border-top:1px solid rgba(2,6,23,.08);
   color:rgba(15,23,42,.56);
   font-size:12px;
   font-weight:700;
+  display:grid;
+  gap:.45rem;
 }
 
 @media (max-width: 960px){
   .login-shell{
     grid-template-columns:1fr;
+    gap:1.6rem;
   }
 
   .login-intro{
@@ -405,12 +470,20 @@ const handleLogin = async () => {
 
 @media (max-width: 640px){
   .login-container{
-    padding:20px 14px;
+    padding:18px 14px;
   }
 
   .login-card{
-    border-radius:24px;
-    padding:20px 18px;
+    border-radius:26px;
+    padding:22px 18px 18px;
+  }
+
+  .login-intro h1{
+    font-size:clamp(2.35rem, 11vw, 3.5rem);
+  }
+
+  .login-intro p{
+    font-size:.96rem;
   }
 }
 </style>

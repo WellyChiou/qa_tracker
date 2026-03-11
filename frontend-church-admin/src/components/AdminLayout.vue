@@ -125,10 +125,12 @@
 
     <main class="admin-main">
       <div class="admin-content">
-        <div class="admin-page-meta">
-          <span class="admin-page-meta__section">Church Admin</span>
-          <span class="admin-page-meta__divider">/</span>
-          <span class="admin-page-meta__title">{{ pageTitle }}</span>
+        <div class="admin-page-head">
+          <div class="admin-page-meta">
+            <span class="admin-page-meta__section">Church Admin</span>
+            <span class="admin-page-meta__divider">/</span>
+            <span class="admin-page-meta__title">{{ pageTitle }}</span>
+          </div>
         </div>
         <slot />
       </div>
@@ -202,6 +204,7 @@ const pageTitle = computed(() => {
   const menu = adminMenus.value.find(m => m.url === route.path)
   return menu ? menu.menuName : '管理系統'
 })
+
 
 // 檢查當前路由是否屬於某個菜單的子項
 const isChildOfMenu = (menu) => {
@@ -630,10 +633,15 @@ onUnmounted(() => {
 .admin-content{
   max-width:1180px;
   margin:0 auto;
-  padding:18px 20px 28px;
+  padding:20px 20px 34px;
   display:flex;
   flex-direction:column;
-  gap:14px;
+  gap:16px;
+}
+
+.admin-page-head{
+  display:flex;
+  align-items:center;
 }
 
 .admin-page-meta{
@@ -806,6 +814,6 @@ onUnmounted(() => {
   .navbar-user .user-name{ display:none; }
   .user-info{ padding:6px 6px; }
   .logout-button{ padding:8px 10px; }
-  .admin-hero{ grid-template-columns:1fr; }
+  .admin-content{ padding:16px 14px 28px; }
 }
 </style>
