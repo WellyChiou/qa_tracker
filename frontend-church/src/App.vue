@@ -246,7 +246,7 @@ onMounted(() => {
 .main,
 .footer {
   position: relative;
-  z-index: 1;
+  z-index: 10;
 }
 
 .site-chrome {
@@ -264,6 +264,8 @@ onMounted(() => {
   background: rgba(255, 255, 255, 0.82);
   backdrop-filter: blur(16px);
   box-shadow: 0 12px 24px rgba(16, 24, 40, 0.05);
+  position: relative;
+  z-index: 3000;
 }
 
 .brand-mark {
@@ -421,6 +423,7 @@ onMounted(() => {
   opacity: 0;
   visibility: hidden;
   transition: opacity 160ms ease, transform 160ms ease, visibility 160ms ease;
+  z-index: 5000;
 }
 
 .nav-dropdown--open .nav-dropdown__menu {
