@@ -24,8 +24,6 @@
               v-if="menu.children && menu.children.length > 0"
               class="nav-dropdown"
               :class="{ 'nav-dropdown--open': openDropdownId === menu.id }"
-              @mouseenter="!isMobile && (openDropdownId = menu.id)"
-              @mouseleave="!isMobile && (openDropdownId = null)"
             >
               <button
                 class="nav-dropdown__trigger"
@@ -37,7 +35,6 @@
               </button>
               <div
                 class="nav-dropdown__menu"
-                @mouseenter="openDropdownId = menu.id"
                 @mouseleave="!isMobile && (openDropdownId = null)"
               >
                 <router-link
@@ -138,11 +135,7 @@ const closeMenu = () => {
 }
 
 const toggleDropdown = (menuId) => {
-  if (isMobile.value) {
-    // 手機版：切換下拉選單
-    openDropdownId.value = openDropdownId.value === menuId ? null : menuId
-  }
-  // 桌面版：由 hover 控制，不需要在這裡處理
+  openDropdownId.value = openDropdownId.value === menuId ? null : menuId
 }
 
 const closeMenuAndDropdown = () => {
@@ -177,6 +170,7 @@ watch(
   () => route.path,
   () => {
     closeMenu()
+    openDropdownId.value = null
   }
 )
 
