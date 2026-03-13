@@ -5,6 +5,7 @@ import com.example.helloworld.dto.common.ApiResponse;
 import com.example.helloworld.dto.church.frontend.ActivityResult;
 import com.example.helloworld.dto.church.frontend.AnnouncementResult;
 import com.example.helloworld.dto.church.frontend.GroupResult;
+import com.example.helloworld.dto.church.frontend.NextServiceResult;
 import com.example.helloworld.dto.church.frontend.PrayerRequestResult;
 import com.example.helloworld.dto.church.frontend.SiteResult;
 import com.example.helloworld.dto.church.frontend.SundayMessageResult;
@@ -21,6 +22,7 @@ import com.example.helloworld.service.church.AnnouncementService;
 import com.example.helloworld.service.church.ChurchInfoService;
 import com.example.helloworld.service.church.GroupService;
 import com.example.helloworld.service.church.PrayerRequestService;
+import com.example.helloworld.service.church.SundayMessageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -28,6 +30,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/church/public")
@@ -44,7 +47,7 @@ public class FrontendDataController {
     private ActivityService activityService;
 
     @Autowired
-    private com.example.helloworld.service.church.SundayMessageService sundayMessageService;
+    private SundayMessageService sundayMessageService;
 
     @Autowired
     private GroupService groupService;
@@ -170,6 +173,20 @@ public class FrontendDataController {
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.fail("獲取主日信息失敗: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 獲取下一場啟用中的聚會（公開訪問）
+     */
+    @GetMapping("/next-service")
+    public ResponseEntity<ApiResponse<NextServiceResult>> getNextService() {
+        try {
+            Optional<NextServiceResult> nextService = sundayMessageService.getNextUpcomingService();
+            return ResponseEntity.ok(ApiResponse.ok(nextService.orElse(null)));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("獲取下一場聚會資訊失敗: " + e.getMessage()));
         }
     }
 
@@ -318,4 +335,3 @@ public class FrontendDataController {
         }
     }
 }
-

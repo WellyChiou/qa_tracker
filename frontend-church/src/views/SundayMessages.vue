@@ -15,25 +15,34 @@
         <div v-if="isLoading" class="loading"><p>載入中...</p></div>
 
         <div v-else-if="messagesWithFormattedData.length > 0" class="grid grid-3">
-          <article class="card card--hover" v-for="message in messagesWithFormattedData" :key="message.id">
+          <article class="card card--hover message-card" v-for="message in messagesWithFormattedData" :key="message.id">
             <div v-if="message.imageUrl" class="media" style="height:190px">
               <img :src="message.imageUrl" :alt="message.title || '主日信息'" />
             </div>
 
-            <div style="margin-top:14px">
-              <div class="tags" style="margin-bottom:10px">
-                <span class="badge" :class="message.typeClass">{{ message.typeText }}</span>
-                <span class="badge badge--accent">📅 {{ message.date }}</span>
+            <div class="message-card__body">
+              <div class="message-card__header">
+                <div class="message-card__date">
+                  <span class="message-card__date-label">{{ message.dateLabel }}</span>
+                  <span class="message-card__date-day">
+                    {{ message.dateDay }}
+                    <small v-if="message.dateWeekday">（{{ message.dateWeekday }}）</small>
+                  </span>
+                </div>
+                <div class="message-card__type">
+                  <span class="badge" :class="message.typeClass">{{ message.typeText }}</span>
+                  <span class="message-card__time">{{ message.displayTime }}</span>
+                </div>
               </div>
 
               <h3 class="card__title h3">{{ message.title || '主日信息' }}</h3>
 
-              <div class="card__meta" style="margin-top:6px">
+              <div class="message-card__meta">
                 <span v-if="message.scripture">📖 {{ message.scripture }}</span>
                 <span v-if="message.speaker">🎤 {{ message.speaker }}</span>
               </div>
 
-              <p v-if="message.content" class="muted message-content" style="margin-top:10px; margin-bottom:0">
+              <p v-if="message.content" class="muted message-content">
                 {{ message.content }}
               </p>
             </div>
@@ -53,32 +62,55 @@ import { apiRequest } from '@/utils/api'
 const messages = ref([])
 const isLoading = ref(false)
 
-const formatDate = (dateString) => {
-  if (!dateString) return ''
-  const date = new Date(dateString)
+const resolveDateFields = (serviceDate, createdAt, weekdays) => {
+  const fallbackDate = serviceDate || createdAt
+  if (!fallbackDate) {
+    return ['日期未設定', '——', '']
+  }
+
+  const date = new Date(fallbackDate)
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
-  const dayOfWeek = date.getDay()
-  const weekdays = ['日', '一', '二', '三', '四', '五', '六']
-  return `${year}/${month}/${day}(${weekdays[dayOfWeek]})`
+  const dayOfWeek = weekdays[date.getDay()]
+  return [`${year}/${month}`, day, dayOfWeek]
+}
+
+const resolveServiceInfo = (type) => {
+  if (type === 'SATURDAY') {
+    return { label: '週六晚崇', displayTime: '晚上 7:00', typeClass: 'type-saturday' }
+  }
+  return { label: '週日早崇', displayTime: '上午 10:00', typeClass: 'type-sunday' }
 }
 
 const messagesWithFormattedData = computed(() => {
   // 先排序：最新到最舊（按 serviceDate 降序）
   const sortedMessages = [...messages.value].sort((a, b) => {
-    if (!a.serviceDate && !b.serviceDate) return 0
-    if (!a.serviceDate) return 1  // 沒有日期的排在後面
-    if (!b.serviceDate) return -1 // 沒有日期的排在後面
-    return new Date(b.serviceDate) - new Date(a.serviceDate) // 降序：最新在前
+    const dateA = a.serviceDate || a.messageDate
+    const dateB = b.serviceDate || b.messageDate
+    if (!dateA && !dateB) return 0
+    if (!dateA) return 1
+    if (!dateB) return -1
+    return new Date(dateB) - new Date(dateA)
   })
   
-  return sortedMessages.map(message => ({
-    ...message,
-    date: formatDate(message.serviceDate),
-    typeText: message.serviceType === 'SATURDAY' ? '週六晚崇' : '週日早崇',
-    typeClass: message.serviceType === 'SATURDAY' ? 'type-saturday' : 'type-sunday'
-  }))
+  const weekdays = ['日', '一', '二', '三', '四', '五', '六']
+
+  return sortedMessages.map(message => {
+    const rawDate = message.serviceDate || message.messageDate
+    const [dateLabel, dateDay, dateWeekday] = resolveDateFields(rawDate, message.createdAt, weekdays)
+    const { label: typeText, displayTime, typeClass } = resolveServiceInfo(message.serviceType)
+
+    return {
+      ...message,
+      dateLabel,
+      dateDay,
+      dateWeekday,
+      typeText,
+      typeClass,
+      displayTime
+    }
+  })
 })
 
 const loadMessages = async () => {
@@ -113,4 +145,57 @@ onMounted(() => {
   color: var(--primary-2);
 }
 .message-content { white-space: pre-wrap; }
+
+.message-card__body {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.message-card__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.message-card__date {
+  display: flex;
+  flex-direction: column;
+}
+
+.message-card__date-label {
+  font-size: 0.75rem;
+  color: rgba(23, 33, 47, 0.56);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.message-card__date-day {
+  font-size: 1.55rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.message-card__type {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+}
+
+.message-card__time {
+  font-size: 0.95rem;
+  color: rgba(23, 33, 47, 0.75);
+  font-weight: 600;
+}
+
+.message-card__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  color: rgba(23, 33, 47, 0.7);
+  font-weight: 600;
+}
 </style>

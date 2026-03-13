@@ -20,10 +20,14 @@
         </div>
 
         <div class="hero-side">
-          <div class="hero-side__card">
+          <div class="hero-side__card" v-if="nextService">
             <span class="hero-side__label">本週節奏</span>
-            <strong>{{ churchInfo.home_main_service_time || '每週日上午 10:00' }}</strong>
-            <p>{{ churchInfo.home_main_service_location || '榮耀堂' }}</p>
+            <strong>{{ nextService.serviceTypeLabel }}</strong>
+            <p>
+              {{ nextService.displayDate }}
+              <span v-if="nextService.displayWeekday">（{{ nextService.displayWeekday }}）</span>
+            </p>
+            <p>{{ nextService.displayTime }}</p>
           </div>
 
           <div class="hero-side__grid">
@@ -50,10 +54,13 @@
     <section class="section section--tight" v-if="churchInfo">
       <div class="container">
         <div class="welcome-strip">
-          <article class="welcome-strip__card">
-            <span class="welcome-strip__eyebrow">主日聚會</span>
-            <strong>{{ churchInfo.home_main_service_time || '每週日上午 10:00' }}</strong>
-            <p>{{ churchInfo.home_main_service_location || '歡迎現場一起敬拜與交流。' }}</p>
+          <article class="welcome-strip__card" v-if="nextService">
+            <span class="welcome-strip__eyebrow">{{ nextService.serviceTypeLabel }}</span>
+            <strong>
+              {{ nextService.displayDate }}
+              <span v-if="nextService.displayWeekday">（{{ nextService.displayWeekday }}）</span>
+            </strong>
+            <p>{{ nextService.displayTime }}</p>
           </article>
 
           <article
@@ -75,7 +82,7 @@
     </section>
 
     <!-- 聚會時間 -->
-    <section class="section" v-reveal v-if="churchInfo">
+    <section class="section" v-reveal v-if="nextService">
       <div class="container">
         <div class="center" style="margin-bottom:18px">
           <h2 class="h2">聚會時間</h2>
@@ -83,20 +90,14 @@
         </div>
 
         <div class="grid grid-2">
-          <div class="card card--hover" v-if="churchInfo.home_saturday_service_time || churchInfo.home_saturday_service_location">
-            <h3 class="card__title h3">晚崇聚會</h3>
-            <div class="card__meta">
-              <span v-if="churchInfo.home_saturday_service_time">🕒 {{ churchInfo.home_saturday_service_time }}</span>
-              <span v-if="churchInfo.home_saturday_service_location">📍 {{ churchInfo.home_saturday_service_location }}</span>
-            </div>
-            <div class="card__content muted">適合週末較晚到的你，歡迎輕鬆加入。</div>
-          </div>
-
           <div class="card card--hover">
-            <h3 class="card__title h3">早崇聚會</h3>
+            <h3 class="card__title h3">{{ nextService.serviceTypeLabel }}</h3>
             <div class="card__meta">
-              <span>🕒 {{ churchInfo.home_main_service_time || '每週日上午 10:00' }}</span>
-              <span>📍 {{ churchInfo.home_main_service_location || '榮耀堂' }}</span>
+              <span>
+                📅 {{ nextService.displayDate }}
+                <span v-if="nextService.displayWeekday">（{{ nextService.displayWeekday }}）</span>
+              </span>
+              <span>🕒 {{ nextService.displayTime }}</span>
             </div>
             <div class="card__content muted">一起敬拜、一起學習、一起成長。</div>
           </div>
@@ -226,6 +227,7 @@ const churchInfo = ref(null)
 const activities = ref([])
 const announcements = ref([])
 const prayerRequests = ref([])
+const nextService = ref(null)
 const isLoading = ref(true)
 
 const formatDate = (dateString) => {
@@ -324,10 +326,26 @@ const loadPrayerRequests = async () => {
   }
 }
 
+const loadNextService = async () => {
+  try {
+    const data = await apiRequest('/church/public/next-service', { method: 'GET' }, '載入聚會資訊', false)
+    nextService.value = data || null
+  } catch (error) {
+    console.error('載入下一場聚會失敗:', error)
+    nextService.value = null
+  }
+}
+
 const loadData = async () => {
   isLoading.value = true
   try {
-    await Promise.all([loadChurchInfo(), loadActivities(), loadAnnouncements(), loadPrayerRequests()])
+    await Promise.all([
+      loadChurchInfo(),
+      loadActivities(),
+      loadAnnouncements(),
+      loadPrayerRequests(),
+      loadNextService()
+    ])
   } finally {
     isLoading.value = false
   }

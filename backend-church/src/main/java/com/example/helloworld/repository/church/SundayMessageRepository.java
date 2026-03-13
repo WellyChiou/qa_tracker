@@ -17,6 +17,7 @@ public interface SundayMessageRepository extends JpaRepository<SundayMessage, Lo
     List<SundayMessage> findByIsActiveTrueOrderByServiceDateDesc();
     List<SundayMessage> findAllByOrderByServiceDateDesc();
     Optional<SundayMessage> findByServiceDateAndServiceType(LocalDate serviceDate, String serviceType);
+    Optional<SundayMessage> findFirstByIsActiveTrueAndServiceDateGreaterThanEqualOrderByServiceDateAsc(LocalDate serviceDate);
     
     // 支持分頁和過濾的查詢
     @Query("SELECT m FROM SundayMessage m WHERE " +
@@ -35,4 +36,3 @@ public interface SundayMessageRepository extends JpaRepository<SundayMessage, Lo
         Pageable pageable
     );
 }
-

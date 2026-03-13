@@ -606,21 +606,17 @@ const saveMessage = async () => {
     const method = editingMessage.value ? 'PUT' : 'POST'
     
     // apiRequest 現在會自動返回解析後的資料
-    const data = await apiRequest(url, {
+    const response = await apiRequest(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify(formData.value)
     })
     
-    if (data) {
-      if (data.success) {
-        toast.success('儲存成功')
-        closeModal()
-        loadMessages()
-      } else {
-        toast.error('儲存失敗: ' + (data.message || '未知錯誤'))
-      }
+    if (response) {
+      toast.success('儲存成功')
+      closeModal()
+      loadMessages()
     }
   } catch (error) {
     console.error('儲存主日信息失敗:', error)

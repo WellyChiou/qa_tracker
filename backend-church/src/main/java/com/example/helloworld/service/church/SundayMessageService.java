@@ -1,5 +1,6 @@
 package com.example.helloworld.service.church;
 
+import com.example.helloworld.dto.church.frontend.NextServiceResult;
 import com.example.helloworld.entity.church.SundayMessage;
 import com.example.helloworld.repository.church.SundayMessageRepository;
 import org.slf4j.Logger;
@@ -11,16 +12,28 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
 public class SundayMessageService {
     private static final Logger log = LoggerFactory.getLogger(SundayMessageService.class);
+    private static final DateTimeFormatter DISPLAY_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy/MM/dd");
+    private static final Map<DayOfWeek, String> WEEKDAY_LABELS = Map.ofEntries(
+            Map.entry(DayOfWeek.MONDAY, "週一"),
+            Map.entry(DayOfWeek.TUESDAY, "週二"),
+            Map.entry(DayOfWeek.WEDNESDAY, "週三"),
+            Map.entry(DayOfWeek.THURSDAY, "週四"),
+            Map.entry(DayOfWeek.FRIDAY, "週五"),
+            Map.entry(DayOfWeek.SATURDAY, "週六"),
+            Map.entry(DayOfWeek.SUNDAY, "週日")
+    );
 
     @Autowired
     private SundayMessageRepository sundayMessageRepository;
@@ -55,6 +68,66 @@ public class SundayMessageService {
     @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
     public List<SundayMessage> getAllActiveMessages() {
         return sundayMessageRepository.findByIsActiveTrueOrderByServiceDateDesc();
+    }
+
+    /**
+     * 取得最近一場未來且啟用中的聚會
+     */
+    @Transactional(readOnly = true, transactionManager = "churchTransactionManager")
+    public Optional<NextServiceResult> getNextUpcomingService() {
+        LocalDate today = LocalDate.now();
+        return sundayMessageRepository
+                .findFirstByIsActiveTrueAndServiceDateGreaterThanEqualOrderByServiceDateAsc(today)
+                .map(this::toNextServiceResult);
+    }
+
+    private NextServiceResult toNextServiceResult(SundayMessage message) {
+        LocalDate serviceDate = message.getServiceDate();
+        String normalizedServiceType = normalizeServiceType(message.getServiceType());
+
+        return new NextServiceResult(
+                message.getId(),
+                serviceDate,
+                normalizedServiceType,
+                resolveServiceTypeLabel(normalizedServiceType),
+                buildDisplayDate(serviceDate),
+                resolveWeekdayLabel(serviceDate),
+                resolveDisplayTime(normalizedServiceType)
+        );
+    }
+
+    private String normalizeServiceType(String serviceType) {
+        if (serviceType == null) {
+            return "SUNDAY";
+        }
+        return serviceType.trim().toUpperCase();
+    }
+
+    private String resolveServiceTypeLabel(String serviceType) {
+        return switch (serviceType) {
+            case "SATURDAY" -> "週六晚崇";
+            case "SUNDAY" -> "主日聚會";
+            default -> "主日聚會";
+        };
+    }
+
+    private String resolveDisplayTime(String serviceType) {
+        return switch (serviceType) {
+            case "SATURDAY" -> "晚上 7:00";
+            case "SUNDAY" -> "上午 10:00";
+            default -> "上午 10:00";
+        };
+    }
+
+    private String buildDisplayDate(LocalDate serviceDate) {
+        return serviceDate != null ? serviceDate.format(DISPLAY_DATE_FORMATTER) : null;
+    }
+
+    private String resolveWeekdayLabel(LocalDate serviceDate) {
+        if (serviceDate == null) {
+            return null;
+        }
+        return WEEKDAY_LABELS.getOrDefault(serviceDate.getDayOfWeek(), "週日");
     }
 
     /**
@@ -162,4 +235,3 @@ public class SundayMessageService {
         return new DeactivationResult(expiredMessages.size(), itemInfos);
     }
 }
-
