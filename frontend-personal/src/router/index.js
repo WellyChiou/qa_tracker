@@ -41,31 +41,31 @@ const routes = [
     path: '/admin/users',
     name: 'AdminUsers',
     component: () => import('@/views/admin/Users.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, requiredPermission: 'ADMIN_ACCESS' }
   },
   {
     path: '/admin/roles',
     name: 'AdminRoles',
     component: () => import('@/views/admin/Roles.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, requiredPermission: 'ADMIN_ACCESS' }
   },
   {
     path: '/admin/permissions',
     name: 'AdminPermissions',
     component: () => import('@/views/admin/Permissions.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, requiredPermission: 'ADMIN_ACCESS' }
   },
   {
     path: '/admin/menus',
     name: 'AdminMenus',
     component: () => import('@/views/admin/Menus.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, requiredPermission: 'ADMIN_ACCESS' }
   },
   {
     path: '/admin/url-permissions',
     name: 'AdminUrlPermissions',
     component: () => import('@/views/admin/UrlPermissions.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, requiredPermission: 'ADMIN_ACCESS' }
   },
   {
     path: '/admin/scheduled-jobs',
@@ -98,7 +98,8 @@ router.beforeEach(
     checkAuth,
     currentUser,
     loginRouteName: 'Login',
-    authenticatedRedirect: { name: 'Dashboard' }
+    authenticatedRedirect: { name: 'Dashboard' },
+    strictPermissions: true
   })
 )
 

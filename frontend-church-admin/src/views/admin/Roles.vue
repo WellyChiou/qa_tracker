@@ -6,7 +6,13 @@
           <h2>角色管理</h2>
           <p>維護管理角色與權限組合，讓後台權責劃分更清楚。</p>
         </div>
-        <button @click="openAddModal" class="btn btn-primary">+ 新增角色</button>
+        <button
+          v-if="canManageAdmin"
+          @click="openAddModal"
+          class="btn btn-primary"
+        >
+          + 新增角色
+        </button>
       </div>
 
       <section class="overview-strip">
@@ -72,7 +78,7 @@
                 <th>角色名稱</th>
                 <th>描述</th>
                 <th>權限數量</th>
-                <th class="col-actions">操作</th>
+                <th v-if="canManageAdmin" class="col-actions">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -80,8 +86,8 @@
                 <td>{{ role.roleName }}</td>
                 <td>{{ role.description || '-' }}</td>
                 <td>{{ role.permissions ? role.permissions.length : 0 }}</td>
-                <td><div class="table-actions"><button @click="editRole(role.id)" class="btn btn-edit"><span class="btn__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></span><span>編輯</span></button>
-<button @click="deleteRole(role.id)" class="btn btn-delete"><span class="btn__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span><span>刪除</span></button></div></td>
+                <td v-if="canManageAdmin"><div class="table-actions"><button @click="editRole(role.id)" class="btn btn-edit"><span class="btn__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></span><span>編輯</span></button>
+                  <button @click="deleteRole(role.id)" class="btn btn-delete"><span class="btn__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span><span>刪除</span></button></div></td>
               </tr>
             </tbody>
           </table>
@@ -145,14 +151,18 @@
 <script setup>
 import { toast } from '@shared/composables/useToast'
 import { ref, computed, onMounted, watch } from 'vue'
+import { useAuth } from '@/composables/useAuth'
 import AdminLayout from '@/components/AdminLayout.vue'
 import RoleModal from '@/components/RoleModal.vue'
 import { apiRequest } from '@/utils/api'
+import { hasPermission } from '@shared/utils/permission'
 
 const roles = ref([])
 const availablePermissions = ref([])
 const showModal = ref(false)
 const selectedRole = ref(null)
+const { currentUser } = useAuth()
+const canManageAdmin = computed(() => hasPermission(currentUser.value, 'CHURCH_ADMIN'))
 
 // 查詢條件
 const filters = ref({

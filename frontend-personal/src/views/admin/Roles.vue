@@ -4,7 +4,11 @@
     <header class="header">
       <div class="header-top">
         <h1>🔐 角色管理</h1>
-        <button class="btn btn-primary btn-add" @click="showAddModal = true">
+        <button
+          v-if="canManageAdmin"
+          class="btn btn-primary btn-add"
+          @click="showAddModal = true"
+        >
           <i class="fas fa-plus me-2"></i>新增角色
         </button>
       </div>
@@ -18,7 +22,7 @@
             <th>角色名稱</th>
             <th>描述</th>
             <th>權限數</th>
-            <th>操作</th>
+            <th v-if="canManageAdmin">操作</th>
           </tr>
         </thead>
         <tbody>
@@ -29,7 +33,7 @@
               <TruncatedText :text="role.description" />
             </td>
             <td>{{ role.permissions ? role.permissions.length : 0 }}</td>
-            <td class="actions">
+            <td v-if="canManageAdmin" class="actions">
               <button class="btn-sm btn-edit" @click="editRole(role)">編輯</button>
               <button class="btn-sm btn-permissions" @click="editPermissions(role)">權限</button>
               <button class="btn-sm btn-delete" @click="deleteRole(role.id)">刪除</button>
@@ -149,11 +153,15 @@
 import AdminLayout from '@/components/AdminLayout.vue'
 import TruncatedText from '@/components/TruncatedText.vue'
 import { ref, onMounted, computed } from 'vue'
+import { useAuth } from '@/composables/useAuth'
 import { apiService } from '@/composables/useApi'
 import { toast } from '@shared/composables/useToast'
+import { hasPermission } from '@shared/utils/permission'
 
 const roles = ref([])
 const allPermissions = ref([])
+const { currentUser } = useAuth()
+const canManageAdmin = computed(() => hasPermission(currentUser.value, 'ADMIN_ACCESS'))
 const showAddModal = ref(false)
 const editingRole = ref(null)
 const showPermissionsModal = ref(false)

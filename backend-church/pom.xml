@@ -139,6 +139,13 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- Auth core shared module -->
+        <dependency>
+            <groupId>com.example</groupId>
+            <artifactId>backend-auth-core</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+        </dependency>
+
     </dependencies>
     <build>
         <plugins>
@@ -148,6 +155,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
+
 
             <!-- Lombok annotation processor -->
             <plugin>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.example</groupId>
+    <artifactId>backend-modules</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>Backend Modules Aggregator</name>
+    <description>聚合 backend-personal、backend-church 及 shared auth core 的模組。</description>
+
+    <modules>
+        <module>backend-auth-core</module>
+        <module>backend-personal</module>
+        <module>backend-church</module>
+    </modules>
+</project>

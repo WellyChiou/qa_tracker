@@ -4,15 +4,11 @@ import com.example.helloworld.dto.common.ApiResponse;
 import com.example.helloworld.dto.common.auth.AuthCurrentUserResponse;
 import com.example.helloworld.dto.common.auth.AuthLoginResponse;
 import com.example.helloworld.dto.common.auth.AuthLogoutResponse;
-import com.example.helloworld.dto.common.auth.AuthMenuItem;
 import com.example.helloworld.dto.common.auth.AuthRefreshResponse;
-import com.example.helloworld.dto.common.auth.AuthUserProfile;
-import com.example.helloworld.entity.personal.Permission;
-import com.example.helloworld.entity.personal.Role;
 import com.example.helloworld.entity.personal.User;
 import com.example.helloworld.repository.personal.UserRepository;
-import com.example.helloworld.service.personal.MenuService;
 import com.example.helloworld.service.common.TokenBlacklistService;
+import com.example.helloworld.service.personal.PersonalAuthFacade;
 import com.example.helloworld.util.PersonalJwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -25,13 +21,8 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/personal/auth")
@@ -49,13 +40,13 @@ public class AuthController {
     private PasswordEncoder passwordEncoder;
 
     @Autowired
-    private MenuService menuService;
-
-    @Autowired
     private PersonalJwtUtil jwtUtil;
 
     @Autowired
     private TokenBlacklistService tokenBlacklistService;
+
+    @Autowired
+    private PersonalAuthFacade personalAuthFacade;
 
     /**
      * 獲取當前登入用戶資訊
@@ -63,10 +54,9 @@ public class AuthController {
     @GetMapping("/current-user")
     public ResponseEntity<ApiResponse<AuthCurrentUserResponse>> getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        AuthCurrentUserResponse response = new AuthCurrentUserResponse();
-
         if (authentication == null || !authentication.isAuthenticated() ||
             authentication.getPrincipal().equals("anonymousUser")) {
+            AuthCurrentUserResponse response = new AuthCurrentUserResponse();
             response.setAuthenticated(false);
             response.setSystemCode("personal");
             return ResponseEntity.ok(ApiResponse.ok(response));
@@ -74,7 +64,7 @@ public class AuthController {
 
         String username = authentication.getName();
         User user = userRepository.findByUsernameWithRolesAndPermissions(username).orElse(null);
-        populateUserProfile(response, user);
+        AuthCurrentUserResponse response = personalAuthFacade.buildCurrentUserResponse(user);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
@@ -108,14 +98,7 @@ public class AuthController {
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
             String refreshToken = jwtUtil.generatePersonalRefreshToken(username);
-            AuthLoginResponse response = new AuthLoginResponse();
-            populateUserProfile(response, user);
-            response.setAccessToken(accessToken);
-            response.setTokenType("Bearer");
-            if (refreshToken != null) {
-                response.setRefreshToken(refreshToken);
-            }
-
+            AuthLoginResponse response = personalAuthFacade.buildLoginResponse(user, accessToken, refreshToken);
             return ResponseEntity.ok(ApiResponse.ok(response));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.fail("登入失敗: " + e.getMessage()));
@@ -148,13 +131,7 @@ public class AuthController {
 
             // 生成新的 Access Token
             String newAccessToken = jwtUtil.generatePersonalAccessToken(username);
-            AuthRefreshResponse response = new AuthRefreshResponse();
-            response.setAuthenticated(true);
-            response.setSystemCode("personal");
-            response.setAccessToken(newAccessToken);
-            response.setRefreshToken(refreshToken);
-            response.setTokenType("Bearer");
-
+            AuthRefreshResponse response = personalAuthFacade.buildRefreshResponse(newAccessToken, refreshToken);
             return ResponseEntity.ok(ApiResponse.ok(response));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.fail("刷新 Token 失敗: " + e.getMessage()));
@@ -178,85 +155,6 @@ public class AuthController {
         SecurityContextHolder.clearContext();
         
         return ResponseEntity.ok(ApiResponse.ok(new AuthLogoutResponse(true, "登出成功")));
-    }
-
-    private void populateUserProfile(AuthUserProfile profile, User user) {
-        profile.setSystemCode("personal");
-        if (user == null) {
-            profile.setAuthenticated(false);
-            return;
-        }
-
-        profile.setAuthenticated(true);
-        profile.setUid(user.getUid());
-        profile.setUsername(user.getUsername());
-        profile.setEmail(user.getEmail());
-        profile.setDisplayName(user.getDisplayName());
-        profile.setPhotoUrl(user.getPhotoUrl());
-        profile.setRoles(extractRoleNames(user));
-        profile.setPermissions(extractPermissionCodes(user));
-        profile.setMenus(convertMenuItems(menuService.getVisibleMenus()));
-    }
-
-    private List<String> extractRoleNames(User user) {
-        if (user == null || user.getRoles() == null) {
-            return new ArrayList<>();
-        }
-        return user.getRoles().stream()
-            .map(Role::getRoleName)
-            .filter(java.util.Objects::nonNull)
-            .distinct()
-            .collect(Collectors.toList());
-    }
-
-    private List<String> extractPermissionCodes(User user) {
-        if (user == null) {
-            return new ArrayList<>();
-        }
-        Set<String> permissionCodes = new LinkedHashSet<>();
-        if (user.getRoles() != null) {
-            for (Role role : user.getRoles()) {
-                if (role == null || role.getPermissions() == null) {
-                    continue;
-                }
-                for (Permission permission : role.getPermissions()) {
-                    if (permission != null && permission.getPermissionCode() != null) {
-                        permissionCodes.add(permission.getPermissionCode());
-                    }
-                }
-            }
-        }
-        if (user.getPermissions() != null) {
-            for (Permission permission : user.getPermissions()) {
-                if (permission != null && permission.getPermissionCode() != null) {
-                    permissionCodes.add(permission.getPermissionCode());
-                }
-            }
-        }
-        return new ArrayList<>(permissionCodes);
-    }
-
-    private List<AuthMenuItem> convertMenuItems(List<MenuService.MenuItemDTO> menuItems) {
-        if (menuItems == null) {
-            return new ArrayList<>();
-        }
-        return menuItems.stream()
-            .filter(java.util.Objects::nonNull)
-            .map(this::mapMenuItem)
-            .collect(Collectors.toList());
-    }
-
-    private AuthMenuItem mapMenuItem(MenuService.MenuItemDTO menuItem) {
-        AuthMenuItem node = new AuthMenuItem();
-        node.setId(menuItem.getId());
-        node.setMenuCode(menuItem.getMenuCode());
-        node.setMenuName(menuItem.getMenuName());
-        node.setIcon(menuItem.getIcon());
-        node.setUrl(menuItem.getUrl());
-        node.setOrderIndex(menuItem.getOrderIndex());
-        node.setShowInDashboard(menuItem.getShowInDashboard());
-        node.setChildren(convertMenuItems(menuItem.getChildren()));
-        return node;
     }
 
     /**

@@ -24,8 +24,8 @@ services:
   # Personal Java 後端 (Spring Boot)
   backend-personal:
     build:
-      context: ./backend-personal
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./backend-personal/Dockerfile
     container_name: java_backend_personal
     # 移除對外端口，由 nginx 反向代理處理
     # ports:
@@ -65,8 +65,8 @@ services:
   # Church Java 後端 (Spring Boot)
   backend-church:
     build:
-      context: ./backend-church
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./backend-church/Dockerfile
     container_name: java_backend_church
     depends_on:
       mysql:

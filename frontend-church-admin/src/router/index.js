@@ -58,31 +58,31 @@ const routes = [
     path: '/users',
     name: 'AdminUsers',
     component: () => import('@/views/admin/Users.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, requiredPermission: 'CHURCH_ADMIN' }
   },
   {
     path: '/roles',
     name: 'AdminRoles',
     component: () => import('@/views/admin/Roles.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, requiredPermission: 'CHURCH_ADMIN' }
   },
   {
     path: '/permissions',
     name: 'AdminPermissions',
     component: () => import('@/views/admin/Permissions.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, requiredPermission: 'CHURCH_ADMIN' }
   },
   {
     path: '/menus',
     name: 'AdminMenus',
     component: () => import('@/views/admin/Menus.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, requiredPermission: 'CHURCH_ADMIN' }
   },
   {
     path: '/url-permissions',
     name: 'AdminUrlPermissions',
     component: () => import('@/views/admin/UrlPermissions.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, requiredPermission: 'CHURCH_ADMIN' }
   },
   {
     path: '/church-info',
@@ -175,7 +175,8 @@ router.beforeEach(
     checkAuth,
     currentUser,
     loginRouteName: 'AdminLogin',
-    authenticatedRedirect: { name: 'AdminDashboard' }
+    authenticatedRedirect: { name: 'AdminDashboard' },
+    strictPermissions: true
   })
 )
 

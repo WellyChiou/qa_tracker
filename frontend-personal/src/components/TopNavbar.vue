@@ -87,7 +87,6 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
-import { apiService } from '@/composables/useApi'
 import ProfileModal from './ProfileModal.vue'
 
 const getManuallyClosedSubmenus = () => {
@@ -259,68 +258,71 @@ const handleLogout = async () => {
   router.push('/login')
 }
 
-const loadMenus = async () => {
-  try {
-    if (currentUser.value && currentUser.value.menus) {
-      menus.value = currentUser.value.menus
-    } else {
-      menus.value = await apiService.getMenus()
+const refreshMenuState = () => {
+  manuallyClosedSubmenus = getManuallyClosedSubmenus()
+
+  if (manuallyClosedSubmenus.size > 0) {
+    manuallyClosedSubmenus.forEach(() => {
+      activeSubmenu.value = null
+    })
+  }
+
+  let isCurrentRouteInClosedSubmenu = false
+  manuallyClosedSubmenus.forEach((index) => {
+    const menu = menus.value[index]
+    if (menu && isChildOfMenu(menu)) {
+      isCurrentRouteInClosedSubmenu = true
     }
+  })
 
-    manuallyClosedSubmenus = getManuallyClosedSubmenus()
+  if (isCurrentRouteInClosedSubmenu) {
+    return
+  }
 
-    if (manuallyClosedSubmenus.size > 0) {
-      manuallyClosedSubmenus.forEach(() => {
-        activeSubmenu.value = null
+  let foundInClosedSubmenu = false
+  manuallyClosedSubmenus.forEach((index) => {
+    const menu = menus.value[index]
+    if (menu && menu.children && menu.children.length > 0) {
+      const currentPath = route.path
+      const isInSubmenu = menu.children.some(child => {
+        if (!child || !child.url) return false
+        const childUrl = normalizeMenuUrl(child.url)
+        return childUrl && currentPath.startsWith(childUrl)
       })
+      if (isInSubmenu) {
+        foundInClosedSubmenu = true
+      }
     }
+  })
 
-    let isCurrentRouteInClosedSubmenu = false
-    manuallyClosedSubmenus.forEach((index) => {
-      const menu = menus.value[index]
-      if (menu && isChildOfMenu(menu)) {
-        isCurrentRouteInClosedSubmenu = true
+  if (foundInClosedSubmenu) {
+    return
+  }
+
+  if (!isUserClicking && !justNavigatedFromSubmenu) {
+    menus.value.forEach((menu, index) => {
+      if (isChildOfMenu(menu) && !manuallyClosedSubmenus.has(index)) {
+        activeSubmenu.value = index
       }
     })
-
-    if (isCurrentRouteInClosedSubmenu) {
-      return
-    }
-
-    let foundInClosedSubmenu = false
-    manuallyClosedSubmenus.forEach((index) => {
-      const menu = menus.value[index]
-      if (menu && menu.children && menu.children.length > 0) {
-        const currentPath = route.path
-        const isInSubmenu = menu.children.some(child => {
-          if (!child || !child.url) return false
-          const childUrl = normalizeMenuUrl(child.url)
-          return childUrl && currentPath.startsWith(childUrl)
-        })
-        if (isInSubmenu) {
-          foundInClosedSubmenu = true
-        }
-      }
-    })
-
-    if (foundInClosedSubmenu) {
-      return
-    }
-
-    if (!isUserClicking && !justNavigatedFromSubmenu) {
-      menus.value.forEach((menu, index) => {
-        if (isChildOfMenu(menu) && !manuallyClosedSubmenus.has(index)) {
-          activeSubmenu.value = index
-        }
-      })
-    }
-  } catch (error) {
-    console.error('載入菜單失敗:', error)
   }
 }
 
-onMounted(async () => {
-  await loadMenus()
+const syncMenusFromCurrentUser = () => {
+  const userMenus = currentUser.value?.menus
+  menus.value = Array.isArray(userMenus) ? userMenus : []
+  refreshMenuState()
+}
+
+watch(
+  () => currentUser.value?.menus,
+  () => {
+    syncMenusFromCurrentUser()
+  },
+  { immediate: true }
+)
+
+onMounted(() => {
   document.addEventListener('click', handleClickOutside)
 })
 

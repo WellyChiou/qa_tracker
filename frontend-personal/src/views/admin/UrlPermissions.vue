@@ -4,7 +4,11 @@
     <header class="header">
       <div class="header-top">
         <h1>🔗 URL 權限管理</h1>
-        <button class="btn btn-primary btn-add" @click="showAddModal = true">
+        <button
+          v-if="canManageAdmin"
+          class="btn btn-primary btn-add"
+          @click="showAddModal = true"
+        >
           <i class="fas fa-plus me-2"></i>新增 URL 權限
         </button>
       </div>
@@ -22,7 +26,7 @@
             <th>公開</th>
             <th>啟用</th>
             <th>排序</th>
-            <th>操作</th>
+            <th v-if="canManageAdmin">操作</th>
           </tr>
         </thead>
         <tbody>
@@ -43,7 +47,7 @@
               </span>
             </td>
             <td>{{ permission.orderIndex }}</td>
-            <td class="actions">
+            <td v-if="canManageAdmin" class="actions">
               <button class="btn-sm btn-edit" @click="editPermission(permission)">編輯</button>
               <button class="btn-sm btn-delete" @click="deletePermission(permission.id)">刪除</button>
             </td>
@@ -147,9 +151,11 @@
 
 <script setup>
 import AdminLayout from '@/components/AdminLayout.vue'
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
+import { useAuth } from '@/composables/useAuth'
 import { apiService } from '@/composables/useApi'
 import { toast } from '@shared/composables/useToast'
+import { hasPermission } from '@shared/utils/permission'
 
 const permissions = ref([])
 const showAddModal = ref(false)
@@ -157,6 +163,9 @@ const editingPermission = ref(null)
 // notification 已改用全局 toast 系統
 const availableRoles = ref([])
 const availablePermissions = ref([])
+
+const { currentUser } = useAuth()
+const canManageAdmin = computed(() => hasPermission(currentUser.value, 'ADMIN_ACCESS'))
 
 const form = ref({
   urlPattern: '',

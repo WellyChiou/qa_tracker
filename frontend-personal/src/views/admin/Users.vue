@@ -4,7 +4,11 @@
     <header class="header">
       <div class="header-top">
         <h1>👥 用戶管理</h1>
-        <button class="btn btn-primary btn-add" @click="showAddModal = true">
+        <button
+          v-if="canManageAdmin"
+          class="btn btn-primary btn-add"
+          @click="showAddModal = true"
+        >
           <i class="fas fa-plus me-2"></i>新增用戶
         </button>
       </div>
@@ -20,7 +24,7 @@
             <th>顯示名稱</th>
             <th>角色</th>
             <th>啟用狀態</th>
-            <th>操作</th>
+            <th v-if="canManageAdmin">操作</th>
           </tr>
         </thead>
         <tbody>
@@ -39,7 +43,7 @@
                 {{ user.isEnabled ? '啟用' : '停用' }}
               </span>
             </td>
-            <td class="actions">
+            <td v-if="canManageAdmin" class="actions">
               <button class="btn-sm btn-edit" @click="editUser(user)">編輯</button>
               <button class="btn-sm btn-roles" @click="editRoles(user)">角色</button>
               <button class="btn-sm btn-permissions" @click="editPermissions(user)">權限</button>
@@ -246,8 +250,10 @@
 <script setup>
 import AdminLayout from '@/components/AdminLayout.vue'
 import { ref, onMounted, computed } from 'vue'
+import { useAuth } from '@/composables/useAuth'
 import { apiService } from '@/composables/useApi'
 import { toast } from '@shared/composables/useToast'
+import { hasPermission } from '@shared/utils/permission'
 
 const users = ref([])
 const showAddModal = ref(false)
@@ -279,6 +285,9 @@ const availablePermissions = computed(() =>
 const assignedPermissions = computed(() =>
   allPermissions.value.filter(p => selectedPermissionIds.value.includes(p.id))
 )
+
+const { currentUser } = useAuth()
+const canManageAdmin = computed(() => hasPermission(currentUser.value, 'ADMIN_ACCESS'))
 
 // ====== styled picker (UI only) ======
 const searchAvailableRoles = ref('')

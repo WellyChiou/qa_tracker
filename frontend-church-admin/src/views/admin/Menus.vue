@@ -6,7 +6,13 @@
           <h2>菜單管理</h2>
           <p>管理前台與後台選單、排序與儀表板入口顯示狀態。</p>
         </div>
-        <button @click="openAddModal" class="btn btn-primary">+ 新增菜單</button>
+        <button
+          v-if="canManageAdmin"
+          @click="openAddModal"
+          class="btn btn-primary"
+        >
+          + 新增菜單
+        </button>
       </div>
 
       <section class="overview-strip">
@@ -102,7 +108,7 @@
                 <th>排序</th>
                 <th>狀態</th>
                 <th>儀表板</th>
-                <th>操作</th>
+                <th v-if="canManageAdmin">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -124,7 +130,7 @@
                   </span>
                   <span v-else class="status-inactive">-</span>
                 </td>
-                <td><div class="table-actions"><button @click="editMenu(menu.id)" class="btn btn-edit"><span class="btn__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></span><span>編輯</span></button>
+                <td v-if="canManageAdmin"><div class="table-actions"><button @click="editMenu(menu.id)" class="btn btn-edit"><span class="btn__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></span><span>編輯</span></button>
                   <button @click="deleteMenu(menu.id)" class="btn btn-delete"><span class="btn__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span><span>刪除</span></button></div></td>
               </tr>
             </tbody>
@@ -190,13 +196,17 @@
 <script setup>
 import { toast } from '@shared/composables/useToast'
 import { ref, computed, onMounted, watch } from 'vue'
+import { useAuth } from '@/composables/useAuth'
 import AdminLayout from '@/components/AdminLayout.vue'
 import MenuModal from '@/components/MenuModal.vue'
 import { apiRequest } from '@/utils/api'
+import { hasPermission } from '@shared/utils/permission'
 
 const menus = ref([])
 const showModal = ref(false)
 const selectedMenu = ref(null)
+const { currentUser } = useAuth()
+const canManageAdmin = computed(() => hasPermission(currentUser.value, 'CHURCH_ADMIN'))
 
 // 查詢條件
 const filters = ref({

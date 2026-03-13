@@ -52,15 +52,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import TopNavbar from '@/components/TopNavbar.vue'
-import { apiService } from '@/composables/useApi'
-import { toast } from '@shared/composables/useToast'
+import { useAuth } from '@/composables/useAuth'
 
 const router = useRouter()
 
-const menus = ref([])
+const { currentUser } = useAuth()
 const backendStatus = ref('')
 const backendStatusText = ref('檢查中...')
 const authStatus = ref('')
@@ -73,22 +72,31 @@ const normalizeMenuUrl = (url) => {
   return url.replace(/\.html$/, '')
 }
 
-const dashboardMenus = computed(() => {
+const flattenDashboardMenus = (menuList = []) => {
   const items = []
-  menus.value.forEach(menu => {
-    if (menu.showInDashboard !== false && menu.url && menu.url !== '#') {
-      items.push({ ...menu, url: normalizeMenuUrl(menu.url) })
+  if (!Array.isArray(menuList)) {
+    return items
+  }
+  menuList.forEach(menu => {
+    if (!menu) return
+    const normalizedUrl = normalizeMenuUrl(menu.url)
+    if (menu.showInDashboard !== false && normalizedUrl && normalizedUrl !== '#') {
+      items.push({ ...menu, url: normalizedUrl })
     }
-    if (menu.children) {
+    if (Array.isArray(menu.children)) {
       menu.children.forEach(child => {
-        if (child.showInDashboard !== false && child.url && child.url !== '#') {
-          items.push({ ...child, url: normalizeMenuUrl(child.url) })
+        if (!child) return
+        const childUrl = normalizeMenuUrl(child.url)
+        if (child.showInDashboard !== false && childUrl && childUrl !== '#') {
+          items.push({ ...child, url: childUrl })
         }
       })
     }
   })
   return items
-})
+}
+
+const dashboardMenus = computed(() => flattenDashboardMenus(currentUser.value?.menus))
 
 const checkBackendStatus = async () => {
   try {
@@ -109,21 +117,10 @@ const checkBackendStatus = async () => {
   }
 }
 
-const loadMenus = async () => {
-  try {
-    menus.value = await apiService.getMenus()
-    // Dashboard 的菜單載入不需要提示（避免打擾）
-  } catch (error) {
-    console.error('載入菜單失敗:', error)
-    toast.error('載入菜單失敗')
-  }
-}
-
 onMounted(async () => {
   checkBackendStatus()
   authStatus.value = 'success'
   authStatusText.value = '✓ 已登入'
-  await loadMenus()
 })
 </script>
 

@@ -4,7 +4,11 @@
     <header class="header">
       <div class="header-top">
         <h1>🔑 權限管理</h1>
-        <button class="btn btn-primary btn-add" @click="showAddModal = true">
+        <button
+          v-if="canManageAdmin"
+          class="btn btn-primary btn-add"
+          @click="showAddModal = true"
+        >
           <i class="fas fa-plus me-2"></i>新增權限
         </button>
       </div>
@@ -20,7 +24,7 @@
             <th>資源</th>
             <th>操作</th>
             <th>描述</th>
-            <th>操作</th>
+            <th v-if="canManageAdmin">操作</th>
           </tr>
         </thead>
         <tbody>
@@ -31,7 +35,7 @@
             <td>{{ permission.resource || '-' }}</td>
             <td>{{ permission.action || '-' }}</td>
             <td>{{ permission.description || '-' }}</td>
-            <td class="actions">
+            <td v-if="canManageAdmin" class="actions">
               <button class="btn-sm btn-edit" @click="editPermission(permission)">編輯</button>
               <button class="btn-sm btn-delete" @click="deletePermission(permission.id)">刪除</button>
             </td>
@@ -99,9 +103,11 @@
 
 <script setup>
 import AdminLayout from '@/components/AdminLayout.vue'
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
+import { useAuth } from '@/composables/useAuth'
 import { apiService } from '@/composables/useApi'
 import { toast } from '@shared/composables/useToast'
+import { hasPermission } from '@shared/utils/permission'
 
 const permissions = ref([])
 const showAddModal = ref(false)
@@ -115,6 +121,9 @@ const form = ref({
   action: '',
   description: ''
 })
+
+const { currentUser } = useAuth()
+const canManageAdmin = computed(() => hasPermission(currentUser.value, 'ADMIN_ACCESS'))
 
 const loadPermissions = async () => {
   try {

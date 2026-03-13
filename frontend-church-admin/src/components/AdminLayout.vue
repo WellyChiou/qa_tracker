@@ -142,7 +142,6 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
-import { apiRequest } from '@/utils/api'
 
 const router = useRouter()
 const route = useRoute()
@@ -278,71 +277,61 @@ const handleSubmenuClick = (menuId, event) => {
   }, 3000) // 3秒後重置標記，給路由導航和頁面渲染足夠時間
 }
 
-const loadAdminMenus = async () => {
-  try {
-    // apiRequest 現在會自動返回解析後的資料
-    const menus = await apiRequest('/church/menus/admin', {
-      method: 'GET',
-      credentials: 'include'
-    })
-    
-    if (menus) {
-      console.log('載入的後台菜單:', menus)
-      adminMenus.value = Array.isArray(menus) ? menus : []
-      console.log('設置後的 adminMenus:', adminMenus.value)
-      
-      // 從 sessionStorage 恢復 manuallyClosedMenus（防止組件重新創建時丟失）
-      manuallyClosedMenus = getManuallyClosedMenus()
-      
-      // 首先，無論什麼情況，都要確保被手動關閉的子菜單保持關閉狀態
-      // 強制關閉所有在 manuallyClosedMenus 中的子菜單
-      if (manuallyClosedMenus.size > 0) {
-        manuallyClosedMenus.forEach((menuId) => {
-          const index = expandedMenus.value.indexOf(menuId)
-          if (index > -1) {
-            expandedMenus.value.splice(index, 1)
-          }
-        })
-      }
-      
-      // 檢查當前路由是否屬於被手動關閉的子菜單
-      let isCurrentRouteInClosedSubmenu = false
-      for (const menu of adminMenus.value) {
-        if (manuallyClosedMenus.has(menu.id) && isChildOfMenu(menu)) {
-          isCurrentRouteInClosedSubmenu = true
-          break
-        }
-      }
-      
-      // 如果當前路由屬於被手動關閉的子菜單，絕對不自動展開
-      if (isCurrentRouteInClosedSubmenu) {
-        return
-      }
-      
-      // 加載菜單後，檢查是否需要自動展開（只有在不是用戶手動操作且不是剛剛從子菜單導航的情況下）
-      // 並且跳過被手動關閉的子菜單
-      if (!isUserClicking && !justNavigatedFromSubmenu) {
-        const currentPath = route.path
-        for (const menu of adminMenus.value) {
-          if (menu.children) {
-            const hasActiveChild = menu.children.some(c => c.url === currentPath)
-            // 只有在子菜單不在 manuallyClosedMenus 中時才自動展開
-            if (hasActiveChild && !manuallyClosedMenus.has(menu.id) && !expandedMenus.value.includes(menu.id)) {
-              expandedMenus.value.push(menu.id)
-            }
-          }
-        }
-      }
-    }
-  } catch (error) {
-    console.error('載入後台菜單失敗:', error)
-  }
-}
-
 const handleLogout = async () => {
   await logout()
   router.push('/login')
 }
+
+const refreshMenuState = () => {
+  manuallyClosedMenus = getManuallyClosedMenus()
+
+  if (manuallyClosedMenus.size > 0) {
+    manuallyClosedMenus.forEach((menuId) => {
+      const index = expandedMenus.value.indexOf(menuId)
+      if (index > -1) {
+        expandedMenus.value.splice(index, 1)
+      }
+    })
+  }
+
+  let isCurrentRouteInClosedSubmenu = false
+  for (const menu of adminMenus.value) {
+    if (manuallyClosedMenus.has(menu.id) && isChildOfMenu(menu)) {
+      isCurrentRouteInClosedSubmenu = true
+      break
+    }
+  }
+
+  if (isCurrentRouteInClosedSubmenu) {
+    return
+  }
+
+  if (!isUserClicking && !justNavigatedFromSubmenu) {
+    const currentPath = route.path
+    for (const menu of adminMenus.value) {
+      if (menu.children) {
+        const hasActiveChild = menu.children.some(c => c.url === currentPath)
+        if (hasActiveChild && !manuallyClosedMenus.has(menu.id) && !expandedMenus.value.includes(menu.id)) {
+          expandedMenus.value.push(menu.id)
+        }
+      }
+    }
+  }
+}
+
+const syncMenusFromCurrentUser = () => {
+  const userMenus = currentUser.value?.menus
+  adminMenus.value = Array.isArray(userMenus) ? userMenus : []
+  refreshMenuState()
+}
+
+watch(
+  () => currentUser.value?.menus,
+  () => {
+    syncMenusFromCurrentUser()
+  },
+  { immediate: true }
+)
 
 // 監聽路由變化，自動展開包含當前路由的父菜單
 watch(() => route.path, (newPath, oldPath) => {
@@ -422,7 +411,6 @@ const handleClickOutside = (event) => {
 }
 
 onMounted(() => {
-  loadAdminMenus()
 
   const handleResize = () => {
     isMobile.value = window.innerWidth <= 860
