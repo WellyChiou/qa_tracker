@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
+import { createAuthGuard } from '@shared/utils/authGuard'
 
 const routes = [
   {
@@ -91,31 +92,14 @@ const router = createRouter({
   routes
 })
 
-// 路由守衛
-router.beforeEach(async (to, from, next) => {
-  const { checkAuth } = useAuth()
-  
-  if (to.meta.requiresAuth) {
-    let isAuthenticated = await checkAuth()
-    // 如果認證失敗，重試一次（可能是 session cookie 還沒完全設置好）
-    if (!isAuthenticated) {
-      await new Promise(resolve => setTimeout(resolve, 100))
-      isAuthenticated = await checkAuth()
-    }
-    if (!isAuthenticated) {
-      next({ name: 'Login', query: { redirect: to.fullPath } })
-      return
-    }
-  } else if (to.name === 'Login') {
-    const isAuthenticated = await checkAuth()
-    if (isAuthenticated) {
-      next({ name: 'Dashboard' })
-      return
-    }
-  }
-  
-  next()
-})
+const { checkAuth, currentUser } = useAuth()
+router.beforeEach(
+  createAuthGuard({
+    checkAuth,
+    currentUser,
+    loginRouteName: 'Login',
+    authenticatedRedirect: { name: 'Dashboard' }
+  })
+)
 
 export default router
-

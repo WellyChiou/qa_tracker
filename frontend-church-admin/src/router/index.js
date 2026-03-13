@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
+import { createAuthGuard } from '@shared/utils/authGuard'
 
 const routes = [
   {
@@ -168,28 +169,14 @@ const router = createRouter({
   routes
 })
 
-// 路由守衛：保護後台路由
-router.beforeEach(async (to, from, next) => {
-  const { checkAuth } = useAuth()
-  
-  // 登入頁面不需要認證
-  if (to.path === '/login') {
-    next()
-    return
-  }
-  
-  // 檢查是否需要認證
-  if (to.meta.requiresAuth) {
-    const isAuthenticated = await checkAuth()
-    if (!isAuthenticated) {
-      // 未登入，導向登入頁面
-      next({ path: '/login', query: { redirect: to.fullPath } })
-    } else {
-      next()
-    }
-  } else {
-    next()
-  }
-})
+const { checkAuth, currentUser } = useAuth()
+router.beforeEach(
+  createAuthGuard({
+    checkAuth,
+    currentUser,
+    loginRouteName: 'AdminLogin',
+    authenticatedRedirect: { name: 'AdminDashboard' }
+  })
+)
 
 export default router

@@ -15,9 +15,17 @@ public interface UserRepository extends JpaRepository<User, String> {
     Optional<User> findByUid(String uid);
     Optional<User> findByLineUserId(String lineUserId);
     
-    @Query("SELECT u FROM User u LEFT JOIN FETCH u.roles LEFT JOIN FETCH u.permissions WHERE u.username = :username")
+    @Query("SELECT u FROM User u " +
+           "LEFT JOIN FETCH u.roles r " +
+           "LEFT JOIN FETCH r.permissions " +
+           "LEFT JOIN FETCH u.permissions " +
+           "WHERE u.username = :username")
     Optional<User> findByUsernameWithRolesAndPermissions(@Param("username") String username);
     
-    @Query("SELECT u FROM User u LEFT JOIN FETCH u.roles LEFT JOIN FETCH u.permissions WHERE u.uid = :uid")
+    @Query("SELECT u FROM User u " +
+           "LEFT JOIN FETCH u.roles r " +
+           "LEFT JOIN FETCH r.permissions " +
+           "LEFT JOIN FETCH u.permissions " +
+           "WHERE u.uid = :uid")
     Optional<User> findByUidWithRolesAndPermissions(@Param("uid") String uid);
 }

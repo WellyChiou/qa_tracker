@@ -1,9 +1,14 @@
 package com.example.helloworld.controller.church;
 
 import com.example.helloworld.dto.common.ApiResponse;
-import com.example.helloworld.dto.church.auth.CurrentUserResponse;
-import com.example.helloworld.dto.church.auth.LoginResponse;
-import com.example.helloworld.dto.church.auth.RefreshTokenResponse;
+import com.example.helloworld.dto.common.auth.AuthCurrentUserResponse;
+import com.example.helloworld.dto.common.auth.AuthLoginResponse;
+import com.example.helloworld.dto.common.auth.AuthLogoutResponse;
+import com.example.helloworld.dto.common.auth.AuthMenuItem;
+import com.example.helloworld.dto.common.auth.AuthRefreshResponse;
+import com.example.helloworld.dto.common.auth.AuthUserProfile;
+import com.example.helloworld.entity.church.ChurchPermission;
+import com.example.helloworld.entity.church.ChurchRole;
 import com.example.helloworld.entity.church.ChurchUser;
 import com.example.helloworld.repository.church.ChurchUserRepository;
 import com.example.helloworld.service.common.TokenBlacklistService;
@@ -21,8 +26,12 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/church/auth")
@@ -52,35 +61,28 @@ public class ChurchAuthController {
      * 獲取當前登入用戶資訊
      */
     @GetMapping("/current-user")
-    public ResponseEntity<ApiResponse<CurrentUserResponse>> getCurrentUser() {
+    public ResponseEntity<ApiResponse<AuthCurrentUserResponse>> getCurrentUser() {
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            
-            if (authentication == null || !authentication.isAuthenticated() || 
+            AuthCurrentUserResponse response = new AuthCurrentUserResponse();
+
+            if (authentication == null || !authentication.isAuthenticated() ||
                 authentication.getPrincipal().equals("anonymousUser")) {
-                CurrentUserResponse response = new CurrentUserResponse();
                 response.setAuthenticated(false);
+                response.setSystemCode("church_admin");
                 return ResponseEntity.ok(ApiResponse.ok(response));
             }
 
             String username = authentication.getName();
-            ChurchUser user = churchUserRepository.findByUsername(username).orElse(null);
-            
+            ChurchUser user = churchUserRepository.findByUsernameWithRolesAndPermissions(username).orElse(null);
+
             if (user == null) {
-                CurrentUserResponse response = new CurrentUserResponse();
                 response.setAuthenticated(false);
+                response.setSystemCode("church_admin");
                 return ResponseEntity.ok(ApiResponse.ok(response));
             }
 
-            CurrentUserResponse response = new CurrentUserResponse();
-            response.setAuthenticated(true);
-            response.setUid(user.getUid());
-            response.setUsername(user.getUsername());
-            response.setEmail(user.getEmail());
-            response.setDisplayName(user.getDisplayName());
-            response.setPhotoUrl(user.getPhotoUrl());
-            response.setMenus(churchMenuService.getAdminMenus());
-
+            populateUserProfile(response, user);
             return ResponseEntity.ok(ApiResponse.ok(response));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
@@ -92,7 +94,7 @@ public class ChurchAuthController {
      * 登入
      */
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<LoginResponse>> login(@RequestBody Map<String, String> loginRequest) {
+    public ResponseEntity<ApiResponse<AuthLoginResponse>> login(@RequestBody Map<String, String> loginRequest) {
         try {
             String username = loginRequest.get("username");
             String password = loginRequest.get("password");
@@ -102,7 +104,7 @@ public class ChurchAuthController {
             );
 
             // 更新最後登入時間
-            ChurchUser user = churchUserRepository.findByUsername(username).orElse(null);
+            ChurchUser user = churchUserRepository.findByUsernameWithRolesAndPermissions(username).orElse(null);
             if (user != null) {
                 user.setLastLoginAt(LocalDateTime.now());
                 churchUserRepository.save(user);
@@ -114,13 +116,21 @@ public class ChurchAuthController {
             // 生成 Refresh Token（如果啟用）
             String refreshToken = jwtUtil.generateChurchRefreshToken(username);
 
-            LoginResponse loginResponse = new LoginResponse();
-            loginResponse.setUsername(username);
-            loginResponse.setAccessToken(accessToken);
-            loginResponse.setTokenType("Bearer");
-            loginResponse.setRefreshToken(refreshToken);
+            if (user == null) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.fail("登入失敗: 無法取得用戶資料"));
+            }
 
-            return ResponseEntity.ok(ApiResponse.ok(loginResponse));
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            AuthLoginResponse response = new AuthLoginResponse();
+            populateUserProfile(response, user);
+            response.setAccessToken(accessToken);
+            response.setTokenType("Bearer");
+            if (refreshToken != null) {
+                response.setRefreshToken(refreshToken);
+            }
+
+            return ResponseEntity.ok(ApiResponse.ok(response));
         } catch (org.springframework.security.authentication.BadCredentialsException e) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.fail("登入失敗: 用戶名或密碼錯誤"));
@@ -138,7 +148,7 @@ public class ChurchAuthController {
      * 刷新 Access Token
      */
     @PostMapping("/refresh")
-    public ResponseEntity<ApiResponse<RefreshTokenResponse>> refreshToken(@RequestBody Map<String, String> request) {
+    public ResponseEntity<ApiResponse<AuthRefreshResponse>> refreshToken(@RequestBody Map<String, String> request) {
         try {
             String refreshToken = request.get("refreshToken");
             if (refreshToken == null || refreshToken.isEmpty()) {
@@ -164,8 +174,11 @@ public class ChurchAuthController {
             // 生成新的 Access Token
             String newAccessToken = jwtUtil.generateChurchAccessToken(username);
 
-            RefreshTokenResponse response = new RefreshTokenResponse();
+            AuthRefreshResponse response = new AuthRefreshResponse();
+            response.setAuthenticated(true);
+            response.setSystemCode("church_admin");
             response.setAccessToken(newAccessToken);
+            response.setRefreshToken(refreshToken);
             response.setTokenType("Bearer");
 
             return ResponseEntity.ok(ApiResponse.ok(response));
@@ -179,7 +192,7 @@ public class ChurchAuthController {
      * 登出（將 Token 加入黑名單）
      */
     @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<String>> logout(HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<AuthLogoutResponse>> logout(HttpServletRequest request) {
         try {
             // 從 Authorization header 提取 Token
             String authHeader = request.getHeader("Authorization");
@@ -191,10 +204,89 @@ public class ChurchAuthController {
             
             SecurityContextHolder.clearContext();
             
-            return ResponseEntity.ok(ApiResponse.ok("登出成功"));
+            return ResponseEntity.ok(ApiResponse.ok(new AuthLogoutResponse(true, "登出成功")));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.fail("登出失敗: " + e.getMessage()));
         }
+    }
+
+    private void populateUserProfile(AuthUserProfile profile, ChurchUser user) {
+        profile.setSystemCode("church_admin");
+        if (user == null) {
+            profile.setAuthenticated(false);
+            return;
+        }
+
+        profile.setAuthenticated(true);
+        profile.setUid(user.getUid());
+        profile.setUsername(user.getUsername());
+        profile.setEmail(user.getEmail());
+        profile.setDisplayName(user.getDisplayName());
+        profile.setPhotoUrl(user.getPhotoUrl());
+        profile.setRoles(extractRoleNames(user));
+        profile.setPermissions(extractPermissionCodes(user));
+        profile.setMenus(convertMenuItems(churchMenuService.getAdminMenus()));
+    }
+
+    private List<String> extractRoleNames(ChurchUser user) {
+        if (user == null || user.getRoles() == null) {
+            return new ArrayList<>();
+        }
+        return user.getRoles().stream()
+            .map(ChurchRole::getRoleName)
+            .filter(java.util.Objects::nonNull)
+            .distinct()
+            .collect(Collectors.toList());
+    }
+
+    private List<String> extractPermissionCodes(ChurchUser user) {
+        if (user == null) {
+            return new ArrayList<>();
+        }
+        Set<String> permissionCodes = new LinkedHashSet<>();
+        if (user.getRoles() != null) {
+            for (ChurchRole role : user.getRoles()) {
+                if (role == null || role.getPermissions() == null) {
+                    continue;
+                }
+                for (ChurchPermission permission : role.getPermissions()) {
+                    if (permission != null && permission.getPermissionCode() != null) {
+                        permissionCodes.add(permission.getPermissionCode());
+                    }
+                }
+            }
+        }
+        if (user.getPermissions() != null) {
+            for (ChurchPermission permission : user.getPermissions()) {
+                if (permission != null && permission.getPermissionCode() != null) {
+                    permissionCodes.add(permission.getPermissionCode());
+                }
+            }
+        }
+        return new ArrayList<>(permissionCodes);
+    }
+
+    private List<AuthMenuItem> convertMenuItems(List<ChurchMenuService.MenuItemDTO> menuItems) {
+        if (menuItems == null) {
+            return new ArrayList<>();
+        }
+        return menuItems.stream()
+            .filter(java.util.Objects::nonNull)
+            .map(this::mapMenuItem)
+            .collect(Collectors.toList());
+    }
+
+    private AuthMenuItem mapMenuItem(ChurchMenuService.MenuItemDTO menuItem) {
+        AuthMenuItem node = new AuthMenuItem();
+        node.setId(menuItem.getId());
+        node.setMenuCode(menuItem.getMenuCode());
+        node.setMenuName(menuItem.getMenuName());
+        node.setIcon(menuItem.getIcon());
+        node.setUrl(menuItem.getUrl());
+        node.setOrderIndex(menuItem.getOrderIndex());
+        node.setShowInDashboard(null);
+        node.setChildren(convertMenuItems(menuItem.getChildren()));
+        return node;
     }
 }

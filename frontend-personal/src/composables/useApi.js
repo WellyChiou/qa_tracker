@@ -25,7 +25,7 @@ const personalApiClient = createApiClient({
 
 export const setLoadingCallbacks = personalApiClient.setLoadingCallbacks
 export const setTokens = personalApiClient.setTokens
-const clearTokens = personalApiClient.clearTokens
+export const clearTokens = personalApiClient.clearTokens
 
 class ApiService {
   async request(url, options = {}) {

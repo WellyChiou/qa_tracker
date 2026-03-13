@@ -1,6 +1,13 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { fileURLToPath, URL } from 'node:url'
+import { webcrypto, randomBytes } from 'node:crypto'
+
+if (!globalThis.crypto) {
+  globalThis.crypto = webcrypto
+}
+
+const webSocketToken = randomBytes(9).toString('base64url')
 
 export default defineConfig({
   plugins: [vue()],
@@ -17,7 +24,8 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true
       }
-    }
+    },
+    webSocketToken
   },
   build: {
     outDir: 'dist',
@@ -30,4 +38,3 @@ export default defineConfig({
   },
   base: '/church-admin/'
 })
-

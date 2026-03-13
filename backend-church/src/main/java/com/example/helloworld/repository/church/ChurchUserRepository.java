@@ -17,10 +17,18 @@ public interface ChurchUserRepository extends JpaRepository<ChurchUser, String> 
     Optional<ChurchUser> findByUsername(String username);
     Optional<ChurchUser> findByUid(String uid);
     
-    @Query("SELECT DISTINCT u FROM ChurchUser u LEFT JOIN FETCH u.roles LEFT JOIN FETCH u.permissions WHERE u.username = :username")
+    @Query("SELECT DISTINCT u FROM ChurchUser u " +
+           "LEFT JOIN FETCH u.roles r " +
+           "LEFT JOIN FETCH r.permissions " +
+           "LEFT JOIN FETCH u.permissions " +
+           "WHERE u.username = :username")
     Optional<ChurchUser> findByUsernameWithRolesAndPermissions(@Param("username") String username);
     
-    @Query("SELECT DISTINCT u FROM ChurchUser u LEFT JOIN FETCH u.roles LEFT JOIN FETCH u.permissions WHERE u.uid = :uid")
+    @Query("SELECT DISTINCT u FROM ChurchUser u " +
+           "LEFT JOIN FETCH u.roles r " +
+           "LEFT JOIN FETCH r.permissions " +
+           "LEFT JOIN FETCH u.permissions " +
+           "WHERE u.uid = :uid")
     Optional<ChurchUser> findByUidWithRolesAndPermissions(@Param("uid") String uid);
     
     @Query("SELECT DISTINCT u FROM ChurchUser u " +
@@ -35,4 +43,3 @@ public interface ChurchUserRepository extends JpaRepository<ChurchUser, String> 
            "LEFT JOIN FETCH u.permissions")
     Page<ChurchUser> findAllWithRolesAndPermissions(Pageable pageable);
 }
-
