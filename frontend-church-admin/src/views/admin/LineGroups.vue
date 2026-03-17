@@ -315,14 +315,18 @@ async function saveGroup() {
     : '/church/admin/line-groups'
   const method = isEditing ? 'PUT' : 'POST'
 
-  await apiRequest(url, {
-    method,
-    body: JSON.stringify(groupForm.value)
-  }, isEditing ? '更新群組中...' : '建立群組中...')
+  try {
+    await apiRequest(url, {
+      method,
+      body: JSON.stringify(groupForm.value)
+    }, isEditing ? '更新群組中...' : '建立群組中...')
 
-  toast.success(isEditing ? '群組已更新' : '群組已建立')
-  closeGroupModal()
-  await loadGroups(true)
+    toast.success(isEditing ? '更新成功' : '新增成功')
+    closeGroupModal()
+    await loadGroups(true)
+  } catch (error) {
+    toast.error(error.message || '操作失敗')
+  }
 }
 
 async function removeGroup(group) {
@@ -330,12 +334,16 @@ async function removeGroup(group) {
     return
   }
 
-  await apiRequest(`/church/admin/line-groups/${group.groupId}`, {
-    method: 'DELETE'
-  }, '刪除群組中...')
+  try {
+    await apiRequest(`/church/admin/line-groups/${group.groupId}`, {
+      method: 'DELETE'
+    }, '刪除群組中...')
 
-  toast.success('群組已刪除')
-  await loadGroups(false)
+    toast.success('刪除成功')
+    await loadGroups(false)
+  } catch (error) {
+    toast.error(error.message || '刪除失敗')
+  }
 }
 
 function openMemberModal(member = null) {
@@ -371,14 +379,18 @@ async function saveMember() {
     : `/church/admin/line-groups/${selectedGroup.value.groupId}/members`
   const method = isEditing ? 'PUT' : 'POST'
 
-  await apiRequest(url, {
-    method,
-    body: JSON.stringify(memberForm.value)
-  }, isEditing ? '更新成員中...' : '新增成員中...')
+  try {
+    await apiRequest(url, {
+      method,
+      body: JSON.stringify(memberForm.value)
+    }, isEditing ? '更新成員中...' : '新增成員中...')
 
-  toast.success(isEditing ? '成員已更新' : '成員已新增')
-  closeMemberModal()
-  await loadGroups(true)
+    toast.success(isEditing ? '更新成功' : '新增成功')
+    closeMemberModal()
+    await loadGroups(true)
+  } catch (error) {
+    toast.error(error.message || '操作失敗')
+  }
 }
 
 async function removeMember(member) {
@@ -387,12 +399,16 @@ async function removeMember(member) {
     return
   }
 
-  await apiRequest(`/church/admin/line-groups/${selectedGroup.value.groupId}/members/${member.id}`, {
-    method: 'DELETE'
-  }, '移除成員中...')
+  try {
+    await apiRequest(`/church/admin/line-groups/${selectedGroup.value.groupId}/members/${member.id}`, {
+      method: 'DELETE'
+    }, '移除成員中...')
 
-  toast.success('成員已移除')
-  await loadGroups(true)
+    toast.success('刪除成功')
+    await loadGroups(true)
+  } catch (error) {
+    toast.error(error.message || '刪除失敗')
+  }
 }
 
 onMounted(async () => {

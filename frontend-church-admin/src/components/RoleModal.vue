@@ -90,6 +90,7 @@
 
 <script setup>
 import { ref, watch, computed } from 'vue'
+import { toast } from '@shared/composables/useToast'
 import { apiRequest } from '@/utils/api'
 
 const props = defineProps({
@@ -232,9 +233,11 @@ const handleSubmit = async () => {
       close()
     } else {
       error.value = '操作失敗'
+      toast.error(error.value)
     }
   } catch (err) {
     error.value = err.message || '操作失敗'
+    toast.error(error.value)
   } finally {
     loading.value = false
   }

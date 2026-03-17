@@ -396,6 +396,7 @@ const closeModal = () => {
 }
 
 const handleSaved = () => {
+  toast.success(selectedPermission.value ? '更新成功' : '新增成功')
   loadPermissions()
   closeModal()
 }
@@ -406,17 +407,13 @@ const deletePermission = async (id) => {
   }
   
   try {
-    // apiRequest 現在會自動返回解析後的資料
-    const data = await apiRequest(`/church/admin/url-permissions/${id}`, {
+    await apiRequest(`/church/admin/url-permissions/${id}`, {
       method: 'DELETE',
       credentials: 'include'
     })
-    
-    if (data !== null) {
-      loadPermissions()
-    } else {
-      toast.error('刪除失敗')
-    }
+
+    toast.success('刪除成功')
+    loadPermissions()
   } catch (error) {
     console.error('刪除 URL 權限失敗:', error)
     toast.error('刪除失敗: ' + error.message)

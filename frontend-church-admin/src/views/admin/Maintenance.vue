@@ -326,18 +326,29 @@ const refreshConfig = async () => {
   refreshingConfig.value = true
   
   try {
-    // apiRequest 現在會自動返回解析後的資料
-    const data = await apiRequest('/church/admin/system-settings/refresh', {
+    const apiUrl = `${getApiBaseUrl()}/church/admin/system-settings/refresh`
+    const token = getAccessToken()
+    const headers = {
+      'Content-Type': 'application/json'
+    }
+
+    if (token) {
+      headers.Authorization = `Bearer ${token}`
+    }
+
+    const response = await fetch(apiUrl, {
       method: 'POST',
+      headers,
       credentials: 'include'
     })
-    
-    if (data !== null) {
-      // apiRequest 成功返回數據，表示刷新成功
-      showNotification('配置刷新成功，新的配置已生效', 'success')
-      loadSettings()
+
+    const data = await response.json()
+
+    if (response.ok && data?.success) {
+      showNotification('配置刷新成功', 'success')
+      await loadSettings()
     } else {
-      showNotification('配置刷新失敗', 'error')
+      showNotification(data?.message || '配置刷新失敗', 'error')
     }
   } catch (err) {
     showNotification('配置刷新失敗: ' + err.message, 'error')

@@ -385,6 +385,7 @@ const closeModal = () => {
 }
 
 const handleSaved = () => {
+  toast.success(selectedMenu.value ? '更新成功' : '新增成功')
   loadMenus()
 }
 
@@ -394,17 +395,13 @@ const deleteMenu = async (id) => {
   }
   
   try {
-    // apiRequest 現在會自動返回解析後的資料
-    const data = await apiRequest(`/church/menus/${id}`, {
+    await apiRequest(`/church/menus/${id}`, {
       method: 'DELETE',
       credentials: 'include'
     })
-    
-    if (data !== null) {
-      loadMenus()
-    } else {
-      toast.error('刪除失敗')
-    }
+
+    toast.success('刪除成功')
+    loadMenus()
   } catch (error) {
     console.error('刪除菜單失敗:', error)
     toast.error('刪除失敗: ' + error.message)

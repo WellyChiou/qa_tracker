@@ -348,6 +348,7 @@ const closeModal = () => {
 }
 
 const handleSaved = () => {
+  toast.success(selectedRole.value ? '更新成功' : '新增成功')
   loadRoles()
 }
 
@@ -360,17 +361,13 @@ const deleteRole = async (id) => {
   }
   
   try {
-    // apiRequest 現在會自動返回解析後的資料
-    const data = await apiRequest(`/church/admin/roles/${id}`, {
+    await apiRequest(`/church/admin/roles/${id}`, {
       method: 'DELETE',
       credentials: 'include'
     })
-    
-    if (data !== null) {
-      loadRoles()
-    } else {
-      toast.error('刪除失敗')
-    }
+
+    toast.success('刪除成功')
+    loadRoles()
   } catch (error) {
     console.error('刪除角色失敗:', error)
     toast.error('刪除失敗: ' + error.message)

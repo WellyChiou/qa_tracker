@@ -71,6 +71,7 @@
 
 <script setup>
 import { ref, watch } from 'vue'
+import { toast } from '@shared/composables/useToast'
 import { apiRequest } from '@/utils/api'
 
 const props = defineProps({
@@ -151,9 +152,11 @@ const handleSubmit = async () => {
       close()
     } else {
       error.value = '操作失敗'
+      toast.error(error.value)
     }
   } catch (err) {
     error.value = err.message || '操作失敗'
+    toast.error(error.value)
   } finally {
     loading.value = false
   }
@@ -347,4 +350,3 @@ const handleSubmit = async () => {
   background-position:0 0, 0 100%, 0 0, 0 100%;
 }
 </style>
-
