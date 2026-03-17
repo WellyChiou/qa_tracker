@@ -15,8 +15,7 @@
 Thumbs.db
 
 # Java targets (避免將編譯輸出當成 context)
-backend-auth-core/target
-backend-personal/target
-backend-church/target
+backend/auth-core/target
+backend/personal/target
+backend/church/target
 target
-

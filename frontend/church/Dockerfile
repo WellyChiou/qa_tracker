@@ -1,20 +1,20 @@
 # 構建階段
 FROM node:20-alpine AS builder
 
-WORKDIR /app/frontend-personal
+WORKDIR /app/frontend/church
 
 # 複製 package 文件
-COPY frontend-personal/package*.json ./
-COPY frontend-personal/vite.config.js ./
+COPY frontend/church/package*.json ./
+COPY frontend/church/vite.config.js ./
 
 # 安裝依賴
 RUN npm install
 
-# 複製源代碼（排除 node_modules，使用 .dockerignore）
-COPY frontend-personal/src ./src
-COPY frontend-personal/index.html ./
-COPY frontend-personal/public ./public
-COPY shared/ ../shared/
+# 複製源代碼（排除 node_modules）
+COPY frontend/church/src ./src
+COPY frontend/church/index.html ./
+COPY frontend/church/public ./public
+COPY shared/ ../../shared/
 
 # 確保 node_modules/.bin 有執行權限
 RUN chmod -R +x node_modules/.bin 2>/dev/null || true
@@ -30,10 +30,10 @@ FROM nginx:stable
 # RUN apk add --no-cache wget
 
 # 複製構建結果到 nginx
-COPY --from=builder /app/frontend-personal/dist /usr/share/nginx/html
+COPY --from=builder /app/frontend/church/dist /usr/share/nginx/html
 
 # 複製 nginx 配置文件（支持 Vue Router history 模式）
-COPY frontend-personal/nginx.conf /etc/nginx/conf.d/default.conf
+COPY frontend/church/nginx.conf /etc/nginx/conf.d/default.conf
 
 # 暴露端口
 EXPOSE 80

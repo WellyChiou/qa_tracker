@@ -12,23 +12,23 @@ RUN apt-get update && \
 
 # 先複製聚合型 pom 及各模組的 pom 以利用 Docker cache
 COPY pom.xml .
-COPY backend-auth-core/pom.xml backend-auth-core/pom.xml
-COPY backend-personal/pom.xml backend-personal/pom.xml
-COPY backend-church/pom.xml backend-church/pom.xml
+COPY backend/auth-core/pom.xml backend/auth-core/pom.xml
+COPY backend/personal/pom.xml backend/personal/pom.xml
+COPY backend/church/pom.xml backend/church/pom.xml
 
 # 先期依賴解析（只針對 church 模組加上依賴）
-RUN mvn -pl backend-church -am dependency:resolve -B -U || \
-    (echo "⚠️ 依賴下載失敗，10 秒後重試..." && sleep 10 && mvn -pl backend-church -am dependency:resolve -B -U) || \
-    (echo "⚠️ 第二次下載失敗，20 秒後最後重試..." && sleep 20 && mvn -pl backend-church -am dependency:resolve -B -U) || \
+RUN mvn -pl backend/church -am dependency:resolve -B -U || \
+    (echo "⚠️ 依賴下載失敗，10 秒後重試..." && sleep 10 && mvn -pl backend/church -am dependency:resolve -B -U) || \
+    (echo "⚠️ 第二次下載失敗，20 秒後最後重試..." && sleep 20 && mvn -pl backend/church -am dependency:resolve -B -U) || \
     (echo "⚠️ 依賴下載失敗，將在構建階段自動下載..." && true)
 
 # 再複製完整模組來源，以進行建置
-COPY backend-auth-core backend-auth-core
-COPY backend-personal backend-personal
-COPY backend-church backend-church
+COPY backend/auth-core backend/auth-core
+COPY backend/personal backend/personal
+COPY backend/church backend/church
 
 # 構建 church 模組（含共用 auth core）
-RUN mvn -pl backend-church -am clean package -DskipTests -B
+RUN mvn -pl backend/church -am clean package -DskipTests -B
 
 # 運行階段：使用 Eclipse Temurin（OpenJDK 的替代品）
 FROM eclipse-temurin:17-jre-jammy
@@ -47,11 +47,11 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # 從構建階段複製 JAR 文件
-COPY --from=build /app/backend-church/target/*.jar app.jar
+COPY --from=build /app/backend/church/target/*.jar app.jar
 
 # 複製備份腳本到容器內
-COPY backend-church/personal-backup-database.sh /app/personal-backup-database.sh
-COPY backend-church/church-backup-database.sh /app/church-backup-database.sh
+COPY backend/church/personal-backup-database.sh /app/personal-backup-database.sh
+COPY backend/church/church-backup-database.sh /app/church-backup-database.sh
 RUN chmod +x /app/personal-backup-database.sh /app/church-backup-database.sh
 
 # 暴露端口
