@@ -1,11 +1,13 @@
 package com.example.helloworld.controller.personal;
 
 import com.example.helloworld.dto.common.ApiResponse;
+import com.example.helloworld.dto.common.PageResponse;
 import com.example.helloworld.entity.personal.User;
 import com.example.helloworld.repository.personal.UserRepository;
 import com.example.helloworld.service.line.LineBotService;
 import com.example.helloworld.service.personal.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -65,6 +67,29 @@ public class UserController {
     public ResponseEntity<ApiResponse<List<User>>> getAllUsers() {
         List<User> users = userService.getAllUsers();
         return ResponseEntity.ok(ApiResponse.ok(users));
+    }
+
+    @GetMapping("/paged")
+    public ResponseEntity<ApiResponse<PageResponse<User>>> getAllUsersPaged(
+            @RequestParam(required = false) String username,
+            @RequestParam(required = false) String email,
+            @RequestParam(required = false) Long roleId,
+            @RequestParam(required = false) Boolean isEnabled,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            Page<User> usersPage = userService.getAllUsers(username, email, roleId, isEnabled, page, size);
+            PageResponse<User> pageResponse = new PageResponse<>(
+                usersPage.getContent(),
+                usersPage.getTotalElements(),
+                usersPage.getTotalPages(),
+                usersPage.getNumber(),
+                usersPage.getSize()
+            );
+            return ResponseEntity.ok(ApiResponse.ok(pageResponse));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取用戶列表失敗：" + e.getMessage()));
+        }
     }
 
     /**

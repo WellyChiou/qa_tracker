@@ -661,20 +661,26 @@ tr.skeleton-row .skeleton{height:14px}
   align-items:center;
   gap:10px;
   flex-wrap:wrap;
-  min-width:0;
+  flex:1 1 360px;
+  min-width:280px;
 }
 .pagination-right{
   display:flex;
   align-items:center;
   gap:10px;
   flex-wrap:wrap;
+  justify-content:flex-end;
 }
 .pagination-label{
   font-size:12px;
   color:rgba(2,6,23,.65);
   font-weight:700;
+  white-space:nowrap;
 }
 .page-size-select{
+  width:auto;
+  min-width:80px;
+  flex:0 0 auto;
   height:36px;
   padding:0 10px;
   border-radius:12px;
@@ -685,6 +691,7 @@ tr.skeleton-row .skeleton{height:14px}
   font-size:12px;
   color:rgba(2,6,23,.60);
   white-space:nowrap;
+  flex:0 0 auto;
 }
 .page-jump{
   display:flex;
@@ -742,6 +749,7 @@ tr.skeleton-row .skeleton{height:14px}
 }
 @media (max-width: 520px){
   .pagination{padding:10px}
+  .pagination-left{min-width:0}
   .pagination-right{width:100%; justify-content:space-between}
   .page-jump{flex:1; justify-content:center}
 }

@@ -7,6 +7,9 @@ import com.example.helloworld.repository.personal.UserRepository;
 import com.example.helloworld.repository.personal.RoleRepository;
 import com.example.helloworld.repository.personal.PermissionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +49,27 @@ public class UserService {
             }
         });
         return users;
+    }
+
+    /**
+     * 獲取所有用戶（支持分頁和過濾）
+     */
+    @Transactional(readOnly = true)
+    public Page<User> getAllUsers(String username, String email, Long roleId, Boolean isEnabled, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        String filterUsername = (username != null && !username.trim().isEmpty()) ? username.trim() : null;
+        String filterEmail = (email != null && !email.trim().isEmpty()) ? email.trim() : null;
+
+        Page<User> usersPage = userRepository.findByFilters(filterUsername, filterEmail, roleId, isEnabled, pageable);
+        usersPage.getContent().forEach(user -> {
+            if (user.getRoles() != null) {
+                user.getRoles().size();
+            }
+            if (user.getPermissions() != null) {
+                user.getPermissions().size();
+            }
+        });
+        return usersPage;
     }
 
     /**
