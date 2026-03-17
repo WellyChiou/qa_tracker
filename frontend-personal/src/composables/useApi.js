@@ -18,7 +18,9 @@ const personalApiClient = createApiClient({
   refreshEndpoint: '/auth/refresh',
   rejectRedirected: true,
   shouldAttachToken(url) {
-    const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register')
+    const isAuthEndpoint = url.includes('/auth/login')
+      || url.includes('/auth/register')
+      || url.includes('/auth/refresh')
     return !isAuthEndpoint
   }
 })

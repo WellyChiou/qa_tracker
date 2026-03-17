@@ -18,7 +18,9 @@ export function createChurchApiModule() {
     },
     refreshEndpoint: '/church/auth/refresh',
     shouldAttachToken(url, needsAuth) {
-      const isAuthEndpoint = url.includes('/church/auth/login') || url.includes('/church/auth/register')
+      const isAuthEndpoint = url.includes('/church/auth/login')
+        || url.includes('/church/auth/register')
+        || url.includes('/church/auth/refresh')
       return !isAuthEndpoint && (needsAuth || url.includes('/church/'))
     }
   })

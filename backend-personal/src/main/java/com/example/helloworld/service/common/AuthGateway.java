@@ -29,6 +29,7 @@ public class AuthGateway {
 
         boolean isPersonalPath = requestPath.startsWith("/api/personal/")
                 && !requestPath.startsWith("/api/personal/auth/login")
+                && !requestPath.startsWith("/api/personal/auth/refresh")
                 && !requestPath.startsWith("/api/personal/auth/register")
                 && !requestPath.startsWith("/api/personal/line/");
 
