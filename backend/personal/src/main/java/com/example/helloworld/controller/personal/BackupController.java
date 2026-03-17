@@ -43,7 +43,6 @@ public class BackupController {
             if (!Files.exists(backupPath)) {
                 Map<String, Object> data = new HashMap<>();
                 data.put("backups", new ArrayList<>());
-                data.put("message", "備份目錄不存在");
                 return ResponseEntity.ok(ApiResponse.ok(data));
             }
 
@@ -87,7 +86,6 @@ public class BackupController {
 
             Map<String, Object> data = new HashMap<>();
             data.put("backups", backups);
-            data.put("message", "獲取備份列表成功");
             return ResponseEntity.ok(ApiResponse.ok(data));
         } catch (Exception e) {
             e.printStackTrace();
@@ -171,7 +169,6 @@ public class BackupController {
             
             Map<String, Object> data = new HashMap<>();
             if (exitCode == 0) {
-                data.put("success", true);
                 data.put("message", "備份創建成功");
                 if (fullOutput.length() > 0) data.put("output", fullOutput.toString());
                 return ResponseEntity.ok(ApiResponse.ok(data));

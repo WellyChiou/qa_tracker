@@ -50,38 +50,9 @@ public class SecurityConfig {
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS) // 使用 STATELESS 以支持 JWT Token 認證
             )
             .authorizeHttpRequests(auth -> auth
-                // ===== 必須公開的端點（這些不應該由資料庫控制）=====
-                // 認證相關 API 必須公開，否則無法登入
-                .requestMatchers("/api/church/auth/**").permitAll() // 教會認證 API
-                .requestMatchers("/api/personal/auth/**").permitAll() // 個人網站認證 API (新路徑)
-                .requestMatchers("/api/auth/**").permitAll() // 個人網站認證 API (舊路徑兼容)
-                .requestMatchers("/api/public/**").permitAll() // 明確標記為公開的 API
-                .requestMatchers("/api/hello").permitAll() // Hello API
-                .requestMatchers("/api/utils/**").permitAll() // 工具 API（生成密碼 hash 等）
-                .requestMatchers("/api/line/**").permitAll() // LINE Bot Webhook (舊路徑)
-                .requestMatchers("/api/personal/line/**").permitAll() // LINE Bot Webhook (新路徑)
-                
-                // ===== 靜態資源和前端入口 =====
-                .requestMatchers("/*.css", "/*.js", "/api.js", "/style.css").permitAll()
-                .requestMatchers("/", "/index.html").permitAll() // Vue SPA 入口文件
-                
-                // ===== 管理頁面 =====
-                .requestMatchers("/admin/**").authenticated() // 管理頁面需要認證
-                
-                // ===== 所有 API 端點（由 UrlPermissionFilter 動態控制）=====
-                // 包括 URL 權限管理 API 也可以由資料庫動態控制
-                // 建議在資料庫中預先配置這些端點的權限（例如：需要 ADMIN 角色）
-                // 如果資料庫中沒有配置，則使用預設規則（需要認證）
-                // 注意：這裡設定為 authenticated() 作為預設，但 UrlPermissionFilter 會：
-                // 1. 如果資料庫中配置了 is_public = 1，會設置認證狀態讓請求通過
-                // 2. 如果資料庫中配置了需要角色/權限，會進行檢查
-                // 3. 如果資料庫中沒有配置，則使用這個預設規則（需要認證）
+                .requestMatchers("/error").permitAll()
+                .requestMatchers("/actuator/**").permitAll()
                 .requestMatchers("/api/**").authenticated()
-                
-                // ===== 其他 HTML 頁面 =====
-                .requestMatchers("/*.html").authenticated()
-                
-                // ===== 其他所有請求 =====
                 .anyRequest().authenticated()
             )
             // 禁用默認的表單登入，因為我們使用 REST API 登入

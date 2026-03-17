@@ -307,9 +307,7 @@ const getSettingsByCategory = (category) => {
 const loadSettings = async () => {
   try {
     const data = await apiService.getSystemSettings()
-    if (data && data.settings) {
-      settings.value = data.settings
-    }
+    settings.value = Array.isArray(data) ? data : (data?.settings || [])
   } catch (err) {
     toast.error('載入系統參數失敗: ' + err.message)
   }

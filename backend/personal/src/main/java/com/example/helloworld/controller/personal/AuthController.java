@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -53,19 +54,28 @@ public class AuthController {
      */
     @GetMapping("/current-user")
     public ResponseEntity<ApiResponse<AuthCurrentUserResponse>> getCurrentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() ||
-            authentication.getPrincipal().equals("anonymousUser")) {
-            AuthCurrentUserResponse response = new AuthCurrentUserResponse();
-            response.setAuthenticated(false);
-            response.setSystemCode("personal");
-            return ResponseEntity.ok(ApiResponse.ok(response));
-        }
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !authentication.isAuthenticated() ||
+                authentication.getPrincipal().equals("anonymousUser")) {
+                AuthCurrentUserResponse fallback = new AuthCurrentUserResponse();
+                fallback.setAuthenticated(false);
+                fallback.setSystemCode("personal");
+                fallback.setMenus(List.of());
+                return ResponseEntity.ok(ApiResponse.ok(fallback));
+            }
 
-        String username = authentication.getName();
-        User user = userRepository.findByUsernameWithRolesAndPermissions(username).orElse(null);
-        AuthCurrentUserResponse response = personalAuthFacade.buildCurrentUserResponse(user);
-        return ResponseEntity.ok(ApiResponse.ok(response));
+            String username = authentication.getName();
+            User user = userRepository.findByUsernameWithRolesAndPermissions(username).orElse(null);
+            AuthCurrentUserResponse response = personalAuthFacade.buildCurrentUserResponse(user);
+            if (response.getMenus() == null) {
+                response.setMenus(List.of());
+            }
+            return ResponseEntity.ok(ApiResponse.ok(response));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("獲取用戶資訊失敗: " + e.getMessage()));
+        }
     }
 
     /**

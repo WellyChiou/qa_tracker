@@ -1,5 +1,6 @@
 package com.example.helloworld.controller.personal;
 
+import com.example.helloworld.dto.common.ApiResponse;
 import com.example.helloworld.entity.personal.LineGroup;
 import com.example.helloworld.entity.personal.LineGroupMember;
 import com.example.helloworld.repository.personal.LineGroupRepository;
@@ -8,10 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -27,32 +25,32 @@ public class LineGroupManagementController {
     // --- Line Group Management ---
 
     @GetMapping
-    public ResponseEntity<List<LineGroup>> getAllGroups() {
-        return ResponseEntity.ok(lineGroupRepository.findAll());
+    public ResponseEntity<ApiResponse<List<LineGroup>>> getAllGroups() {
+        return ResponseEntity.ok(ApiResponse.ok(lineGroupRepository.findAll()));
     }
 
     @GetMapping("/{groupId}")
-    public ResponseEntity<LineGroup> getGroup(@PathVariable String groupId) {
+    public ResponseEntity<ApiResponse<LineGroup>> getGroup(@PathVariable String groupId) {
         return lineGroupRepository.findByGroupId(groupId)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+                .map(group -> ResponseEntity.ok(ApiResponse.ok(group)))
+                .orElse(ResponseEntity.status(404).body(ApiResponse.<LineGroup>fail("找不到指定群組")));
     }
 
     @PostMapping
-    public ResponseEntity<?> createGroup(@RequestBody LineGroup group) {
+    public ResponseEntity<ApiResponse<LineGroup>> createGroup(@RequestBody LineGroup group) {
         if (lineGroupRepository.existsById(group.getGroupId())) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Group ID already exists"));
+            return ResponseEntity.badRequest().body(ApiResponse.<LineGroup>fail("Group ID already exists"));
         }
         // Ensure defaults
         if (group.getIsActive() == null) group.setIsActive(true);
         if (group.getMemberCount() == null) group.setMemberCount(0);
         
         LineGroup saved = lineGroupRepository.save(group);
-        return ResponseEntity.ok(saved);
+        return ResponseEntity.ok(ApiResponse.ok(saved));
     }
 
     @PutMapping("/{groupId}")
-    public ResponseEntity<?> updateGroup(@PathVariable String groupId, @RequestBody LineGroup groupDetails) {
+    public ResponseEntity<ApiResponse<LineGroup>> updateGroup(@PathVariable String groupId, @RequestBody LineGroup groupDetails) {
         return lineGroupRepository.findByGroupId(groupId).map(group -> {
             group.setGroupName(groupDetails.getGroupName());
             group.setIsActive(groupDetails.getIsActive());
@@ -62,35 +60,35 @@ public class LineGroupManagementController {
                 group.setMemberCount(groupDetails.getMemberCount());
             }
             LineGroup updated = lineGroupRepository.save(group);
-            return ResponseEntity.ok(updated);
-        }).orElse(ResponseEntity.notFound().build());
+            return ResponseEntity.ok(ApiResponse.ok(updated));
+        }).orElse(ResponseEntity.status(404).body(ApiResponse.<LineGroup>fail("找不到指定群組")));
     }
 
     @DeleteMapping("/{groupId}")
-    public ResponseEntity<?> deleteGroup(@PathVariable String groupId) {
+    public ResponseEntity<ApiResponse<Void>> deleteGroup(@PathVariable String groupId) {
         return lineGroupRepository.findByGroupId(groupId).map(group -> {
             lineGroupRepository.delete(group);
-            return ResponseEntity.ok(Map.of("message", "Group deleted"));
-        }).orElse(ResponseEntity.notFound().build());
+            return ResponseEntity.ok(ApiResponse.<Void>ok(null));
+        }).orElse(ResponseEntity.status(404).body(ApiResponse.<Void>fail("找不到指定群組")));
     }
 
     // --- Line Group Member Management ---
 
     @GetMapping("/{groupId}/members")
-    public ResponseEntity<List<LineGroupMember>> getGroupMembers(@PathVariable String groupId) {
+    public ResponseEntity<ApiResponse<List<LineGroupMember>>> getGroupMembers(@PathVariable String groupId) {
         Optional<LineGroup> groupOpt = lineGroupRepository.findByGroupId(groupId);
         if (groupOpt.isEmpty()) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.status(404).body(ApiResponse.<List<LineGroupMember>>fail("找不到指定群組"));
         }
         // 只返回啟用的成員
-        return ResponseEntity.ok(lineGroupMemberRepository.findByLineGroupAndIsActiveTrue(groupOpt.get()));
+        return ResponseEntity.ok(ApiResponse.ok(lineGroupMemberRepository.findByLineGroupAndIsActiveTrue(groupOpt.get())));
     }
 
     @PostMapping("/{groupId}/members")
-    public ResponseEntity<?> addMember(@PathVariable String groupId, @RequestBody LineGroupMember member) {
+    public ResponseEntity<ApiResponse<LineGroupMember>> addMember(@PathVariable String groupId, @RequestBody LineGroupMember member) {
         Optional<LineGroup> groupOpt = lineGroupRepository.findByGroupId(groupId);
         if (groupOpt.isEmpty()) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.status(404).body(ApiResponse.<LineGroupMember>fail("找不到指定群組"));
         }
         
         LineGroup group = groupOpt.get();
@@ -98,7 +96,7 @@ public class LineGroupManagementController {
         // Check if member already exists in group
         Optional<LineGroupMember> existing = lineGroupMemberRepository.findByLineGroupAndUserId(group, member.getUserId());
         if (existing.isPresent()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Member already exists in this group"));
+            return ResponseEntity.badRequest().body(ApiResponse.<LineGroupMember>fail("Member already exists in this group"));
         }
 
         member.setLineGroup(group);
@@ -110,14 +108,14 @@ public class LineGroupManagementController {
         // Update member count
         updateGroupMemberCount(group);
         
-        return ResponseEntity.ok(saved);
+        return ResponseEntity.ok(ApiResponse.ok(saved));
     }
 
     @PutMapping("/{groupId}/members/{memberId}")
-    public ResponseEntity<?> updateMember(@PathVariable String groupId, @PathVariable Long memberId, @RequestBody LineGroupMember memberDetails) {
+    public ResponseEntity<ApiResponse<LineGroupMember>> updateMember(@PathVariable String groupId, @PathVariable Long memberId, @RequestBody LineGroupMember memberDetails) {
         return lineGroupMemberRepository.findById(memberId).map(member -> {
             if (!member.getLineGroup().getGroupId().equals(groupId)) {
-                return ResponseEntity.badRequest().body(Map.of("message", "Member does not belong to the specified group"));
+                return ResponseEntity.badRequest().body(ApiResponse.<LineGroupMember>fail("Member does not belong to the specified group"));
             }
             
             member.setDisplayName(memberDetails.getDisplayName());
@@ -125,15 +123,15 @@ public class LineGroupManagementController {
             // userId usually shouldn't change for an existing record, or handle carefully
             
             LineGroupMember updated = lineGroupMemberRepository.save(member);
-            return ResponseEntity.ok(updated);
-        }).orElse(ResponseEntity.notFound().build());
+            return ResponseEntity.ok(ApiResponse.ok(updated));
+        }).orElse(ResponseEntity.status(404).body(ApiResponse.<LineGroupMember>fail("找不到指定成員")));
     }
 
     @DeleteMapping("/{groupId}/members/{memberId}")
-    public ResponseEntity<?> deleteMember(@PathVariable String groupId, @PathVariable Long memberId) {
+    public ResponseEntity<ApiResponse<Void>> deleteMember(@PathVariable String groupId, @PathVariable Long memberId) {
         return lineGroupMemberRepository.findById(memberId).map(member -> {
             if (!member.getLineGroup().getGroupId().equals(groupId)) {
-                return ResponseEntity.badRequest().body(Map.of("message", "Member does not belong to the specified group"));
+                return ResponseEntity.badRequest().body(ApiResponse.<Void>fail("Member does not belong to the specified group"));
             }
             
             LineGroup group = member.getLineGroup();
@@ -144,8 +142,8 @@ public class LineGroupManagementController {
             // Update member count (只計算啟用的成員)
             updateGroupMemberCount(group);
             
-            return ResponseEntity.ok(Map.of("message", "Member removed"));
-        }).orElse(ResponseEntity.notFound().build());
+            return ResponseEntity.ok(ApiResponse.<Void>ok(null));
+        }).orElse(ResponseEntity.status(404).body(ApiResponse.<Void>fail("找不到指定成員")));
     }
     
     private void updateGroupMemberCount(LineGroup group) {
@@ -155,4 +153,3 @@ public class LineGroupManagementController {
         lineGroupRepository.save(group);
     }
 }
-

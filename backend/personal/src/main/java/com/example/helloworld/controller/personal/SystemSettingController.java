@@ -2,7 +2,6 @@ package com.example.helloworld.controller.personal;
 
 import com.example.helloworld.dto.common.ApiResponse;
 import com.example.helloworld.entity.personal.SystemSetting;
-import com.example.helloworld.repository.personal.SystemSettingRepository;
 import com.example.helloworld.service.personal.SystemSettingService;
 import com.example.helloworld.service.personal.ConfigurationRefreshService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,15 +26,12 @@ public class SystemSettingController {
     private ConfigurationRefreshService configurationRefreshService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getAllSettings() {
+    public ResponseEntity<ApiResponse<List<SystemSetting>>> getAllSettings() {
         try {
             List<SystemSetting> settings = systemSettingService.getAllSettings();
             ensureDefaultSettingsExist(settings);
             settings = systemSettingService.getAllSettings();
-            Map<String, Object> data = new HashMap<>();
-            data.put("settings", settings);
-            data.put("message", "獲取系統參數成功");
-            return ResponseEntity.ok(ApiResponse.ok(data));
+            return ResponseEntity.ok(ApiResponse.ok(settings));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.fail("獲取系統參數失敗：" + e.getMessage()));
         }
@@ -53,41 +49,37 @@ public class SystemSettingController {
     }
 
     @GetMapping("/category/{category}")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getSettingsByCategory(@PathVariable String category) {
+    public ResponseEntity<ApiResponse<List<SystemSetting>>> getSettingsByCategory(@PathVariable String category) {
         try {
             List<SystemSetting> settings = systemSettingService.getSettingsByCategory(category);
-            Map<String, Object> data = new HashMap<>();
-            data.put("settings", settings);
-            data.put("message", "獲取系統參數成功");
-            return ResponseEntity.ok(ApiResponse.ok(data));
+            return ResponseEntity.ok(ApiResponse.ok(settings));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.fail("獲取系統參數失敗：" + e.getMessage()));
         }
     }
 
     @GetMapping("/{key}")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getSettingByKey(@PathVariable String key) {
+    public ResponseEntity<ApiResponse<SystemSetting>> getSettingByKey(@PathVariable String key) {
         try {
             Optional<SystemSetting> setting = systemSettingService.getSettingByKey(key);
             if (setting.isPresent()) {
-                Map<String, Object> data = new HashMap<>();
-                data.put("setting", setting.get());
-                data.put("message", "獲取系統參數成功");
-                return ResponseEntity.ok(ApiResponse.ok(data));
+                return ResponseEntity.ok(ApiResponse.ok(setting.get()));
             }
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail("參數不存在"));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail("找不到指定的系統參數"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.fail("獲取系統參數失敗：" + e.getMessage()));
         }
     }
 
     @PutMapping("/{key}")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> updateSetting(
+    public ResponseEntity<ApiResponse<SystemSetting>> updateSetting(
             @PathVariable String key,
             @RequestBody Map<String, Object> request) {
         try {
-            String value = (String) request.get("settingValue");
-            String description = (String) request.get("description");
+            Object rawValue = request.get("settingValue");
+            String value = rawValue == null ? null : String.valueOf(rawValue);
+            Object rawDescription = request.get("description");
+            String description = rawDescription == null ? null : String.valueOf(rawDescription);
             SystemSetting update = new SystemSetting();
             update.setSettingValue(value);
             if (description != null) update.setDescription(description);
@@ -97,11 +89,7 @@ public class SystemSettingController {
             } catch (Exception ex) {
                 System.err.println("Failed to refresh config cache: " + ex.getMessage());
             }
-            Map<String, Object> data = new HashMap<>();
-            data.put("success", true);
-            data.put("message", "更新系統參數成功");
-            data.put("setting", saved);
-            return ResponseEntity.ok(ApiResponse.ok(data));
+            return ResponseEntity.ok(ApiResponse.ok(saved));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.fail("更新失敗: " + e.getMessage()));
         }

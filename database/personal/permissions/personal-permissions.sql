@@ -23,13 +23,36 @@ FLUSH PRIVILEGES;
 -- 驗證權限
 SHOW GRANTS FOR 'appuser'@'%';
 
--- ============================================
--- 2. 定時任務管理的 URL 權限配置
--- ============================================
 USE qa_tracker;
 
 -- 確保 url_permissions 表存在（如果不存在，請先執行相關 schema 檔案）
 
+-- ============================================
+-- 1.5 公開 API / Auth API（由 url_permissions 控制）
+-- ============================================
+-- 對應 SecurityConfig 移除的 permitAll 白名單
+-- 使用 NULL method 代表允許所有 HTTP method（含預檢 OPTIONS）
+INSERT IGNORE INTO url_permissions (
+    url_pattern,
+    http_method,
+    required_role,
+    required_permission,
+    is_public,
+    is_active,
+    order_index,
+    description
+) VALUES
+('/api/personal/auth/**', NULL, NULL, NULL, 1, 1, 1, 'Personal 認證 API（公開）'),
+('/api/auth/**', NULL, NULL, NULL, 1, 1, 2, 'Legacy 認證 API（公開）'),
+('/api/public/**', NULL, NULL, NULL, 1, 1, 3, '公開 API（公開）'),
+('/api/hello', NULL, NULL, NULL, 1, 1, 4, '健康檢查 API（公開）'),
+('/api/utils/**', NULL, NULL, NULL, 1, 1, 5, '工具 API（公開）'),
+('/api/line/**', NULL, NULL, NULL, 1, 1, 6, 'Legacy LINE Webhook API（公開）'),
+('/api/personal/line/**', NULL, NULL, NULL, 1, 1, 7, 'Personal LINE Webhook API（公開）');
+
+-- ============================================
+-- 2. 定時任務管理的 URL 權限配置
+-- ============================================
 -- 插入定時任務管理的 URL 權限配置
 INSERT IGNORE INTO url_permissions (url_pattern, http_method, required_role, required_permission, is_public, is_active, order_index, description) VALUES
 -- 查詢所有任務
