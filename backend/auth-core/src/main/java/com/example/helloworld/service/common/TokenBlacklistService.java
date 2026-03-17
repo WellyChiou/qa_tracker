@@ -12,7 +12,6 @@ import java.util.concurrent.TimeUnit;
  * Token 黑名單服務
  * 供 personal/church 共用，用於管理已撤銷的 Token。
  */
-@Service
 public class TokenBlacklistService {
 
     private final Set<String> blacklist = ConcurrentHashMap.newKeySet();
