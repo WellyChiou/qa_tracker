@@ -56,7 +56,7 @@ public class ChurchAuthController {
                 authentication.getPrincipal().equals("anonymousUser")) {
                 AuthCurrentUserResponse fallback = new AuthCurrentUserResponse();
                 fallback.setAuthenticated(false);
-                fallback.setSystemCode("church_admin");
+                fallback.setSystemCode("church");
                 return ResponseEntity.ok(ApiResponse.ok(fallback));
             }
 

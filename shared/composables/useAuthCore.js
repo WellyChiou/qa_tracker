@@ -45,6 +45,13 @@ export function useAuthCore({
     return Date.now() - lastCheckTime < cacheDuration
   }
 
+  const normalizeSystemCode = (systemCode) => {
+    if (systemCode === 'church_admin') {
+      return 'church'
+    }
+    return systemCode
+  }
+
   const checkAuth = async (force = false) => {
     if (shouldUseCache(force)) {
       return true
@@ -58,7 +65,10 @@ export function useAuthCore({
       try {
         const user = await fetchCurrentUser()
         if (user && user.authenticated) {
-          currentUser.value = user
+          currentUser.value = {
+            ...user,
+            systemCode: normalizeSystemCode(user.systemCode)
+          }
           isAuthenticated.value = true
           lastCheckTime = Date.now()
           return true

@@ -80,15 +80,15 @@ public class ChurchAuthFacade extends AbstractAuthFacade<ChurchUser, ChurchRole,
 
     public AuthLoginResponse buildLoginResponse(ChurchUser user, String accessToken, String refreshToken) {
         List<ChurchMenuService.MenuItemDTO> menus = menuService.getAdminMenus();
-        return super.buildLoginResponse(user, menus, MENU_ADAPTER, "church_admin", accessToken, refreshToken);
+        return super.buildLoginResponse(user, menus, MENU_ADAPTER, "church", accessToken, refreshToken);
     }
 
     public AuthCurrentUserResponse buildCurrentUserResponse(ChurchUser user) {
         List<ChurchMenuService.MenuItemDTO> menus = menuService.getAdminMenus();
-        return super.buildCurrentUserResponse(user, menus, MENU_ADAPTER, "church_admin");
+        return super.buildCurrentUserResponse(user, menus, MENU_ADAPTER, "church");
     }
 
     public AuthRefreshResponse buildRefreshResponse(String accessToken, String refreshToken) {
-        return super.buildRefreshResponse("church_admin", accessToken, refreshToken);
+        return super.buildRefreshResponse("church", accessToken, refreshToken);
     }
 }
