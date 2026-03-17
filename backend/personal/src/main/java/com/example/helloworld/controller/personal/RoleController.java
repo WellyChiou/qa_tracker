@@ -1,9 +1,11 @@
 package com.example.helloworld.controller.personal;
 
 import com.example.helloworld.dto.common.ApiResponse;
+import com.example.helloworld.dto.common.PageResponse;
 import com.example.helloworld.entity.personal.Role;
 import com.example.helloworld.service.personal.RoleService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -25,6 +27,26 @@ public class RoleController {
     public ResponseEntity<ApiResponse<List<Role>>> getAllRoles() {
         List<Role> roles = roleService.getAllRoles();
         return ResponseEntity.ok(ApiResponse.ok(roles));
+    }
+
+    @GetMapping("/paged")
+    public ResponseEntity<ApiResponse<PageResponse<Role>>> getAllRolesPaged(
+            @RequestParam(required = false) String roleName,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            Page<Role> rolesPage = roleService.getAllRoles(roleName, page, size);
+            PageResponse<Role> pageResponse = new PageResponse<>(
+                rolesPage.getContent(),
+                rolesPage.getTotalElements(),
+                rolesPage.getTotalPages(),
+                rolesPage.getNumber(),
+                rolesPage.getSize()
+            );
+            return ResponseEntity.ok(ApiResponse.ok(pageResponse));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取角色列表失敗：" + e.getMessage()));
+        }
     }
 
     @GetMapping("/{id}")

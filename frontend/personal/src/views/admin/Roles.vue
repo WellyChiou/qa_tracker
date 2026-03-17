@@ -15,6 +15,17 @@
     </header>
 
     <main class="main-content">
+      <div class="filter-bar">
+        <input
+          v-model.trim="filters.roleName"
+          class="filter-input"
+          placeholder="角色名稱（包含）"
+          @keyup.enter="handleSearch"
+        />
+        <button class="btn btn-primary" @click="handleSearch">查詢</button>
+        <button class="btn btn-secondary" @click="resetFilters">清除</button>
+      </div>
+
       <table class="data-table">
         <thead>
           <tr>
@@ -41,6 +52,30 @@
           </tr>
         </tbody>
       </table>
+
+      <div class="pagination-bar">
+        <div class="pagination-left">
+          <label for="rolesPageSize" class="pagination-label">顯示筆數：</label>
+          <select
+            id="rolesPageSize"
+            v-model.number="pageSize"
+            class="page-size-select"
+            @change="handlePageSizeChange"
+          >
+            <option :value="10">10</option>
+            <option :value="20">20</option>
+            <option :value="50">50</option>
+            <option :value="100">100</option>
+          </select>
+          <span class="pagination-info">第 {{ currentPage }} / {{ displayTotalPages }} 頁，共 {{ totalRecords }} 筆</span>
+        </div>
+        <div class="pagination-actions">
+          <button class="btn btn-secondary" :disabled="currentPage <= 1" @click="goToFirstPage">第一頁</button>
+          <button class="btn btn-secondary" :disabled="currentPage <= 1" @click="goToPrevPage">上一頁</button>
+          <button class="btn btn-secondary" :disabled="currentPage >= displayTotalPages" @click="goToNextPage">下一頁</button>
+          <button class="btn btn-secondary" :disabled="currentPage >= displayTotalPages" @click="goToLastPage">最後一頁</button>
+        </div>
+      </div>
     </main>
 
     <!-- 新增/編輯模態框 -->
@@ -169,6 +204,14 @@ const selectedRole = ref(null)
 const selectedPermissionIds = ref([])
 const tmpAddPermissionIds = ref([])
 const tmpRemovePermissionIds = ref([])
+const currentPage = ref(1)
+const pageSize = ref(20)
+const totalPages = ref(0)
+const totalRecords = ref(0)
+const filters = ref({
+  roleName: ''
+})
+const displayTotalPages = computed(() => Math.max(totalPages.value, 1))
 
 const searchAvailable = ref('')
 const searchAssigned = ref('')
@@ -245,13 +288,69 @@ const form = ref({
   description: ''
 })
 
-const loadRoles = async () => {
+const buildPagedParams = (page) => {
+  const params = {
+    page: page - 1,
+    size: pageSize.value
+  }
+
+  if (filters.value.roleName) params.roleName = filters.value.roleName
+
+  return params
+}
+
+const loadRoles = async (page = currentPage.value) => {
   try {
-    roles.value = await apiService.getRoles()
-    toast.success(`載入成功，共 ${roles.value.length} 個角色`)
+    const data = await apiService.getRolesPaged(buildPagedParams(page))
+    const nextTotalPages = data.totalPages || 0
+    if (nextTotalPages > 0 && page > nextTotalPages) {
+      await loadRoles(nextTotalPages)
+      return
+    }
+
+    roles.value = data.content || []
+    totalRecords.value = data.totalElements || 0
+    totalPages.value = nextTotalPages
+    currentPage.value = (data.currentPage ?? Math.max(page - 1, 0)) + 1
+    pageSize.value = data.size || pageSize.value
   } catch (error) {
     toast.error('載入角色失敗')
   }
+}
+
+const handleSearch = async () => {
+  await loadRoles(1)
+}
+
+const resetFilters = async () => {
+  filters.value = {
+    roleName: ''
+  }
+  await loadRoles(1)
+}
+
+const goToFirstPage = async () => {
+  if (currentPage.value <= 1) return
+  await loadRoles(1)
+}
+
+const goToPrevPage = async () => {
+  if (currentPage.value <= 1) return
+  await loadRoles(currentPage.value - 1)
+}
+
+const goToNextPage = async () => {
+  if (currentPage.value >= displayTotalPages.value) return
+  await loadRoles(currentPage.value + 1)
+}
+
+const goToLastPage = async () => {
+  if (currentPage.value >= displayTotalPages.value) return
+  await loadRoles(displayTotalPages.value)
+}
+
+const handlePageSizeChange = async () => {
+  await loadRoles(1)
 }
 
 const loadPermissions = async () => {
@@ -273,7 +372,7 @@ const handleSubmit = async () => {
       toast.success('角色已新增')
     }
     closeModal()
-    await loadRoles()
+    await loadRoles(currentPage.value)
   } catch (error) {
     toast.error(error.message || '操作失敗')
   }
@@ -302,7 +401,7 @@ const savePermissions = async () => {
     await apiService.updateRolePermissions(selectedRole.value.id, selectedPermissionIds.value)
     toast.success('權限已更新')
     closePermissionsModal()
-    await loadRoles()
+    await loadRoles(currentPage.value)
   } catch (error) {
     toast.error('更新權限失敗')
   }
@@ -313,7 +412,7 @@ const deleteRole = async (id) => {
   try {
     await apiService.deleteRole(id)
     toast.success('角色已刪除')
-    await loadRoles()
+    await loadRoles(currentPage.value)
   } catch (error) {
     toast.error('刪除失敗')
   }
@@ -336,7 +435,7 @@ const closePermissionsModal = () => {
 // showNotification 已改用全局 toast 系統
 
 onMounted(async () => {
-  await loadRoles()
+  await loadRoles(1)
   await loadPermissions()
 })
 </script>
@@ -376,6 +475,28 @@ onMounted(async () => {
   padding: 0 2rem;
 }
 
+.filter-bar {
+  display: grid;
+  grid-template-columns: minmax(220px, 420px) auto auto;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.filter-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: var(--border-radius);
+  background: var(--bg-card);
+  font-size: 0.9rem;
+}
+
+.filter-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
 .data-table {
   width: 100%;
   border-collapse: collapse;
@@ -403,6 +524,55 @@ onMounted(async () => {
 
 .data-table tbody tr:hover {
   background: #f9fafb;
+}
+
+.pagination-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.pagination-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1 1 360px;
+  min-width: 280px;
+  flex-wrap: wrap;
+}
+
+.pagination-label {
+  color: #4b5563;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.page-size-select {
+  width: auto;
+  min-width: 80px;
+  flex: 0 0 auto;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: var(--border-radius);
+  background: var(--bg-card);
+}
+
+.pagination-info {
+  color: #4b5563;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.pagination-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .actions {
@@ -765,5 +935,25 @@ onMounted(async () => {
 .btn-action-full:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+@media (max-width: 1200px) {
+  .filter-bar {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .pagination-bar {
+    align-items: stretch;
+  }
+
+  .pagination-left {
+    min-width: 0;
+  }
+
+  .pagination-actions {
+    justify-content: flex-start;
+  }
 }
 </style>

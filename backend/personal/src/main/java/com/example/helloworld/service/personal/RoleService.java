@@ -5,6 +5,9 @@ import com.example.helloworld.entity.personal.Permission;
 import com.example.helloworld.repository.personal.RoleRepository;
 import com.example.helloworld.repository.personal.PermissionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +36,22 @@ public class RoleService {
             }
         });
         return roles;
+    }
+
+    /**
+     * 獲取所有角色（支持分頁和過濾）
+     */
+    @Transactional(readOnly = true)
+    public Page<Role> getAllRoles(String roleName, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        String filterRoleName = (roleName != null && !roleName.trim().isEmpty()) ? roleName.trim() : null;
+        Page<Role> rolesPage = roleRepository.findByFilters(filterRoleName, pageable);
+        rolesPage.getContent().forEach(role -> {
+            if (role.getPermissions() != null) {
+                role.getPermissions().size();
+            }
+        });
+        return rolesPage;
     }
 
     /**

@@ -406,6 +406,17 @@ class ApiService {
     return this.request('/roles')
   }
 
+  async getRolesPaged(params = {}) {
+    const queryParams = new URLSearchParams()
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams.append(key, value)
+      }
+    })
+    const query = queryParams.toString()
+    return this.request(query ? `/roles/paged?${query}` : '/roles/paged')
+  }
+
   async getRoleById(id) {
     return this.request(`/roles/${id}`)
   }
