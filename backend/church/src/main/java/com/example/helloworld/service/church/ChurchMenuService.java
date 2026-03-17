@@ -173,9 +173,19 @@ public class ChurchMenuService {
             return true;
         }
         
-        // 檢查用戶是否有對應的權限
-        String requiredPermission = "PERM_" + menuItem.getRequiredPermission();
-        return userPermissions.contains(requiredPermission);
+        String rawCode = menuItem.getRequiredPermission().trim();
+        if (rawCode.isEmpty()) {
+            return true;
+        }
+
+        String normalizedCode = rawCode.startsWith("PERM_")
+                ? rawCode.substring(5)
+                : rawCode;
+        if (normalizedCode.isEmpty()) {
+            return true;
+        }
+
+        return userPermissions.contains(normalizedCode);
     }
 
     /**
@@ -356,4 +366,3 @@ public class ChurchMenuService {
         public void setChildren(List<MenuItemDTO> children) { this.children = children; }
     }
 }
-

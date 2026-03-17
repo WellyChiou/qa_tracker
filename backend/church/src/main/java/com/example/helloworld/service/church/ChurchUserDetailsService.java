@@ -63,22 +63,53 @@ public class ChurchUserDetailsService implements UserDetailsService {
         // 添加角色權限
         Set<ChurchRole> roles = user.getRoles();
         for (ChurchRole role : roles) {
-            authorities.add(new SimpleGrantedAuthority(role.getRoleName()));
+            addAuthority(authorities, role.getRoleName());
             
             // 添加角色擁有的權限
             Set<ChurchPermission> rolePermissions = role.getPermissions();
             for (ChurchPermission permission : rolePermissions) {
-                authorities.add(new SimpleGrantedAuthority("PERM_" + permission.getPermissionCode()));
+                addPermissionAuthorities(authorities, permission.getPermissionCode());
             }
         }
 
         // 添加用戶直接分配的權限
         Set<ChurchPermission> userPermissions = user.getPermissions();
         for (ChurchPermission permission : userPermissions) {
-            authorities.add(new SimpleGrantedAuthority("PERM_" + permission.getPermissionCode()));
+            addPermissionAuthorities(authorities, permission.getPermissionCode());
         }
 
         return authorities;
     }
-}
 
+    private void addPermissionAuthorities(List<GrantedAuthority> authorities, String permissionCode) {
+        if (permissionCode == null) {
+            return;
+        }
+
+        String rawCode = permissionCode.trim();
+        if (rawCode.isEmpty()) {
+            return;
+        }
+
+        String normalizedCode = rawCode.startsWith("PERM_")
+                ? rawCode.substring(5)
+                : rawCode;
+        if (normalizedCode.isEmpty()) {
+            return;
+        }
+
+        addAuthority(authorities, normalizedCode);
+    }
+
+    private void addAuthority(List<GrantedAuthority> authorities, String authority) {
+        if (authority == null || authority.isBlank()) {
+            return;
+        }
+
+        boolean exists = authorities.stream()
+                .anyMatch(existing -> existing.getAuthority().equals(authority));
+        if (!exists) {
+            authorities.add(new SimpleGrantedAuthority(authority));
+        }
+    }
+}
