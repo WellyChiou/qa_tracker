@@ -17,7 +17,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
@@ -31,9 +30,14 @@ public class CustomUserDetailsService implements UserDetailsService {
         User user = userRepository.findByUsernameWithRolesAndPermissions(username)
             .orElseThrow(() -> new UsernameNotFoundException("用戶不存在: " + username));
 
+        String password = user.getPassword();
+        if (password == null || password.trim().isEmpty()) {
+            throw new UsernameNotFoundException("用戶密碼未設定: " + username);
+        }
+
         return org.springframework.security.core.userdetails.User.builder()
             .username(user.getUsername())
-            .password(user.getPassword() != null ? user.getPassword() : "{noop}")
+            .password(password)
             .authorities(getAuthorities(user))
             .accountExpired(false)
             .accountLocked(!user.getIsAccountNonLocked())
