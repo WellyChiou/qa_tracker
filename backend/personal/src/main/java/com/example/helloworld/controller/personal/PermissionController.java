@@ -1,9 +1,11 @@
 package com.example.helloworld.controller.personal;
 
 import com.example.helloworld.dto.common.ApiResponse;
+import com.example.helloworld.dto.common.PageResponse;
 import com.example.helloworld.entity.personal.Permission;
 import com.example.helloworld.service.personal.PermissionService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -23,6 +25,28 @@ public class PermissionController {
     public ResponseEntity<ApiResponse<List<Permission>>> getAllPermissions() {
         List<Permission> permissions = permissionService.getAllPermissions();
         return ResponseEntity.ok(ApiResponse.ok(permissions));
+    }
+
+    @GetMapping("/paged")
+    public ResponseEntity<ApiResponse<PageResponse<Permission>>> getAllPermissionsPaged(
+            @RequestParam(required = false) String permissionCode,
+            @RequestParam(required = false) String resource,
+            @RequestParam(required = false) String action,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            Page<Permission> permissionsPage = permissionService.getAllPermissions(permissionCode, resource, action, page, size);
+            PageResponse<Permission> pageResponse = new PageResponse<>(
+                permissionsPage.getContent(),
+                permissionsPage.getTotalElements(),
+                permissionsPage.getTotalPages(),
+                permissionsPage.getNumber(),
+                permissionsPage.getSize()
+            );
+            return ResponseEntity.ok(ApiResponse.ok(pageResponse));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取權限列表失敗：" + e.getMessage()));
+        }
     }
 
     @GetMapping("/{id}")

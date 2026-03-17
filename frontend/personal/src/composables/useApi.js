@@ -440,6 +440,17 @@ class ApiService {
     return this.request('/permissions')
   }
 
+  async getPermissionsPaged(params = {}) {
+    const queryParams = new URLSearchParams()
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams.append(key, value)
+      }
+    })
+    const query = queryParams.toString()
+    return this.request(query ? `/permissions/paged?${query}` : '/permissions/paged')
+  }
+
   async getPermissionById(id) {
     return this.request(`/permissions/${id}`)
   }
@@ -496,6 +507,17 @@ class ApiService {
   // Admin - URL Permissions API
   async getUrlPermissions() {
     return this.request('/url-permissions')
+  }
+
+  async getUrlPermissionsPaged(params = {}) {
+    const queryParams = new URLSearchParams()
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams.append(key, value)
+      }
+    })
+    const query = queryParams.toString()
+    return this.request(query ? `/url-permissions/paged?${query}` : '/url-permissions/paged')
   }
 
   async getUrlPermissionById(id) {

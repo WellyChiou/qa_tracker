@@ -15,6 +15,40 @@
     </header>
 
     <main class="main-content">
+      <div class="filter-bar">
+        <input
+          v-model.trim="filters.urlPattern"
+          class="filter-input"
+          placeholder="URL 模式（包含）"
+          @keyup.enter="handleSearch"
+        />
+        <select v-model="filters.httpMethod" class="filter-input">
+          <option value="">全部方法</option>
+          <option value="GET">GET</option>
+          <option value="POST">POST</option>
+          <option value="PUT">PUT</option>
+          <option value="DELETE">DELETE</option>
+        </select>
+        <select v-model="filters.isPublic" class="filter-input">
+          <option value="">全部公開狀態</option>
+          <option value="true">公開</option>
+          <option value="false">非公開</option>
+        </select>
+        <input
+          v-model.trim="filters.requiredPermission"
+          class="filter-input"
+          placeholder="所需權限（包含）"
+          @keyup.enter="handleSearch"
+        />
+        <select v-model="filters.isActive" class="filter-input">
+          <option value="">全部啟用狀態</option>
+          <option value="true">啟用</option>
+          <option value="false">停用</option>
+        </select>
+        <button class="btn btn-primary" @click="handleSearch">查詢</button>
+        <button class="btn btn-secondary" @click="resetFilters">清除</button>
+      </div>
+
       <table class="data-table">
         <thead>
           <tr>
@@ -54,6 +88,30 @@
           </tr>
         </tbody>
       </table>
+
+      <div class="pagination-bar">
+        <div class="pagination-left">
+          <label for="urlPermissionPageSize" class="pagination-label">顯示筆數：</label>
+          <select
+            id="urlPermissionPageSize"
+            v-model.number="pageSize"
+            class="page-size-select"
+            @change="handlePageSizeChange"
+          >
+            <option :value="10">10</option>
+            <option :value="20">20</option>
+            <option :value="50">50</option>
+            <option :value="100">100</option>
+          </select>
+          <span class="pagination-info">第 {{ currentPage }} / {{ displayTotalPages }} 頁，共 {{ totalElements }} 筆</span>
+        </div>
+        <div class="pagination-actions">
+          <button class="btn btn-secondary" :disabled="currentPage <= 1" @click="goToFirstPage">第一頁</button>
+          <button class="btn btn-secondary" :disabled="currentPage <= 1" @click="goToPrevPage">上一頁</button>
+          <button class="btn btn-secondary" :disabled="currentPage >= displayTotalPages" @click="goToNextPage">下一頁</button>
+          <button class="btn btn-secondary" :disabled="currentPage >= displayTotalPages" @click="goToLastPage">最後一頁</button>
+        </div>
+      </div>
     </main>
 
     <!-- 新增/編輯模態框 -->
@@ -163,9 +221,21 @@ const editingPermission = ref(null)
 // notification 已改用全局 toast 系統
 const availableRoles = ref([])
 const availablePermissions = ref([])
+const currentPage = ref(1)
+const pageSize = ref(20)
+const totalPages = ref(0)
+const totalElements = ref(0)
+const filters = ref({
+  urlPattern: '',
+  httpMethod: '',
+  isPublic: '',
+  requiredPermission: '',
+  isActive: ''
+})
 
 const { currentUser } = useAuth()
 const canManageAdmin = computed(() => hasPermission(currentUser.value, 'ADMIN_ACCESS'))
+const displayTotalPages = computed(() => Math.max(totalPages.value, 1))
 
 const form = ref({
   urlPattern: '',
@@ -178,13 +248,77 @@ const form = ref({
   description: ''
 })
 
-const loadPermissions = async () => {
+const buildPagedParams = (page) => {
+  const params = {
+    page: page - 1,
+    size: pageSize.value
+  }
+
+  if (filters.value.urlPattern) params.urlPattern = filters.value.urlPattern
+  if (filters.value.httpMethod) params.httpMethod = filters.value.httpMethod
+  if (filters.value.requiredPermission) params.requiredPermission = filters.value.requiredPermission
+  if (filters.value.isPublic !== '') params.isPublic = filters.value.isPublic === 'true'
+  if (filters.value.isActive !== '') params.isActive = filters.value.isActive === 'true'
+
+  return params
+}
+
+const loadPermissions = async (page = currentPage.value) => {
   try {
-    permissions.value = await apiService.getUrlPermissions()
-    toast.success(`載入成功，共 ${permissions.value.length} 個 URL 權限`)
+    const data = await apiService.getUrlPermissionsPaged(buildPagedParams(page))
+    const nextTotalPages = data.totalPages || 0
+    if (nextTotalPages > 0 && page > nextTotalPages) {
+      await loadPermissions(nextTotalPages)
+      return
+    }
+
+    permissions.value = data.content || []
+    totalElements.value = data.totalElements || 0
+    totalPages.value = nextTotalPages
+    currentPage.value = (data.currentPage ?? Math.max(page - 1, 0)) + 1
+    pageSize.value = data.size || pageSize.value
   } catch (error) {
     toast.error('載入 URL 權限失敗')
   }
+}
+
+const handleSearch = async () => {
+  await loadPermissions(1)
+}
+
+const resetFilters = async () => {
+  filters.value = {
+    urlPattern: '',
+    httpMethod: '',
+    isPublic: '',
+    requiredPermission: '',
+    isActive: ''
+  }
+  await loadPermissions(1)
+}
+
+const goToPrevPage = async () => {
+  if (currentPage.value <= 1) return
+  await loadPermissions(currentPage.value - 1)
+}
+
+const goToFirstPage = async () => {
+  if (currentPage.value <= 1) return
+  await loadPermissions(1)
+}
+
+const goToNextPage = async () => {
+  if (currentPage.value >= displayTotalPages.value) return
+  await loadPermissions(currentPage.value + 1)
+}
+
+const goToLastPage = async () => {
+  if (currentPage.value >= displayTotalPages.value) return
+  await loadPermissions(displayTotalPages.value)
+}
+
+const handlePageSizeChange = async () => {
+  await loadPermissions(1)
 }
 
 const loadRoles = async () => {
@@ -218,7 +352,7 @@ const handleSubmit = async () => {
       toast.success('URL 權限已新增')
     }
     closeModal()
-    await loadPermissions()
+    await loadPermissions(currentPage.value)
   } catch (error) {
     toast.error(error.message || '操作失敗')
   }
@@ -243,7 +377,7 @@ const deletePermission = async (id) => {
   try {
     await apiService.deleteUrlPermission(id)
     toast.success('URL 權限已刪除')
-    await loadPermissions()
+    await loadPermissions(currentPage.value)
   } catch (error) {
     toast.error('刪除失敗')
   }
@@ -267,7 +401,7 @@ const closeModal = () => {
 // showNotification 已改用全局 toast 系統
 
 onMounted(() => {
-  loadPermissions()
+  loadPermissions(1)
   loadRoles()
   loadAvailablePermissions()
 })
@@ -308,6 +442,28 @@ onMounted(() => {
   padding: 0 2rem;
 }
 
+.filter-bar {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1.5fr 1fr auto auto;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.filter-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: var(--border-radius);
+  background: var(--bg-card);
+  font-size: 0.9rem;
+}
+
+.filter-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
 .data-table {
   width: 100%;
   border-collapse: collapse;
@@ -335,6 +491,53 @@ onMounted(() => {
 
 .data-table tbody tr:hover {
   background: #f9fafb;
+}
+
+.pagination-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.pagination-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1 1 360px;
+  min-width: 280px;
+  flex-wrap: wrap;
+}
+
+.pagination-label {
+  color: #4b5563;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.page-size-select {
+  min-width: 80px;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: var(--border-radius);
+  background: var(--bg-card);
+}
+
+.pagination-info {
+  color: #4b5563;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.pagination-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .status-active {
@@ -630,6 +833,26 @@ onMounted(() => {
 
 .btn-delete::before {
   background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23b91c1c%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%223%206%205%206%2021%206%22/%3E%3Cpath%20d%3D%22M19%206l-1%2014a2%202%200%200%201-2%202H8a2%202%200%200%201-2-2L5%206%22/%3E%3Cpath%20d%3D%22M10%2011v6%22/%3E%3Cpath%20d%3D%22M14%2011v6%22/%3E%3Cpath%20d%3D%22M9%206V4a2%202%200%200%201%202-2h2a2%202%200%200%201%202%202v2%22/%3E%3C/svg%3E");
+}
+
+@media (max-width: 1200px) {
+  .filter-bar {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .pagination-bar {
+    align-items: stretch;
+  }
+
+  .pagination-left {
+    min-width: 0;
+  }
+
+  .pagination-actions {
+    justify-content: flex-start;
+  }
 }
 
 </style>

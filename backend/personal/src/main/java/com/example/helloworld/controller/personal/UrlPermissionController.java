@@ -1,9 +1,11 @@
 package com.example.helloworld.controller.personal;
 
 import com.example.helloworld.dto.common.ApiResponse;
+import com.example.helloworld.dto.common.PageResponse;
 import com.example.helloworld.entity.personal.UrlPermission;
 import com.example.helloworld.service.personal.UrlPermissionService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -23,6 +25,31 @@ public class UrlPermissionController {
     public ResponseEntity<ApiResponse<List<UrlPermission>>> getAllPermissions() {
         List<UrlPermission> permissions = urlPermissionService.getAllPermissions();
         return ResponseEntity.ok(ApiResponse.ok(permissions));
+    }
+
+    @GetMapping("/paged")
+    public ResponseEntity<ApiResponse<PageResponse<UrlPermission>>> getAllPermissionsPaged(
+            @RequestParam(required = false) String urlPattern,
+            @RequestParam(required = false) String httpMethod,
+            @RequestParam(required = false) Boolean isPublic,
+            @RequestParam(required = false) String requiredPermission,
+            @RequestParam(required = false) Boolean isActive,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            Page<UrlPermission> permissionsPage = urlPermissionService.getAllPermissions(
+                urlPattern, httpMethod, isPublic, requiredPermission, isActive, page, size);
+            PageResponse<UrlPermission> pageResponse = new PageResponse<>(
+                permissionsPage.getContent(),
+                permissionsPage.getTotalElements(),
+                permissionsPage.getTotalPages(),
+                permissionsPage.getNumber(),
+                permissionsPage.getSize()
+            );
+            return ResponseEntity.ok(ApiResponse.ok(pageResponse));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取 URL 權限列表失敗：" + e.getMessage()));
+        }
     }
 
     @GetMapping("/{id}")
