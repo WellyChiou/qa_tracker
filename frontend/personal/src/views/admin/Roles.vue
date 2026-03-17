@@ -1,959 +1,507 @@
 <template>
   <AdminLayout>
-    <div class="admin-page">
-    <header class="header">
-      <div class="header-top">
-        <h1>🔐 角色管理</h1>
+    <div class="admin-roles">
+      <div class="page-header">
+        <div>
+          <h2>角色管理</h2>
+          <p>維護管理角色與權限組合，讓後台權責劃分更清楚。</p>
+        </div>
         <button
           v-if="canManageAdmin"
-          class="btn btn-primary btn-add"
-          @click="showAddModal = true"
+          @click="openAddModal"
+          class="btn btn-primary"
         >
-          <i class="fas fa-plus me-2"></i>新增角色
+          + 新增角色
         </button>
       </div>
-    </header>
 
-    <main class="main-content">
-      <div class="filter-bar">
-        <input
-          v-model.trim="filters.roleName"
-          class="filter-input"
-          placeholder="角色名稱（包含）"
-          @keyup.enter="handleSearch"
-        />
-        <button class="btn btn-primary" @click="handleSearch">查詢</button>
-        <button class="btn btn-secondary" @click="resetFilters">清除</button>
-      </div>
+      <section class="overview-strip">
+        <article class="overview-card overview-card--accent">
+          <span>目前角色</span>
+          <strong>{{ totalRecords }}</strong>
+          <p>後台目前可管理的角色總筆數。</p>
+        </article>
+        <article class="overview-card">
+          <span>當前頁面</span>
+          <strong>{{ roles.length }}</strong>
+          <p>目前這一頁實際載入的角色資料。</p>
+        </article>
+        <article class="overview-card">
+          <span>篩選狀態</span>
+          <strong>{{ filters.roleName ? '已套用' : '全部' }}</strong>
+          <p>可透過角色名稱快速收斂角色清單。</p>
+        </article>
+      </section>
 
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>角色名稱</th>
-            <th>描述</th>
-            <th>權限數</th>
-            <th v-if="canManageAdmin">操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="role in roles" :key="role.id">
-            <td>{{ role.id }}</td>
-            <td>{{ role.roleName }}</td>
-            <td>
-              <TruncatedText :text="role.description" />
-            </td>
-            <td>{{ role.permissions ? role.permissions.length : 0 }}</td>
-            <td v-if="canManageAdmin" class="actions">
-              <button class="btn-sm btn-edit" @click="editRole(role)">編輯</button>
-              <button class="btn-sm btn-permissions" @click="editPermissions(role)">權限</button>
-              <button class="btn-sm btn-delete" @click="deleteRole(role.id)">刪除</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div class="pagination-bar">
-        <div class="pagination-left">
-          <label for="rolesPageSize" class="pagination-label">顯示筆數：</label>
-          <select
-            id="rolesPageSize"
-            v-model.number="pageSize"
-            class="page-size-select"
-            @change="handlePageSizeChange"
-          >
-            <option :value="10">10</option>
-            <option :value="20">20</option>
-            <option :value="50">50</option>
-            <option :value="100">100</option>
-          </select>
-          <span class="pagination-info">第 {{ currentPage }} / {{ displayTotalPages }} 頁，共 {{ totalRecords }} 筆</span>
-        </div>
-        <div class="pagination-actions">
-          <button class="btn btn-secondary" :disabled="currentPage <= 1" @click="goToFirstPage">第一頁</button>
-          <button class="btn btn-secondary" :disabled="currentPage <= 1" @click="goToPrevPage">上一頁</button>
-          <button class="btn btn-secondary" :disabled="currentPage >= displayTotalPages" @click="goToNextPage">下一頁</button>
-          <button class="btn btn-secondary" :disabled="currentPage >= displayTotalPages" @click="goToLastPage">最後一頁</button>
-        </div>
-      </div>
-    </main>
-
-    <!-- 新增/編輯模態框 -->
-    <div v-if="showAddModal || editingRole" class="modal-overlay" @click="closeModal">
-      <div class="modal-panel" @click.stop>
-        <div class="modal-header">
-          <h2 class="modal-title">{{ editingRole ? '編輯角色' : '新增角色' }}</h2>
-          <button class="btn-close" @click="closeModal">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
-        <div class="modal-body">
-          <form @submit.prevent="handleSubmit" class="form-container">
-            <div class="form-group">
-              <label class="form-label">角色名稱 <span class="text-danger">*</span></label>
-              <input v-model="form.roleName" required class="form-input" placeholder="請輸入角色名稱" />
-            </div>
-            <div class="form-group">
-              <label class="form-label">描述</label>
-              <textarea v-model="form.description" rows="3" class="form-input" placeholder="請輸入角色描述"></textarea>
-            </div>
-            <div class="form-actions">
-              <button type="submit" class="btn btn-primary">
-                <i class="fas fa-save me-2"></i>儲存
-              </button>
-              <button type="button" class="btn btn-secondary" @click="closeModal">
-                <i class="fas fa-times me-2"></i>取消
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <!-- 權限管理模態框 -->
-    <div v-if="showPermissionsModal" class="modal-overlay" @click="closePermissionsModal">
-      <div class="modal-panel" @click.stop style="max-width: 700px;">
-        <div class="modal-header">
-          <h2 class="modal-title">管理角色權限: {{ selectedRole?.roleName }}</h2>
-          <button class="btn-close" @click="closePermissionsModal">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
-        <div class="modal-body">
-          <div class="pickboard">
-            <div class="pick-col">
-              <div class="pick-head">
-                <div class="pick-title">未加入</div>
-                <input v-model="searchAvailable" class="pick-search" placeholder="搜尋權限..." />
-              </div>
-              <div class="pick-list">
-                <div v-for="permission in availablePermissionsFiltered" :key="permission.id" class="pick-item" @click="addPermission(permission.id)">
-                  <div class="pick-main">
-                    <div class="pick-name">{{ permission.permissionName }}</div>
-                    <div class="pick-code">({{ permission.permissionCode }})</div>
-                  </div>
-                </div>
-                <div v-if="availablePermissionsFiltered.length === 0" class="pick-empty">已全部加入</div>
-              </div>
-              <div class="pick-actions">
-                <button type="button" class="btn-action-full" @click="addAllPermissions" :disabled="availablePermissionsFiltered.length === 0">
-                  全部加入
-                </button>
-              </div>
-            </div>
-
-            <div class="pick-col">
-              <div class="pick-head">
-                <div class="pick-title">已加入</div>
-                <input v-model="searchAssigned" class="pick-search" placeholder="搜尋已加入..." />
-              </div>
-              <div class="pick-list">
-                <div v-for="permission in assignedPermissionsFiltered" :key="permission.id" class="pick-item" @click="removePermission(permission.id)">
-                  <div class="pick-main">
-                    <div class="pick-name">{{ permission.permissionName }}</div>
-                    <div class="pick-code">({{ permission.permissionCode }})</div>
-                  </div>
-                </div>
-                <div v-if="assignedPermissionsFiltered.length === 0" class="pick-empty">尚未加入任何權限</div>
-              </div>
-              <div class="pick-actions">
-                <button type="button" class="btn-action-full" @click="removeAllPermissions" :disabled="assignedPermissionsFiltered.length === 0">
-                  全部移除
-                </button>
-              </div>
-            </div>
+      <!-- 查詢條件 -->
+      <details class="filters filters--collapsible" open>
+        <summary>
+          <div class="filters__title">
+            <h3>查詢條件</h3>
+            <span class="filters__badge">點擊可收合</span>
           </div>
-          <div class="form-actions">
-            <button type="button" class="btn btn-primary" @click="savePermissions">
-              <i class="fas fa-save me-2"></i>儲存權限
-            </button>
-            <button type="button" class="btn btn-secondary" @click="closePermissionsModal">
-              <i class="fas fa-times me-2"></i>取消
-            </button>
+          <div class="filters__chev" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 9l6 6 6-6"/>
+            </svg>
+          </div>
+        </summary>
+        <div class="filters__content">
+        <div class="filter-grid">
+          <div class="filter-group">
+            <label>角色名稱</label>
+            <input
+              type="text"
+              v-model="filters.roleName"
+              placeholder="輸入角色名稱"
+              class="form-input"
+            />
+          </div>
+          <div class="filter-group">
+            <button @click="resetFilters" class="btn btn-secondary">清除條件</button>
+          </div>
+        </div>
+        </div>
+      </details>
+
+      <div class="roles-list card surface-card">
+        <div v-if="roles.length === 0" class="empty-state">
+          <p>尚無角色資料</p>
+        </div>
+        <div v-else class="roles-table">
+          <div class="table-header">
+            <h3>角色列表 (共 {{ totalRecords }} 筆)</h3>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>角色名稱</th>
+                <th>描述</th>
+                <th>權限數量</th>
+                <th v-if="canManageAdmin" class="col-actions">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="role in roles" :key="role.id">
+                <td>{{ role.roleName }}</td>
+                <td>{{ role.description || '-' }}</td>
+                <td>{{ role.permissions ? role.permissions.length : 0 }}</td>
+                <td v-if="canManageAdmin"><div class="table-actions"><button @click="editRole(role.id)" class="btn btn-edit"><span class="btn__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></span><span>編輯</span></button>
+                  <button @click="deleteRole(role.id)" class="btn btn-delete"><span class="btn__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span><span>刪除</span></button></div></td>
+              </tr>
+            </tbody>
+          </table>
+          
+          <!-- 分頁 -->
+          <div class="pagination">
+            <div class="pagination-left">
+              <label for="pageSize" class="pagination-label">顯示筆數：</label>
+              <select id="pageSize" v-model.number="recordsPerPage" class="page-size-select">
+                <option :value="10">10</option>
+                <option :value="20">20</option>
+                <option :value="50">50</option>
+                <option :value="100">100</option>
+              </select>
+              <span class="pagination-info">共 {{ totalRecords }} 筆 (第 {{ currentPage }}/{{ totalPages }} 頁)</span>
+            </div>
+            <div class="pagination-right">
+              <button class="btn-secondary" @click="firstPage" :disabled="currentPage === 1" title="第一頁">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
+                </svg>
+              </button>
+              <button class="btn-secondary" @click="previousPage" :disabled="currentPage === 1">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                </svg>
+                上一頁
+              </button>
+              <div class="page-jump">
+                <span class="pagination-label">到第</span>
+                <input type="number" v-model.number="jumpPage" min="1" :max="totalPages" class="page-input" @keyup.enter="jumpToPage" />
+                <span class="pagination-label">頁</span>
+              </div>
+              <button class="btn-secondary" @click="nextPage" :disabled="currentPage === totalPages">
+                下一頁
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+              </button>
+              <button class="btn-secondary" @click="lastPage" :disabled="currentPage === totalPages" title="最後一頁">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </div>
     </div>
-
-    <!-- 通知已移至全局 ToastHost -->
-  </div>
+    
+    <RoleModal
+      :show="showModal"
+      :role="selectedRole"
+      :available-permissions="availablePermissions"
+      @close="closeModal"
+      @saved="handleSaved"
+    />
   </AdminLayout>
 </template>
 
 <script setup>
-import AdminLayout from '@/components/AdminLayout.vue'
-import TruncatedText from '@/components/TruncatedText.vue'
-import { ref, onMounted, computed } from 'vue'
-import { useAuth } from '@/composables/useAuth'
-import { apiService } from '@/composables/useApi'
 import { toast } from '@shared/composables/useToast'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useAuth } from '@/composables/useAuth'
+import AdminLayout from '@/components/AdminLayout.vue'
+import RoleModal from '@/components/RoleModal.vue'
+import { apiService } from '@/composables/useApi'
 import { hasPermission } from '@shared/utils/permission'
 
 const roles = ref([])
-const allPermissions = ref([])
+const availablePermissions = ref([])
+const showModal = ref(false)
+const selectedRole = ref(null)
 const { currentUser } = useAuth()
 const canManageAdmin = computed(() => hasPermission(currentUser.value, 'ADMIN_ACCESS'))
-const showAddModal = ref(false)
-const editingRole = ref(null)
-const showPermissionsModal = ref(false)
-const selectedRole = ref(null)
-const selectedPermissionIds = ref([])
-const tmpAddPermissionIds = ref([])
-const tmpRemovePermissionIds = ref([])
-const currentPage = ref(1)
-const pageSize = ref(20)
-const totalPages = ref(0)
-const totalRecords = ref(0)
+
+// 查詢條件
 const filters = ref({
   roleName: ''
 })
-const displayTotalPages = computed(() => Math.max(totalPages.value, 1))
 
-const searchAvailable = ref('')
-const searchAssigned = ref('')
+// 分頁
+const currentPage = ref(1)
+const recordsPerPage = ref(20)
+const jumpPage = ref(1)
+const totalRecords = ref(0)
+const totalPages = ref(1)
 
-const normalize = (s) => (s || '').toString().toLowerCase()
-
-const assignedPermissionsFiltered = computed(() => {
-  const q = normalize(searchAssigned.value).trim()
-  if (!q) return assignedPermissions.value
-  return assignedPermissions.value.filter(p =>
-    normalize(p.permissionName).includes(q) || normalize(p.permissionCode).includes(q)
-  )
-})
-
-const availablePermissionsFiltered = computed(() => {
-  const q = normalize(searchAvailable.value).trim()
-  if (!q) return availablePermissions.value
-  return availablePermissions.value.filter(p =>
-    normalize(p.permissionName).includes(q) || normalize(p.permissionCode).includes(q)
-  )
-})
-
-const addPermission = (id) => {
-  if (id == null) return
-  const set = new Set(selectedPermissionIds.value)
-  set.add(id)
-  selectedPermissionIds.value = Array.from(set)
+// 第一頁
+const firstPage = () => {
+  currentPage.value = 1
+  jumpPage.value = 1
+  loadRoles()
 }
 
-const removePermission = (id) => {
-  if (id == null) return
-  selectedPermissionIds.value = selectedPermissionIds.value.filter(x => x !== id)
-}
-
-const addAllPermissions = () => {
-  const ids = availablePermissionsFiltered.value.map(p => p.id)
-  const set = new Set(selectedPermissionIds.value)
-  ids.forEach(id => set.add(id))
-  selectedPermissionIds.value = Array.from(set)
-}
-
-const removeAllPermissions = () => {
-  selectedPermissionIds.value = []
-}
-
-const assignedPermissions = computed(() => {
-  const set = new Set(selectedPermissionIds.value)
-  return allPermissions.value.filter(p => set.has(p.id))
-})
-
-const availablePermissions = computed(() => {
-  const set = new Set(selectedPermissionIds.value)
-  return allPermissions.value.filter(p => !set.has(p.id))
-})
-
-const addSelectedPermissions = () => {
-  if (!tmpAddPermissionIds.value || tmpAddPermissionIds.value.length === 0) return
-  const set = new Set(selectedPermissionIds.value)
-  for (const id of tmpAddPermissionIds.value) set.add(id)
-  selectedPermissionIds.value = Array.from(set)
-  tmpAddPermissionIds.value = []
-}
-
-const removeSelectedPermissions = () => {
-  if (!tmpRemovePermissionIds.value || tmpRemovePermissionIds.value.length === 0) return
-  const removeSet = new Set(tmpRemovePermissionIds.value)
-  selectedPermissionIds.value = selectedPermissionIds.value.filter(id => !removeSet.has(id))
-  tmpRemovePermissionIds.value = []
-}
-// notification 已改用全局 toast 系統
-
-const form = ref({
-  roleName: '',
-  description: ''
-})
-
-const buildPagedParams = (page) => {
-  const params = {
-    page: page - 1,
-    size: pageSize.value
-  }
-
-  if (filters.value.roleName) params.roleName = filters.value.roleName
-
-  return params
-}
-
-const loadRoles = async (page = currentPage.value) => {
-  try {
-    const data = await apiService.getRolesPaged(buildPagedParams(page))
-    const nextTotalPages = data.totalPages || 0
-    if (nextTotalPages > 0 && page > nextTotalPages) {
-      await loadRoles(nextTotalPages)
-      return
-    }
-
-    roles.value = data.content || []
-    totalRecords.value = data.totalElements || 0
-    totalPages.value = nextTotalPages
-    currentPage.value = (data.currentPage ?? Math.max(page - 1, 0)) + 1
-    pageSize.value = data.size || pageSize.value
-  } catch (error) {
-    toast.error('載入角色失敗')
+// 上一頁
+const previousPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value--
+    jumpPage.value = currentPage.value
+    loadRoles()
   }
 }
 
-const handleSearch = async () => {
-  await loadRoles(1)
+// 下一頁
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++
+    jumpPage.value = currentPage.value
+    loadRoles()
+  }
 }
 
-const resetFilters = async () => {
+// 最後一頁
+const lastPage = () => {
+  currentPage.value = totalPages.value
+  jumpPage.value = totalPages.value
+  loadRoles()
+}
+
+// 跳轉到指定頁
+const jumpToPage = () => {
+  const targetPage = Number(jumpPage.value)
+  if (targetPage >= 1 && targetPage <= totalPages.value && !isNaN(targetPage)) {
+    currentPage.value = targetPage
+    jumpPage.value = targetPage
+    loadRoles()
+  } else {
+    jumpPage.value = currentPage.value
+  }
+}
+
+// 重置查詢條件
+const resetFilters = () => {
   filters.value = {
     roleName: ''
   }
-  await loadRoles(1)
+  currentPage.value = 1
+  jumpPage.value = 1
+  loadRoles()
 }
 
-const goToFirstPage = async () => {
-  if (currentPage.value <= 1) return
-  await loadRoles(1)
-}
+// 監聽查詢條件變化，重置到第一頁並重新載入
+watch(() => filters.value.roleName, () => {
+  currentPage.value = 1
+  jumpPage.value = 1
+  loadRoles()
+})
 
-const goToPrevPage = async () => {
-  if (currentPage.value <= 1) return
-  await loadRoles(currentPage.value - 1)
-}
+// 監聽每頁筆數變化，重置到第一頁並重新載入
+watch(recordsPerPage, () => {
+  currentPage.value = 1
+  jumpPage.value = 1
+  loadRoles()
+})
 
-const goToNextPage = async () => {
-  if (currentPage.value >= displayTotalPages.value) return
-  await loadRoles(currentPage.value + 1)
-}
-
-const goToLastPage = async () => {
-  if (currentPage.value >= displayTotalPages.value) return
-  await loadRoles(displayTotalPages.value)
-}
-
-const handlePageSizeChange = async () => {
-  await loadRoles(1)
+const loadRoles = async () => {
+  try {
+    const params = new URLSearchParams()
+    if (filters.value.roleName) {
+      params.append('roleName', filters.value.roleName)
+    }
+    params.append('page', (currentPage.value - 1).toString())
+    params.append('size', recordsPerPage.value.toString())
+    
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiService.request(`/roles/paged?${params.toString()}`, {
+      method: 'GET',
+      credentials: 'include'
+    })
+    
+    if (data) {
+      // apiRequest 已經提取了 ApiResponse.data，所以 data 可能是：
+      // 1. PageResponse 對象（有 content 字段）
+      // 2. 直接數組
+      // 3. 其他格式
+      const rolesData = data.content || (Array.isArray(data) ? data : [])
+      roles.value = Array.isArray(rolesData) ? rolesData : []
+      
+      // 更新分頁信息
+      if (data.totalElements !== undefined) {
+        totalRecords.value = data.totalElements
+        totalPages.value = data.totalPages || 1
+        // 確保 currentPage 不超過 totalPages
+        if (currentPage.value > totalPages.value) {
+          currentPage.value = totalPages.value
+          jumpPage.value = totalPages.value
+        }
+        // 同步 jumpPage 與 currentPage
+        jumpPage.value = currentPage.value
+      } else if (data.totalElements !== undefined) {
+        totalRecords.value = data.totalElements
+        totalPages.value = data.totalPages || 1
+        if (currentPage.value > totalPages.value) {
+          currentPage.value = totalPages.value
+          jumpPage.value = totalPages.value
+        }
+        jumpPage.value = currentPage.value
+      } else {
+        totalRecords.value = roles.value.length
+        totalPages.value = 1
+        currentPage.value = 1
+        jumpPage.value = 1
+      }
+    }
+  } catch (error) {
+    console.error('載入角色失敗:', error)
+  }
 }
 
 const loadPermissions = async () => {
   try {
-    allPermissions.value = await apiService.getPermissions()
-    // 載入權限是為了下拉選項，不需要提示（避免打擾）
-  } catch (error) {
-    toast.error('載入權限失敗')
-  }
-}
-
-const handleSubmit = async () => {
-  try {
-    if (editingRole.value) {
-      await apiService.updateRole(editingRole.value.id, form.value)
-      toast.success('角色已更新')
-    } else {
-      await apiService.createRole(form.value)
-      toast.success('角色已新增')
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiService.request('/permissions', {
+      method: 'GET',
+      credentials: 'include'
+    })
+    
+    if (data) {
+      // 處理 PageResponse 格式或直接列表
+      const permissionsData = data.content || data.permissions || data || []
+      availablePermissions.value = Array.isArray(permissionsData) ? permissionsData : []
     }
-    closeModal()
-    await loadRoles(currentPage.value)
   } catch (error) {
-    toast.error(error.message || '操作失敗')
+    console.error('載入權限失敗:', error)
   }
 }
 
-const editRole = (role) => {
-  editingRole.value = role
-  form.value = {
-    roleName: role.roleName,
-    description: role.description || ''
-  }
+const openAddModal = () => {
+  selectedRole.value = null
+  showModal.value = true
 }
 
-const editPermissions = async (role) => {
-  selectedRole.value = role
-  selectedPermissionIds.value = role.permissions ? role.permissions.map(p => p.id) : []
-  tmpAddPermissionIds.value = []
-  tmpRemovePermissionIds.value = []
-  searchAvailable.value = ''
-  searchAssigned.value = ''
-  showPermissionsModal.value = true
-}
-
-const savePermissions = async () => {
+const editRole = async (id) => {
   try {
-    await apiService.updateRolePermissions(selectedRole.value.id, selectedPermissionIds.value)
-    toast.success('權限已更新')
-    closePermissionsModal()
-    await loadRoles(currentPage.value)
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiService.request(`/roles/${id}`, {
+      method: 'GET',
+      credentials: 'include'
+    })
+    
+    if (data) {
+      // apiRequest 已經提取了 ApiResponse.data，所以 data 直接是角色對象
+      selectedRole.value = data
+      showModal.value = true
+    } else {
+      toast.error('載入角色資料失敗')
+    }
   } catch (error) {
-    toast.error('更新權限失敗')
-  }
-}
-
-const deleteRole = async (id) => {
-  if (!confirm('確定要刪除這個角色嗎？')) return
-  try {
-    await apiService.deleteRole(id)
-    toast.success('角色已刪除')
-    await loadRoles(currentPage.value)
-  } catch (error) {
-    toast.error('刪除失敗')
+    console.error('載入角色資料失敗:', error)
+    toast.error('載入角色資料失敗: ' + error.message)
   }
 }
 
 const closeModal = () => {
-  showAddModal.value = false
-  editingRole.value = null
-  form.value = { roleName: '', description: '' }
-}
-
-const closePermissionsModal = () => {
-  showPermissionsModal.value = false
+  showModal.value = false
   selectedRole.value = null
-  selectedPermissionIds.value = []
-  tmpAddPermissionIds.value = []
-  tmpRemovePermissionIds.value = []
 }
 
-// showNotification 已改用全局 toast 系統
+const handleSaved = () => {
+  toast.success(selectedRole.value ? '更新成功' : '新增成功')
+  loadRoles()
+}
 
-onMounted(async () => {
-  await loadRoles(1)
-  await loadPermissions()
+
+
+
+const deleteRole = async (id) => {
+  if (!confirm('確定要刪除此角色嗎？')) {
+    return
+  }
+  
+  try {
+    await apiService.request(`/roles/${id}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    })
+
+    toast.success('刪除成功')
+    loadRoles()
+  } catch (error) {
+    console.error('刪除角色失敗:', error)
+    toast.error('刪除失敗: ' + error.message)
+  }
+}
+
+onMounted(() => {
+  loadRoles()
+  loadPermissions()
 })
 </script>
 
 <style scoped>
-.admin-page {
-  min-height: 100vh;
-  background: var(--bg-primary);
-  padding-bottom: 2rem;
+.admin-roles{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
 }
 
-.header {
-  background: var(--bg-card);
-  padding: 2rem;
-  margin-bottom: 2rem;
-  box-shadow: var(--shadow);
-}
-
-.header-top {
-  max-width: 1400px;
-  margin: 0 auto;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.header h1 {
-  font-size: 1.8rem;
-  font-weight: 600;
-  color: #333;
-  margin: 0;
-}
-
-.main-content {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 0 2rem;
-}
-
-.filter-bar {
-  display: grid;
-  grid-template-columns: minmax(220px, 420px) auto auto;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-}
-
-.filter-input {
-  width: 100%;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: var(--border-radius);
-  background: var(--bg-card);
-  font-size: 0.9rem;
-}
-
-.filter-input:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: var(--bg-card);
-  border-radius: var(--border-radius);
-  overflow: hidden;
-  box-shadow: var(--shadow-md);
-}
-
-.data-table th,
-.data-table td {
-  padding: 1rem;
-  text-align: left;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.data-table th {
-  background: #f9fafb;
-  font-weight: 600;
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #374151;
-}
-
-.data-table tbody tr:hover {
-  background: #f9fafb;
-}
-
-.pagination-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  margin-top: 1rem;
-  flex-wrap: wrap;
-}
-
-.pagination-left {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex: 1 1 360px;
-  min-width: 280px;
-  flex-wrap: wrap;
-}
-
-.pagination-label {
-  color: #4b5563;
-  font-size: 0.9rem;
-  white-space: nowrap;
-  flex: 0 0 auto;
-}
-
-.page-size-select {
-  width: auto;
-  min-width: 80px;
-  flex: 0 0 auto;
-  padding: 0.35rem 0.5rem;
-  border: 1px solid #d1d5db;
-  border-radius: var(--border-radius);
-  background: var(--bg-card);
-}
-
-.pagination-info {
-  color: #4b5563;
-  font-size: 0.9rem;
-  white-space: nowrap;
-  flex: 0 0 auto;
-}
-
-.pagination-actions {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.btn {
-  padding: 0.6rem 1.2rem;
-  border-radius: var(--border-radius);
-  font-weight: 600;
-  cursor: pointer;
-  border: none;
-  transition: all 0.2s;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.95rem;
-}
-
-.btn-primary {
-  background: #667eea;
-  color: white;
-}
-
-.btn-primary:hover {
-  background: #5a67d8;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 6px rgba(102, 126, 234, 0.25);
-}
-
-.btn-secondary {
-  background: #fff;
-  color: #374151;
-  border: 1px solid #d1d5db;
-}
-
-.btn-secondary:hover {
-  background: #f9fafb;
-  color: #111827;
-}
-
-.btn-sm {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 0.55rem 1.05rem;
-  font-size: 0.95rem;
-  border-radius: 999px;
-  border: 2px solid #e5e7eb;
-  cursor: pointer;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  background: #fff;
-  color: #0f172a;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
-  transition: all 0.15s ease;
-}
-
-.btn-sm:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 14px rgba(0,0,0,0.08);
-}
-
-/* 權限 pill（對齊你提供的樣式） */
-.btn-permissions {
-  background: rgba(34, 197, 94, 0.12);
-  border-color: rgba(34, 197, 94, 0.35);
-  color: #2f6d4a;
-}
+.overview-strip{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:12px;
+}
 
-.btn-permissions:hover {
-  background: rgba(34, 197, 94, 0.16);
-  border-color: rgba(34, 197, 94, 0.45);
+.overview-card{
+  padding:16px;
+  border-radius:20px;
+  border:1px solid rgba(2,6,23,.08);
+  background:rgba(255,255,255,.88);
+  box-shadow:var(--shadow-sm);
 }
 
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: fadeIn 0.2s;
+.overview-card span{
+  display:block;
+  color:rgba(2,6,23,.56);
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.12em;
+  text-transform:uppercase;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+.overview-card strong{
+  display:block;
+  margin-top:8px;
+  font-size:28px;
+  line-height:1;
+  letter-spacing:-0.04em;
 }
 
-.modal-panel {
-  width: 100%;
-  max-width: 600px;
-  background: var(--bg-card);
-  border-radius: var(--border-radius);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-  margin: 2rem;
-  max-height: 90vh;
-  overflow-y: auto;
-  animation: slideUp 0.3s;
+.overview-card p{
+  margin:8px 0 0;
+  color:rgba(2,6,23,.62);
+  font-size:13px;
+  line-height:1.6;
+  font-weight:700;
 }
 
-@keyframes slideUp {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+.overview-card--accent{
+  background:linear-gradient(140deg, rgba(15,23,42,.96), rgba(29,78,216,.92));
 }
 
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
+.overview-card--accent span,
+.overview-card--accent strong,
+.overview-card--accent p{
+  color:white;
 }
 
-.modal-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #111827;
-  margin: 0;
+.overview-card--accent p{
+  color:rgba(255,255,255,.76);
 }
 
-.btn-close {
-  background: transparent;
-  border: none;
-  color: #6b7280;
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 0.375rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.surface-card{
+  padding:16px;
 }
 
-.btn-close:hover {
-  background: #f3f4f6;
-  color: #111827;
+/* Header */
+.admin-roles .page-header{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-bottom:2px;
 }
-
-.modal-body {
-  padding: 1.5rem;
-}
-
-.form-container {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-
-.form-group {
-  margin-bottom: 0;
-}
-
-.form-label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-  color: #374151;
-  font-size: 0.9rem;
-}
-
-.form-input {
-  width: 100%;
-  padding: 0.625rem 0.875rem;
-  border: 1px solid #d1d5db;
-  border-radius: var(--border-radius);
-  font-size: 0.95rem;
-  transition: all 0.2s;
-  background: var(--bg-card);
-  color: #1f2937;
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.form-actions {
-  display: flex;
-  gap: 0.75rem;
-  margin-top: 0.5rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid #e5e7eb;
-  justify-content: flex-end;
-}
-
-.permissions-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin-bottom: 1.5rem;
-  max-height: 400px;
-  overflow-y: auto;
-  padding: 0.75rem;
-  border: 1px solid #e5e7eb;
-  border-radius: var(--border-radius);
-  background: #f9fafb;
-}
-
-.permission-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem;
-  border-radius: 4px;
-  background: var(--bg-card);
-  border: 1px solid #e5e7eb;
-  cursor: pointer;
-}
-
-.permission-item:hover {
-  border-color: #667eea;
-}
-
-.permission-code {
-  background: #f3f4f6;
-  padding: 0.125rem 0.375rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  color: #4b5563;
-  font-family: monospace;
-}
-
-.checkbox-input {
-  width: 1rem;
-  height: 1rem;
-  cursor: pointer;
-  accent-color: #667eea;
-}
-
-.text-danger { color: #ef4444; }
-.me-2 { margin-right: 0.5rem; }
-
-.notification {
-  position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  left: auto;
-  padding: 1rem 1.5rem;
-  border-radius: var(--border-radius);
-  color: white;
-  font-weight: 600;
-  z-index: 10000;
-  animation: slideIn 0.3s;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  min-width: 300px;
-}
-
-.notification.success { background: #10b981; }
-.notification.error { background: #ef4444; }
-
-@keyframes slideIn {
-  from { transform: translateY(100%); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-/* ============================================
-   Icon buttons: 編輯 / 刪除（參考教會後台風格）
-   - 不影響 API / 邏輯，只統一視覺
-   ============================================ */
-.btn-edit, .btn-delete {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.65rem;
-  padding: 0.75rem 1.5rem;
-  border-radius: 999px;
-  border: 2px solid transparent;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  user-select: none;
-  transition: all 0.18s ease;
-  background: transparent;
-}
-
-.btn-sm.btn-edit, .btn-sm.btn-delete {
-  padding: 0.55rem 1.15rem;
-  font-size: 0.9rem;
-}
-
-.btn-edit {
-  color: #1d4ed8;
-  background: #eff6ff;
-  border-color: #bfdbfe;
-}
-
-.btn-edit:hover {
-  background: #dbeafe;
-  border-color: #93c5fd;
-  transform: translateY(-1px);
-}
-
-.btn-delete {
-  color: #b91c1c;
-  background: #fef2f2;
-  border-color: #fecaca;
-}
-
-.btn-delete:hover {
-  background: #fee2e2;
-  border-color: #fca5a5;
-  transform: translateY(-1px);
-}
-
-.btn-edit::before,
-.btn-delete::before {
-  content: "";
-  width: 20px;
-  height: 20px;
-  display: inline-block;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 20px 20px;
-  flex: 0 0 20px;
-}
-
-.btn-edit::before {
-  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%231d4ed8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M12%2020h9%22/%3E%3Cpath%20d%3D%22M16.5%203.5a2.121%202.121%200%200%201%203%203L7%2019l-4%201%201-4%2012.5-12.5z%22/%3E%3C/svg%3E");
-}
-
-.btn-delete::before {
-  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23b91c1c%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%223%206%205%206%2021%206%22/%3E%3Cpath%20d%3D%22M19%206l-1%2014a2%202%200%200%201-2%202H8a2%202%200%200%201-2-2L5%206%22/%3E%3Cpath%20d%3D%22M10%2011v6%22/%3E%3Cpath%20d%3D%22M14%2011v6%22/%3E%3Cpath%20d%3D%22M9%206V4a2%202%200%200%201%202-2h2a2%202%200%200%201%202%202v2%22/%3E%3C/svg%3E");
-}
-
-.pick-item {
-  cursor: pointer;
-  transition: background 0.2s;
+.admin-roles .page-header h2{
+  font-size:22px;
+  font-weight:900;
+  letter-spacing:-0.02em;
 }
-
-.pick-item:hover {
-  background: #f0f0f0;
-}
-
-.pick-actions {
-  padding: 8px;
-  border-top: 1px solid #e5e7eb;
+.admin-roles .page-header p,
+.admin-roles .subtitle,
+.admin-roles .description{
+  color:var(--muted);
+  font-weight:700;
+  font-size:14px;
+  margin-top:6px;
 }
-
-.btn-action-full {
-  width: 100%;
-  padding: 8px 16px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  background: #fff;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 14px;
-  font-weight: 600;
+/* Lists / table wrap */
+.admin-roles .table-container,
+.admin-roles .list-container,
+.admin-roles .data-container{
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  overflow:auto;
+  background:var(--surface);
+  box-shadow:var(--shadow-sm);
 }
+.admin-roles .table-container{ padding:0; }
 
-.btn-action-full:hover:not(:disabled) {
-  background: #f0f0f0;
-  border-color: #d1d5db;
+/* Inline helpers */
+.admin-roles .hint,
+.admin-roles .muted{
+  color:var(--muted);
+  font-size:13px;
+  font-weight:700;
 }
 
-.btn-action-full:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.admin-roles .actions,
+.admin-roles .header-actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
 }
 
-@media (max-width: 1200px) {
-  .filter-bar {
-    grid-template-columns: 1fr 1fr;
+/* Mobile tweaks */
+@media (max-width: 640px){
+  .overview-strip{
+    grid-template-columns:1fr;
   }
 }
 
-@media (max-width: 768px) {
-  .pagination-bar {
-    align-items: stretch;
-  }
+/* Table column widths */
+:deep(.table){ table-layout: fixed; width: 100%; }
+:deep(.table th.col-actions), :deep(.table td.col-actions){ width: 240px; min-width: 240px; }
 
-  .pagination-left {
-    min-width: 0;
-  }
-
-  .pagination-actions {
-    justify-content: flex-start;
-  }
-}
 </style>

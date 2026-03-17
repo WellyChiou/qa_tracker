@@ -1,230 +1,213 @@
 <template>
   <AdminLayout>
-    <div class="admin-page">
-    <header class="header">
-      <div class="header-top">
-        <h1>🔗 URL 權限管理</h1>
+    <div class="admin-url-permissions">
+      <div class="page-header">
+        <div>
+          <h2>URL 權限管理</h2>
+          <p>整理路由、HTTP 方法與授權規則，讓系統入口管控更清楚。</p>
+        </div>
         <button
           v-if="canManageAdmin"
-          class="btn btn-primary btn-add"
-          @click="showAddModal = true"
+          @click="openAddModal"
+          class="btn btn-primary"
         >
-          <i class="fas fa-plus me-2"></i>新增 URL 權限
+          + 新增 URL 權限
         </button>
       </div>
-    </header>
 
-    <main class="main-content">
-      <div class="filter-bar">
-        <input
-          v-model.trim="filters.urlPattern"
-          class="filter-input"
-          placeholder="URL 模式（包含）"
-          @keyup.enter="handleSearch"
-        />
-        <select v-model="filters.httpMethod" class="filter-input">
-          <option value="">全部方法</option>
-          <option value="GET">GET</option>
-          <option value="POST">POST</option>
-          <option value="PUT">PUT</option>
-          <option value="DELETE">DELETE</option>
-        </select>
-        <select v-model="filters.isPublic" class="filter-input">
-          <option value="">全部公開狀態</option>
-          <option value="true">公開</option>
-          <option value="false">非公開</option>
-        </select>
-        <input
-          v-model.trim="filters.requiredPermission"
-          class="filter-input"
-          placeholder="所需權限（包含）"
-          @keyup.enter="handleSearch"
-        />
-        <select v-model="filters.isActive" class="filter-input">
-          <option value="">全部啟用狀態</option>
-          <option value="true">啟用</option>
-          <option value="false">停用</option>
-        </select>
-        <button class="btn btn-primary" @click="handleSearch">查詢</button>
-        <button class="btn btn-secondary" @click="resetFilters">清除</button>
-      </div>
+      <section class="overview-strip">
+        <article class="overview-card overview-card--accent">
+          <span>目前規則</span>
+          <strong>{{ totalRecords }}</strong>
+          <p>後台目前可管理的 URL 權限規則總數。</p>
+        </article>
+        <article class="overview-card">
+          <span>當前頁面</span>
+          <strong>{{ permissions.length }}</strong>
+          <p>這一頁實際載入的 URL 規則資料。</p>
+        </article>
+        <article class="overview-card">
+          <span>查詢狀態</span>
+          <strong>{{ filters.urlPattern || filters.httpMethod || filters.isPublic !== '' || filters.requiredPermission || filters.isActive !== '' ? '已套用' : '全部' }}</strong>
+          <p>可透過路徑、方法、公開性與權限快速收斂規則。</p>
+        </article>
+      </section>
 
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>URL 模式</th>
-            <th>HTTP 方法</th>
-            <th>所需角色</th>
-            <th>所需權限</th>
-            <th>公開</th>
-            <th>啟用</th>
-            <th>排序</th>
-            <th v-if="canManageAdmin">操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="permission in permissions" :key="permission.id">
-            <td>{{ permission.id }}</td>
-            <td>{{ permission.urlPattern }}</td>
-            <td>{{ permission.httpMethod || 'ALL' }}</td>
-            <td>{{ permission.requiredRole || '-' }}</td>
-            <td>{{ permission.requiredPermission || '-' }}</td>
-            <td>
-              <span :class="permission.isPublic ? 'status-active' : 'status-inactive'">
-                {{ permission.isPublic ? '是' : '否' }}
-              </span>
-            </td>
-            <td>
-              <span :class="permission.isActive ? 'status-active' : 'status-inactive'">
-                {{ permission.isActive ? '是' : '否' }}
-              </span>
-            </td>
-            <td>{{ permission.orderIndex }}</td>
-            <td v-if="canManageAdmin" class="actions">
-              <button class="btn-sm btn-edit" @click="editPermission(permission)">編輯</button>
-              <button class="btn-sm btn-delete" @click="deletePermission(permission.id)">刪除</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div class="pagination-bar">
-        <div class="pagination-left">
-          <label for="urlPermissionPageSize" class="pagination-label">顯示筆數：</label>
-          <select
-            id="urlPermissionPageSize"
-            v-model.number="pageSize"
-            class="page-size-select"
-            @change="handlePageSizeChange"
-          >
-            <option :value="10">10</option>
-            <option :value="20">20</option>
-            <option :value="50">50</option>
-            <option :value="100">100</option>
-          </select>
-          <span class="pagination-info">第 {{ currentPage }} / {{ displayTotalPages }} 頁，共 {{ totalElements }} 筆</span>
-        </div>
-        <div class="pagination-actions">
-          <button class="btn btn-secondary" :disabled="currentPage <= 1" @click="goToFirstPage">第一頁</button>
-          <button class="btn btn-secondary" :disabled="currentPage <= 1" @click="goToPrevPage">上一頁</button>
-          <button class="btn btn-secondary" :disabled="currentPage >= displayTotalPages" @click="goToNextPage">下一頁</button>
-          <button class="btn btn-secondary" :disabled="currentPage >= displayTotalPages" @click="goToLastPage">最後一頁</button>
-        </div>
-      </div>
-    </main>
-
-    <!-- 新增/編輯模態框 -->
-    <div v-if="showAddModal || editingPermission" class="modal-overlay" @click="closeModal">
-      <div class="modal-panel" @click.stop>
-        <div class="modal-header">
-          <h2 class="modal-title">{{ editingPermission ? '編輯 URL 權限' : '新增 URL 權限' }}</h2>
-          <button class="btn-close" @click="closeModal">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+      <!-- 查詢條件 -->
+      <details class="filters filters--collapsible" open>
+        <summary>
+          <div class="filters__title">
+            <h3>查詢條件</h3>
+            <span class="filters__badge">點擊可收合</span>
+          </div>
+          <div class="filters__chev" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 9l6 6 6-6"/>
             </svg>
-          </button>
+          </div>
+        </summary>
+        <div class="filters__content">
+        <div class="filter-grid">
+          <div class="filter-group">
+            <label>URL 模式</label>
+            <input
+              type="text"
+              v-model="filters.urlPattern"
+              placeholder="輸入 URL 模式"
+              class="form-input"
+            />
+          </div>
+          <div class="filter-group">
+            <label>HTTP 方法</label>
+            <select v-model="filters.httpMethod">
+              <option value="">全部</option>
+              <option value="GET">GET</option>
+              <option value="POST">POST</option>
+              <option value="PUT">PUT</option>
+              <option value="DELETE">DELETE</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>是否公開</label>
+            <select v-model="filters.isPublic">
+              <option value="">全部</option>
+              <option :value="true">公開</option>
+              <option :value="false">需認證</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>需要權限</label>
+            <input
+              type="text"
+              v-model="filters.requiredPermission"
+              placeholder="輸入權限代碼"
+              class="form-input"
+            />
+          </div>
+          <div class="filter-group">
+            <label>是否啟用</label>
+            <select v-model="filters.isActive">
+              <option value="">全部</option>
+              <option :value="true">啟用</option>
+              <option :value="false">停用</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <button @click="resetFilters" class="btn btn-secondary">清除條件</button>
+          </div>
         </div>
-        <div class="modal-body">
-          <form @submit.prevent="handleSubmit" class="form-container">
-            <div class="form-group">
-              <label class="form-label">URL 模式 <span class="text-danger">*</span></label>
-              <input v-model="form.urlPattern" required class="form-input" placeholder="/api/**" />
-            </div>
-            <div class="form-group">
-              <label class="form-label">HTTP 方法</label>
-              <select v-model="form.httpMethod" class="form-input">
-                <option value="">全部</option>
-                <option value="GET">GET</option>
-                <option value="POST">POST</option>
-                <option value="PUT">PUT</option>
-                <option value="DELETE">DELETE</option>
+        </div>
+      </details>
+
+      <div class="url-permissions-list card surface-card">
+        <div v-if="permissions.length === 0" class="empty-state">
+          <p>尚無 URL 權限資料</p>
+        </div>
+        <div v-else class="url-permissions-table">
+          <div class="table-header">
+            <h3>URL 權限列表 (共 {{ totalRecords }} 筆)</h3>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>URL 模式</th>
+                <th>HTTP 方法</th>
+                <th>是否公開</th>
+                <th>需要角色</th>
+                <th>需要權限</th>
+                <th>是否啟用</th>
+                <th>排序</th>
+                <th>描述</th>
+                <th v-if="canManageAdmin">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="permission in permissions" :key="permission.id">
+                <td>{{ permission.urlPattern }}</td>
+                <td>{{ permission.httpMethod || '全部' }}</td>
+                <td>{{ permission.isPublic ? '是' : '否' }}</td>
+                <td>{{ permission.requiredRole || '-' }}</td>
+                <td>{{ permission.requiredPermission || '-' }}</td>
+                <td>{{ permission.isActive ? '是' : '否' }}</td>
+                <td>{{ permission.orderIndex }}</td>
+                <td>{{ permission.description || '-' }}</td>
+                <td v-if="canManageAdmin"><div class="table-actions"><button @click="editPermission(permission.id)" class="btn btn-edit"><span class="btn__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></span><span>編輯</span></button>
+                  <button @click="deletePermission(permission.id)" class="btn btn-delete"><span class="btn__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span><span>刪除</span></button></div></td>
+              </tr>
+            </tbody>
+          </table>
+          
+          <!-- 分頁 -->
+          <div class="pagination">
+            <div class="pagination-left">
+              <label for="pageSize" class="pagination-label">顯示筆數：</label>
+              <select id="pageSize" v-model.number="recordsPerPage" class="page-size-select">
+                <option :value="10">10</option>
+                <option :value="20">20</option>
+                <option :value="50">50</option>
+                <option :value="100">100</option>
               </select>
+              <span class="pagination-info">共 {{ totalRecords }} 筆 (第 {{ currentPage }}/{{ totalPages }} 頁)</span>
             </div>
-            <div class="form-group">
-              <label class="form-label">所需角色</label>
-              <select v-model="form.requiredRole" class="form-input">
-                <option value="">無需特定角色</option>
-                <option 
-                  v-for="role in availableRoles" 
-                  :key="role.id" 
-                  :value="role.roleName"
-                >
-                  {{ role.roleName }} - {{ role.description || '' }}
-                </option>
-              </select>
-              <small class="form-hint">選擇對應的角色</small>
-            </div>
-            <div class="form-group">
-              <label class="form-label">所需權限</label>
-              <select v-model="form.requiredPermission" class="form-input">
-                <option value="">無需特定權限</option>
-                <option 
-                  v-for="perm in availablePermissions" 
-                  :key="perm.id" 
-                  :value="perm.permissionCode"
-                >
-                  {{ perm.permissionCode }} - {{ perm.permissionName }}
-                </option>
-              </select>
-              <small class="form-hint">選擇對應的權限代碼</small>
-            </div>
-            <div class="form-group checkbox-group">
-              <label class="checkbox-label">
-                <input type="checkbox" v-model="form.isPublic" class="checkbox-input" />
-                <span>公開（無需認證）</span>
-              </label>
-            </div>
-            <div class="form-group checkbox-group">
-              <label class="checkbox-label">
-                <input type="checkbox" v-model="form.isActive" class="checkbox-input" />
-                <span>啟用</span>
-              </label>
-            </div>
-            <div class="form-group">
-              <label class="form-label">排序</label>
-              <input type="number" v-model.number="form.orderIndex" class="form-input" placeholder="0" />
-            </div>
-            <div class="form-group">
-              <label class="form-label">描述</label>
-              <textarea v-model="form.description" rows="3" class="form-input" placeholder="請輸入描述"></textarea>
-            </div>
-            <div class="form-actions">
-              <button type="submit" class="btn btn-primary">
-                <i class="fas fa-save me-2"></i>儲存
+            <div class="pagination-right">
+              <button class="btn-secondary" @click="firstPage" :disabled="currentPage === 1" title="第一頁">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
+                </svg>
               </button>
-              <button type="button" class="btn btn-secondary" @click="closeModal">
-                <i class="fas fa-times me-2"></i>取消
+              <button class="btn-secondary" @click="previousPage" :disabled="currentPage === 1">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                </svg>
+                上一頁
+              </button>
+              <div class="page-jump">
+                <span class="pagination-label">到第</span>
+                <input type="number" v-model.number="jumpPage" min="1" :max="totalPages" class="page-input" @keyup.enter="jumpToPage" />
+                <span class="pagination-label">頁</span>
+              </div>
+              <button class="btn-secondary" @click="nextPage" :disabled="currentPage === totalPages">
+                下一頁
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+              </button>
+              <button class="btn-secondary" @click="lastPage" :disabled="currentPage === totalPages" title="最後一頁">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
+                </svg>
               </button>
             </div>
-          </form>
+          </div>
         </div>
       </div>
     </div>
-
-    <!-- 通知已移至全局 ToastHost -->
-  </div>
+    
+    <UrlPermissionModal
+      :show="showModal"
+      :permission="selectedPermission"
+      @close="closeModal"
+      @saved="handleSaved"
+    />
   </AdminLayout>
 </template>
 
 <script setup>
-import AdminLayout from '@/components/AdminLayout.vue'
-import { ref, onMounted, computed } from 'vue'
-import { useAuth } from '@/composables/useAuth'
-import { apiService } from '@/composables/useApi'
 import { toast } from '@shared/composables/useToast'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useAuth } from '@/composables/useAuth'
+import AdminLayout from '@/components/AdminLayout.vue'
+import UrlPermissionModal from '@/components/UrlPermissionModal.vue'
+import { apiService } from '@/composables/useApi'
 import { hasPermission } from '@shared/utils/permission'
 
 const permissions = ref([])
-const showAddModal = ref(false)
-const editingPermission = ref(null)
-// notification 已改用全局 toast 系統
-const availableRoles = ref([])
-const availablePermissions = ref([])
-const currentPage = ref(1)
-const pageSize = ref(20)
-const totalPages = ref(0)
-const totalElements = ref(0)
+const showModal = ref(false)
+const selectedPermission = ref(null)
+const { currentUser } = useAuth()
+const canManageAdmin = computed(() => hasPermission(currentUser.value, 'ADMIN_ACCESS'))
+
+// 查詢條件
 const filters = ref({
   urlPattern: '',
   httpMethod: '',
@@ -233,60 +216,59 @@ const filters = ref({
   isActive: ''
 })
 
-const { currentUser } = useAuth()
-const canManageAdmin = computed(() => hasPermission(currentUser.value, 'ADMIN_ACCESS'))
-const displayTotalPages = computed(() => Math.max(totalPages.value, 1))
+// 分頁
+const currentPage = ref(1)
+const recordsPerPage = ref(20)
+const jumpPage = ref(1)
+const totalRecords = ref(0)
+const totalPages = ref(1)
 
-const form = ref({
-  urlPattern: '',
-  httpMethod: '',
-  requiredRole: '',
-  requiredPermission: '',
-  isPublic: false,
-  isActive: true,
-  orderIndex: 0,
-  description: ''
-})
-
-const buildPagedParams = (page) => {
-  const params = {
-    page: page - 1,
-    size: pageSize.value
-  }
-
-  if (filters.value.urlPattern) params.urlPattern = filters.value.urlPattern
-  if (filters.value.httpMethod) params.httpMethod = filters.value.httpMethod
-  if (filters.value.requiredPermission) params.requiredPermission = filters.value.requiredPermission
-  if (filters.value.isPublic !== '') params.isPublic = filters.value.isPublic === 'true'
-  if (filters.value.isActive !== '') params.isActive = filters.value.isActive === 'true'
-
-  return params
+// 第一頁
+const firstPage = () => {
+  currentPage.value = 1
+  jumpPage.value = 1
+  loadPermissions()
 }
 
-const loadPermissions = async (page = currentPage.value) => {
-  try {
-    const data = await apiService.getUrlPermissionsPaged(buildPagedParams(page))
-    const nextTotalPages = data.totalPages || 0
-    if (nextTotalPages > 0 && page > nextTotalPages) {
-      await loadPermissions(nextTotalPages)
-      return
-    }
-
-    permissions.value = data.content || []
-    totalElements.value = data.totalElements || 0
-    totalPages.value = nextTotalPages
-    currentPage.value = (data.currentPage ?? Math.max(page - 1, 0)) + 1
-    pageSize.value = data.size || pageSize.value
-  } catch (error) {
-    toast.error('載入 URL 權限失敗')
+// 上一頁
+const previousPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value--
+    jumpPage.value = currentPage.value
+    loadPermissions()
   }
 }
 
-const handleSearch = async () => {
-  await loadPermissions(1)
+// 下一頁
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++
+    jumpPage.value = currentPage.value
+    loadPermissions()
+  }
 }
 
-const resetFilters = async () => {
+// 最後一頁
+const lastPage = () => {
+  currentPage.value = totalPages.value
+  jumpPage.value = totalPages.value
+  loadPermissions()
+}
+
+// 跳轉到指定頁
+const jumpToPage = () => {
+  const targetPage = Number(jumpPage.value)
+  if (targetPage >= 1 && targetPage <= totalPages.value && !isNaN(targetPage)) {
+    currentPage.value = targetPage
+    jumpPage.value = targetPage
+    loadPermissions()
+  } else {
+    jumpPage.value = currentPage.value
+  }
+}
+
+// 重置查詢條件
+const resetFilters = () => {
   filters.value = {
     urlPattern: '',
     httpMethod: '',
@@ -294,567 +276,272 @@ const resetFilters = async () => {
     requiredPermission: '',
     isActive: ''
   }
-  await loadPermissions(1)
+  currentPage.value = 1
+  jumpPage.value = 1
+  loadPermissions()
 }
 
-const goToPrevPage = async () => {
-  if (currentPage.value <= 1) return
-  await loadPermissions(currentPage.value - 1)
-}
+// 監聽查詢條件變化，重置到第一頁並重新載入
+watch(() => [
+  filters.value.urlPattern, 
+  filters.value.httpMethod, 
+  filters.value.isPublic, 
+  filters.value.requiredPermission, 
+  filters.value.isActive
+], () => {
+  currentPage.value = 1
+  jumpPage.value = 1
+  loadPermissions()
+})
 
-const goToFirstPage = async () => {
-  if (currentPage.value <= 1) return
-  await loadPermissions(1)
-}
+// 監聽每頁筆數變化，重置到第一頁並重新載入
+watch(recordsPerPage, () => {
+  currentPage.value = 1
+  jumpPage.value = 1
+  loadPermissions()
+})
 
-const goToNextPage = async () => {
-  if (currentPage.value >= displayTotalPages.value) return
-  await loadPermissions(currentPage.value + 1)
-}
-
-const goToLastPage = async () => {
-  if (currentPage.value >= displayTotalPages.value) return
-  await loadPermissions(displayTotalPages.value)
-}
-
-const handlePageSizeChange = async () => {
-  await loadPermissions(1)
-}
-
-const loadRoles = async () => {
+const loadPermissions = async () => {
   try {
-    availableRoles.value = await apiService.getRoles()
-    // 載入角色是為了下拉選項，不需要提示（避免打擾）
-  } catch (error) {
-    console.error('載入角色列表失敗:', error)
-  }
-}
-
-const loadAvailablePermissions = async () => {
-  try {
-    availablePermissions.value = await apiService.getPermissions()
-    // 載入權限是為了下拉選項，不需要提示（避免打擾）
-  } catch (error) {
-    console.error('載入權限列表失敗:', error)
-  }
-}
-
-const handleSubmit = async () => {
-  try {
-    const permissionData = { ...form.value }
-    if (!permissionData.httpMethod) permissionData.httpMethod = null
-    
-    if (editingPermission.value) {
-      await apiService.updateUrlPermission(editingPermission.value.id, permissionData)
-      toast.success('URL 權限已更新')
-    } else {
-      await apiService.createUrlPermission(permissionData)
-      toast.success('URL 權限已新增')
+    const params = new URLSearchParams()
+    if (filters.value.urlPattern) {
+      params.append('urlPattern', filters.value.urlPattern)
     }
-    closeModal()
-    await loadPermissions(currentPage.value)
+    if (filters.value.httpMethod) {
+      params.append('httpMethod', filters.value.httpMethod)
+    }
+    if (filters.value.isPublic !== '') {
+      params.append('isPublic', filters.value.isPublic === true || filters.value.isPublic === 'true')
+    }
+    if (filters.value.requiredPermission) {
+      params.append('requiredPermission', filters.value.requiredPermission)
+    }
+    if (filters.value.isActive !== '') {
+      params.append('isActive', filters.value.isActive === true || filters.value.isActive === 'true')
+    }
+    params.append('page', (currentPage.value - 1).toString())
+    params.append('size', recordsPerPage.value.toString())
+    
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiService.request(`/url-permissions/paged?${params.toString()}`, {
+      method: 'GET',
+      credentials: 'include'
+    })
+    
+    if (data) {
+      // 處理 PageResponse 格式
+      if (data.content !== undefined && data.totalElements !== undefined) {
+        // 這是 PageResponse 格式
+        permissions.value = Array.isArray(data.content) ? data.content : []
+        totalRecords.value = data.totalElements
+        totalPages.value = data.totalPages || 1
+        // 確保 currentPage 不超過 totalPages
+        if (currentPage.value > totalPages.value) {
+          currentPage.value = totalPages.value
+          jumpPage.value = totalPages.value
+        }
+        jumpPage.value = currentPage.value
+      } else {
+        // 向後兼容：處理舊格式
+        permissions.value = data.permissions || data.content || data || []
+        if (data.totalElements !== undefined) {
+          totalRecords.value = data.totalElements
+          totalPages.value = data.totalPages || 1
+          if (currentPage.value > totalPages.value) {
+            currentPage.value = totalPages.value
+            jumpPage.value = totalPages.value
+          }
+          jumpPage.value = currentPage.value
+        } else {
+          totalRecords.value = permissions.value.length
+          totalPages.value = 1
+          currentPage.value = 1
+          jumpPage.value = 1
+        }
+      }
+    }
   } catch (error) {
-    toast.error(error.message || '操作失敗')
+    console.error('載入 URL 權限失敗:', error)
   }
 }
 
-const editPermission = (permission) => {
-  editingPermission.value = permission
-  form.value = {
-    urlPattern: permission.urlPattern,
-    httpMethod: permission.httpMethod || '',
-    requiredRole: permission.requiredRole || '',
-    requiredPermission: permission.requiredPermission || '',
-    isPublic: permission.isPublic || false,
-    isActive: permission.isActive !== false,
-    orderIndex: permission.orderIndex || 0,
-    description: permission.description || ''
-  }
+const openAddModal = () => {
+  selectedPermission.value = null
+  showModal.value = true
 }
 
-const deletePermission = async (id) => {
-  if (!confirm('確定要刪除這個 URL 權限嗎？')) return
+const editPermission = async (id) => {
   try {
-    await apiService.deleteUrlPermission(id)
-    toast.success('URL 權限已刪除')
-    await loadPermissions(currentPage.value)
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiService.request(`/url-permissions/${id}`, {
+      method: 'GET',
+      credentials: 'include'
+    })
+    
+    if (data) {
+      selectedPermission.value = data.permission || data
+      showModal.value = true
+    } else {
+      toast.error('載入 URL 權限資料失敗')
+    }
   } catch (error) {
-    toast.error('刪除失敗')
+    console.error('載入 URL 權限資料失敗:', error)
+    toast.error('載入 URL 權限資料失敗: ' + error.message)
   }
 }
 
 const closeModal = () => {
-  showAddModal.value = false
-  editingPermission.value = null
-  form.value = {
-    urlPattern: '',
-    httpMethod: '',
-    requiredRole: '',
-    requiredPermission: '',
-    isPublic: false,
-    isActive: true,
-    orderIndex: 0,
-    description: ''
+  showModal.value = false
+  selectedPermission.value = null
+}
+
+const handleSaved = () => {
+  toast.success(selectedPermission.value ? '更新成功' : '新增成功')
+  loadPermissions()
+  closeModal()
+}
+
+const deletePermission = async (id) => {
+  if (!confirm('確定要刪除此 URL 權限嗎？')) {
+    return
+  }
+  
+  try {
+    await apiService.request(`/url-permissions/${id}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    })
+
+    toast.success('刪除成功')
+    loadPermissions()
+  } catch (error) {
+    console.error('刪除 URL 權限失敗:', error)
+    toast.error('刪除失敗: ' + error.message)
   }
 }
 
-// showNotification 已改用全局 toast 系統
-
 onMounted(() => {
-  loadPermissions(1)
-  loadRoles()
-  loadAvailablePermissions()
+  loadPermissions()
 })
 </script>
 
 <style scoped>
-.admin-page {
-  min-height: 100vh;
-  background: var(--bg-primary);
-  padding-bottom: 2rem;
+.admin-url-permissions{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
 }
 
-.header {
-  background: var(--bg-card);
-  padding: 2rem;
-  margin-bottom: 2rem;
-  box-shadow: var(--shadow);
+.overview-strip{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:12px;
 }
 
-.header-top {
-  max-width: 1400px;
-  margin: 0 auto;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.overview-card{
+  padding:16px;
+  border-radius:20px;
+  border:1px solid rgba(2,6,23,.08);
+  background:rgba(255,255,255,.88);
+  box-shadow:var(--shadow-sm);
 }
 
-.header h1 {
-  font-size: 1.8rem;
-  font-weight: 600;
-  color: #333;
-  margin: 0;
+.overview-card span{
+  display:block;
+  color:rgba(2,6,23,.56);
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.12em;
+  text-transform:uppercase;
 }
 
-.main-content {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 0 2rem;
+.overview-card strong{
+  display:block;
+  margin-top:8px;
+  font-size:28px;
+  line-height:1;
+  letter-spacing:-0.04em;
 }
 
-.filter-bar {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1.5fr 1fr auto auto;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
+.overview-card p{
+  margin:8px 0 0;
+  color:rgba(2,6,23,.62);
+  font-size:13px;
+  line-height:1.6;
+  font-weight:700;
 }
 
-.filter-input {
-  width: 100%;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: var(--border-radius);
-  background: var(--bg-card);
-  font-size: 0.9rem;
+.overview-card--accent{
+  background:linear-gradient(140deg, rgba(15,23,42,.96), rgba(29,78,216,.92));
 }
 
-.filter-input:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+.overview-card--accent span,
+.overview-card--accent strong,
+.overview-card--accent p{
+  color:white;
 }
 
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: var(--bg-card);
-  border-radius: var(--border-radius);
-  overflow: hidden;
-  box-shadow: var(--shadow-md);
+.overview-card--accent p{
+  color:rgba(255,255,255,.76);
 }
 
-.data-table th,
-.data-table td {
-  padding: 1rem;
-  text-align: left;
-  border-bottom: 1px solid #e0e0e0;
+.surface-card{
+  padding:16px;
 }
 
-.data-table th {
-  background: #f9fafb;
-  font-weight: 600;
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #374151;
+/* Header */
+.admin-url-permissions .page-header{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-bottom:2px;
+}
+.admin-url-permissions .page-header h2{
+  font-size:22px;
+  font-weight:900;
+  letter-spacing:-0.02em;
+}
+.admin-url-permissions .page-header p,
+.admin-url-permissions .subtitle,
+.admin-url-permissions .description{
+  color:var(--muted);
+  font-weight:700;
+  font-size:14px;
+  margin-top:6px;
+}
+/* Lists / table wrap */
+.admin-url-permissions .table-container,
+.admin-url-permissions .list-container,
+.admin-url-permissions .data-container{
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  overflow:auto;
+  background:var(--surface);
+  box-shadow:var(--shadow-sm);
+}
+.admin-url-permissions .table-container{ padding:0; }
+
+/* Inline helpers */
+.admin-url-permissions .hint,
+.admin-url-permissions .muted{
+  color:var(--muted);
+  font-size:13px;
+  font-weight:700;
 }
 
-.data-table tbody tr:hover {
-  background: #f9fafb;
+.admin-url-permissions .actions,
+.admin-url-permissions .header-actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
 }
 
-.pagination-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  margin-top: 1rem;
-  flex-wrap: wrap;
-}
-
-.pagination-left {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex: 1 1 360px;
-  min-width: 280px;
-  flex-wrap: wrap;
-}
-
-.pagination-label {
-  color: #4b5563;
-  font-size: 0.9rem;
-  white-space: nowrap;
-  flex: 0 0 auto;
-}
-
-.page-size-select {
-  width: auto;
-  min-width: 80px;
-  flex: 0 0 auto;
-  padding: 0.35rem 0.5rem;
-  border: 1px solid #d1d5db;
-  border-radius: var(--border-radius);
-  background: var(--bg-card);
-}
-
-.pagination-info {
-  color: #4b5563;
-  font-size: 0.9rem;
-  white-space: nowrap;
-  flex: 0 0 auto;
-}
-
-.pagination-actions {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.status-active {
-  color: #10b981;
-  font-weight: 600;
-}
-
-.status-inactive {
-  color: #ef4444;
-  font-weight: 600;
-}
-
-.actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.btn {
-  padding: 0.6rem 1.2rem;
-  border-radius: var(--border-radius);
-  font-weight: 600;
-  cursor: pointer;
-  border: none;
-  transition: all 0.2s;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.95rem;
-}
-
-.btn-primary {
-  background: #667eea;
-  color: white;
-}
-
-.btn-primary:hover {
-  background: #5a67d8;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 6px rgba(102, 126, 234, 0.25);
-}
-
-.btn-secondary {
-  background: #fff;
-  color: #374151;
-  border: 1px solid #d1d5db;
-}
-
-.btn-secondary:hover {
-  background: #f9fafb;
-  color: #111827;
-}
-
-.btn-sm {
-  padding: 0.35rem 0.75rem;
-  font-size: 0.85rem;
-  border-radius: 4px;
-  border: none;
-  cursor: pointer;
-  color: white;
-  transition: all 0.2s;
-}
-
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: fadeIn 0.2s;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.modal-panel {
-  width: 100%;
-  max-width: 600px;
-  background: var(--bg-card);
-  border-radius: var(--border-radius);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-  margin: 2rem;
-  max-height: 90vh;
-  overflow-y: auto;
-  animation: slideUp 0.3s;
-}
-
-@keyframes slideUp {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.modal-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #111827;
-  margin: 0;
-}
-
-.btn-close {
-  background: transparent;
-  border: none;
-  color: #6b7280;
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 0.375rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.btn-close:hover {
-  background: #f3f4f6;
-  color: #111827;
-}
-
-.modal-body {
-  padding: 1.5rem;
-}
-
-.form-container {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-
-.form-group {
-  margin-bottom: 0;
-}
-
-.form-label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-  color: #374151;
-  font-size: 0.9rem;
-}
-
-.form-input {
-  width: 100%;
-  padding: 0.625rem 0.875rem;
-  border: 1px solid #d1d5db;
-  border-radius: var(--border-radius);
-  font-size: 0.95rem;
-  transition: all 0.2s;
-  background: var(--bg-card);
-  color: #1f2937;
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.checkbox-group {
-  display: flex;
-  align-items: center;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  font-weight: 500;
-  color: #374151;
-  gap: 0.5rem;
-}
-
-.checkbox-input {
-  width: 1rem;
-  height: 1rem;
-  cursor: pointer;
-  accent-color: #667eea;
-}
-
-.form-hint {
-  display: block;
-  margin-top: 0.25rem;
-  color: #6b7280;
-  font-size: 0.85rem;
-}
-
-.form-actions {
-  display: flex;
-  gap: 0.75rem;
-  margin-top: 0.5rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid #e5e7eb;
-  justify-content: flex-end;
-}
-
-.text-danger { color: #ef4444; }
-.me-2 { margin-right: 0.5rem; }
-
-.notification {
-  position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  left: auto;
-  padding: 1rem 1.5rem;
-  border-radius: var(--border-radius);
-  color: white;
-  font-weight: 600;
-  z-index: 10000;
-  animation: slideIn 0.3s;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  min-width: 300px;
-}
-
-.notification.success { background: #10b981; }
-.notification.error { background: #ef4444; }
-
-@keyframes slideIn {
-  from { transform: translateY(100%); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-/* ============================================
-   Icon buttons: 編輯 / 刪除（參考教會後台風格）
-   - 不影響 API / 邏輯，只統一視覺
-   ============================================ */
-.btn-edit, .btn-delete {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.65rem;
-  padding: 0.75rem 1.5rem;
-  border-radius: 999px;
-  border: 2px solid transparent;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  user-select: none;
-  transition: all 0.18s ease;
-  background: transparent;
-}
-
-.btn-sm.btn-edit, .btn-sm.btn-delete {
-  padding: 0.55rem 1.15rem;
-  font-size: 0.9rem;
-}
-
-.btn-edit {
-  color: #1d4ed8;
-  background: #eff6ff;
-  border-color: #bfdbfe;
-}
-
-.btn-edit:hover {
-  background: #dbeafe;
-  border-color: #93c5fd;
-  transform: translateY(-1px);
-}
-
-.btn-delete {
-  color: #b91c1c;
-  background: #fef2f2;
-  border-color: #fecaca;
-}
-
-.btn-delete:hover {
-  background: #fee2e2;
-  border-color: #fca5a5;
-  transform: translateY(-1px);
-}
-
-.btn-edit::before,
-.btn-delete::before {
-  content: "";
-  width: 20px;
-  height: 20px;
-  display: inline-block;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 20px 20px;
-  flex: 0 0 20px;
-}
-
-.btn-edit::before {
-  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%231d4ed8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M12%2020h9%22/%3E%3Cpath%20d%3D%22M16.5%203.5a2.121%202.121%200%200%201%203%203L7%2019l-4%201%201-4%2012.5-12.5z%22/%3E%3C/svg%3E");
-}
-
-.btn-delete::before {
-  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23b91c1c%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%223%206%205%206%2021%206%22/%3E%3Cpath%20d%3D%22M19%206l-1%2014a2%202%200%200%201-2%202H8a2%202%200%200%201-2-2L5%206%22/%3E%3Cpath%20d%3D%22M10%2011v6%22/%3E%3Cpath%20d%3D%22M14%2011v6%22/%3E%3Cpath%20d%3D%22M9%206V4a2%202%200%200%201%202-2h2a2%202%200%200%201%202%202v2%22/%3E%3C/svg%3E");
-}
-
-@media (max-width: 1200px) {
-  .filter-bar {
-    grid-template-columns: 1fr 1fr;
+/* Mobile tweaks */
+@media (max-width: 640px){
+  .overview-strip{
+    grid-template-columns:1fr;
   }
 }
-
-@media (max-width: 768px) {
-  .pagination-bar {
-    align-items: stretch;
-  }
-
-  .pagination-left {
-    min-width: 0;
-  }
-
-  .pagination-actions {
-    justify-content: flex-start;
-  }
-}
-
 </style>

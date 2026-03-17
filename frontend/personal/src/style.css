@@ -611,3 +611,291 @@ button, .btn {
   border-radius: 10px;
   font-size: 13px;
 }
+
+/* ===== Phase 5 forced sync: personal admin list UI baseline (church-admin parity) ===== */
+.filters{
+  background:rgba(255,255,255,.9);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow-sm);
+  padding:14px 14px 12px;
+}
+.filters.filters--collapsible{padding:0}
+.filters.filters--collapsible > summary{
+  list-style:none;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:14px 14px 12px;
+  user-select:none;
+}
+.filters.filters--collapsible > summary::-webkit-details-marker{display:none}
+.filters__title{display:flex; align-items:center; gap:10px; min-width:0}
+.filters__title h3{margin:0; font-size:13px; letter-spacing:.02em; color:var(--muted)}
+.filters__badge{
+  font-size:12px;
+  color:rgba(2,6,23,.55);
+  background:rgba(2,6,23,.05);
+  border:1px solid rgba(2,6,23,.08);
+  padding:4px 8px;
+  border-radius:999px;
+  white-space:nowrap;
+}
+.filters__chev{
+  width:34px;
+  height:34px;
+  border-radius:12px;
+  border:1px solid rgba(2,6,23,.10);
+  background:rgba(255,255,255,.8);
+  display:grid;
+  place-items:center;
+}
+.filters[open] .filters__chev svg{transform:rotate(180deg)}
+.filters__content{padding:0 14px 14px}
+.filter-grid{
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap:12px;
+  align-items:end;
+}
+.filter-group{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  min-width:0;
+}
+.filter-group label{
+  font-size:12px;
+  color:rgba(2,6,23,.65);
+  font-weight:700;
+}
+.filter-group input,
+.filter-group select,
+.filter-group textarea{width:100%}
+
+.empty-state{
+  border:1px dashed rgba(2,6,23,.16);
+  background:rgba(255,255,255,.72);
+  border-radius:var(--radius);
+  padding:28px 18px;
+  text-align:center;
+  color:rgba(2,6,23,.70);
+  box-shadow:var(--shadow-sm);
+}
+.empty-state:before{
+  content:"";
+  display:block;
+  width:44px;
+  height:44px;
+  margin:0 auto 10px;
+  border-radius:14px;
+  background:rgba(2,6,23,.06);
+  border:1px solid rgba(2,6,23,.08);
+}
+.empty-state p{margin:0; font-weight:800;}
+
+.pagination{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:12px;
+  margin-top:12px;
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  background:rgba(255,255,255,.9);
+  box-shadow:var(--shadow-sm);
+  flex-wrap:wrap;
+}
+.pagination-left{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+  flex:1 1 360px;
+  min-width:280px;
+}
+.pagination-right{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+.pagination-label{
+  font-size:12px;
+  color:rgba(2,6,23,.65);
+  font-weight:700;
+  white-space:nowrap;
+}
+.pagination-info{
+  font-size:12px;
+  color:rgba(2,6,23,.60);
+  white-space:nowrap;
+  flex:0 0 auto;
+}
+.page-size-select{
+  width:auto;
+  min-width:80px;
+  max-width:96px;
+  flex:0 0 auto;
+  height:36px;
+  padding:0 10px;
+  border-radius:12px;
+  border:1px solid rgba(2,6,23,.14);
+  background:#fff;
+}
+.page-jump{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 10px;
+  border:1px solid rgba(2,6,23,.10);
+  border-radius:999px;
+  background:rgba(2,6,23,.02);
+}
+.page-jump input{
+  width:74px;
+  height:30px;
+  border-radius:10px;
+  border:1px solid rgba(2,6,23,.14);
+  padding:0 10px;
+}
+.pagination .btn-secondary{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  height:36px;
+  padding:0 12px;
+  border-radius:999px;
+  border:1px solid rgba(2,6,23,.14);
+  background:#fff;
+  color:rgba(2,6,23,.82);
+  font-weight:800;
+  font-size:13px;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.pagination .btn-secondary svg{
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  display: block;
+}
+
+.pagination .btn-secondary[title="第一頁"],
+.pagination .btn-secondary[title="最後一頁"]{
+  width: 36px;
+  min-width: 36px;
+  padding: 0;
+  justify-content: center;
+}
+
+.pagination .btn-secondary:disabled{
+  opacity:.65;
+  cursor:not-allowed;
+}
+@media (max-width: 520px){
+  .pagination{padding:10px}
+  .pagination-left{min-width:0}
+  .pagination-right{width:100%; justify-content:space-between}
+  .page-jump{flex:1; justify-content:center}
+}
+
+/* ===== Forced sync hardening (users / roles / permissions / url-permissions) ===== */
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .form-input,
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .filter-group select,
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .filter-group input,
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .filter-group textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 9px 11px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+  transition: border-color .12s ease, box-shadow .12s ease;
+}
+
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .form-input:focus,
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .filter-group select:focus,
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .filter-group input:focus,
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .filter-group textarea:focus {
+  border-color: rgba(37,99,235,.55);
+  box-shadow: var(--ring);
+}
+
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .pagination .page-size-select {
+  width: 88px !important;
+  min-width: 88px !important;
+  max-width: 88px !important;
+  flex: 0 0 88px !important;
+  padding-right: 28px;
+}
+
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .pagination-left {
+  gap: 8px;
+}
+
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .pagination-info {
+  line-height: 1.35;
+}
+
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .surface-card {
+  padding: 16px;
+}
+
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 11px 9px;
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: rgba(255,255,255,.9);
+  box-shadow: var(--shadow-sm);
+}
+
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .table-header h3 {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+}
+
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .surface-card table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 6px;
+}
+
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .surface-card thead th {
+  text-align: left;
+  font-size: 13px;
+  letter-spacing: .02em;
+  color: rgba(15,23,42,.6);
+  padding: 10px 12px;
+}
+
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .surface-card tbody td {
+  padding: 10px 12px;
+  vertical-align: middle;
+  background: rgba(255,255,255,.92);
+  border: 1px solid rgba(2,6,23,.06);
+}
+
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .surface-card tbody tr {
+  box-shadow: 0 10px 22px rgba(15,23,42,.06);
+}
+
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .table-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}

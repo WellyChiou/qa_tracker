@@ -1,175 +1,245 @@
 <template>
   <AdminLayout>
-    <div class="admin-page">
-    <header class="header">
-      <div class="header-top">
-        <h1>👥 用戶管理</h1>
+    <div class="admin-users">
+      <div class="page-header">
+        <div>
+          <h2>用戶管理</h2>
+          <p>集中管理登入帳號、角色與個別權限，維持後台使用者秩序。</p>
+        </div>
         <button
           v-if="canManageAdmin"
-          class="btn btn-primary btn-add"
-          @click="showAddModal = true"
+          @click="openAddModal"
+          class="btn btn-primary"
         >
-          <i class="fas fa-plus me-2"></i>新增用戶
+          + 新增用戶
         </button>
       </div>
-    </header>
 
-    <main class="main-content">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>UID</th>
-            <th>用戶名</th>
-            <th>Email</th>
-            <th>顯示名稱</th>
-            <th>角色</th>
-            <th>啟用狀態</th>
-            <th v-if="canManageAdmin">操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="user in users" :key="user.uid">
-            <td>{{ user.uid }}</td>
-            <td>{{ user.username || '-' }}</td>
-            <td>{{ user.email || '-' }}</td>
-            <td>{{ user.displayName || '-' }}</td>
-            <td>
-              <span v-for="role in user.roles" :key="role.id" class="badge">
-                {{ role.roleName }}
-              </span>
-            </td>
-            <td>
-              <span :class="user.isEnabled ? 'status-active' : 'status-inactive'">
-                {{ user.isEnabled ? '啟用' : '停用' }}
-              </span>
-            </td>
-            <td v-if="canManageAdmin" class="actions">
-              <button class="btn-sm btn-edit" @click="editUser(user)">編輯</button>
-              <button class="btn-sm btn-roles" @click="editRoles(user)">角色</button>
-              <button class="btn-sm btn-permissions" @click="editPermissions(user)">權限</button>
-              <button class="btn-sm btn-delete" @click="deleteUser(user.uid)">刪除</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </main>
+      <section class="overview-strip">
+        <article class="overview-card overview-card--accent">
+          <span>目前用戶</span>
+          <strong>{{ totalRecords }}</strong>
+          <p>後台目前可管理的帳號總筆數。</p>
+        </article>
+        <article class="overview-card">
+          <span>當前頁面</span>
+          <strong>{{ filteredList.length }}</strong>
+          <p>這一頁實際符合條件的帳號資料。</p>
+        </article>
+        <article class="overview-card">
+          <span>查詢狀態</span>
+          <strong>{{ filters.username || filters.email || filters.roleId || filters.isEnabled !== '' ? '已套用' : '全部' }}</strong>
+          <p>可透過帳號、Email、角色與狀態快速鎖定目標使用者。</p>
+        </article>
+      </section>
 
-    <!-- 新增/編輯模態框 -->
-    <div v-if="showAddModal || editingUser" class="modal-overlay" @click="closeModal">
-      <div class="modal-panel" @click.stop>
-        <div class="modal-header">
-          <h2 class="modal-title">{{ editingUser ? '編輯用戶' : '新增用戶' }}</h2>
-          <button class="btn-close" @click="closeModal">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+      <!-- 查詢條件 -->
+      <details class="filters filters--collapsible" open>
+        <summary>
+          <div class="filters__title">
+            <h3>查詢條件</h3>
+            <span class="filters__badge">點擊可收合</span>
+          </div>
+          <div class="filters__chev" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 9l6 6 6-6"/>
             </svg>
-          </button>
+          </div>
+        </summary>
+        <div class="filters__content">
+        <div class="filter-grid">
+          <div class="filter-group">
+            <label>用戶名</label>
+            <input
+              type="text"
+              v-model="filters.username"
+              placeholder="輸入用戶名"
+              class="form-input"
+            />
+          </div>
+          <div class="filter-group">
+            <label>電子郵件</label>
+            <input
+              type="text"
+              v-model="filters.email"
+              placeholder="輸入電子郵件"
+              class="form-input"
+            />
+          </div>
+          <div class="filter-group">
+            <label>角色</label>
+            <select v-model="filters.roleId">
+              <option value="">全部</option>
+              <option v-for="role in availableRoles" :key="role.id" :value="role.id">
+                {{ role.roleName }}
+              </option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>狀態</label>
+            <select v-model="filters.isEnabled">
+              <option value="">全部</option>
+              <option :value="true">啟用</option>
+              <option :value="false">停用</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <button @click="resetFilters" class="btn btn-secondary">清除條件</button>
+          </div>
         </div>
-        <div class="modal-body">
-          <form @submit.prevent="handleSubmit" class="form-container">
-            <div v-if="editingUser" class="form-group">
-              <label class="form-label">UID</label>
-              <input v-model="form.uid" disabled class="form-input" />
-              <small class="form-text text-muted">UID 無法修改</small>
+        </div>
+      </details>
+
+      <div class="users-list card surface-card">
+        <div v-if="filteredList.length === 0" class="empty-state">
+          <p>{{ users.length === 0 ? '尚無用戶資料' : '沒有符合條件的資料' }}</p>
+        </div>
+        <div v-else class="users-table">
+          <div class="table-header">
+            <h3>用戶列表 (共 {{ totalRecords }} 筆)</h3>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>用戶名</th>
+                <th>顯示名稱</th>
+                <th>電子郵件</th>
+                <th>角色</th>
+                <th>狀態</th>
+              <th v-if="canManageAdmin" class="col-actions">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="user in filteredList" :key="user.uid">
+                <td>{{ user.username }}</td>
+                <td>{{ user.displayName || '-' }}</td>
+                <td>{{ user.email || '-' }}</td>
+                <td>
+                  <span v-for="role in user.roles" :key="role.id" class="role-badge">
+                    {{ role.roleName }}
+                  </span>
+                  <span v-if="!user.roles || user.roles.length === 0">-</span>
+                </td>
+                <td>
+                  <span :class="user.isEnabled ? 'status-active' : 'status-inactive'">
+                    {{ user.isEnabled ? '啟用' : '停用' }}
+                  </span>
+                </td>
+                <td v-if="canManageAdmin"><div class="table-actions"><button @click="editUser(user.uid)" class="btn btn-edit"><span class="btn__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></span><span>編輯</span></button>
+                  <button @click="editRoles(user)" class="btn btn-roles">角色</button>
+                  <button @click="editPermissions(user)" class="btn btn-permissions">權限</button>
+                  <button @click="deleteUser(user.uid)" class="btn btn-delete"><span class="btn__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span><span>刪除</span></button></div></td>
+              </tr>
+            </tbody>
+          </table>
+          
+          <!-- 分頁 -->
+          <div class="pagination">
+            <div class="pagination-left">
+              <label for="pageSize" class="pagination-label">顯示筆數：</label>
+              <select id="pageSize" v-model.number="recordsPerPage" class="page-size-select">
+                <option :value="10">10</option>
+                <option :value="20">20</option>
+                <option :value="50">50</option>
+                <option :value="100">100</option>
+              </select>
+              <span class="pagination-info">共 {{ totalRecords }} 筆 (第 {{ currentPage }}/{{ totalPages }} 頁)</span>
             </div>
-            <div class="form-group">
-              <label class="form-label">用戶名 <span class="text-danger">*</span></label>
-              <input v-model="form.username" required class="form-input" placeholder="請輸入用戶名" />
-            </div>
-            <div class="form-group">
-              <label class="form-label">Email</label>
-              <input type="email" v-model="form.email" class="form-input" placeholder="請輸入電子郵件" />
-            </div>
-            <div class="form-group">
-              <label class="form-label">顯示名稱</label>
-              <input v-model="form.displayName" class="form-input" placeholder="請輸入顯示名稱" />
-            </div>
-            <div class="form-group">
-              <label class="form-label">密碼 <span v-if="!editingUser" class="text-danger">*</span></label>
-              <input type="password" v-model="form.password" :required="!editingUser" class="form-input" placeholder="請輸入密碼" />
-              <small v-if="editingUser" class="form-text text-muted">留空則不修改密碼</small>
-            </div>
-            <div class="form-group checkbox-group">
-              <label class="checkbox-label">
-                <input type="checkbox" v-model="form.isEnabled" class="checkbox-input" />
-                <span>啟用帳號</span>
-              </label>
-            </div>
-            <div class="form-actions">
-              <button type="submit" class="btn btn-primary">
-                <i class="fas fa-save me-2"></i>儲存
+            <div class="pagination-right">
+              <button class="btn-secondary" @click="firstPage" :disabled="currentPage === 1" title="第一頁">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
+                </svg>
               </button>
-              <button type="button" class="btn btn-secondary" @click="closeModal">
-                <i class="fas fa-times me-2"></i>取消
+              <button class="btn-secondary" @click="previousPage" :disabled="currentPage === 1">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                </svg>
+                上一頁
+              </button>
+              <div class="page-jump">
+                <span class="pagination-label">到第</span>
+                <input type="number" v-model.number="jumpPage" min="1" :max="totalPages" class="page-input" @keyup.enter="jumpToPage" />
+                <span class="pagination-label">頁</span>
+              </div>
+              <button class="btn-secondary" @click="nextPage" :disabled="currentPage === totalPages">
+                下一頁
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+              </button>
+              <button class="btn-secondary" @click="lastPage" :disabled="currentPage === totalPages" title="最後一頁">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
+                </svg>
               </button>
             </div>
-          </form>
+          </div>
         </div>
       </div>
     </div>
-
+    
+    <UserModal
+      :show="showModal"
+      :user="selectedUser"
+      @close="closeModal"
+      @saved="handleSaved"
+    />
+    
     <!-- 角色分配模態框 -->
     <div v-if="showRolesModal" class="modal-overlay" @click="closeRolesModal">
       <div class="modal-panel" @click.stop style="max-width: 600px;">
         <div class="modal-header">
           <h2 class="modal-title">分配角色: {{ selectedUser?.displayName || selectedUser?.username }}</h2>
-          <button class="btn-close" @click="closeRolesModal">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>
+          <button class="btn-close" @click="closeRolesModal">×</button>
         </div>
         <div class="modal-body">
-          <div class="pickboard">
-            <div class="pick-col">
-              <div class="pick-head">
-                <div class="pick-title">未加入</div>
-                <input v-model="searchAvailableRoles" class="pick-search" placeholder="搜尋角色..." />
+          <div class="transfer">
+            <div class="transfer-col">
+              <div class="transfer-head">
+                <span>未加入</span>
+                <input v-model="roleSearchLeft" class="transfer-search" placeholder="搜尋角色…" />
               </div>
-              <div class="pick-list">
-                <div v-for="role in availableRolesFiltered" :key="role.id" class="pick-item" @click="addRole(role.id)">
-                  <div class="pick-main">
-                    <div class="pick-name">{{ role.roleName }}</div>
-                    <div class="pick-sub" v-if="role.description">{{ role.description }}</div>
+              <div class="transfer-list">
+                <div v-for="r in filteredAvailableRoles" :key="r.id" class="transfer-item" @click="addRole(r.id)">
+                  <div class="transfer-item-main">
+                    <div class="transfer-title">{{ r.roleName }}</div>
+                    <div class="transfer-sub" v-if="r.description">{{ r.description }}</div>
                   </div>
                 </div>
-                <div v-if="availableRolesFiltered.length === 0" class="pick-empty">已全部加入</div>
+                <div v-if="filteredAvailableRoles.length === 0" class="transfer-empty">沒有可加入的角色</div>
               </div>
-              <div class="pick-actions">
-                <button type="button" class="btn-action-full" @click="addAllRoles" :disabled="availableRolesFiltered.length === 0">
+              <div class="transfer-actions">
+                <button type="button" class="btn-action-full" @click="addAllRoles" :disabled="filteredAvailableRoles.length === 0">
                   全部加入
                 </button>
               </div>
             </div>
 
-            <div class="pick-col">
-              <div class="pick-head">
-                <div class="pick-title">已加入</div>
-                <input v-model="searchAssignedRoles" class="pick-search" placeholder="搜尋已加入..." />
+            <div class="transfer-col">
+              <div class="transfer-head">
+                <span>已加入</span>
+                <input v-model="roleSearchRight" class="transfer-search" placeholder="搜尋已加入…" />
               </div>
-              <div class="pick-list">
-                <div v-for="role in assignedRolesFiltered" :key="role.id" class="pick-item" @click="removeRole(role.id)">
-                  <div class="pick-main">
-                    <div class="pick-name">{{ role.roleName }}</div>
-                    <div class="pick-sub" v-if="role.description">{{ role.description }}</div>
+              <div class="transfer-list">
+                <div v-for="r in filteredSelectedRoles" :key="r.id" class="transfer-item" @click="removeRole(r.id)">
+                  <div class="transfer-item-main">
+                    <div class="transfer-title">{{ r.roleName }}</div>
+                    <div class="transfer-sub" v-if="r.description">{{ r.description }}</div>
                   </div>
                 </div>
-                <div v-if="assignedRolesFiltered.length === 0" class="pick-empty">尚未加入任何角色</div>
+                <div v-if="filteredSelectedRoles.length === 0" class="transfer-empty">尚未加入任何角色</div>
               </div>
-              <div class="pick-actions">
-                <button type="button" class="btn-action-full" @click="removeAllRoles" :disabled="assignedRolesFiltered.length === 0">
+              <div class="transfer-actions">
+                <button type="button" class="btn-action-full" @click="removeAllRoles" :disabled="selectedRoles.length === 0">
                   全部移除
                 </button>
               </div>
             </div>
           </div>
           <div class="form-actions">
-            <button type="button" class="btn btn-primary" @click="saveRoles">
-              <i class="fas fa-save me-2"></i>儲存角色
-            </button>
-            <button type="button" class="btn btn-secondary" @click="closeRolesModal">
-              <i class="fas fa-times me-2"></i>取消
-            </button>
+            <button type="button" class="btn btn-primary" @click="saveRoles">儲存角色</button>
+            <button type="button" class="btn btn-secondary" @click="closeRolesModal">取消</button>
           </div>
         </div>
       </div>
@@ -180,395 +250,519 @@
       <div class="modal-panel" @click.stop style="max-width: 700px;">
         <div class="modal-header">
           <h2 class="modal-title">分配權限: {{ selectedUser?.displayName || selectedUser?.username }}</h2>
-          <button class="btn-close" @click="closePermissionsModal">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>
+          <button class="btn-close" @click="closePermissionsModal">×</button>
         </div>
         <div class="modal-body">
-          <div class="pickboard">
-            <div class="pick-col">
-              <div class="pick-head">
-                <div class="pick-title">未加入</div>
-                <input v-model="searchAvailablePermissions" class="pick-search" placeholder="搜尋權限..." />
+          <div class="transfer">
+            <div class="transfer-col">
+              <div class="transfer-head">
+                <span>未加入</span>
+                <input v-model="permSearchLeft" class="transfer-search" placeholder="搜尋權限…" />
               </div>
-              <div class="pick-list">
-                <div v-for="permission in availablePermissionsFiltered" :key="permission.id" class="pick-item" @click="addPermission(permission.id)">
-                  <div class="pick-main">
-                    <div class="pick-name">{{ permission.permissionName }}</div>
-                    <div class="pick-code">({{ permission.permissionCode }})</div>
+              <div class="transfer-list">
+                <div v-for="p in filteredAvailablePerms" :key="p.id" class="transfer-item" @click="addPerm(p.id)">
+                  <div class="transfer-item-main">
+                    <div class="transfer-title">{{ p.permissionName }}</div>
+                    <div class="transfer-sub"><code class="permission-code">{{ p.permissionCode }}</code></div>
                   </div>
                 </div>
-                <div v-if="availablePermissionsFiltered.length === 0" class="pick-empty">已全部加入</div>
+                <div v-if="filteredAvailablePerms.length === 0" class="transfer-empty">沒有可加入的權限</div>
               </div>
-              <div class="pick-actions">
-                <button type="button" class="btn-action-full" @click="addAllPermissions" :disabled="availablePermissionsFiltered.length === 0">
+              <div class="transfer-actions">
+                <button type="button" class="btn-action-full" @click="addAllPerms" :disabled="filteredAvailablePerms.length === 0">
                   全部加入
                 </button>
               </div>
             </div>
 
-            <div class="pick-col">
-              <div class="pick-head">
-                <div class="pick-title">已加入</div>
-                <input v-model="searchAssignedPermissions" class="pick-search" placeholder="搜尋已加入..." />
+            <div class="transfer-col">
+              <div class="transfer-head">
+                <span>已加入</span>
+                <input v-model="permSearchRight" class="transfer-search" placeholder="搜尋已加入…" />
               </div>
-              <div class="pick-list">
-                <div v-for="permission in assignedPermissionsFiltered" :key="permission.id" class="pick-item" @click="removePermission(permission.id)">
-                  <div class="pick-main">
-                    <div class="pick-name">{{ permission.permissionName }}</div>
-                    <div class="pick-code">({{ permission.permissionCode }})</div>
+              <div class="transfer-list">
+                <div v-for="p in filteredSelectedPerms" :key="p.id" class="transfer-item" @click="removePerm(p.id)">
+                  <div class="transfer-item-main">
+                    <div class="transfer-title">{{ p.permissionName }}</div>
+                    <div class="transfer-sub"><code class="permission-code">{{ p.permissionCode }}</code></div>
                   </div>
                 </div>
-                <div v-if="assignedPermissionsFiltered.length === 0" class="pick-empty">尚未加入任何權限</div>
+                <div v-if="filteredSelectedPerms.length === 0" class="transfer-empty">尚未加入任何權限</div>
               </div>
-              <div class="pick-actions">
-                <button type="button" class="btn-action-full" @click="removeAllPermissions" :disabled="assignedPermissionsFiltered.length === 0">
+              <div class="transfer-actions">
+                <button type="button" class="btn-action-full" @click="removeAllPerms" :disabled="selectedPerms.length === 0">
                   全部移除
                 </button>
               </div>
             </div>
           </div>
           <div class="form-actions">
-            <button type="button" class="btn btn-primary" @click="savePermissions">
-              <i class="fas fa-save me-2"></i>儲存權限
-            </button>
-            <button type="button" class="btn btn-secondary" @click="closePermissionsModal">
-              <i class="fas fa-times me-2"></i>取消
-            </button>
+            <button type="button" class="btn btn-primary" @click="savePermissions">儲存權限</button>
+            <button type="button" class="btn btn-secondary" @click="closePermissionsModal">取消</button>
           </div>
         </div>
       </div>
     </div>
-
-    <!-- 通知已移至全局 ToastHost -->
-  </div>
   </AdminLayout>
 </template>
 
 <script setup>
-import AdminLayout from '@/components/AdminLayout.vue'
-import { ref, onMounted, computed } from 'vue'
-import { useAuth } from '@/composables/useAuth'
-import { apiService } from '@/composables/useApi'
 import { toast } from '@shared/composables/useToast'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useAuth } from '@/composables/useAuth'
+import AdminLayout from '@/components/AdminLayout.vue'
+import UserModal from '@/components/UserModal.vue'
+import { apiService } from '@/composables/useApi'
 import { hasPermission } from '@shared/utils/permission'
 
 const users = ref([])
-const showAddModal = ref(false)
-const editingUser = ref(null)
+const availableRoles = ref([])
+const availablePermissions = ref([])
+const showModal = ref(false)
+const selectedUser = ref(null)
 const showRolesModal = ref(false)
 const showPermissionsModal = ref(false)
-const selectedUser = ref(null)
-const allRoles = ref([])
-const allPermissions = ref([])
 const selectedRoleIds = ref([])
-const selectedPermissionIds = ref([])
+const roleSearchLeft = ref('')
+const roleSearchRight = ref('')
 
-// ====== dual-list selection (UI only) ======
-const tmpAddRoleIds = ref([])
-const tmpRemoveRoleIds = ref([])
-const tmpAddPermissionIds = ref([])
-const tmpRemovePermissionIds = ref([])
-
-const availableRoles = computed(() =>
-  allRoles.value.filter(r => !selectedRoleIds.value.includes(r.id))
-)
-const assignedRoles = computed(() =>
-  allRoles.value.filter(r => selectedRoleIds.value.includes(r.id))
-)
-
-const availablePermissions = computed(() =>
-  allPermissions.value.filter(p => !selectedPermissionIds.value.includes(p.id))
-)
-const assignedPermissions = computed(() =>
-  allPermissions.value.filter(p => selectedPermissionIds.value.includes(p.id))
-)
-
-const { currentUser } = useAuth()
-const canManageAdmin = computed(() => hasPermission(currentUser.value, 'ADMIN_ACCESS'))
-
-// ====== styled picker (UI only) ======
-const searchAvailableRoles = ref('')
-const searchAssignedRoles = ref('')
-const searchAvailablePermissions = ref('')
-const searchAssignedPermissions = ref('')
-
-const normalize = (s) => String(s || "").toLowerCase()
-
-const availableRolesFiltered = computed(() => {
-  const q = normalize(searchAvailableRoles.value).trim()
-  if (!q) return availableRoles.value
-  return availableRoles.value.filter(r =>
-    normalize(r.roleName).includes(q) || normalize(r.description).includes(q)
-  )
+const selectedRoleSet = computed(() => new Set(selectedRoleIds.value || []))
+const unselectedRoles = computed(() => {
+  if (!Array.isArray(availableRoles.value)) return []
+  return availableRoles.value.filter(r => r && r.id != null && !selectedRoleSet.value.has(r.id))
+})
+const selectedRoles = computed(() => {
+  if (!Array.isArray(availableRoles.value)) return []
+  return availableRoles.value.filter(r => r && r.id != null && selectedRoleSet.value.has(r.id))
 })
 
-const assignedRolesFiltered = computed(() => {
-  const q = normalize(searchAssignedRoles.value).trim()
-  if (!q) return assignedRoles.value
-  return assignedRoles.value.filter(r =>
-    normalize(r.roleName).includes(q) || normalize(r.description).includes(q)
-  )
+const filteredAvailableRoles = computed(() => {
+  const q = roleSearchLeft.value.trim().toLowerCase()
+  if (!q) return unselectedRoles.value
+  return unselectedRoles.value.filter(r => `${r.roleName} ${r.description || ''}`.toLowerCase().includes(q))
 })
 
-const availablePermissionsFiltered = computed(() => {
-  const q = normalize(searchAvailablePermissions.value).trim()
-  if (!q) return availablePermissions.value
-  return availablePermissions.value.filter(p =>
-    normalize(p.permissionName).includes(q) || normalize(p.permissionCode).includes(q)
-  )
-})
-
-const assignedPermissionsFiltered = computed(() => {
-  const q = normalize(searchAssignedPermissions.value).trim()
-  if (!q) return assignedPermissions.value
-  return assignedPermissions.value.filter(p =>
-    normalize(p.permissionName).includes(q) || normalize(p.permissionCode).includes(q)
-  )
+const filteredSelectedRoles = computed(() => {
+  const q = roleSearchRight.value.trim().toLowerCase()
+  if (!q) return selectedRoles.value
+  return selectedRoles.value.filter(r => `${r.roleName} ${r.description || ''}`.toLowerCase().includes(q))
 })
 
 const addRole = (id) => {
-  const next = new Set(selectedRoleIds.value)
-  next.add(id)
-  selectedRoleIds.value = Array.from(next)
+  const s = new Set(selectedRoleIds.value || [])
+  s.add(id)
+  selectedRoleIds.value = Array.from(s)
 }
 
 const removeRole = (id) => {
-  selectedRoleIds.value = selectedRoleIds.value.filter(x => x !== id)
+  selectedRoleIds.value = (selectedRoleIds.value || []).filter(x => x !== id)
+}
+const selectedPermissionIds = ref([])
+
+// permissions transfer
+const permSearchLeft = ref('')
+const permSearchRight = ref('')
+
+const selectedPermSet = computed(() => new Set(selectedPermissionIds.value || []))
+const unselectedPerms = computed(() => {
+  if (!Array.isArray(availablePermissions.value)) return []
+  return availablePermissions.value.filter(p => p && p.id != null && !selectedPermSet.value.has(p.id))
+})
+const selectedPerms = computed(() => {
+  if (!Array.isArray(availablePermissions.value)) return []
+  return availablePermissions.value.filter(p => p && p.id != null && selectedPermSet.value.has(p.id))
+})
+
+const filteredAvailablePerms = computed(() => {
+  const q = permSearchLeft.value.trim().toLowerCase()
+  if (!q) return unselectedPerms.value
+  return unselectedPerms.value.filter(p => `${p.permissionName} ${p.permissionCode}`.toLowerCase().includes(q))
+})
+
+const filteredSelectedPerms = computed(() => {
+  const q = permSearchRight.value.trim().toLowerCase()
+  if (!q) return selectedPerms.value
+  return selectedPerms.value.filter(p => `${p.permissionName} ${p.permissionCode}`.toLowerCase().includes(q))
+})
+
+const addPerm = (id) => {
+  const s = new Set(selectedPermissionIds.value || [])
+  s.add(id)
+  selectedPermissionIds.value = Array.from(s)
+}
+
+const removePerm = (id) => {
+  selectedPermissionIds.value = (selectedPermissionIds.value || []).filter(x => x !== id)
 }
 
 const addAllRoles = () => {
-  const ids = availableRolesFiltered.value.map(r => r.id)
-  const set = new Set(selectedRoleIds.value)
-  ids.forEach(id => set.add(id))
-  selectedRoleIds.value = Array.from(set)
+  const ids = filteredAvailableRoles.value.map(r => r?.id).filter(id => id != null)
+  const s = new Set(selectedRoleIds.value || [])
+  ids.forEach(id => s.add(id))
+  selectedRoleIds.value = Array.from(s)
 }
 
 const removeAllRoles = () => {
   selectedRoleIds.value = []
 }
 
-const addPermission = (id) => {
-  const next = new Set(selectedPermissionIds.value)
-  next.add(id)
-  selectedPermissionIds.value = Array.from(next)
+const addAllPerms = () => {
+  const ids = filteredAvailablePerms.value.map(p => p?.id).filter(id => id != null)
+  const s = new Set(selectedPermissionIds.value || [])
+  ids.forEach(id => s.add(id))
+  selectedPermissionIds.value = Array.from(s)
 }
 
-const removePermission = (id) => {
-  selectedPermissionIds.value = selectedPermissionIds.value.filter(x => x !== id)
-}
-
-const addAllPermissions = () => {
-  const ids = availablePermissionsFiltered.value.map(p => p.id)
-  const set = new Set(selectedPermissionIds.value)
-  ids.forEach(id => set.add(id))
-  selectedPermissionIds.value = Array.from(set)
-}
-
-const removeAllPermissions = () => {
+const removeAllPerms = () => {
   selectedPermissionIds.value = []
 }
 
-const addSelectedRoles = () => {
-  const next = new Set(selectedRoleIds.value)
-  tmpAddRoleIds.value.forEach(id => next.add(id))
-  selectedRoleIds.value = Array.from(next)
-  tmpAddRoleIds.value = []
-}
+const { currentUser } = useAuth()
+const canManageAdmin = computed(() => hasPermission(currentUser.value, 'ADMIN_ACCESS'))
 
-const removeSelectedRoles = () => {
-  const removeSet = new Set(tmpRemoveRoleIds.value)
-  selectedRoleIds.value = selectedRoleIds.value.filter(id => !removeSet.has(id))
-  tmpRemoveRoleIds.value = []
-}
 
-const addSelectedPermissions = () => {
-  const next = new Set(selectedPermissionIds.value)
-  tmpAddPermissionIds.value.forEach(id => next.add(id))
-  selectedPermissionIds.value = Array.from(next)
-  tmpAddPermissionIds.value = []
-}
-
-const removeSelectedPermissions = () => {
-  const removeSet = new Set(tmpRemovePermissionIds.value)
-  selectedPermissionIds.value = selectedPermissionIds.value.filter(id => !removeSet.has(id))
-  tmpRemovePermissionIds.value = []
-}
-// notification 已改用全局 toast 系統
-
-const form = ref({
-  uid: '',
+// 查詢條件
+const filters = ref({
   username: '',
   email: '',
-  displayName: '',
-  password: '',
-  isEnabled: true
+  roleId: '',
+  isEnabled: ''
+})
+
+// 分頁
+const currentPage = ref(1)
+const recordsPerPage = ref(20)
+const jumpPage = ref(1)
+const totalRecords = ref(0)
+const totalPages = ref(1)
+
+
+
+// 第一頁
+const firstPage = () => {
+  currentPage.value = 1
+  jumpPage.value = 1
+  loadUsers()
+}
+
+// 上一頁
+const previousPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value--
+    jumpPage.value = currentPage.value
+    loadUsers()
+  }
+}
+
+// 下一頁
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++
+    jumpPage.value = currentPage.value
+    loadUsers()
+  }
+}
+
+// 最後一頁
+const lastPage = () => {
+  currentPage.value = totalPages.value
+  jumpPage.value = totalPages.value
+  loadUsers()
+}
+
+// 跳轉到指定頁
+const jumpToPage = () => {
+  const targetPage = Number(jumpPage.value)
+  if (targetPage >= 1 && targetPage <= totalPages.value && !isNaN(targetPage)) {
+    currentPage.value = targetPage
+    jumpPage.value = targetPage
+    loadUsers()
+  } else {
+    jumpPage.value = currentPage.value
+  }
+}
+
+// 重置查詢條件
+const resetFilters = () => {
+  filters.value = {
+    username: '',
+    email: '',
+    roleId: '',
+    isEnabled: ''
+  }
+  currentPage.value = 1
+  jumpPage.value = 1
+}
+
+// 過濾後的用戶列表（用於顯示）
+const filteredList = computed(() => {
+  if (!users.value || !Array.isArray(users.value)) {
+    return []
+  }
+  return users.value
+})
+
+// 監聽查詢條件變化，重置到第一頁並重新載入
+watch(() => [filters.value.username, filters.value.email, filters.value.roleId, filters.value.isEnabled], () => {
+  currentPage.value = 1
+  jumpPage.value = 1
+  loadUsers()
+})
+
+// 監聽每頁筆數變化，重置到第一頁並重新載入
+watch(recordsPerPage, () => {
+  currentPage.value = 1
+  jumpPage.value = 1
+  loadUsers()
 })
 
 const loadUsers = async () => {
   try {
-    users.value = await apiService.getUsers()
-    toast.success(`載入成功，共 ${users.value.length} 位用戶`)
+    // 構建查詢參數
+    const params = new URLSearchParams({
+      page: (currentPage.value - 1).toString(),
+      size: recordsPerPage.value.toString()
+    })
+    
+    if (filters.value.username) {
+      params.append('username', filters.value.username)
+    }
+    if (filters.value.email) {
+      params.append('email', filters.value.email)
+    }
+    if (filters.value.roleId) {
+      params.append('roleId', filters.value.roleId)
+    }
+    if (filters.value.isEnabled !== '') {
+      params.append('isEnabled', filters.value.isEnabled.toString())
+    }
+    
+    const url = `/users/paged?${params.toString()}`
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiService.request(url, {
+      method: 'GET',
+      credentials: 'include'
+    })
+    
+    if (data) {
+      // apiRequest 已經提取了 ApiResponse.data，所以 data 可能是：
+      // 1. PageResponse 對象（有 content 字段）
+      // 2. 直接數組
+      // 3. 其他格式
+      const usersData = data.content || (Array.isArray(data) ? data : [])
+      users.value = Array.isArray(usersData) ? usersData : []
+      // 更新分頁信息（PageResponse 格式）
+      if (data.totalElements !== undefined) {
+        totalRecords.value = data.totalElements
+        totalPages.value = data.totalPages || 1
+        // 確保 currentPage 不超過 totalPages
+        if (currentPage.value > totalPages.value) {
+          currentPage.value = totalPages.value
+          jumpPage.value = totalPages.value
+        }
+        // 同步 jumpPage 與 currentPage
+        jumpPage.value = currentPage.value
+      } else {
+        totalRecords.value = users.value.length
+        totalPages.value = 1
+        currentPage.value = 1
+        jumpPage.value = 1
+      }
+    } else {
+      toast.error('載入用戶失敗')
+    }
   } catch (error) {
-    toast.error('載入用戶失敗')
+    console.error('載入用戶失敗:', error)
+    toast.error('載入用戶失敗: ' + (error.message || '未知錯誤'))
   }
 }
 
 const loadRoles = async () => {
   try {
-    allRoles.value = await apiService.getRoles()
-    // 載入角色是為了下拉選項，不需要提示（避免打擾）
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiService.request('/roles', {
+      method: 'GET',
+      credentials: 'include'
+    })
+    
+    if (data) {
+      // 處理 PageResponse 格式或直接列表
+      const rolesData = data.content || data.roles || data || []
+      availableRoles.value = Array.isArray(rolesData) ? rolesData : []
+    } else {
+      toast.error('載入角色失敗')
+    }
   } catch (error) {
-    toast.error('載入角色失敗')
+    console.error('載入角色失敗:', error)
+    toast.error('載入角色失敗: ' + (error.message || '未知錯誤'))
   }
 }
 
 const loadPermissions = async () => {
   try {
-    allPermissions.value = await apiService.getPermissions()
-    // 載入權限是為了下拉選項，不需要提示（避免打擾）
-  } catch (error) {
-    toast.error('載入權限失敗')
-  }
-}
-
-const handleSubmit = async () => {
-  try {
-    const userData = { ...form.value }
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiService.request('/permissions', {
+      method: 'GET',
+      credentials: 'include'
+    })
     
-    // 新增用戶時，不發送 UID（讓後端自動生成）
-    if (!editingUser.value) {
-      delete userData.uid
-    }
-    
-    // 編輯用戶時，如果密碼為空則不發送
-    if (editingUser.value && !userData.password) {
-      delete userData.password
-    } else if (!editingUser.value && !userData.password) {
-      // 新增用戶時，密碼為必填
-      toast.error('請輸入密碼')
-      return
-    }
-    
-    // 編輯用戶時，不發送 roles 字段（角色應該通過專門的角色管理功能來更新）
-    // 避免意外清空用戶的角色
-    if (editingUser.value) {
-      delete userData.roles
-    }
-    
-    if (editingUser.value) {
-      await apiService.updateUser(editingUser.value.uid, userData)
-      toast.success('用戶已更新')
+    if (data) {
+      // 處理 PageResponse 格式或直接列表
+      const permissionsData = data.content || data.permissions || data || []
+      availablePermissions.value = Array.isArray(permissionsData) ? permissionsData : []
     } else {
-      await apiService.createUser(userData)
-      toast.success('用戶已新增')
+      toast.error('載入權限失敗')
     }
-    closeModal()
-    await loadUsers()
   } catch (error) {
-    toast.error(error.message || '操作失敗')
+    console.error('載入權限失敗:', error)
+    toast.error('載入權限失敗: ' + (error.message || '未知錯誤'))
   }
 }
 
-const editUser = (user) => {
-  editingUser.value = user
-  form.value = {
-    uid: user.uid,
-    username: user.username || '',
-    email: user.email || '',
-    displayName: user.displayName || '',
-    password: '',
-    isEnabled: user.isEnabled !== false
-  }
+const openAddModal = () => {
+  selectedUser.value = null
+  showModal.value = true
 }
 
-const deleteUser = async (uid) => {
-  if (!confirm('確定要刪除這個用戶嗎？')) return
+const editUser = async (uid) => {
   try {
-    await apiService.deleteUser(uid)
-    toast.success('用戶已刪除')
-    await loadUsers()
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiService.request(`/users/${uid}`, {
+      method: 'GET',
+      credentials: 'include'
+    })
+    
+    if (data) {
+      selectedUser.value = data.user || data
+      showModal.value = true
+    } else {
+      toast.error('載入用戶資料失敗')
+    }
   } catch (error) {
-    toast.error('刪除失敗')
+    console.error('載入用戶資料失敗:', error)
+    toast.error('載入用戶資料失敗: ' + error.message)
   }
+}
+
+const closeModal = () => {
+  showModal.value = false
+  selectedUser.value = null
+}
+
+const handleSaved = () => {
+  loadUsers()
 }
 
 const editRoles = async (user) => {
-  selectedUser.value = user
-  // 載入用戶當前的角色 ID
-  selectedRoleIds.value = user.roles ? user.roles.map(r => r.id) : []
-  tmpAddRoleIds.value = []
-  tmpRemoveRoleIds.value = []
-  searchAvailableRoles.value = ''
-  searchAssignedRoles.value = ''
-  showRolesModal.value = true
+  try {
+    selectedUser.value = user
+    // 確保 roles 是數組，並正確提取 ID
+    if (user.roles && Array.isArray(user.roles)) {
+      selectedRoleIds.value = user.roles.map(r => r.id || r).filter(id => id != null)
+    } else {
+      selectedRoleIds.value = []
+    }
+    // 重新載入角色列表以確保數據是最新的
+    await loadRoles()
+    showRolesModal.value = true
+  } catch (error) {
+    console.error('打開角色編輯失敗:', error)
+    toast.error('打開角色編輯失敗: ' + error.message)
+  }
 }
 
 const closeRolesModal = () => {
   showRolesModal.value = false
   selectedUser.value = null
   selectedRoleIds.value = []
-  tmpAddRoleIds.value = []
-  tmpRemoveRoleIds.value = []
 }
 
 const saveRoles = async () => {
   try {
-    await apiService.updateUserRoles(selectedUser.value.uid, selectedRoleIds.value)
-    toast.success('角色已更新')
-    closeRolesModal()
-    await loadUsers()
+    const data = await apiService.updateUserRoles(selectedUser.value.uid, selectedRoleIds.value)
+    
+    if (data !== null) {
+      // apiRequest 成功返回數據，表示更新成功
+      closeRolesModal()
+      loadUsers()
+      toast.success('角色更新成功')
+    } else {
+      toast.error('更新角色失敗')
+    }
   } catch (error) {
-    toast.error(error.message || '更新失敗')
+    console.error('更新角色失敗:', error)
+    toast.error('更新角色失敗: ' + error.message)
   }
 }
 
 const editPermissions = async (user) => {
-  selectedUser.value = user
-  // 載入用戶當前的權限 ID
-  selectedPermissionIds.value = user.permissions ? user.permissions.map(p => p.id) : []
-  tmpAddPermissionIds.value = []
-  tmpRemovePermissionIds.value = []
-  searchAvailablePermissions.value = ''
-  searchAssignedPermissions.value = ''
-  showPermissionsModal.value = true
+  try {
+    selectedUser.value = user
+    // 確保 permissions 是數組，並正確提取 ID
+    if (user.permissions && Array.isArray(user.permissions)) {
+      selectedPermissionIds.value = user.permissions.map(p => p.id || p).filter(id => id != null)
+    } else {
+      selectedPermissionIds.value = []
+    }
+    permSearchLeft.value = ''
+    permSearchRight.value = ''
+    // 重新載入權限列表以確保數據是最新的
+    await loadPermissions()
+    showPermissionsModal.value = true
+  } catch (error) {
+    console.error('打開權限編輯失敗:', error)
+    toast.error('打開權限編輯失敗: ' + error.message)
+  }
 }
 
 const closePermissionsModal = () => {
   showPermissionsModal.value = false
   selectedUser.value = null
   selectedPermissionIds.value = []
-  tmpAddPermissionIds.value = []
-  tmpRemovePermissionIds.value = []
+  permSearchLeft.value = ''
+  permSearchRight.value = ''
 }
 
 const savePermissions = async () => {
   try {
-    await apiService.updateUserPermissions(selectedUser.value.uid, selectedPermissionIds.value)
-    toast.success('權限已更新')
-    closePermissionsModal()
-    await loadUsers()
+    const data = await apiService.updateUserPermissions(selectedUser.value.uid, selectedPermissionIds.value)
+    
+    if (data !== null) {
+      // apiRequest 成功返回數據，表示更新成功
+      closePermissionsModal()
+      loadUsers()
+      toast.success('權限更新成功')
+    } else {
+      toast.error('更新權限失敗')
+    }
   } catch (error) {
-    toast.error(error.message || '更新失敗')
+    console.error('更新權限失敗:', error)
+    toast.error('更新權限失敗: ' + error.message)
   }
 }
 
-const closeModal = () => {
-  showAddModal.value = false
-  editingUser.value = null
-  form.value = {
-    uid: '',
-    username: '',
-    email: '',
-    displayName: '',
-    password: '',
-    isEnabled: true
+const deleteUser = async (uid) => {
+  if (!confirm('確定要刪除此用戶嗎？')) {
+    return
+  }
+  
+  try {
+    // apiRequest 現在會自動返回解析後的資料
+    const data = await apiService.request(`/users/${uid}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    })
+    
+    if (data !== null) {
+      loadUsers()
+    } else {
+      toast.error('刪除失敗')
+    }
+  } catch (error) {
+    console.error('刪除用戶失敗:', error)
+    toast.error('刪除失敗: ' + error.message)
   }
 }
-
-// showNotification 已改用全局 toast 系統
 
 onMounted(() => {
   loadUsers()
@@ -578,483 +772,188 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.admin-page {
-  min-height: 100vh;
-  background: var(--bg-primary);
-  padding-bottom: 2rem;
+.admin-users{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
 }
 
-.header {
-  background: var(--bg-card);
-  padding: 2rem;
-  margin-bottom: 2rem;
-  box-shadow: var(--shadow);
+.overview-strip{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:12px;
 }
 
-.header-top {
-  max-width: 1400px;
-  margin: 0 auto;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.overview-card{
+  padding:16px;
+  border-radius:20px;
+  border:1px solid rgba(2,6,23,.08);
+  background:rgba(255,255,255,.88);
+  box-shadow:var(--shadow-sm);
 }
 
-.header h1 {
-  font-size: 1.8rem;
-  font-weight: 600;
-  color: #333;
-  margin: 0;
+.overview-card span{
+  display:block;
+  color:rgba(2,6,23,.56);
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.12em;
+  text-transform:uppercase;
 }
 
-.main-content {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 0 2rem;
+.overview-card strong{
+  display:block;
+  margin-top:8px;
+  font-size:28px;
+  line-height:1;
+  letter-spacing:-0.04em;
 }
 
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: var(--bg-card);
-  border-radius: var(--border-radius);
-  overflow: hidden;
-  box-shadow: var(--shadow-md);
+.overview-card p{
+  margin:8px 0 0;
+  color:rgba(2,6,23,.62);
+  font-size:13px;
+  line-height:1.6;
+  font-weight:700;
 }
 
-.data-table th,
-.data-table td {
-  padding: 1rem;
-  text-align: left;
-  border-bottom: 1px solid #e0e0e0;
+.overview-card--accent{
+  background:linear-gradient(140deg, rgba(15,23,42,.96), rgba(29,78,216,.92));
 }
 
-.data-table th {
-  background: #f9fafb;
-  font-weight: 600;
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #374151;
+.overview-card--accent span,
+.overview-card--accent strong,
+.overview-card--accent p{
+  color:white;
 }
 
-.data-table tbody tr:hover {
-  background: #f9fafb;
+.overview-card--accent p{
+  color:rgba(255,255,255,.76);
 }
 
-.badge {
-  display: inline-block;
-  padding: 0.25rem 0.5rem;
-  background: #eff6ff;
-  color: #1d4ed8;
-  border-radius: 4px;
-  margin-right: 0.5rem;
-  margin-bottom: 0.25rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  border: none;
+.surface-card{
+  padding:16px;
 }
 
-.status-active {
-  color: #10b981;
-  font-weight: 600;
+/* Header */
+.admin-users .page-header{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-bottom:2px;
+}
+.admin-users .page-header h2{
+  font-size:22px;
+  font-weight:900;
+  letter-spacing:-0.02em;
+}
+.admin-users .page-header p,
+.admin-users .subtitle,
+.admin-users .description{
+  color:var(--muted);
+  font-weight:700;
+  font-size:14px;
+  margin-top:6px;
+}
+/* Lists / table wrap */
+.admin-users .table-container,
+.admin-users .list-container,
+.admin-users .data-container{
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  overflow:auto;
+  background:var(--surface);
+  box-shadow:var(--shadow-sm);
+}
+.admin-users .table-container{ padding:0; }
+
+/* Inline helpers */
+.admin-users .hint,
+.admin-users .muted{
+  color:var(--muted);
+  font-size:13px;
+  font-weight:700;
 }
 
-.status-inactive {
-  color: #ef4444;
-  font-weight: 600;
+.admin-users .actions,
+.admin-users .header-actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
 }
 
-.actions {
-  display: flex;
-  gap: 0.5rem;
+/* Mobile tweaks */
+@media (max-width: 640px){
+  .overview-strip{
+    grid-template-columns:1fr;
+  }
 }
 
-.btn {
-  padding: 0.6rem 1.2rem;
-  border-radius: var(--border-radius);
-  font-weight: 600;
-  cursor: pointer;
-  border: none;
-  transition: all 0.2s;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.95rem;
+.transfer{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
 }
-
-.btn-primary {
-  background: #667eea;
-  color: white;
+.transfer-col{
+  border:1px solid rgba(2,6,23,.08);
+  background: rgba(255,255,255,.7);
+  border-radius: 14px;
+  overflow:hidden;
 }
-
-.btn-primary:hover {
-  background: #5a67d8;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 6px rgba(102, 126, 234, 0.25);
+.transfer-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:10px 12px;
+  border-bottom:1px solid rgba(2,6,23,.06);
+  background: rgba(2,6,23,.02);
+  font-weight: 900;
 }
-
-.btn-add {
-  font-size: 0.95rem;
-}
-
-.btn-sm {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 0.55rem 1.05rem;
-  font-size: 0.95rem;
-  border-radius: 999px;
-  border: 2px solid #e5e7eb;
-  cursor: pointer;
-  font-weight: 800;
-  letter-spacing: 0.02em;
+.transfer-search{
+  width: 52%;
+  min-width: 160px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border:1px solid rgba(2,6,23,.10);
   background: #fff;
-  color: #0f172a;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
-  transition: all 0.15s ease;
-}
-
-.btn-sm:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 14px rgba(0,0,0,0.08);
-}
-
-/* 角色 / 權限：依你給的 pill 樣式 */
-.btn-roles {
-  background: #ffffff;
-  border-color: #e5e7eb;
-  color: #0f172a;
-}
-
-.btn-roles:hover {
-  background: #f8fafc;
-  border-color: #d1d5db;
-}
-
-.btn-permissions {
-  background: rgba(34, 197, 94, 0.12);
-  border-color: rgba(34, 197, 94, 0.35);
-  color: #2f6d4a;
-}
-
-.btn-permissions:hover {
-  background: rgba(34, 197, 94, 0.16);
-  border-color: rgba(34, 197, 94, 0.45);
-}
-
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: fadeIn 0.2s;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.modal-panel {
-  width: 100%;
-  max-width: 600px;
-  background: var(--bg-card);
-  border-radius: var(--border-radius);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-  margin: 2rem;
-  max-height: 90vh;
-  overflow-y: auto;
-  animation: slideUp 0.3s;
-}
-
-@keyframes slideUp {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.modal-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #111827;
-  margin: 0;
-}
-
-.btn-close {
-  background: transparent;
-  border: none;
-  color: #6b7280;
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 0.375rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.btn-close:hover {
-  background: #f3f4f6;
-  color: #111827;
-}
-
-.modal-body {
-  padding: 1.5rem;
-}
-
-.form-container {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-
-.form-group {
-  margin-bottom: 0;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-  color: #374151;
-  font-size: 0.9rem;
-}
-
-.form-input {
-  width: 100%;
-  padding: 0.625rem 0.875rem;
-  border: 1px solid #d1d5db;
-  border-radius: var(--border-radius);
-  font-size: 0.95rem;
-  transition: all 0.2s;
-  background: var(--bg-card);
-  color: #1f2937;
-}
-
-.form-input:focus {
+  font-weight: 700;
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
-
-.form-input:disabled {
-  background: #f9fafb;
-  color: #9ca3af;
+.transfer-list{
+  max-height: 320px;
+  overflow:auto;
+  padding: 10px;
 }
-
-.form-text {
-  margin-top: 0.25rem;
-  font-size: 0.8rem;
-  color: #6b7280;
-}
-
-.text-danger { color: #ef4444; }
-.text-muted { color: #6b7280; }
-
-.checkbox-group {
-  display: flex;
-  align-items: center;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  font-weight: 500;
-  color: #374151;
-  gap: 0.5rem;
-}
-
-.checkbox-input {
-  width: 1rem;
-  height: 1rem;
-  cursor: pointer;
-  accent-color: #667eea;
-}
-
-.roles-list, .permissions-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin-bottom: 1.5rem;
-  max-height: 400px;
-  overflow-y: auto;
-  padding: 0.75rem;
-  border: 1px solid #e5e7eb;
-  border-radius: var(--border-radius);
-  background: #f9fafb;
-}
-
-.role-item, .permission-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem;
-  border-radius: 4px;
-  background: var(--bg-card);
-  border: 1px solid #e5e7eb;
-  cursor: pointer;
-}
-
-.role-item:hover, .permission-item:hover {
-  border-color: #667eea;
-}
-
-.role-description {
-  color: #6b7280;
-  font-size: 0.8rem;
-}
-
-.permission-code {
-  background: #f3f4f6;
-  padding: 0.125rem 0.375rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  color: #4b5563;
-  font-family: monospace;
-}
-
-.form-actions {
-  display: flex;
-  gap: 0.75rem;
-  margin-top: 0.5rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid #e5e7eb;
-  justify-content: flex-end;
-}
-
-.btn-secondary {
-  background: #fff;
-  color: #374151;
-  border: 1px solid #d1d5db;
-}
-
-.btn-secondary:hover {
-  background: #f9fafb;
-  color: #111827;
-}
-
-.notification {
-  position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  left: auto;
-  padding: 1rem 1.5rem;
-  border-radius: var(--border-radius);
-  color: white;
-  font-weight: 600;
-  z-index: 10000;
-  animation: slideIn 0.3s;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  min-width: 300px;
-}
-
-.notification.success { background: #10b981; }
-.notification.error { background: #ef4444; }
-
-@keyframes slideIn {
-  from { transform: translateY(100%); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-.me-2 { margin-right: 0.5rem; }
-/* ============================================
-   Icon buttons: 編輯 / 刪除（參考教會後台風格）
-   - 不影響 API / 邏輯，只統一視覺
-   ============================================ */
-.btn-edit, .btn-delete {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.65rem;
-  padding: 0.75rem 1.5rem;
-  border-radius: 999px;
-  border: 2px solid transparent;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  user-select: none;
-  transition: all 0.18s ease;
-  background: transparent;
-}
-
-.btn-sm.btn-edit, .btn-sm.btn-delete {
-  padding: 0.55rem 1.15rem;
-  font-size: 0.9rem;
-}
-
-.btn-edit {
-  color: #1d4ed8;
-  background: #eff6ff;
-  border-color: #bfdbfe;
-}
-
-.btn-edit:hover {
-  background: #dbeafe;
-  border-color: #93c5fd;
-  transform: translateY(-1px);
-}
-
-.btn-delete {
-  color: #b91c1c;
-  background: #fef2f2;
-  border-color: #fecaca;
-}
-
-.btn-delete:hover {
-  background: #fee2e2;
-  border-color: #fca5a5;
-  transform: translateY(-1px);
-}
-
-.btn-edit::before,
-.btn-delete::before {
-  content: "";
-  width: 20px;
-  height: 20px;
-  display: inline-block;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 20px 20px;
-  flex: 0 0 20px;
-}
-
-.btn-edit::before {
-  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%231d4ed8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M12%2020h9%22/%3E%3Cpath%20d%3D%22M16.5%203.5a2.121%202.121%200%200%201%203%203L7%2019l-4%201%201-4%2012.5-12.5z%22/%3E%3C/svg%3E");
-}
-
-.btn-delete::before {
-  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23b91c1c%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%223%206%205%206%2021%206%22/%3E%3Cpath%20d%3D%22M19%206l-1%2014a2%202%200%200%201-2%202H8a2%202%200%200%201-2-2L5%206%22/%3E%3Cpath%20d%3D%22M10%2011v6%22/%3E%3Cpath%20d%3D%22M14%2011v6%22/%3E%3Cpath%20d%3D%22M9%206V4a2%202%200%200%201%202-2h2a2%202%200%200%201%202%202v2%22/%3E%3C/svg%3E");
-}
-
-.pick-item {
+.transfer-item{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:10px;
+  border:1px solid rgba(2,6,23,.08);
+  border-radius: 12px;
+  background:#fff;
+  margin-bottom: 10px;
   cursor: pointer;
   transition: background 0.2s;
 }
-
-.pick-item:hover {
-  background: #f0f0f0;
+.transfer-item:hover{
+  background:#f0f0f0;
 }
-
-.pick-actions {
+.transfer-item-main{ min-width:0; flex: 1; }
+.transfer-title{ font-weight: 900; color:#0f172a; line-height:1.2; }
+.transfer-sub{ margin-top:4px; color:#64748b; font-weight:700; font-size:12px; }
+.transfer-actions{
   padding: 8px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid rgba(2,6,23,.08);
 }
-
-.btn-action-full {
+.btn-action-full{
   width: 100%;
   padding: 8px 16px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid rgba(2,6,23,.12);
   border-radius: 8px;
   background: #fff;
   cursor: pointer;
@@ -1062,14 +961,23 @@ onMounted(() => {
   font-size: 14px;
   font-weight: 600;
 }
-
-.btn-action-full:hover:not(:disabled) {
+.btn-action-full:hover:not(:disabled){
   background: #f0f0f0;
-  border-color: #d1d5db;
+  border-color: rgba(2,6,23,.2);
 }
-
-.btn-action-full:disabled {
+.btn-action-full:disabled{
   opacity: 0.5;
   cursor: not-allowed;
 }
+.transfer-empty{ padding: 14px 8px; text-align:center; color:#94a3b8; font-weight: 800; }
+@media (max-width: 980px){
+  .transfer{ grid-template-columns: 1fr; }
+  .transfer-search{ width: 100%; }
+}
+
+
+/* Table column widths */
+:deep(.table){ table-layout: fixed; width: 100%; }
+:deep(.table th.col-actions), :deep(.table td.col-actions){ width: 280px; min-width: 280px; }
+
 </style>
