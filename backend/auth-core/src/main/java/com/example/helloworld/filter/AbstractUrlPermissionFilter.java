@@ -155,12 +155,16 @@ public abstract class AbstractUrlPermissionFilter extends OncePerRequestFilter {
                 if (normalizePermissionCode && permissionCode.startsWith("PERM_")) {
                     permissionCode = permissionCode.substring(5);
                 }
-                final String authorityToCheck = permissionCode.startsWith("PERM_")
+                final String authorityWithPrefix = permissionCode.startsWith("PERM_")
                         ? permissionCode
                         : "PERM_" + permissionCode;
+                final String authorityWithoutPrefix = authorityWithPrefix.startsWith("PERM_")
+                        ? authorityWithPrefix.substring(5)
+                        : authorityWithPrefix;
 
                 boolean hasPermission = authentication.getAuthorities().stream()
-                        .anyMatch(auth -> auth.getAuthority().equals(authorityToCheck));
+                        .anyMatch(auth -> auth.getAuthority().equals(authorityWithPrefix)
+                                || auth.getAuthority().equals(authorityWithoutPrefix));
                 if (!hasPermission) {
                     sendForbiddenResponse(request, response);
                     return true;
