@@ -270,11 +270,29 @@ public class GoogleSheetsRosterService {
         if (vr.getValues() == null) return -1;
         log.info(" 傳入日期 : {}", target);
         List<Integer> hits = new ArrayList<>();
+        int blankStreak = 0;
         for (int i = 0; i < vr.getValues().size(); i++) {
-            log.info(" 第 {} 行，值 ：{}", i, String.valueOf(vr.getValues().get(i).get(0)).trim());
-            if (!vr.getValues().get(i).isEmpty() && target.equals(String.valueOf(vr.getValues().get(i).get(0)).trim())) {
+            List<Object> row = vr.getValues().get(i);
+            String value = "";
+            if (row != null && !row.isEmpty() && row.get(0) != null) {
+                value = String.valueOf(row.get(0)).trim();
+            }
+
+            if (value.isEmpty()) {
+                blankStreak++;
+                log.info(" 第 {} 行，值 ：<空白>", i);
+                if (blankStreak >= 5) {
+                    log.info(" 連續空白 {} 行，停止往下掃描", blankStreak);
+                    break;
+                }
+                continue;
+            }
+
+            blankStreak = 0;
+            log.info(" 第 {} 行，值 ：{}", i, value);
+            if (target.equals(value)) {
                 hits.add(startRow1 + i);
-                log.info("符合 -> 第 {} 行，值 ：{}", i, String.valueOf(vr.getValues().get(i).get(0)).trim());
+                log.info("符合 -> 第 {} 行，值 ：{}", i, value);
             }
         }
         return hits.size() == 1 ? hits.get(0) : -1;
