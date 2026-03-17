@@ -1,597 +1,532 @@
 <template>
   <AdminLayout>
-    <div class="admin-page">
-    <header class="header">
-      <div class="header-top">
-        <h1>📑 菜單管理</h1>
+    <div class="admin-menus">
+      <div class="page-header">
+        <div>
+          <h2>菜單管理</h2>
+          <p>管理後台選單、排序與儀表板入口顯示狀態。</p>
+        </div>
         <button
           v-if="canManageAdmin"
-          class="btn btn-primary btn-add"
-          @click="showAddModal = true"
+          @click="openAddModal"
+          class="btn btn-primary"
         >
-          <i class="fas fa-plus me-2"></i>新增菜單
+          + 新增菜單
         </button>
       </div>
-    </header>
 
-    <main class="main-content">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>菜單代碼</th>
-            <th>菜單名稱</th>
-            <th>圖標</th>
-            <th>URL</th>
-            <th>父菜單</th>
-            <th>排序</th>
-            <th>啟用</th>
-            <th v-if="canManageAdmin">操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="menu in menus" :key="menu.id">
-            <td>{{ menu.id }}</td>
-            <td>{{ menu.menuCode }}</td>
-            <td>{{ menu.menuName }}</td>
-            <td>{{ menu.icon || '-' }}</td>
-            <td>{{ menu.url || '-' }}</td>
-            <td>{{ getParentName(menu.parentId) }}</td>
-            <td>{{ menu.orderIndex }}</td>
-            <td>
-              <span :class="menu.isActive ? 'status-active' : 'status-inactive'">
-                {{ menu.isActive ? '是' : '否' }}
-              </span>
-            </td>
-            <td v-if="canManageAdmin" class="actions">
-              <button class="btn-sm btn-edit" @click="editMenu(menu)">編輯</button>
-              <button class="btn-sm btn-delete" @click="deleteMenu(menu.id)">刪除</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </main>
+      <section class="overview-strip">
+        <article class="overview-card overview-card--accent">
+          <span>目前菜單</span>
+          <strong>{{ totalRecords }}</strong>
+          <p>後台目前可管理的菜單總筆數。</p>
+        </article>
+        <article class="overview-card">
+          <span>當前頁面</span>
+          <strong>{{ menus.length }}</strong>
+          <p>目前這一頁實際載入的菜單資料。</p>
+        </article>
+        <article class="overview-card">
+          <span>查詢狀態</span>
+          <strong>{{ filters.menuCode || filters.menuName || filters.menuType || filters.isActive !== '' ? '已套用' : '全部' }}</strong>
+          <p>可用代碼、名稱、類型與狀態快速整理選單。</p>
+        </article>
+      </section>
 
-    <!-- 新增/編輯模態框 -->
-    <div v-if="showAddModal || editingMenu" class="modal-overlay" @click="closeModal">
-      <div class="modal-panel" @click.stop>
-        <div class="modal-header">
-          <h2 class="modal-title">{{ editingMenu ? '編輯菜單' : '新增菜單' }}</h2>
-          <button class="btn-close" @click="closeModal">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+      <details class="filters filters--collapsible" open>
+        <summary>
+          <div class="filters__title">
+            <h3>查詢條件</h3>
+            <span class="filters__badge">點擊可收合</span>
+          </div>
+          <div class="filters__chev" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 9l6 6 6-6"/>
             </svg>
-          </button>
-        </div>
-        <div class="modal-body">
-          <form @submit.prevent="handleSubmit" class="form-container">
-            <div class="form-group">
-              <label class="form-label">菜單代碼 <span class="text-danger">*</span></label>
-              <input v-model="form.menuCode" required class="form-input" placeholder="請輸入菜單代碼" />
+          </div>
+        </summary>
+        <div class="filters__content">
+          <div class="filter-grid">
+            <div class="filter-group">
+              <label>菜單代碼</label>
+              <input
+                type="text"
+                v-model="filters.menuCode"
+                placeholder="輸入菜單代碼"
+                class="form-input"
+              />
             </div>
-            <div class="form-group">
-              <label class="form-label">菜單名稱 <span class="text-danger">*</span></label>
-              <input v-model="form.menuName" required class="form-input" placeholder="請輸入菜單名稱" />
+            <div class="filter-group">
+              <label>菜單名稱</label>
+              <input
+                type="text"
+                v-model="filters.menuName"
+                placeholder="輸入菜單名稱"
+                class="form-input"
+              />
             </div>
-            <div class="form-group">
-              <label class="form-label">圖標</label>
-              <input v-model="form.icon" class="form-input" placeholder="例如: 📊 或 icon-class" />
-            </div>
-            <div class="form-group">
-              <label class="form-label">URL</label>
-              <input v-model="form.url" class="form-input" placeholder="/path 或 #" />
-            </div>
-            <div class="form-group">
-              <label class="form-label">父菜單</label>
-              <select v-model.number="form.parentId" class="form-input">
-                <option :value="null">無（頂層菜單）</option>
-                <option v-for="m in menus" :key="m.id" :value="m.id">{{ m.menuName }}</option>
+            <div class="filter-group">
+              <label>類型</label>
+              <select v-model="filters.menuType">
+                <option value="">全部</option>
+                <option value="admin">後台</option>
               </select>
             </div>
-            <div class="form-group">
-              <label class="form-label">排序</label>
-              <input type="number" v-model.number="form.orderIndex" class="form-input" placeholder="0" />
+            <div class="filter-group">
+              <label>狀態</label>
+              <select v-model="filters.isActive">
+                <option value="">全部</option>
+                <option :value="true">啟用</option>
+                <option :value="false">停用</option>
+              </select>
             </div>
-            <div class="form-group checkbox-group">
-              <label class="checkbox-label">
-                <input type="checkbox" v-model="form.isActive" class="checkbox-input" />
-                <span>啟用</span>
-              </label>
+            <div class="filter-group">
+              <button @click="resetFilters" class="btn btn-secondary">清除條件</button>
             </div>
-            <div class="form-group checkbox-group">
-              <label class="checkbox-label">
-                <input type="checkbox" v-model="form.showInDashboard" class="checkbox-input" />
-                <span>顯示在儀表板</span>
-              </label>
+          </div>
+        </div>
+      </details>
+
+      <div class="menus-list card surface-card">
+        <div v-if="menus.length === 0" class="empty-state">
+          <p>尚無菜單資料</p>
+        </div>
+        <div v-else class="menus-table">
+          <div class="table-header">
+            <h3>菜單列表 (共 {{ totalRecords }} 筆)</h3>
+          </div>
+          <div class="table-wrap">
+            <table class="table-grid">
+              <thead>
+                <tr>
+                  <th>菜單代碼</th>
+                  <th>菜單名稱</th>
+                  <th>類型</th>
+                  <th>URL</th>
+                  <th>排序</th>
+                  <th>狀態</th>
+                  <th>儀表板</th>
+                  <th v-if="canManageAdmin">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="menu in menus" :key="menu.id">
+                  <td>{{ menu.menuCode }}</td>
+                  <td>{{ menu.menuName }}</td>
+                  <td>{{ menu.menuType === 'frontend' ? '前台' : '後台' }}</td>
+                  <td class="url-cell" :title="menu.url || '-'">{{ menu.url || '-' }}</td>
+                  <td>{{ menu.orderIndex }}</td>
+                  <td>
+                    <span :class="menu.isActive ? 'status-active' : 'status-inactive'">
+                      {{ menu.isActive ? '啟用' : '停用' }}
+                    </span>
+                  </td>
+                  <td>
+                    <span v-if="!menu.parentId" :class="menu.showInDashboard ? 'status-active' : 'status-inactive'">
+                      {{ menu.showInDashboard ? '顯示' : '隱藏' }}
+                    </span>
+                    <span v-else class="status-inactive">-</span>
+                  </td>
+                  <td v-if="canManageAdmin">
+                    <div class="table-actions">
+                      <button @click="editMenu(menu.id)" class="btn btn-edit">
+                        <span class="btn__icon">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+                        </span>
+                        <span>編輯</span>
+                      </button>
+                      <button @click="deleteMenu(menu.id)" class="btn btn-delete">
+                        <span class="btn__icon">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                        </span>
+                        <span>刪除</span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="pagination">
+            <div class="pagination-left">
+              <label for="pageSize" class="pagination-label">顯示筆數：</label>
+              <select id="pageSize" v-model.number="recordsPerPage" class="page-size-select">
+                <option :value="10">10</option>
+                <option :value="20">20</option>
+                <option :value="50">50</option>
+                <option :value="100">100</option>
+              </select>
+              <span class="pagination-info">共 {{ totalRecords }} 筆 (第 {{ currentPage }}/{{ totalPages }} 頁)</span>
             </div>
-            <div class="form-group">
-              <label class="form-label">所需權限</label>
-              <input v-model="form.requiredPermission" class="form-input" placeholder="請輸入權限代碼" />
-            </div>
-            <div class="form-group">
-              <label class="form-label">描述</label>
-              <textarea v-model="form.description" rows="3" class="form-input" placeholder="請輸入描述"></textarea>
-            </div>
-            <div class="form-actions">
-              <button type="submit" class="btn btn-primary">
-                <i class="fas fa-save me-2"></i>儲存
+            <div class="pagination-right">
+              <button class="btn-secondary" @click="firstPage" :disabled="currentPage === 1" title="第一頁">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
+                </svg>
               </button>
-              <button type="button" class="btn btn-secondary" @click="closeModal">
-                <i class="fas fa-times me-2"></i>取消
+              <button class="btn-secondary" @click="previousPage" :disabled="currentPage === 1">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                </svg>
+                上一頁
+              </button>
+              <div class="page-jump">
+                <span class="pagination-label">到第</span>
+                <input type="number" v-model.number="jumpPage" min="1" :max="totalPages" class="page-input" @keyup.enter="jumpToPage" />
+                <span class="pagination-label">頁</span>
+              </div>
+              <button class="btn-secondary" @click="nextPage" :disabled="currentPage === totalPages">
+                下一頁
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+              </button>
+              <button class="btn-secondary" @click="lastPage" :disabled="currentPage === totalPages" title="最後一頁">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
+                </svg>
               </button>
             </div>
-          </form>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- 通知已移至全局 ToastHost -->
-  </div>
+    <MenuModal
+      :show="showModal"
+      :menu="selectedMenu"
+      :available-menus="allMenuOptions"
+      @close="closeModal"
+      @saved="handleSaved"
+    />
   </AdminLayout>
 </template>
 
 <script setup>
-import AdminLayout from '@/components/AdminLayout.vue'
-import { ref, onMounted, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { toast } from '@shared/composables/useToast'
 import { useAuth } from '@/composables/useAuth'
 import { apiService } from '@/composables/useApi'
-import { toast } from '@shared/composables/useToast'
 import { hasPermission } from '@shared/utils/permission'
+import AdminLayout from '@/components/AdminLayout.vue'
+import MenuModal from '@/components/MenuModal.vue'
 
 const menus = ref([])
-const showAddModal = ref(false)
-const editingMenu = ref(null)
-// notification 已改用全局 toast 系統
-
-const form = ref({
-  menuCode: '',
-  menuName: '',
-  icon: '',
-  url: '',
-  parentId: null,
-  orderIndex: 0,
-  isActive: true,
-  showInDashboard: true,
-  requiredPermission: '',
-  description: ''
-})
-
+const allMenuOptions = ref([])
+const showModal = ref(false)
+const selectedMenu = ref(null)
 const { currentUser } = useAuth()
 const canManageAdmin = computed(() => hasPermission(currentUser.value, 'ADMIN_ACCESS'))
 
+const filters = ref({
+  menuCode: '',
+  menuName: '',
+  menuType: '',
+  isActive: ''
+})
+
+const currentPage = ref(1)
+const recordsPerPage = ref(20)
+const jumpPage = ref(1)
+const totalRecords = ref(0)
+const totalPages = ref(1)
+
+const normalizeMenu = (item) => ({
+  ...item,
+  menuType: 'admin'
+})
+
+const firstPage = () => {
+  currentPage.value = 1
+  jumpPage.value = 1
+  loadMenus()
+}
+
+const previousPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value--
+    jumpPage.value = currentPage.value
+    loadMenus()
+  }
+}
+
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++
+    jumpPage.value = currentPage.value
+    loadMenus()
+  }
+}
+
+const lastPage = () => {
+  currentPage.value = totalPages.value
+  jumpPage.value = totalPages.value
+  loadMenus()
+}
+
+const jumpToPage = () => {
+  const targetPage = Number(jumpPage.value)
+  if (targetPage >= 1 && targetPage <= totalPages.value && !isNaN(targetPage)) {
+    currentPage.value = targetPage
+    jumpPage.value = targetPage
+    loadMenus()
+  } else {
+    jumpPage.value = currentPage.value
+  }
+}
+
+const resetFilters = () => {
+  filters.value = {
+    menuCode: '',
+    menuName: '',
+    menuType: '',
+    isActive: ''
+  }
+  currentPage.value = 1
+  jumpPage.value = 1
+  loadMenus()
+}
+
+watch(() => [filters.value.menuCode, filters.value.menuName, filters.value.menuType, filters.value.isActive], () => {
+  currentPage.value = 1
+  jumpPage.value = 1
+  loadMenus()
+})
+
+watch(recordsPerPage, () => {
+  currentPage.value = 1
+  jumpPage.value = 1
+  loadMenus()
+})
+
 const loadMenus = async () => {
   try {
-    menus.value = await apiService.getAllMenuItems()
-    toast.success(`載入成功，共 ${menus.value.length} 個菜單`)
+    const params = {
+      page: currentPage.value - 1,
+      size: recordsPerPage.value
+    }
+
+    if (filters.value.menuCode) params.menuCode = filters.value.menuCode
+    if (filters.value.menuName) params.menuName = filters.value.menuName
+    if (filters.value.menuType) params.menuType = filters.value.menuType
+    if (filters.value.isActive !== '') params.isActive = filters.value.isActive === true || filters.value.isActive === 'true'
+
+    const data = await apiService.getMenuItemsPaged(params)
+    menus.value = Array.isArray(data.content) ? data.content.map(normalizeMenu) : []
+
+    totalRecords.value = data.totalElements ?? menus.value.length
+    totalPages.value = data.totalPages || 1
+
+    if (currentPage.value > totalPages.value) {
+      currentPage.value = totalPages.value
+      jumpPage.value = totalPages.value
+    } else {
+      jumpPage.value = currentPage.value
+    }
   } catch (error) {
     toast.error('載入菜單失敗')
   }
 }
 
-const getParentName = (parentId) => {
-  if (!parentId) return '-'
-  const parent = menus.value.find(m => m.id === parentId)
-  return parent ? parent.menuName : '-'
+const loadAllMenuOptions = async () => {
+  try {
+    const data = await apiService.getAllMenuItems()
+    allMenuOptions.value = Array.isArray(data) ? data.map(normalizeMenu) : []
+  } catch (error) {
+    allMenuOptions.value = []
+  }
 }
 
-const handleSubmit = async () => {
+const openAddModal = () => {
+  selectedMenu.value = null
+  showModal.value = true
+}
+
+const editMenu = async (id) => {
   try {
-    const menuData = { ...form.value }
-    if (!menuData.parentId) menuData.parentId = null
-    
-    if (editingMenu.value) {
-      await apiService.updateMenuItem(editingMenu.value.id, menuData)
-      toast.success('菜單已更新')
+    const data = await apiService.getMenuItemById(id)
+    if (data) {
+      selectedMenu.value = normalizeMenu(data)
+      showModal.value = true
     } else {
-      await apiService.createMenuItem(menuData)
-      toast.success('菜單已新增')
+      toast.error('載入菜單資料失敗')
     }
-    closeModal()
-    await loadMenus()
   } catch (error) {
-    toast.error(error.message || '操作失敗')
-  }
-}
-
-const editMenu = (menu) => {
-  editingMenu.value = menu
-  form.value = {
-    menuCode: menu.menuCode,
-    menuName: menu.menuName,
-    icon: menu.icon || '',
-    url: menu.url || '',
-    parentId: menu.parentId || null,
-    orderIndex: menu.orderIndex || 0,
-    isActive: menu.isActive !== false,
-    showInDashboard: menu.showInDashboard !== false,
-    requiredPermission: menu.requiredPermission || '',
-    description: menu.description || ''
-  }
-}
-
-const deleteMenu = async (id) => {
-  if (!confirm('確定要刪除這個菜單嗎？')) return
-  try {
-    await apiService.deleteMenuItem(id)
-    toast.success('菜單已刪除')
-    await loadMenus()
-  } catch (error) {
-    toast.error('刪除失敗')
+    toast.error('載入菜單資料失敗')
   }
 }
 
 const closeModal = () => {
-  showAddModal.value = false
-  editingMenu.value = null
-  form.value = {
-    menuCode: '',
-    menuName: '',
-    icon: '',
-    url: '',
-    parentId: null,
-    orderIndex: 0,
-    isActive: true,
-    showInDashboard: true,
-    requiredPermission: '',
-    description: ''
+  showModal.value = false
+  selectedMenu.value = null
+}
+
+const handleSaved = async () => {
+  toast.success(selectedMenu.value ? '更新成功' : '新增成功')
+  await Promise.all([loadMenus(), loadAllMenuOptions()])
+}
+
+const deleteMenu = async (id) => {
+  if (!confirm('確定要刪除此菜單嗎？')) return
+
+  try {
+    await apiService.deleteMenuItem(id)
+    toast.success('刪除成功')
+    await Promise.all([loadMenus(), loadAllMenuOptions()])
+  } catch (error) {
+    toast.error('刪除失敗: ' + (error.message || '未知錯誤'))
   }
 }
 
-// showNotification 已改用全局 toast 系統
-
-onMounted(loadMenus)
+onMounted(async () => {
+  await Promise.all([loadMenus(), loadAllMenuOptions()])
+})
 </script>
 
 <style scoped>
-.admin-page {
-  min-height: 100vh;
-  background: var(--bg-primary);
-  padding-bottom: 2rem;
+.admin-menus{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
 }
 
-.header {
-  background: var(--bg-card);
-  padding: 2rem;
-  margin-bottom: 2rem;
-  box-shadow: var(--shadow);
+.overview-strip{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:12px;
 }
 
-.header-top {
-  max-width: 1400px;
-  margin: 0 auto;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.overview-card{
+  padding:16px;
+  border-radius:20px;
+  border:1px solid rgba(2,6,23,.08);
+  background:rgba(255,255,255,.88);
+  box-shadow:var(--shadow-sm);
 }
 
-.header h1 {
-  font-size: 1.8rem;
-  font-weight: 600;
-  color: #333;
-  margin: 0;
+.overview-card span{
+  display:block;
+  color:rgba(2,6,23,.56);
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.12em;
+  text-transform:uppercase;
 }
 
-.main-content {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 0 2rem;
+.overview-card strong{
+  display:block;
+  margin-top:8px;
+  font-size:28px;
+  line-height:1;
+  letter-spacing:-0.04em;
 }
 
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: var(--bg-card);
-  border-radius: var(--border-radius);
-  overflow: hidden;
-  box-shadow: var(--shadow-md);
+.overview-card p{
+  margin:8px 0 0;
+  color:rgba(2,6,23,.62);
+  font-size:13px;
+  line-height:1.6;
+  font-weight:700;
 }
 
-.data-table th,
-.data-table td {
-  padding: 1rem;
-  text-align: left;
-  border-bottom: 1px solid #e0e0e0;
+.overview-card--accent{
+  background:linear-gradient(140deg, rgba(15,23,42,.96), rgba(29,78,216,.92));
 }
 
-.data-table th {
-  background: #f9fafb;
-  font-weight: 600;
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #374151;
+.overview-card--accent span,
+.overview-card--accent strong,
+.overview-card--accent p{
+  color:white;
 }
 
-.data-table tbody tr:hover {
-  background: #f9fafb;
+.overview-card--accent p{
+  color:rgba(255,255,255,.76);
 }
 
-.status-active {
-  color: #10b981;
-  font-weight: 600;
+.surface-card{
+  padding:16px;
 }
 
-.status-inactive {
-  color: #ef4444;
-  font-weight: 600;
+.admin-menus .page-header{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-bottom:2px;
+}
+.admin-menus .page-header h2{
+  font-size:22px;
+  font-weight:900;
+  letter-spacing:-0.02em;
+}
+.admin-menus .page-header p,
+.admin-menus .subtitle,
+.admin-menus .description{
+  color:var(--muted);
+  font-weight:700;
+  font-size:14px;
+  margin-top:6px;
 }
 
-.actions {
-  display: flex;
-  gap: 0.5rem;
+.table-wrap{
+  border:1px solid rgba(2,6,23,.08);
+  border-radius:14px;
+  background:rgba(255,255,255,.92);
+  box-shadow:0 14px 30px rgba(15,23,42,.05);
+  padding:6px;
+  overflow-x:auto;
 }
 
-.btn {
-  padding: 0.6rem 1.2rem;
-  border-radius: var(--border-radius);
-  font-weight: 600;
-  cursor: pointer;
-  border: none;
-  transition: all 0.2s;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.95rem;
+.table-grid{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0 6px;
 }
 
-.btn-primary {
-  background: #667eea;
-  color: white;
+.table-grid th{
+  text-align:left;
+  font-size:13px;
+  color:rgba(15,23,42,.6);
+  font-weight:800;
+  letter-spacing:0.02em;
+  padding:10px 12px;
 }
 
-.btn-primary:hover {
-  background: #5a67d8;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 6px rgba(102, 126, 234, 0.25);
+.table-grid td{
+  vertical-align:middle;
+  background:rgba(255,255,255,.92);
+  border:1px solid rgba(2,6,23,.06);
+  padding:10px 12px;
 }
 
-.btn-secondary {
-  background: #fff;
-  color: #374151;
-  border: 1px solid #d1d5db;
+.table-grid tbody tr{
+  box-shadow:0 10px 22px rgba(15,23,42,.06);
 }
 
-.btn-secondary:hover {
-  background: #f9fafb;
-  color: #111827;
+.table-actions{
+  display:flex;
+  gap:8px;
+  align-items:center;
 }
 
-.btn-sm {
-  padding: 0.35rem 0.75rem;
-  font-size: 0.85rem;
-  border-radius: 4px;
-  border: none;
-  cursor: pointer;
-  color: white;
-  transition: all 0.2s;
+.table-actions .btn{
+  padding:8px 10px;
+  font-size:13px;
+  height:34px;
 }
 
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: fadeIn 0.2s;
+.url-cell{
+  max-width:220px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+@media (max-width: 640px){
+  .overview-strip{
+    grid-template-columns:1fr;
+  }
 }
-
-.modal-panel {
-  width: 100%;
-  max-width: 600px;
-  background: var(--bg-card);
-  border-radius: var(--border-radius);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-  margin: 2rem;
-  max-height: 90vh;
-  overflow-y: auto;
-  animation: slideUp 0.3s;
-}
-
-@keyframes slideUp {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.modal-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #111827;
-  margin: 0;
-}
-
-.btn-close {
-  background: transparent;
-  border: none;
-  color: #6b7280;
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 0.375rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.btn-close:hover {
-  background: #f3f4f6;
-  color: #111827;
-}
-
-.modal-body {
-  padding: 1.5rem;
-}
-
-.form-container {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-
-.form-group {
-  margin-bottom: 0;
-}
-
-.form-label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-  color: #374151;
-  font-size: 0.9rem;
-}
-
-.form-input {
-  width: 100%;
-  padding: 0.625rem 0.875rem;
-  border: 1px solid #d1d5db;
-  border-radius: var(--border-radius);
-  font-size: 0.95rem;
-  transition: all 0.2s;
-  background: var(--bg-card);
-  color: #1f2937;
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.checkbox-group {
-  display: flex;
-  align-items: center;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  font-weight: 500;
-  color: #374151;
-  gap: 0.5rem;
-}
-
-.checkbox-input {
-  width: 1rem;
-  height: 1rem;
-  cursor: pointer;
-  accent-color: #667eea;
-}
-
-.form-actions {
-  display: flex;
-  gap: 0.75rem;
-  margin-top: 0.5rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid #e5e7eb;
-  justify-content: flex-end;
-}
-
-.text-danger { color: #ef4444; }
-.me-2 { margin-right: 0.5rem; }
-
-.notification {
-  position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  left: auto;
-  padding: 1rem 1.5rem;
-  border-radius: var(--border-radius);
-  color: white;
-  font-weight: 600;
-  z-index: 10000;
-  animation: slideIn 0.3s;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  min-width: 300px;
-}
-
-.notification.success { background: #10b981; }
-.notification.error { background: #ef4444; }
-
-@keyframes slideIn {
-  from { transform: translateY(100%); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-/* ============================================
-   Icon buttons: 編輯 / 刪除（參考教會後台風格）
-   - 不影響 API / 邏輯，只統一視覺
-   ============================================ */
-.btn-edit, .btn-delete {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.65rem;
-  padding: 0.75rem 1.5rem;
-  border-radius: 999px;
-  border: 2px solid transparent;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  user-select: none;
-  transition: all 0.18s ease;
-  background: transparent;
-}
-
-.btn-sm.btn-edit, .btn-sm.btn-delete {
-  padding: 0.55rem 1.15rem;
-  font-size: 0.9rem;
-}
-
-.btn-edit {
-  color: #1d4ed8;
-  background: #eff6ff;
-  border-color: #bfdbfe;
-}
-
-.btn-edit:hover {
-  background: #dbeafe;
-  border-color: #93c5fd;
-  transform: translateY(-1px);
-}
-
-.btn-delete {
-  color: #b91c1c;
-  background: #fef2f2;
-  border-color: #fecaca;
-}
-
-.btn-delete:hover {
-  background: #fee2e2;
-  border-color: #fca5a5;
-  transform: translateY(-1px);
-}
-
-.btn-edit::before,
-.btn-delete::before {
-  content: "";
-  width: 20px;
-  height: 20px;
-  display: inline-block;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 20px 20px;
-  flex: 0 0 20px;
-}
-
-.btn-edit::before {
-  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%231d4ed8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M12%2020h9%22/%3E%3Cpath%20d%3D%22M16.5%203.5a2.121%202.121%200%200%201%203%203L7%2019l-4%201%201-4%2012.5-12.5z%22/%3E%3C/svg%3E");
-}
-
-.btn-delete::before {
-  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23b91c1c%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%223%206%205%206%2021%206%22/%3E%3Cpath%20d%3D%22M19%206l-1%2014a2%202%200%200%201-2%202H8a2%202%200%200%201-2-2L5%206%22/%3E%3Cpath%20d%3D%22M10%2011v6%22/%3E%3Cpath%20d%3D%22M14%2011v6%22/%3E%3Cpath%20d%3D%22M9%206V4a2%202%200%200%201%202-2h2a2%202%200%200%201%202%202v2%22/%3E%3C/svg%3E");
-}
-
 </style>

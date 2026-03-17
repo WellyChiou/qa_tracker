@@ -1,9 +1,11 @@
 package com.example.helloworld.controller.personal;
 
 import com.example.helloworld.dto.common.ApiResponse;
+import com.example.helloworld.dto.common.PageResponse;
 import com.example.helloworld.entity.personal.MenuItem;
 import com.example.helloworld.service.personal.MenuService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -29,6 +31,29 @@ public class MenuController {
     public ResponseEntity<ApiResponse<List<MenuItem>>> getAllMenuItems() {
         List<MenuItem> menuItems = menuService.getAllMenuItems();
         return ResponseEntity.ok(ApiResponse.ok(menuItems));
+    }
+
+    @GetMapping("/paged")
+    public ResponseEntity<ApiResponse<PageResponse<MenuItem>>> getPagedMenuItems(
+            @RequestParam(required = false) String menuCode,
+            @RequestParam(required = false) String menuName,
+            @RequestParam(required = false) String menuType,
+            @RequestParam(required = false) Boolean isActive,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            Page<MenuItem> menusPage = menuService.getAllMenuItemsPaged(menuCode, menuName, menuType, isActive, page, size);
+            PageResponse<MenuItem> pageResponse = new PageResponse<>(
+                    menusPage.getContent(),
+                    menusPage.getTotalElements(),
+                    menusPage.getTotalPages(),
+                    menusPage.getNumber(),
+                    menusPage.getSize()
+            );
+            return ResponseEntity.ok(ApiResponse.ok(pageResponse));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.fail("獲取菜單列表失敗：" + e.getMessage()));
+        }
     }
 
     @GetMapping("/{id}")

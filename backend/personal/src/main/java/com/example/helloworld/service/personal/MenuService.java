@@ -2,6 +2,9 @@ package com.example.helloworld.service.personal;
 
 import com.example.helloworld.entity.personal.MenuItem;
 import com.example.helloworld.repository.personal.MenuItemRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -181,6 +184,29 @@ public class MenuService {
     @Transactional(readOnly = true)
     public List<MenuItem> getAllMenuItems() {
         return menuItemRepository.findAll();
+    }
+
+    /**
+     * 管理菜單列表（分頁）
+     * menuType 目前僅做最小相容：支援 admin；其他值回空結果。
+     */
+    @Transactional(readOnly = true)
+    public Page<MenuItem> getAllMenuItemsPaged(
+            String menuCode,
+            String menuName,
+            String menuType,
+            Boolean isActive,
+            int page,
+            int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        String normalizedMenuType = menuType == null ? null : menuType.trim().toLowerCase();
+        if (normalizedMenuType != null && !normalizedMenuType.isEmpty() && !"admin".equals(normalizedMenuType)) {
+            return Page.empty(pageable);
+        }
+
+        String filterMenuCode = (menuCode != null && !menuCode.trim().isEmpty()) ? menuCode.trim() : null;
+        String filterMenuName = (menuName != null && !menuName.trim().isEmpty()) ? menuName.trim() : null;
+        return menuItemRepository.findByFilters(filterMenuCode, filterMenuName, isActive, pageable);
     }
 
     /**
