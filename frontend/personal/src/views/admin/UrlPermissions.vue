@@ -519,7 +519,9 @@ onMounted(() => {
 }
 
 .page-size-select {
+  width: auto;
   min-width: 80px;
+  flex: 0 0 auto;
   padding: 0.35rem 0.5rem;
   border: 1px solid #d1d5db;
   border-radius: var(--border-radius);
