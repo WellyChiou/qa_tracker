@@ -301,7 +301,7 @@ const loadRoles = async () => {
 const loadPermissions = async () => {
   try {
     // apiRequest 現在會自動返回解析後的資料
-    const data = await apiService.request('/permissions', {
+    const data = await apiService.request('/permissions/options', {
       method: 'GET',
       credentials: 'include'
     })
