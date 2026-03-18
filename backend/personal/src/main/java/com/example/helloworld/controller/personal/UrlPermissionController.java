@@ -21,6 +21,7 @@ public class UrlPermissionController {
     @Autowired
     private UrlPermissionService urlPermissionService;
 
+    @Deprecated
     @GetMapping
     public ResponseEntity<ApiResponse<List<UrlPermission>>> getAllPermissions() {
         List<UrlPermission> permissions = urlPermissionService.getAllPermissions();

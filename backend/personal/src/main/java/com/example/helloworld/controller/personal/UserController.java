@@ -63,6 +63,7 @@ public class UserController {
     /**
      * 獲取所有用戶
      */
+    @Deprecated
     @GetMapping
     public ResponseEntity<ApiResponse<List<User>>> getAllUsers() {
         List<User> users = userService.getAllUsers();

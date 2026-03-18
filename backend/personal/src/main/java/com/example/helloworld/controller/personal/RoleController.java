@@ -23,6 +23,7 @@ public class RoleController {
     @Autowired
     private RoleService roleService;
 
+    @Deprecated
     @GetMapping
     public ResponseEntity<ApiResponse<List<Role>>> getAllRoles() {
         List<Role> roles = roleService.getAllRoles();

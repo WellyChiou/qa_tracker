@@ -21,6 +21,7 @@ public class PermissionController {
     @Autowired
     private PermissionService permissionService;
 
+    @Deprecated
     @GetMapping
     public ResponseEntity<ApiResponse<List<Permission>>> getAllPermissions() {
         List<Permission> permissions = permissionService.getAllPermissions();
