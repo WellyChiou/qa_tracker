@@ -1,201 +1,236 @@
 <template>
-  <div class="admin-page">
-    <TopNavbar />
-    <header class="header">
-      <div class="header-top">
-        <h1>⏰ 定時任務管理</h1>
-        <button class="btn btn-primary" @click="showAddModal = true">
-          <i class="fas fa-plus me-2"></i>新增任務
-        </button>
-      </div>
-    </header>
-
-    <main class="main-content">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>任務名稱</th>
-            <th>Cron 表達式</th>
-            <th>描述</th>
-            <th>啟用狀態</th>
-            <th>執行狀態</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-if="loading">
-            <td colspan="7" style="text-align: center; padding: 20px;">載入中...</td>
-          </tr>
-          <tr v-else-if="jobs.length === 0">
-            <td colspan="7" style="text-align: center; padding: 20px;">尚無任務</td>
-          </tr>
-          <tr v-for="job in jobs" :key="job.id">
-            <td>{{ job.id }}</td>
-            <td>{{ job.jobName }}</td>
-            <td>
-              <div style="font-weight: 500; color: #1e293b; margin-bottom: 0.25rem;">
-                {{ formatCronExpression(job.cronExpression) }}
-              </div>
-              <code style="font-size: 0.75em; color: #94a3b8; background: #f1f5f9; padding: 0.125rem 0.375rem; border-radius: 0.25rem;">
-                {{ job.cronExpression }}
-              </code>
-            </td>
-            <td>
-              <TruncatedText :text="job.description" />
-            </td>
-            <td>
-              <span :class="job.enabled ? 'status-active' : 'status-inactive'">
-                {{ job.enabled ? '啟用' : '停用' }}
-              </span>
-            </td>
-            <td>
-              <div v-if="jobExecutions[job.id]">
-                <span :class="getStatusClass(jobExecutions[job.id].status)">
-                  {{ getStatusText(jobExecutions[job.id].status) }}
-                </span>
-                <button 
-                  class="btn-sm btn-view" 
-                  @click="viewExecutionHistory(job.id)"
-                  style="margin-left: 0.5rem;"
-                >
-                  查看記錄
-                </button>
-              </div>
-              <span v-else style="color: #94a3b8;">未執行</span>
-            </td>
-            <td class="actions">
-              <button class="btn-sm btn-execute" @click="executeJob(job.id)" :disabled="executingJobId === job.id">
-                {{ executingJobId === job.id ? '執行中...' : '立即執行' }}
-              </button>
-              <button class="btn-sm btn-toggle" @click="toggleJob(job.id, !job.enabled)">
-                {{ job.enabled ? '停用' : '啟用' }}
-              </button>
-              <button class="btn-sm btn-edit" @click="editJob(job)">編輯</button>
-              <button class="btn-sm btn-delete" @click="deleteJob(job.id)">刪除</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </main>
-
-    <!-- 執行記錄模態框 -->
-    <div v-if="showExecutionModal" class="modal-overlay" @click="showExecutionModal = false">
-      <div class="modal-panel execution-modal-content" @click.stop>
-        <div class="modal-header">
-          <h2 class="modal-title">執行記錄 - {{ selectedJobName }}</h2>
-          <button class="btn-close" @click="showExecutionModal = false">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>
+  <AdminLayout>
+    <div class="admin-page">
+      <header class="header">
+        <div class="header-top">
+          <div>
+            <h1>⏰ 定時任務管理</h1>
+            <p class="header-subtitle">集中管理排程任務、執行狀態與歷史紀錄。</p>
+          </div>
+          <button class="btn btn-primary" @click="showAddModal = true">新增任務</button>
         </div>
-        <div class="modal-body">
-          <div v-if="executionHistory.length === 0" style="text-align: center; padding: 2rem; color: #94a3b8;">
-            尚無執行記錄
+      </header>
+
+      <main class="main-content">
+        <section class="overview-strip">
+          <article class="overview-card overview-card--accent">
+            <span>目前任務</span>
+            <strong>{{ jobs.length }}</strong>
+            <p>目前已建立的排程任務數量。</p>
+          </article>
+          <article class="overview-card">
+            <span>啟用中</span>
+            <strong>{{ jobs.filter(job => job.enabled).length }}</strong>
+            <p>目前處於啟用狀態的排程任務。</p>
+          </article>
+          <article class="overview-card">
+            <span>最近執行</span>
+            <strong>{{ Object.keys(jobExecutions).length }}</strong>
+            <p>已載入最新執行結果的任務數。</p>
+          </article>
+        </section>
+
+        <div class="card">
+          <div class="card__body">
+            <div class="table-wrap">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th class="col-id">ID</th>
+                    <th class="col-name">任務名稱</th>
+                    <th class="col-cron">Cron 表達式</th>
+                    <th class="col-desc">描述</th>
+                    <th class="col-enabled">啟用狀態</th>
+                    <th class="col-exec">執行狀態</th>
+                    <th class="col-actions">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-if="loading" class="skeleton-row">
+                    <td colspan="7">
+                      <div class="skeleton" style="height:14px; width:42%; margin:6px auto;"></div>
+                    </td>
+                  </tr>
+                  <tr v-else-if="jobs.length === 0">
+                    <td colspan="7" style="text-align: center; padding: 20px;">尚無任務</td>
+                  </tr>
+                  <tr v-for="job in jobs" :key="job.id">
+                    <td class="col-id">{{ job.id }}</td>
+                    <td class="col-name">{{ job.jobName }}</td>
+                    <td class="col-cron">
+                      <div class="cron-wrap">
+                        <span class="badge badge--cron" :title="cronTooltip(job)">
+                          {{ formatCronExpression(job.cronExpression) }}
+                        </span>
+                        <code class="cron-code" :title="job.cronExpression">{{ job.cronExpression }}</code>
+                      </div>
+                    </td>
+                    <td class="col-desc">
+                      <TruncatedText :text="job.description" />
+                    </td>
+                    <td class="col-enabled">
+                      <span :class="job.enabled ? 'status-active' : 'status-inactive'">
+                        {{ job.enabled ? '啟用' : '停用' }}
+                      </span>
+                    </td>
+                    <td class="col-exec">
+                      <div v-if="jobExecutions[job.id]" class="exec-cell">
+                        <span class="status-icon-only" :class="getStatusClass(jobExecutions[job.id].status)" :title="getStatusText(jobExecutions[job.id].status)">
+                          <svg v-if="jobExecutions[job.id].status === 'SUCCESS'" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+                          <svg v-else-if="jobExecutions[job.id].status === 'FAILED'" viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01"/><path d="M10.29 3.86l-8.17 14.14A2 2 0 0 0 3.83 21h16.34a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+                          <svg v-else-if="jobExecutions[job.id].status === 'CANCELLED'" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                          <svg v-else-if="jobExecutions[job.id].status === 'RUNNING'" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/></svg>
+                          <svg v-else viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        </span>
+                        <button class="btn-sm btn-view" @click="viewExecutionHistory(job.id)">
+                          查看記錄
+                        </button>
+                      </div>
+                      <div v-else class="exec-cell exec-cell--empty">
+                        <span class="status-icon-only status--none" title="未執行"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></span>
+                      </div>
+                    </td>
+                    <td class="col-actions actions">
+                      <div class="action-grid">
+                        <button class="btn-sm btn-execute" @click="executeJob(job.id)" :disabled="executingJobId === job.id">
+                          <span v-if="executingJobId === job.id" class="spinner" aria-hidden="true"></span>
+                          {{ executingJobId === job.id ? '執行中...' : '立即執行' }}
+                        </button>
+                        <button class="btn-sm btn-toggle" @click="toggleJob(job.id, !job.enabled)">
+                          {{ job.enabled ? '停用' : '啟用' }}
+                        </button>
+                        <button class="btn-sm btn-edit" @click="editJob(job)"><span class="btn__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></span><span>編輯</span></button>
+                        <button class="btn-sm btn-delete" @click="deleteJob(job.id)"><span class="btn__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span><span>刪除</span></button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
-          <div v-else class="execution-table-container">
-            <table class="execution-table">
-              <thead>
-                <tr>
-                  <th class="execution-time-col">執行時間</th>
-                  <th class="execution-status-col">狀態</th>
-                  <th class="execution-time-col">開始時間</th>
-                  <th class="execution-time-col">完成時間</th>
-                  <th class="execution-result-col">結果/錯誤</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="execution in executionHistory" :key="execution.id">
-                  <td>{{ formatDateTime(execution.createdAt) }}</td>
-                  <td>
-                    <span :class="getStatusClass(execution.status)">
-                      {{ getStatusText(execution.status) }}
-                    </span>
-                  </td>
-                  <td>{{ execution.startedAt ? formatDateTime(execution.startedAt) : '-' }}</td>
-                  <td>{{ execution.completedAt ? formatDateTime(execution.completedAt) : '-' }}</td>
-                  <td>
-                    <div v-if="execution.resultMessage" class="result-message">
-                      {{ execution.resultMessage }}
-                    </div>
-                    <div v-if="execution.errorMessage" class="error-message">
-                      {{ execution.errorMessage }}
-                    </div>
-                    <span v-if="!execution.resultMessage && !execution.errorMessage" style="color: #94a3b8;">-</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+        </div>
+      </main>
+
+      <div v-if="showExecutionModal" class="modal-overlay" @click="showExecutionModal = false">
+        <div class="modal-card modal-card--wide" @click.stop>
+          <div class="modal-head">
+            <div>
+              <div class="modal-title">執行記錄</div>
+              <div class="modal-sub">
+                {{ selectedJobName }} <span class="dot">•</span> 共 {{ executionHistory.length }} 筆
+              </div>
+            </div>
+            <button class="modal-close" type="button" @click="showExecutionModal = false">✕</button>
           </div>
-          <div class="form-actions">
+
+          <div class="modal-body">
+            <div v-if="executionHistory.length === 0" class="empty-state">
+              尚無執行記錄
+            </div>
+
+            <div v-else class="table-wrap">
+              <table class="table exec-table">
+                <thead>
+                  <tr>
+                    <th class="col-created">執行時間</th>
+                    <th class="col-status">狀態</th>
+                    <th class="col-start">開始時間</th>
+                    <th class="col-end">完成時間</th>
+                    <th class="col-msg">結果 / 錯誤</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="execution in executionHistory" :key="execution.id">
+                    <td class="mono">{{ formatDateTime(execution.createdAt) }}</td>
+                    <td>
+                      <span class="status-pill" :class="getStatusClass(execution.status)">
+                        <span class="status-icon" aria-hidden="true">
+                          <svg v-if="execution.status === 'SUCCESS'" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+                          <svg v-else-if="execution.status === 'FAILED'" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                          <svg v-else-if="execution.status === 'RUNNING'" viewBox="0 0 24 24"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+                          <svg v-else viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        </span>
+                        {{ getStatusText(execution.status) }}
+                      </span>
+                    </td>
+                    <td class="mono">{{ execution.startedAt ? formatDateTime(execution.startedAt) : '-' }}</td>
+                    <td class="mono">{{ execution.completedAt ? formatDateTime(execution.completedAt) : '-' }}</td>
+                    <td>
+                      <div v-if="execution.resultMessage" class="msg msg--ok">
+                        {{ execution.resultMessage }}
+                      </div>
+                      <div v-if="execution.errorMessage" class="msg msg--err">
+                        {{ execution.errorMessage }}
+                      </div>
+                      <span v-if="!execution.resultMessage && !execution.errorMessage" class="muted">-</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="modal-foot">
             <button type="button" class="btn btn-secondary" @click="showExecutionModal = false">關閉</button>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- 新增/編輯模態框 -->
-    <div v-if="showAddModal || editingJob" class="modal-overlay" @click="closeModal">
-      <div class="modal-panel" @click.stop>
-        <div class="modal-header">
-          <h2 class="modal-title">{{ editingJob ? '編輯定時任務' : '新增定時任務' }}</h2>
-          <button class="btn-close" @click="closeModal">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
-        <div class="modal-body">
-          <form @submit.prevent="handleSubmit" class="form-container">
-            <div class="form-group">
-              <label class="form-label">任務名稱 <span class="text-danger">*</span></label>
-              <input v-model="form.jobName" class="form-input" placeholder="例如：週二服事人員通知" required />
+      <div v-if="showAddModal || editingJob" class="modal-overlay" @click="closeModal">
+        <div class="modal-card" @click.stop>
+          <div class="modal-head">
+            <div>
+              <div class="modal-title">{{ editingJob ? '編輯定時任務' : '新增定時任務' }}</div>
+              <div class="modal-sub">設定任務名稱、Job 類別與 Cron 表達式。</div>
             </div>
-            <div class="form-group">
-              <label class="form-label">任務類別（完整類名） <span class="text-danger">*</span></label>
-              <input v-model="form.jobClass" class="form-input" placeholder="例如：com.example.helloworld.scheduler.personal.DatabaseBackupScheduler$DatabaseBackupJob" required />
-              <small class="form-hint">
-                必須是已註冊的 Job 執行器類別
-              </small>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Cron 表達式 <span class="text-danger">*</span></label>
-              <input v-model="form.cronExpression" class="form-input" placeholder="例如：0 0 10 ? * TUE" required />
-              <small class="form-hint">
-                格式：秒 分 時 日 月 星期<br>
-                範例：0 0 10 ? * TUE (每週二 10:00) | 0 0 7 * * ? (每天 7:00) | 0 0 12 * * MON-FRI (週一到週五 12:00)
-              </small>
-            </div>
-            <div class="form-group">
-              <label class="form-label">描述</label>
-              <textarea v-model="form.description" rows="3" class="form-input" placeholder="任務描述..."></textarea>
-            </div>
-            <div class="form-group checkbox-group">
-              <label class="checkbox-label">
-                <input type="checkbox" v-model="form.enabled" class="checkbox-input" />
-                啟用此任務
-              </label>
-            </div>
-            <div class="form-actions">
-              <button type="submit" class="btn btn-primary" :disabled="saving">
-                <i class="fas fa-save me-2"></i>
-                {{ saving ? '儲存中...' : '儲存' }}
-              </button>
-              <button type="button" class="btn btn-secondary" @click="closeModal">
-                <i class="fas fa-times me-2"></i>取消
-              </button>
-            </div>
-          </form>
+            <button class="modal-close" type="button" @click="closeModal">✕</button>
+          </div>
+          <div class="modal-body">
+            <form @submit.prevent="handleSubmit">
+              <div class="form-group">
+                <label>任務名稱 <span class="required">*</span></label>
+                <input class="input" v-model="form.jobName" placeholder="例如：週二服事人員通知" required />
+              </div>
+              <div class="form-group">
+                <label>任務類別（完整類名） <span class="required">*</span></label>
+                <input class="input mono-input" v-model="form.jobClass" placeholder="例如：com.example.helloworld.scheduler.personal.DatabaseBackupScheduler$DatabaseBackupJob" required />
+                <small class="help">必須是已註冊的 Job 執行器類別</small>
+              </div>
+              <div class="form-group">
+                <label>Cron 表達式 <span class="required">*</span></label>
+                <input class="input mono-input" v-model="form.cronExpression" placeholder="例如：0 0 10 ? * TUE" required />
+                <small class="help">
+                  格式：秒 分 時 日 月 星期<br>
+                  範例：0 0 10 ? * TUE (每週二 10:00) | 0 0 7 * * ? (每天 7:00) | 0 0 12 * * MON-FRI (週一到週五 12:00)
+                </small>
+              </div>
+              <div class="form-group">
+                <label>描述</label>
+                <textarea class="textarea" v-model="form.description" rows="3" placeholder="任務描述..."></textarea>
+              </div>
+              <div class="form-group">
+                <label class="check-row">
+                  <input type="checkbox" v-model="form.enabled" />
+                  啟用此任務
+                </label>
+              </div>
+              <div class="modal-foot">
+                <button type="submit" class="btn btn-primary" :disabled="saving">
+                  {{ saving ? '儲存中...' : '儲存' }}
+                </button>
+                <button type="button" class="btn btn-secondary" @click="closeModal">取消</button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
     </div>
-  </div>
+  </AdminLayout>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import TopNavbar from '@/components/TopNavbar.vue'
+import AdminLayout from '@/components/AdminLayout.vue'
 import TruncatedText from '@/components/TruncatedText.vue'
 import { apiService } from '@/composables/useApi'
 import { toast } from '@shared/composables/useToast'
@@ -224,8 +259,7 @@ const loadJobs = async () => {
   loading.value = true
   try {
     jobs.value = await apiService.getScheduledJobs()
-    
-    // 載入每個任務的最新執行狀態
+
     for (const job of jobs.value) {
       await loadLatestExecution(job.id)
     }
@@ -241,10 +275,9 @@ const loadJobs = async () => {
 const loadLatestExecution = async (jobId) => {
   try {
     const execution = await apiService.getLatestJobExecution(jobId)
-    
+
     if (execution) {
       jobExecutions.value[jobId] = execution
-      // 如果正在執行，開始輪詢
       if (execution.status === 'RUNNING' || execution.status === 'PENDING') {
         startPolling(jobId)
       }
@@ -252,7 +285,6 @@ const loadLatestExecution = async (jobId) => {
       jobExecutions.value[jobId] = null
     }
   } catch (error) {
-    // 如果是 404 錯誤（沒有執行記錄），這是正常的
     if (error.message && (error.message.includes('404') || error.message.includes('Not Found'))) {
       jobExecutions.value[jobId] = null
     } else {
@@ -262,19 +294,16 @@ const loadLatestExecution = async (jobId) => {
 }
 
 const startPolling = (jobId) => {
-  // 清除舊的輪詢
   if (pollingIntervals.value[jobId]) {
     clearInterval(pollingIntervals.value[jobId])
   }
-  
-  // 開始新的輪詢（每2秒檢查一次）
+
   pollingIntervals.value[jobId] = setInterval(async () => {
     try {
       const execution = await apiService.getLatestJobExecution(jobId)
-      
+
       if (execution) {
         jobExecutions.value[jobId] = execution
-        // 如果執行完成，停止輪詢
         if (execution.status === 'SUCCESS' || execution.status === 'FAILED') {
           stopPolling(jobId)
         }
@@ -282,7 +311,6 @@ const startPolling = (jobId) => {
         jobExecutions.value[jobId] = null
       }
     } catch (error) {
-      // 如果是 404 錯誤，停止輪詢
       if (error.message && (error.message.includes('404') || error.message.includes('Not Found'))) {
         jobExecutions.value[jobId] = null
         stopPolling(jobId)
@@ -332,7 +360,7 @@ const handleSubmit = async () => {
     } else {
       await apiService.createScheduledJob(form.value)
     }
-    
+
     await loadJobs()
     closeModal()
     toast.success(editingJob.value ? '任務已更新' : '任務已新增')
@@ -348,7 +376,7 @@ const deleteJob = async (id) => {
   if (!confirm('確定要刪除此任務嗎？')) {
     return
   }
-  
+
   try {
     await apiService.deleteScheduledJob(id)
     await loadJobs()
@@ -374,11 +402,9 @@ const executeJob = async (id) => {
   executingJobId.value = id
   try {
     const response = await apiService.executeScheduledJob(id)
-    
+
     toast.success(response?.message || '任務已開始執行')
-    // 重新載入執行狀態
     await loadLatestExecution(id)
-    // 開始輪詢
     startPolling(id)
   } catch (error) {
     console.error('執行任務失敗:', error)
@@ -392,7 +418,7 @@ const viewExecutionHistory = async (jobId) => {
   const job = jobs.value.find(j => j.id === jobId)
   selectedJobName.value = job ? job.jobName : '未知任務'
   showExecutionModal.value = true
-  
+
   try {
     executionHistory.value = await apiService.getJobExecutions(jobId)
   } catch (error) {
@@ -447,16 +473,14 @@ const formatDateTime = (dateTime) => {
 
 const formatCronExpression = (cronExpr) => {
   if (!cronExpr) return '-'
-  
-  // 移除多餘的空格並分割
+
   const parts = cronExpr.trim().split(/\s+/)
   if (parts.length < 6) {
-    return cronExpr // 如果格式不對，直接返回原值
+    return cronExpr
   }
-  
+
   const [second, minute, hour, day, month, weekday] = parts
-  
-  // 星期映射
+
   const weekdayMap = {
     'SUN': '週日',
     'MON': '週一',
@@ -474,8 +498,7 @@ const formatCronExpression = (cronExpr) => {
     '6': '週六',
     '7': '週日'
   }
-  
-  // 月份映射
+
   const monthMap = {
     'JAN': '1月',
     'FEB': '2月',
@@ -490,11 +513,9 @@ const formatCronExpression = (cronExpr) => {
     'NOV': '11月',
     'DEC': '12月'
   }
-  
-  // 解析時間
+
   const timeStr = `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`
-  
-  // 解析星期
+
   let weekdayStr = ''
   if (weekday === '?' || weekday === '*') {
     weekdayStr = ''
@@ -507,8 +528,7 @@ const formatCronExpression = (cronExpr) => {
   } else {
     weekdayStr = weekdayMap[weekday] || weekday
   }
-  
-  // 解析日期
+
   let dayStr = ''
   if (day === '?' || day === '*') {
     dayStr = ''
@@ -525,8 +545,7 @@ const formatCronExpression = (cronExpr) => {
   } else {
     dayStr = `每月${day}日`
   }
-  
-  // 解析月份
+
   let monthStr = ''
   if (month === '*') {
     monthStr = ''
@@ -539,52 +558,46 @@ const formatCronExpression = (cronExpr) => {
   } else {
     monthStr = monthMap[month] || month
   }
-  
-  // 組合描述
+
   let description = ''
-  
-  // 每天特定時間
+
   if (day === '*' && month === '*' && (weekday === '*' || weekday === '?')) {
     if (second === '0' && minute === '0') {
       description = `每天 ${timeStr}`
     } else {
       description = `每天 ${timeStr}:${second.padStart(2, '0')}`
     }
-  }
-  // 每週特定時間
-  else if (day === '?' && month === '*' && weekday !== '*' && weekday !== '?') {
+  } else if (day === '?' && month === '*' && weekday !== '*' && weekday !== '?') {
     if (weekdayStr.includes('、')) {
       description = `每${weekdayStr} ${timeStr}`
     } else {
       description = `${weekdayStr} ${timeStr}`
     }
-  }
-  // 每月特定日期和時間
-  else if (day !== '*' && day !== '?' && month === '*' && (weekday === '*' || weekday === '?')) {
+  } else if (day !== '*' && day !== '?' && month === '*' && (weekday === '*' || weekday === '?')) {
     description = `${dayStr} ${timeStr}`
-  }
-  // 特定月份
-  else if (month !== '*') {
+  } else if (month !== '*') {
     description = `${monthStr}${dayStr ? ' ' + dayStr : ''}${weekdayStr ? ' ' + weekdayStr : ''} ${timeStr}`
+  } else {
+    const textParts = []
+    if (monthStr) textParts.push(monthStr)
+    if (dayStr) textParts.push(dayStr)
+    if (weekdayStr) textParts.push(weekdayStr)
+    textParts.push(timeStr)
+    description = textParts.join(' ')
   }
-  // 其他複雜情況
-  else {
-    const parts = []
-    if (monthStr) parts.push(monthStr)
-    if (dayStr) parts.push(dayStr)
-    if (weekdayStr) parts.push(weekdayStr)
-    parts.push(timeStr)
-    description = parts.join(' ')
-  }
-  
+
   return description || cronExpr
+}
+
+const cronTooltip = (job) => {
+  const pretty = formatCronExpression(job.cronExpression)
+  return `${pretty}\n${job.cronExpression}`
 }
 
 onMounted(() => {
   loadJobs()
 })
 
-// 組件卸載時清除所有輪詢
 onUnmounted(() => {
   Object.keys(pollingIntervals.value).forEach(jobId => {
     stopPolling(jobId)
@@ -593,435 +606,369 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.admin-page {
-  min-height: 100vh;
-  background: #f5f5f5;
-  padding-bottom: 2rem;
+.admin-page{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
 }
 
-.header {
-  background: white;
-  padding: 2rem;
-  margin-bottom: 2rem;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+.admin-page .page-header{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-bottom:2px;
+}
+.admin-page .page-header h2{
+  font-size:22px;
+  font-weight:900;
+  letter-spacing:-0.02em;
+}
+.admin-page .page-header p,
+.admin-page .subtitle,
+.admin-page .description{
+  color:var(--muted);
+  font-weight:700;
+  font-size:14px;
+  margin-top:6px;
+}
+.admin-page .table-container,
+.admin-page .list-container,
+.admin-page .data-container{
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  overflow-x:auto;
+  overflow-y:visible;
+  background:var(--surface);
+  box-shadow:var(--shadow-sm);
+}
+.admin-page .table-container{ padding:0; }
+
+.admin-page .hint,
+.admin-page .muted{
+  color:var(--muted);
+  font-size:13px;
+  font-weight:700;
 }
 
-.header-top {
-  max-width: 1400px;
-  margin: 0 auto;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.admin-page .actions,
+.admin-page .header-actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
 }
 
-.header h1 {
-  font-size: 1.8rem;
-  font-weight: 600;
-  color: #333;
-  margin: 0;
+:deep(.table){ table-layout: fixed; width: 100%; }
+
+:deep(.table th.col-id), :deep(.table td.col-id){ width: 5%; min-width: 60px; text-align: left; }
+:deep(.table th.col-name), :deep(.table td.col-name){ width: 15%; min-width: 150px; }
+:deep(.table th.col-cron), :deep(.table td.col-cron){ width: 15%; min-width: 170px; }
+:deep(.table th.col-desc), :deep(.table td.col-desc){ width: 24%; min-width: 250px; }
+:deep(.table th.col-enabled), :deep(.table td.col-enabled){ width: 8%; min-width: 100px; text-align: center; }
+:deep(.table th.col-exec), :deep(.table td.col-exec){ width: 18%; min-width: 180px; text-align: center; }
+:deep(.table th.col-actions), :deep(.table td.col-actions){ width: 15%; min-width: 220px; }
+
+.header-subtitle{
+  margin-top:6px;
+  color:var(--muted);
+  font-size:14px;
+  font-weight:700;
 }
 
-.main-content {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 0 2rem;
+.overview-strip{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:12px;
+  margin-bottom:14px;
 }
 
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: white;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  table-layout: fixed;
+.overview-card{
+  padding:16px;
+  border-radius:20px;
+  border:1px solid rgba(2,6,23,.08);
+  background:rgba(255,255,255,.88);
+  box-shadow:var(--shadow-sm);
 }
 
-.data-table th,
-.data-table td {
-  padding: 1rem;
-  text-align: left;
-  border-bottom: 1px solid #e0e0e0;
+.overview-card span{
+  display:block;
+  color:rgba(2,6,23,.56);
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.12em;
+  text-transform:uppercase;
 }
 
-.data-table th {
-  background: #f9fafb;
-  font-weight: 600;
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #374151;
+.overview-card strong{
+  display:block;
+  margin-top:8px;
+  font-size:28px;
+  line-height:1;
+  letter-spacing:-0.04em;
 }
 
-.data-table th:nth-child(1) { width: 5%; }
-.data-table th:nth-child(2) { width: 20%; }
-.data-table th:nth-child(3) { width: 20%; }
-.data-table th:nth-child(4) { width: 20%; }
-.data-table th:nth-child(5) { width: 8%; }
-.data-table th:nth-child(6) { width: 12%; }
-.data-table th:nth-child(7) { width: 15%; }
-
-.data-table td {
-  word-wrap: break-word;
-  overflow-wrap: break-word;
+.overview-card p{
+  margin:8px 0 0;
+  color:rgba(2,6,23,.62);
+  font-size:13px;
+  line-height:1.6;
+  font-weight:700;
 }
 
-/* 描述欄位樣式已移至 TruncatedText 元件 */
-
-.data-table tbody tr:hover {
-  background: #f9fafb;
+.overview-card--accent{
+  background:linear-gradient(140deg, rgba(15,23,42,.96), rgba(29,78,216,.92));
 }
 
-.actions {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+.overview-card--accent span,
+.overview-card--accent strong,
+.overview-card--accent p{
+  color:white;
 }
 
-.btn {
-  padding: 0.6rem 1.2rem;
-  border-radius: 6px;
-  font-weight: 600;
-  cursor: pointer;
-  border: none;
-  transition: all 0.2s;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.95rem;
+.overview-card--accent p{
+  color:rgba(255,255,255,.76);
 }
 
-.btn-primary {
-  background: #667eea;
-  color: white;
+.action-grid{
+  display:grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px 10px;
+}
+.action-grid .btn-sm{ width:100%; white-space:nowrap; }
+@media (max-width: 640px){
+  .action-grid{ grid-template-columns: 1fr; }
+  .overview-strip{ grid-template-columns: 1fr; }
 }
 
-.btn-primary:hover:not(:disabled) {
-  background: #5a67d8;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 6px rgba(102, 126, 234, 0.25);
+.exec-cell{ display:flex; align-items:center; justify-content:center; gap:10px; }
+.exec-cell--empty{ justify-content:center; }
+.exec-cell .status-icon-only{ flex: 0 0 auto; }
+
+@media (max-width: 900px){
+  :deep(.table th.col-id), :deep(.table td.col-id){ width: 56px; min-width: 56px; }
+  :deep(.table th.col-name), :deep(.table td.col-name){ width: 150px; min-width: 150px; }
+  :deep(.table th.col-cron), :deep(.table td.col-cron){ width: 180px; min-width: 180px; }
+  :deep(.table th.col-enabled), :deep(.table td.col-enabled){ width: 104px; min-width: 104px; }
+  :deep(.table th.col-exec), :deep(.table td.col-exec){ width: 180px; min-width: 180px; }
+  :deep(.table th.col-actions), :deep(.table td.col-actions){ width: 230px; min-width: 230px; }
+  :deep(.table th.col-desc), :deep(.table td.col-desc){ min-width: 400px; }
 }
 
-.btn-secondary {
-  background: #fff;
-  color: #374151;
-  border: 1px solid #d1d5db;
+@media (max-width: 640px){
+  :deep(.table th.col-id), :deep(.table td.col-id){ width: 52px; min-width: 52px; }
+  :deep(.table th.col-name), :deep(.table td.col-name){ width: 140px; min-width: 140px; }
+  :deep(.table th.col-cron), :deep(.table td.col-cron){ width: 180px; min-width: 180px; }
+  :deep(.table th.col-enabled), :deep(.table td.col-enabled){ width: 96px; min-width: 96px; }
+  :deep(.table th.col-exec), :deep(.table td.col-exec){ width: 160px; min-width: 160px; }
+  :deep(.table th.col-actions), :deep(.table td.col-actions){ width: 220px; min-width: 220px; }
+
+  :deep(.table th.col-desc), :deep(.table td.col-desc){ min-width: 320px; }
+
+  .exec-cell{ flex-direction: column; gap: 6px; }
+  .exec-cell .btn-view{ width: 100%; padding: 6px 10px; }
 }
 
-.btn-secondary:hover {
-  background: #f9fafb;
-  color: #111827;
+.cron-wrap{ display:flex; flex-direction:column; gap:6px; }
+.badge{
+  display:inline-flex;
+  align-items:center;
+  padding:6px 10px;
+  border-radius:999px;
+  border:1px solid rgba(2,6,23,.10);
+  background: rgba(2,6,23,.02);
+  font-weight: 900;
+  font-size: 13px;
+  color: rgba(15,23,42,.92);
+  width: fit-content;
+}
+.badge--cron{ border-color: rgba(59,130,246,.18); background: rgba(59,130,246,.06); }
+.cron-code{
+  font-size: 12px;
+  color: rgba(15,23,42,.55);
+  background: rgba(2,6,23,.03);
+  padding: 3px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(2,6,23,.08);
+  width: fit-content;
 }
 
-.btn-sm {
-  padding: 0.35rem 0.75rem;
-  font-size: 0.85rem;
-  border-radius: 4px;
-  border: none;
-  cursor: pointer;
-  color: white;
-  transition: all 0.2s;
+.status-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 10px;
+  border-radius:999px;
+  border:1px solid rgba(2,6,23,.10);
+  background: rgba(2,6,23,.02);
+  font-weight: 900;
+  font-size: 13px;
 }
 
-.btn-execute {
-  background: #10b981;
+.status-icon-only{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:30px;
+  height:30px;
+  border-radius:999px;
+  border:1px solid rgba(2,6,23,.12);
+  background: rgba(2,6,23,.03);
 }
-
-.btn-execute:hover:not(:disabled) {
-  background: #059669;
+.status-icon-only svg{
+  width:18px;
+  height:18px;
+  fill:none;
+  stroke: currentColor;
+  stroke-width:2.2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
 }
-
-.btn-toggle {
-  background: #f59e0b;
+.status-icon-only.status--none{
+  color:#94a3b8;
 }
+.status-success{ color:#16a34a; border-color: rgba(22,163,74,.25); background: rgba(22,163,74,.10); }
+.status-failed{ color:#ef4444; border-color: rgba(239,68,68,.25); background: rgba(239,68,68,.10); }
+.status-running{ color:#2563eb; border-color: rgba(37,99,235,.25); background: rgba(37,99,235,.10); }
+.status-pending{ color:#f59e0b; border-color: rgba(245,158,11,.25); background: rgba(245,158,11,.10); }
+.status-inactive{ color:#64748b; border-color: rgba(100,116,139,.22); background: rgba(100,116,139,.08); }
+.status-icon svg{ width:16px; height:16px; fill:none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
-.btn-toggle:hover {
-  background: #d97706;
-}
-
-.btn-view {
-  background: #3b82f6;
-}
-
-.btn-view:hover {
-  background: #2563eb;
-}
-
-.btn:disabled, .btn-sm:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.status-active, .status-success { color: #10b981; font-weight: 600; }
-.status-inactive, .status-failed { color: #ef4444; font-weight: 600; }
-.status-running { color: #f59e0b; font-weight: 600; animation: pulse 2s infinite; }
-.status-pending { color: #6b7280; font-weight: 600; }
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: fadeIn 0.2s;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.modal-panel {
-  width: 100%;
-  max-width: 600px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-  margin: 2rem;
-  max-height: 90vh;
-  overflow-y: auto;
-  animation: slideUp 0.3s;
-}
-
-.execution-modal-content {
-  max-width: 1200px !important;
-  width: 90% !important;
-}
-
-@keyframes slideUp {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.modal-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #111827;
-  margin: 0;
-}
-
-.btn-close {
-  background: transparent;
-  border: none;
-  color: #6b7280;
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 0.375rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.btn-close:hover {
-  background: #f3f4f6;
-  color: #111827;
-}
-
-.modal-body {
-  padding: 1.5rem;
-}
-
-.form-container {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-
-.form-group {
-  margin-bottom: 0;
-}
-
-.form-label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-  color: #374151;
-  font-size: 0.9rem;
-}
-
-.form-input {
-  width: 100%;
-  padding: 0.625rem 0.875rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 0.95rem;
-  transition: all 0.2s;
-  background: white;
-  color: #1f2937;
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.checkbox-group {
-  display: flex;
-  align-items: center;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  font-weight: 500;
-  color: #374151;
-  gap: 0.5rem;
-}
-
-.checkbox-input {
-  width: 1rem;
-  height: 1rem;
-  cursor: pointer;
-  accent-color: #667eea;
-}
-
-.form-hint {
-  display: block;
-  margin-top: 0.25rem;
-  color: #6b7280;
-  font-size: 0.85rem;
-}
-
-.form-actions {
-  display: flex;
-  gap: 0.75rem;
-  margin-top: 0.5rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid #e5e7eb;
-  justify-content: flex-end;
-}
-
-.text-danger { color: #ef4444; }
-.me-2 { margin-right: 0.5rem; }
-
-/* 執行記錄樣式 */
-.execution-table-container {
-  max-height: 500px;
-  overflow-y: auto;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-}
-
-.execution-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.execution-table th, .execution-table td {
-  padding: 1rem;
-  text-align: left;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.execution-table th {
-  background: #f9fafb;
-  font-weight: 600;
-  color: #374151;
-  position: sticky;
-  top: 0;
-}
-
-.result-message {
-  color: #059669;
-  background: #ecfdf5;
-  padding: 0.5rem;
-  border-radius: 4px;
-  font-family: monospace;
-  white-space: pre-wrap;
-}
-
-.error-message {
-  color: #dc2626;
-  background: #fef2f2;
-  padding: 0.5rem;
-  border-radius: 4px;
-  font-family: monospace;
-  white-space: pre-wrap;
-}
-/* ============================================
-   Icon buttons: 編輯 / 刪除（參考教會後台風格）
-   - 不影響 API / 邏輯，只統一視覺
-   ============================================ */
-.btn-edit, .btn-delete {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.65rem;
-  padding: 0.75rem 1.5rem;
+.spinner{
+  width: 14px;
+  height: 14px;
   border-radius: 999px;
-  border: 2px solid transparent;
+  border: 2px solid rgba(255,255,255,.35);
+  border-top-color: rgba(255,255,255,.95);
+  display:inline-block;
+  animation: spin .9s linear infinite;
+  margin-right: 8px;
+}
+@keyframes spin{ to{ transform: rotate(360deg); } }
+
+.modal-card--wide{
+  width:min(980px, calc(100vw - 36px));
+}
+
+.empty-state{
+  text-align:center;
+  padding: 28px 10px;
+  color: var(--muted);
   font-weight: 800;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  user-select: none;
-  transition: all 0.18s ease;
-  background: transparent;
 }
 
-.btn-sm.btn-edit, .btn-sm.btn-delete {
-  padding: 0.55rem 1.15rem;
-  font-size: 0.9rem;
+.exec-table{ width:100%; }
+.exec-table th.col-created,
+.exec-table th.col-start,
+.exec-table th.col-end{
+  min-width: 170px;
+}
+.exec-table th.col-status{ min-width: 96px; }
+.exec-table th.col-msg{ min-width: 340px; }
+
+.mono{
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12.5px;
+  color: rgba(15,23,42,.78);
 }
 
-.btn-edit {
-  color: #1d4ed8;
-  background: #eff6ff;
-  border-color: #bfdbfe;
+.dot{ margin:0 6px; color: rgba(15,23,42,.35); }
+
+.msg{
+  border:1px solid rgba(2,6,23,.10);
+  background: rgba(2,6,23,.02);
+  border-radius: 12px;
+  padding: 10px 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.4;
+  font-size: 13px;
+}
+.msg + .msg{ margin-top: 8px; }
+.msg--ok{
+  border-color: rgba(34,197,94,.22);
+  background: rgba(34,197,94,.06);
+}
+.msg--err{
+  border-color: rgba(239,68,68,.22);
+  background: rgba(239,68,68,.06);
 }
 
-.btn-edit:hover {
-  background: #dbeafe;
-  border-color: #93c5fd;
-  transform: translateY(-1px);
+.form-group{ margin-bottom: 14px; }
+.form-group label{
+  display:flex;
+  align-items:baseline;
+  gap:8px;
+  margin-bottom:8px;
+  font-weight:900;
+  color: rgba(15,23,42,.82);
+  letter-spacing:-0.01em;
+}
+.required{ color:#ef4444; font-weight:900; }
+
+.input, .textarea{
+  width:100%;
+  border:1px solid rgba(2,6,23,.14);
+  background: rgba(255,255,255,.92);
+  border-radius: 14px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(15,23,42,.92);
+  transition: box-shadow .12s ease, border-color .12s ease, transform .12s ease;
+}
+.textarea{ resize: vertical; min-height: 92px; line-height: 1.45; }
+
+.mono-input{
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12.5px;
 }
 
-.btn-delete {
-  color: #b91c1c;
-  background: #fef2f2;
-  border-color: #fecaca;
+.help{
+  display:block;
+  margin-top:6px;
+  color: rgba(15,23,42,.55);
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.45;
 }
 
-.btn-delete:hover {
-  background: #fee2e2;
-  border-color: #fca5a5;
-  transform: translateY(-1px);
+.check-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding: 10px 12px;
+  border: 1px dashed rgba(2,6,23,.14);
+  border-radius: 14px;
+  background: rgba(2,6,23,.02);
+  font-weight: 800;
+  color: rgba(15,23,42,.78);
+}
+.check-row input[type="checkbox"]{
+  width: 18px;
+  height: 18px;
+  accent-color: rgba(37,99,235,.9);
 }
 
-.btn-edit::before,
-.btn-delete::before {
-  content: "";
-  width: 20px;
-  height: 20px;
-  display: inline-block;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 20px 20px;
-  flex: 0 0 20px;
+@media (max-width: 1024px){
+  :deep(.table th.col-actions), :deep(.table td.col-actions){ width: 300px; min-width: 300px; }
+  :deep(.table th.col-exec), :deep(.table td.col-exec){ width: 160px; min-width: 160px; }
+  :deep(.table th.col-enabled), :deep(.table td.col-enabled){ width: 130px; min-width: 130px; }
+}
+@media (max-width: 640px){
+  :deep(.table th.col-actions), :deep(.table td.col-actions){ width: 220px; min-width: 220px; }
+  :deep(.table th.col-exec), :deep(.table td.col-exec){ width: 130px; min-width: 130px; }
+  :deep(.table th.col-enabled), :deep(.table td.col-enabled){ width: 110px; min-width: 110px; }
+  .action-grid{ grid-template-columns: 1fr; }
+  .exec-cell{ flex-direction: column; }
 }
 
-.btn-edit::before {
-  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%231d4ed8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M12%2020h9%22/%3E%3Cpath%20d%3D%22M16.5%203.5a2.121%202.121%200%200%201%203%203L7%2019l-4%201%201-4%2012.5-12.5z%22/%3E%3C/svg%3E");
+@media (max-width: 900px){
+  :deep(.table th.col-desc), :deep(.table td.col-desc){ min-width: 360px; }
 }
-
-.btn-delete::before {
-  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23b91c1c%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%223%206%205%206%2021%206%22/%3E%3Cpath%20d%3D%22M19%206l-1%2014a2%202%200%200%201-2%202H8a2%202%200%200%201-2-2L5%206%22/%3E%3Cpath%20d%3D%22M10%2011v6%22/%3E%3Cpath%20d%3D%22M14%2011v6%22/%3E%3Cpath%20d%3D%22M9%206V4a2%202%200%200%201%202-2h2a2%202%200%200%201%202%202v2%22/%3E%3C/svg%3E");
+@media (max-width: 640px){
+  :deep(.table th.col-desc), :deep(.table td.col-desc){ min-width: 280px; }
 }
-
 </style>
