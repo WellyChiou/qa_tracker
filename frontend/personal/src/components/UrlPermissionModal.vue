@@ -180,7 +180,7 @@ watch(() => props.show, (newVal) => {
 
 const loadPermissions = async () => {
   try {
-    const data = await apiService.request('/permissions', {
+    const data = await apiService.request('/permissions/options', {
       method: 'GET',
       credentials: 'include'
     })
@@ -197,7 +197,7 @@ const loadPermissions = async () => {
 
 const loadRoles = async () => {
   try {
-    const data = await apiService.request('/roles', {
+    const data = await apiService.request('/roles/options', {
       method: 'GET',
       credentials: 'include'
     })

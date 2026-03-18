@@ -29,6 +29,14 @@ public class RoleController {
         return ResponseEntity.ok(ApiResponse.ok(roles));
     }
 
+    @GetMapping("/options")
+    public ResponseEntity<ApiResponse<List<RoleOptionDTO>>> getRoleOptions() {
+        List<RoleOptionDTO> options = roleService.getAllRoles().stream()
+            .map(role -> new RoleOptionDTO(role.getId(), role.getRoleName(), role.getDescription()))
+            .toList();
+        return ResponseEntity.ok(ApiResponse.ok(options));
+    }
+
     @GetMapping("/paged")
     public ResponseEntity<ApiResponse<PageResponse<Role>>> getAllRolesPaged(
             @RequestParam(required = false) String roleName,
@@ -107,4 +115,6 @@ public class RoleController {
             return ResponseEntity.badRequest().body(ApiResponse.fail("更新失敗: " + e.getMessage()));
         }
     }
+
+    public record RoleOptionDTO(Long id, String roleName, String description) {}
 }

@@ -27,6 +27,18 @@ public class PermissionController {
         return ResponseEntity.ok(ApiResponse.ok(permissions));
     }
 
+    @GetMapping("/options")
+    public ResponseEntity<ApiResponse<List<PermissionOptionDTO>>> getPermissionOptions() {
+        List<PermissionOptionDTO> options = permissionService.getAllPermissions().stream()
+            .map(permission -> new PermissionOptionDTO(
+                permission.getId(),
+                permission.getPermissionCode(),
+                permission.getPermissionName()
+            ))
+            .toList();
+        return ResponseEntity.ok(ApiResponse.ok(options));
+    }
+
     @GetMapping("/paged")
     public ResponseEntity<ApiResponse<PageResponse<Permission>>> getAllPermissionsPaged(
             @RequestParam(required = false) String permissionCode,
@@ -91,4 +103,6 @@ public class PermissionController {
             return ResponseEntity.badRequest().body(ApiResponse.fail("刪除失敗: " + e.getMessage()));
         }
     }
+
+    public record PermissionOptionDTO(Long id, String permissionCode, String permissionName) {}
 }
