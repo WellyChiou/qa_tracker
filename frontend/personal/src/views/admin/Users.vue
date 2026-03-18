@@ -580,7 +580,7 @@ const loadUsers = async () => {
 const loadRoles = async () => {
   try {
     // apiRequest 現在會自動返回解析後的資料
-    const data = await apiService.request('/roles', {
+    const data = await apiService.request('/roles/options', {
       method: 'GET',
       credentials: 'include'
     })
@@ -601,7 +601,7 @@ const loadRoles = async () => {
 const loadPermissions = async () => {
   try {
     // apiRequest 現在會自動返回解析後的資料
-    const data = await apiService.request('/permissions', {
+    const data = await apiService.request('/permissions/options', {
       method: 'GET',
       credentials: 'include'
     })
