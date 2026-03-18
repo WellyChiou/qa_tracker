@@ -1,161 +1,122 @@
 <template>
   <AdminLayout>
-    <div class="admin-page">
-    <div class="container-fluid px-4 py-4">
-      <h1 class="mt-4">LINE 群組管理</h1>
-
-      <!-- 群組列表 -->
-    <div class="card mb-4">
-      <div class="card-header">
-        <div class="d-flex justify-content-between align-items-center">
-          <div>
-            <i class="fas fa-users me-1"></i>
-            LINE 群組列表
-          </div>
-          <button class="btn btn-primary btn-sm" @click="openCreateGroupModal">
-            <i class="fas fa-plus"></i> 新增群組
-          </button>
+    <div class="line-groups-page">
+      <div class="page-header">
+        <div>
+          <h2>LINE 群組管理</h2>
+          <p>管理 personal 通知群組、群組代碼與成員名單，維持 personal 站台自己的 LINE ownership。</p>
         </div>
+        <button class="btn btn-primary" @click="openCreateGroupModal">+ 新增群組</button>
       </div>
-      <div class="card-body">
-        <table class="table table-bordered table-striped">
-          <thead>
-            <tr>
-              <th>群組 ID</th>
-              <th>群組名稱</th>
-              <th>群組代碼</th>
-              <th>成員數</th>
-              <th>狀態</th>
-              <th>建立時間</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="group in groups" :key="group.groupId">
-              <td>{{ group.groupId }}</td>
-              <td>{{ group.groupName || '未命名' }}</td>
-              <td>
-                <span v-if="group.groupCode" class="badge bg-info">{{ group.groupCode }}</span>
-                <span v-else class="text-muted">-</span>
-              </td>
-              <td>{{ group.memberCount }}</td>
-              <td>
-                <span :class="group.isActive ? 'badge bg-success' : 'badge bg-secondary'">
-                  {{ group.isActive ? '啟用' : '停用' }}
-                </span>
-              </td>
-              <td>{{ formatDate(group.createdAt) }}</td>
-              <td>
-                <button class="btn btn-info btn-sm me-2" @click="viewMembers(group)">
-                  <i class="fas fa-user-friends"></i> 成員
-                </button>
-                <button class="btn btn-warning btn-sm me-2" @click="editGroup(group)">
-                  <i class="fas fa-edit"></i> 編輯
-                </button>
-                <button class="btn btn-danger btn-sm" @click="deleteGroup(group)">
-                  <i class="fas fa-trash"></i> 刪除
-                </button>
-              </td>
-            </tr>
-            <tr v-if="groups.length === 0">
-              <td colspan="7" class="text-center">尚無群組資料</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
 
+      <section class="overview-strip">
+        <article class="overview-card overview-card--accent">
+          <span>群組總數</span>
+          <strong>{{ groups.length }}</strong>
+          <p>目前 personal 後台可管理的 LINE 群組數量。</p>
+        </article>
+        <article class="overview-card">
+          <span>啟用群組</span>
+          <strong>{{ activeGroupCount }}</strong>
+          <p>目前仍在啟用中的通知與互動群組。</p>
+        </article>
+        <article class="overview-card">
+          <span>目前檢視</span>
+          <strong>{{ selectedGroup ? (selectedGroup.groupName || selectedGroup.groupId) : '未選取' }}</strong>
+          <p>右側成員清單會跟著目前選取的群組切換。</p>
+        </article>
+      </section>
 
-    <!-- Group Modal -->
-    <div class="modal fade" id="groupModal" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">{{ isEditingGroup ? '編輯群組' : '新增群組' }}</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body">
-            <form @submit.prevent="saveGroup">
-              <div class="mb-3">
-                <label class="form-label">群組 ID</label>
-                <input type="text" class="form-control" v-model="groupForm.groupId" :disabled="isEditingGroup" required>
-                <div class="form-text" v-if="!isEditingGroup">請輸入 LINE 群組 ID (通常以 C 開頭)</div>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">群組名稱</label>
-                <input type="text" class="form-control" v-model="groupForm.groupName">
-              </div>
-              <div class="mb-3">
-                <label class="form-label">群組代碼</label>
-                <select class="form-select" v-model="groupForm.groupCode">
-                  <option value="">（無）</option>
-                  <option value="PERSONAL">PERSONAL（個人）</option>
-                  <option value="CHURCH_TECH_CONTROL">CHURCH_TECH_CONTROL（教會技術控制）</option>
-                </select>
-                <div class="form-text">用於區分群組類型：PERSONAL（個人）或 CHURCH_TECH_CONTROL（教會技術控制）</div>
-              </div>
-              <div class="mb-3 form-check">
-                <input type="checkbox" class="form-check-input" id="groupActive" v-model="groupForm.isActive">
-                <label class="form-check-label" for="groupActive">啟用通知</label>
-              </div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-            <button type="button" class="btn btn-primary" @click="saveGroup">儲存</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Member Modal -->
-    <div class="modal fade" id="memberModal" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">{{ isEditingMember ? '編輯成員' : '新增成員' }}</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body">
-            <form @submit.prevent="saveMember">
-              <div class="mb-3">
-                <label class="form-label">User ID</label>
-                <input type="text" class="form-control" v-model="memberForm.userId" :disabled="isEditingMember" required>
-                <div class="form-text" v-if="!isEditingMember">請輸入 LINE User ID (通常以 U 開頭)</div>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">顯示名稱</label>
-                <input type="text" class="form-control" v-model="memberForm.displayName">
-              </div>
-              <div class="mb-3 form-check">
-                <input type="checkbox" class="form-check-input" id="memberAdmin" v-model="memberForm.isAdmin">
-                <label class="form-check-label" for="memberAdmin">設定為管理員</label>
-              </div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-            <button type="button" class="btn btn-primary" @click="saveMember">儲存</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Members List Modal -->
-    <div class="modal fade" id="membersListModal" tabindex="-1">
-      <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">成員管理 - {{ currentGroup?.groupName || currentGroup?.groupId }}</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body">
-            <div class="d-flex justify-content-end mb-3">
-              <button class="btn btn-primary btn-sm" @click="openAddMemberModal">
-                <i class="fas fa-plus"></i> 新增成員
-              </button>
+      <div class="workspace-grid">
+        <section class="card surface-card">
+          <div class="panel-head">
+            <div>
+              <h3>群組列表</h3>
+              <p>可編輯群組名稱、群組代碼與啟用狀態。</p>
             </div>
-            <table class="table table-bordered table-striped">
+          </div>
+
+          <div class="toolbar">
+            <input
+              v-model.trim="keyword"
+              type="text"
+              class="form-input"
+              placeholder="搜尋群組名稱、群組 ID、群組代碼"
+            >
+            <select v-model="statusFilter" class="form-input select-small">
+              <option value="">全部狀態</option>
+              <option value="active">啟用</option>
+              <option value="inactive">停用</option>
+            </select>
+          </div>
+
+          <div v-if="filteredGroups.length === 0" class="empty-state">
+            <p>目前沒有符合條件的 LINE 群組。</p>
+          </div>
+
+          <div v-else class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>群組 ID</th>
+                  <th>群組名稱</th>
+                  <th>群組代碼</th>
+                  <th>成員數</th>
+                  <th>狀態</th>
+                  <th>建立時間</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="group in filteredGroups"
+                  :key="group.groupId"
+                  :class="{ 'is-selected': selectedGroup?.groupId === group.groupId }"
+                  @click="selectGroup(group)"
+                >
+                  <td>{{ group.groupId }}</td>
+                  <td>{{ group.groupName || '未命名群組' }}</td>
+                  <td>{{ group.groupCode || '-' }}</td>
+                  <td>{{ group.memberCount || 0 }}</td>
+                  <td>
+                    <span :class="['status-badge', group.isActive ? 'status-active' : 'status-inactive']">
+                      {{ group.isActive ? '啟用' : '停用' }}
+                    </span>
+                  </td>
+                  <td>{{ formatDate(group.createdAt) }}</td>
+                  <td>
+                    <div class="table-actions" @click.stop>
+                      <button class="btn btn-edit" @click="selectGroup(group)">成員</button>
+                      <button class="btn btn-edit" @click="editGroup(group)">編輯</button>
+                      <button class="btn btn-delete" @click="deleteGroup(group)">刪除</button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="card surface-card">
+          <div class="panel-head">
+            <div>
+              <h3>成員管理</h3>
+              <p v-if="selectedGroup">目前群組：{{ selectedGroup.groupName || selectedGroup.groupId }}</p>
+              <p v-else>先從左側選一個群組，再管理成員。</p>
+            </div>
+            <button class="btn btn-primary" :disabled="!selectedGroup" @click="openAddMemberModal">+ 新增成員</button>
+          </div>
+
+          <div v-if="!selectedGroup" class="empty-state">
+            <p>尚未選取群組。</p>
+          </div>
+
+          <div v-else-if="selectedGroupMembers.length === 0" class="empty-state">
+            <p>這個群組目前沒有啟用中的成員。</p>
+          </div>
+
+          <div v-else class="table-wrap">
+            <table>
               <thead>
                 <tr>
                   <th>User ID</th>
@@ -166,251 +127,563 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="member in currentGroupMembers" :key="member.id">
-                  <td>{{ member.userId }}</td>
-                  <td>{{ member.displayName }}</td>
-                  <td>
-                    <span :class="member.isAdmin ? 'badge bg-primary' : 'badge bg-secondary'">
-                      {{ member.isAdmin ? '是' : '否' }}
-                    </span>
-                  </td>
+                <tr v-for="member in selectedGroupMembers" :key="member.id">
+                  <td>{{ member.userId || '-' }}</td>
+                  <td>{{ member.displayName || '-' }}</td>
+                  <td>{{ member.isAdmin ? '是' : '否' }}</td>
                   <td>{{ formatDate(member.joinedAt) }}</td>
                   <td>
-                    <button class="btn btn-warning btn-sm me-2" @click="editMemberInModal(member)">
-                      <i class="fas fa-edit"></i> 編輯
-                    </button>
-                    <button class="btn btn-danger btn-sm" @click="deleteMemberInModal(member)">
-                      <i class="fas fa-trash"></i> 移除
-                    </button>
+                    <div class="table-actions">
+                      <button class="btn btn-edit" @click="editMember(member)">編輯</button>
+                      <button class="btn btn-delete" @click="deleteMember(member)">移除</button>
+                    </div>
                   </td>
-                </tr>
-                <tr v-if="currentGroupMembers.length === 0">
-                  <td colspan="5" class="text-center">此群組尚無成員資料</td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+        </section>
+      </div>
+
+      <div class="modal fade" id="groupModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content line-modal">
+            <div class="modal-head">
+              <h3>{{ isEditingGroup ? '編輯群組' : '新增群組' }}</h3>
+              <button type="button" class="modal-close" data-bs-dismiss="modal">×</button>
+            </div>
+            <div class="line-modal-body">
+              <label class="field">
+                <span>群組 ID</span>
+                <input v-model.trim="groupForm.groupId" class="form-input" :disabled="isEditingGroup" required>
+              </label>
+              <label class="field">
+                <span>群組名稱</span>
+                <input v-model.trim="groupForm.groupName" class="form-input">
+              </label>
+              <label class="field">
+                <span>群組代碼</span>
+                <select v-model="groupForm.groupCode" class="form-input">
+                  <option value="">（無）</option>
+                  <option value="PERSONAL">PERSONAL（個人）</option>
+                  <option value="CHURCH_TECH_CONTROL">CHURCH_TECH_CONTROL（教會技術控制）</option>
+                </select>
+              </label>
+              <label class="field checkbox-field">
+                <input type="checkbox" v-model="groupForm.isActive">
+                <span>啟用此群組</span>
+              </label>
+            </div>
+            <div class="modal-actions">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+              <button type="button" class="btn btn-primary" @click="saveGroup">儲存</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal fade" id="memberModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content line-modal">
+            <div class="modal-head">
+              <h3>{{ isEditingMember ? '編輯成員' : '新增成員' }}</h3>
+              <button type="button" class="modal-close" data-bs-dismiss="modal">×</button>
+            </div>
+            <div class="line-modal-body">
+              <label class="field">
+                <span>User ID</span>
+                <input v-model.trim="memberForm.userId" class="form-input" :disabled="isEditingMember" required>
+              </label>
+              <label class="field">
+                <span>顯示名稱</span>
+                <input v-model.trim="memberForm.displayName" class="form-input">
+              </label>
+              <label class="field checkbox-field">
+                <input type="checkbox" v-model="memberForm.isAdmin">
+                <span>設為管理員</span>
+              </label>
+            </div>
+            <div class="modal-actions">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+              <button type="button" class="btn btn-primary" @click="saveMember">儲存</button>
+            </div>
           </div>
         </div>
       </div>
     </div>
-    </div>
-  </div>
   </AdminLayout>
 </template>
 
 <script setup>
 import AdminLayout from '@/components/AdminLayout.vue'
-import { ref, onMounted } from 'vue';
-import { Modal } from 'bootstrap';
-import { apiService } from '@/composables/useApi';
-import { toast } from '@shared/composables/useToast';
+import { ref, onMounted, computed } from 'vue'
+import { Modal } from 'bootstrap'
+import { apiService } from '@/composables/useApi'
+import { toast } from '@shared/composables/useToast'
 
-// Data
-const groups = ref([]);
-const currentGroup = ref(null);
-const currentGroupMembers = ref([]);
+const groups = ref([])
+const selectedGroup = ref(null)
+const selectedGroupMembers = ref([])
+const keyword = ref('')
+const statusFilter = ref('')
 
-// Form Data
-const groupForm = ref({ groupId: '', groupName: '', groupCode: '', isActive: true });
-const memberForm = ref({ userId: '', displayName: '', isAdmin: false });
-const isEditingGroup = ref(false);
-const isEditingMember = ref(false);
+const groupForm = ref({ groupId: '', groupName: '', groupCode: '', isActive: true })
+const memberForm = ref({ userId: '', displayName: '', isAdmin: false })
+const isEditingGroup = ref(false)
+const isEditingMember = ref(false)
 
-// Modals
-let groupModal = null;
-let memberModal = null;
-let membersListModal = null;
+const activeGroupCount = computed(() => groups.value.filter(group => group.isActive).length)
+const filteredGroups = computed(() => {
+  const normalizedKeyword = keyword.value.trim().toLowerCase()
+  return groups.value.filter(group => {
+    const hitKeyword = !normalizedKeyword || [group.groupName, group.groupId, group.groupCode]
+      .filter(Boolean)
+      .some(value => String(value).toLowerCase().includes(normalizedKeyword))
 
-onMounted(() => {
-  groupModal = new Modal(document.getElementById('groupModal'));
-  memberModal = new Modal(document.getElementById('memberModal'));
-  membersListModal = new Modal(document.getElementById('membersListModal'));
-  
-  // 當編輯成員模態框顯示時，確保它在最上層
-  const memberModalElement = document.getElementById('memberModal');
-  if (memberModalElement) {
-    memberModalElement.addEventListener('shown.bs.modal', () => {
-      // 在模態框完全顯示後設置 z-index，確保它在所有其他模態框之上
-      setTimeout(() => {
-        memberModalElement.style.zIndex = '1065';
-        // 確保 backdrop 也在正確的層級（最後一個 backdrop 應該對應編輯成員模態框）
-        const backdrops = document.querySelectorAll('.modal-backdrop.show');
-        if (backdrops.length > 0) {
-          // 將最後一個 backdrop 的 z-index 設置為 1064
-          backdrops[backdrops.length - 1].style.zIndex = '1064';
-        }
-      }, 10);
-    });
-  }
-  
-  fetchGroups();
-});
+    const hitStatus = !statusFilter.value
+      || (statusFilter.value === 'active' && group.isActive)
+      || (statusFilter.value === 'inactive' && !group.isActive)
 
-// Helper
+    return hitKeyword && hitStatus
+  })
+})
+
+let groupModal = null
+let memberModal = null
+
+onMounted(async () => {
+  groupModal = new Modal(document.getElementById('groupModal'))
+  memberModal = new Modal(document.getElementById('memberModal'))
+  await fetchGroups(false)
+})
+
 const formatDate = (dateStr) => {
-  if (!dateStr) return '-';
-  return new Date(dateStr).toLocaleString();
-};
+  if (!dateStr) return '-'
+  return new Date(dateStr).toLocaleString()
+}
 
-// Group Operations
-const fetchGroups = async () => {
+const fetchGroups = async (preserveSelection = true) => {
   try {
-    groups.value = await apiService.getLineGroups();
+    const data = await apiService.getLineGroups()
+    groups.value = Array.isArray(data) ? data : []
+
+    const selectedGroupId = selectedGroup.value?.groupId
+    const nextSelectedGroup = preserveSelection && selectedGroupId
+      ? groups.value.find(group => group.groupId === selectedGroupId)
+      : null
+
+    if (nextSelectedGroup) {
+      await selectGroup(nextSelectedGroup)
+      return
+    }
+
+    if (groups.value.length > 0) {
+      await selectGroup(groups.value[0])
+    } else {
+      selectedGroup.value = null
+      selectedGroupMembers.value = []
+    }
   } catch (error) {
-    console.error('Failed to fetch groups', error);
-    toast.error('載入群組失敗');
+    console.error('Failed to fetch groups', error)
+    toast.error('載入群組失敗')
   }
-};
+}
+
+const selectGroup = async (group) => {
+  selectedGroup.value = group
+  try {
+    const members = await apiService.getLineGroupMembers(group.groupId)
+    selectedGroupMembers.value = Array.isArray(members) ? members : []
+  } catch (error) {
+    console.error('Failed to fetch members', error)
+    selectedGroupMembers.value = []
+    toast.error('載入成員失敗')
+  }
+}
 
 const openCreateGroupModal = () => {
-  isEditingGroup.value = false;
-  groupForm.value = { groupId: '', groupName: '', groupCode: '', isActive: true };
-  groupModal.show();
-};
+  isEditingGroup.value = false
+  groupForm.value = { groupId: '', groupName: '', groupCode: '', isActive: true }
+  groupModal.show()
+}
 
 const editGroup = (group) => {
-  isEditingGroup.value = true;
-  groupForm.value = { ...group };
-  groupModal.show();
-};
+  isEditingGroup.value = true
+  groupForm.value = {
+    groupId: group.groupId,
+    groupName: group.groupName || '',
+    groupCode: group.groupCode || '',
+    isActive: !!group.isActive
+  }
+  groupModal.show()
+}
 
 const saveGroup = async () => {
   try {
     if (isEditingGroup.value) {
-      await apiService.updateLineGroup(groupForm.value.groupId, groupForm.value);
+      await apiService.updateLineGroup(groupForm.value.groupId, groupForm.value)
     } else {
-      await apiService.createLineGroup(groupForm.value);
+      await apiService.createLineGroup(groupForm.value)
     }
-    groupModal.hide();
-    toast.success(isEditingGroup.value ? '群組已更新' : '群組已新增');
-    fetchGroups();
+
+    groupModal.hide()
+    toast.success(isEditingGroup.value ? '群組已更新' : '群組已新增')
+    await fetchGroups(true)
   } catch (error) {
-    console.error('Failed to save group', error);
-    toast.error('儲存群組失敗: ' + (error.message || '未知錯誤'));
+    console.error('Failed to save group', error)
+    toast.error('儲存群組失敗: ' + (error.message || '未知錯誤'))
   }
-};
+}
 
 const deleteGroup = async (group) => {
-  if (!confirm(`確定要刪除群組 ${group.groupName || group.groupId} 嗎？此操作無法復原。`)) return;
+  if (!confirm(`確定要刪除群組 ${group.groupName || group.groupId} 嗎？此操作無法復原。`)) return
   try {
-    await apiService.deleteLineGroup(group.groupId);
-    toast.success('群組已刪除');
-    fetchGroups();
+    await apiService.deleteLineGroup(group.groupId)
+    toast.success('群組已刪除')
+    await fetchGroups(true)
   } catch (error) {
-    console.error('Failed to delete group', error);
-    toast.error('刪除群組失敗');
+    console.error('Failed to delete group', error)
+    toast.error('刪除群組失敗')
   }
-};
-
-// Member Operations
-const viewMembers = async (group) => {
-  currentGroup.value = group;
-  try {
-    currentGroupMembers.value = await apiService.getLineGroupMembers(group.groupId);
-    membersListModal.show();
-  } catch (error) {
-    console.error('Failed to fetch members', error);
-    toast.error('載入成員失敗');
-  }
-};
+}
 
 const openAddMemberModal = () => {
-  isEditingMember.value = false;
-  memberForm.value = { userId: '', displayName: '', isAdmin: false };
-  memberModal.show();
-};
+  if (!selectedGroup.value) {
+    toast.error('請先選取群組')
+    return
+  }
+
+  isEditingMember.value = false
+  memberForm.value = { userId: '', displayName: '', isAdmin: false }
+  memberModal.show()
+}
 
 const editMember = (member) => {
-  isEditingMember.value = true;
-  memberForm.value = { ...member };
-  memberModal.show();
-};
+  isEditingMember.value = true
+  memberForm.value = { ...member }
+  memberModal.show()
+}
 
 const saveMember = async () => {
-  if (!currentGroup.value) return;
+  if (!selectedGroup.value) return
+
   try {
     if (isEditingMember.value) {
-      await apiService.updateLineGroupMember(currentGroup.value.groupId, memberForm.value.id, memberForm.value);
+      await apiService.updateLineGroupMember(selectedGroup.value.groupId, memberForm.value.id, memberForm.value)
     } else {
-      await apiService.addLineGroupMember(currentGroup.value.groupId, memberForm.value);
+      await apiService.addLineGroupMember(selectedGroup.value.groupId, memberForm.value)
     }
-    memberModal.hide();
-    // Refresh members list
-    if (membersListModal && membersListModal._isShown) {
-    currentGroupMembers.value = await apiService.getLineGroupMembers(currentGroup.value.groupId);
-    }
-    // Refresh groups to update member counts
-    fetchGroups();
-    toast.success(isEditingMember.value ? '成員已更新' : '成員已新增');
+
+    memberModal.hide()
+    toast.success(isEditingMember.value ? '成員已更新' : '成員已新增')
+    await fetchGroups(true)
   } catch (error) {
-    console.error('Failed to save member', error);
-    toast.error('儲存成員失敗: ' + (error.message || '未知錯誤'));
+    console.error('Failed to save member', error)
+    toast.error('儲存成員失敗: ' + (error.message || '未知錯誤'))
   }
-};
+}
 
-const editMemberInModal = (member) => {
-  isEditingMember.value = true;
-  memberForm.value = { ...member };
-  // 先顯示編輯模態框，確保它在成員列表模態框之上
-  memberModal.show();
-};
+const deleteMember = async (member) => {
+  if (!selectedGroup.value) return
+  if (!confirm(`確定要從群組中移除 ${member.displayName || member.userId} 嗎？`)) return
 
-const deleteMemberInModal = async (member) => {
-  if (!confirm(`確定要從群組中移除 ${member.displayName || member.userId} 嗎？`)) return;
   try {
-    await apiService.deleteLineGroupMember(currentGroup.value.groupId, member.id);
-    // Refresh members list
-    currentGroupMembers.value = await apiService.getLineGroupMembers(currentGroup.value.groupId);
-    // Refresh groups to update member counts
-    fetchGroups();
-    toast.success('成員已移除');
+    await apiService.deleteLineGroupMember(selectedGroup.value.groupId, member.id)
+    toast.success('成員已移除')
+    await fetchGroups(true)
   } catch (error) {
-    console.error('Failed to delete member', error);
-    toast.error('移除成員失敗');
+    console.error('Failed to delete member', error)
+    toast.error('移除成員失敗')
   }
-};
+}
 </script>
 
 <style scoped>
-.admin-page {
-  min-height: 100vh;
-  background: var(--bg-primary);
-  padding-bottom: 2rem;
+.line-groups-page {
+  display: grid;
+  gap: 20px;
+  padding: 12px 4px 28px;
 }
 
-.badge {
-  font-size: 0.9em;
-}
-</style>
-
-<style>
-/* 確保編輯成員模態框在成員列表模態框之上 */
-/* 使用全局樣式，因為模態框是動態添加到 body 的 */
-/* Bootstrap 5 默認模態框 z-index 是 1055，當有兩個模態框時，第二個會是 1060 */
-#memberModal {
-  z-index: 1065 !important;
-}
-
-#memberModal.modal {
-  z-index: 1065 !important;
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(2, 6, 23, 0.08);
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.06);
 }
 
-#memberModal.modal.show {
-  z-index: 1065 !important;
+.page-header h2 {
+  margin: 0 0 6px;
 }
 
-/* 當有多個模態框時，確保編輯成員模態框在最上層 */
-.modal.show ~ #memberModal.modal.show,
-#memberModal.modal.show {
-  z-index: 1065 !important;
+.page-header p {
+  margin: 0;
+  color: var(--muted-text, #667085);
 }
 
-/* 確保編輯成員模態框的 backdrop 也在正確的層級 */
-/* Bootstrap 會為每個模態框創建一個 backdrop，最後一個應該在最上層 */
-.modal-backdrop.show ~ .modal-backdrop.show {
-  z-index: 1059 !important;
+.workspace-grid {
+  display: grid;
+  grid-template-columns: 1.08fr 0.92fr;
+  gap: 18px;
+}
+
+.card.surface-card {
+  padding: 14px;
+}
+
+.card.surface-card .card__body {
+  padding: 0;
+}
+
+.overview-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.overview-card {
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(2, 6, 23, 0.08);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.06);
+}
+
+.overview-card span {
+  display: block;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(15, 23, 42, 0.6);
+  font-weight: 800;
+}
+
+.overview-card strong {
+  display: block;
+  margin: 4px 0 6px;
+  font-size: 24px;
+  letter-spacing: -0.02em;
+}
+
+.overview-card p {
+  margin: 0;
+  color: rgba(15, 23, 42, 0.62);
+  font-weight: 600;
+}
+
+.overview-card--accent {
+  background: linear-gradient(140deg, rgba(15, 23, 42, 0.96), rgba(29, 78, 216, 0.92));
+}
+
+.overview-card--accent span,
+.overview-card--accent strong,
+.overview-card--accent p {
+  color: #fff;
+}
+
+.overview-card--accent p {
+  color: rgba(255, 255, 255, 0.76);
+}
+
+.panel-head,
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.panel-head {
+  margin-bottom: 14px;
+}
+
+.panel-head h3 {
+  margin: 0;
+}
+
+.panel-head p {
+  margin: 6px 0 0;
+  color: var(--muted-text, #667085);
+}
+
+.toolbar {
+  margin-bottom: 12px;
+  padding: 0 4px;
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+
+.select-small {
+  max-width: 160px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid rgba(2, 6, 23, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.05);
+  padding: 6px;
+}
+
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 6px;
+}
+
+th, td {
+  padding: 10px 12px;
+  vertical-align: middle;
+}
+
+th {
+  font-size: 13px;
+  color: rgba(15, 23, 42, 0.6);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+tbody tr.is-selected {
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 56px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.status-active {
+  color: #15803d;
+  background: rgba(22, 163, 74, 0.16);
+}
+
+.status-inactive {
+  color: #64748b;
+  background: rgba(148, 163, 184, 0.22);
+}
+
+.table-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.table-actions .btn {
+  min-width: 46px;
+  height: 36px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.empty-state {
+  border: 1px dashed rgba(2, 6, 23, 0.16);
+  background: rgba(255, 255, 255, 0.72);
+  border-radius: 14px;
+  padding: 28px 18px;
+  text-align: center;
+  color: rgba(2, 6, 23, 0.7);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+}
+
+.empty-state p {
+  margin: 0;
+  font-weight: 800;
+}
+
+.line-modal {
+  border-radius: 20px;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.18);
+  overflow: hidden;
+}
+
+.line-modal .modal-head,
+.line-modal .modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+}
+
+.line-modal .modal-head {
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.line-modal .modal-head h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.line-modal .modal-close {
+  border: 0;
+  background: transparent;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.line-modal-body {
+  padding: 18px;
+  display: grid;
+  gap: 14px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field span {
+  font-size: 14px;
+  color: #344054;
+}
+
+.checkbox-field {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+}
+
+.line-modal .modal-actions {
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  justify-content: flex-end;
+}
+
+@media (max-width: 1100px) {
+  .workspace-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .select-small {
+    max-width: none;
+    width: 100%;
+  }
+
+  th, td {
+    padding: 10px;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+  }
 }
 </style>
