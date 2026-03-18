@@ -118,7 +118,7 @@
             </div>
           </div>
 
-          <div class="form-group" v-if="!formData.parentId">
+          <div class="form-group" v-if="formData.menuType === 'admin' && !formData.parentId">
             <label>顯示在儀表板</label>
             <div class="checkbox-group">
               <label class="checkbox-label">

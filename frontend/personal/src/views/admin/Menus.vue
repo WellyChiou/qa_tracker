@@ -122,7 +122,7 @@
                     </span>
                   </td>
                   <td>
-                    <span v-if="!menu.parentId" :class="menu.showInDashboard ? 'status-active' : 'status-inactive'">
+                    <span v-if="menu.menuType === 'admin' && !menu.parentId" :class="menu.showInDashboard ? 'status-active' : 'status-inactive'">
                       {{ menu.showInDashboard ? '顯示' : '隱藏' }}
                     </span>
                     <span v-else class="status-inactive">-</span>

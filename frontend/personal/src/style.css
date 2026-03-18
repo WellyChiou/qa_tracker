@@ -806,10 +806,10 @@ button, .btn {
 }
 
 /* ===== Forced sync hardening (users / roles / permissions / url-permissions) ===== */
-:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .form-input,
-:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .filter-group select,
-:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .filter-group input,
-:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .filter-group textarea {
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions, .admin-menus) .form-input,
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions, .admin-menus) .filter-group select,
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions, .admin-menus) .filter-group input,
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions, .admin-menus) .filter-group textarea {
   width: 100%;
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -821,15 +821,15 @@ button, .btn {
   transition: border-color .12s ease, box-shadow .12s ease;
 }
 
-:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .form-input:focus,
-:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .filter-group select:focus,
-:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .filter-group input:focus,
-:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .filter-group textarea:focus {
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions, .admin-menus) .form-input:focus,
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions, .admin-menus) .filter-group select:focus,
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions, .admin-menus) .filter-group input:focus,
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions, .admin-menus) .filter-group textarea:focus {
   border-color: rgba(37,99,235,.55);
   box-shadow: var(--ring);
 }
 
-:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .pagination .page-size-select {
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions, .admin-menus) .pagination .page-size-select {
   width: 88px !important;
   min-width: 88px !important;
   max-width: 88px !important;
@@ -837,19 +837,19 @@ button, .btn {
   padding-right: 28px;
 }
 
-:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .pagination-left {
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions, .admin-menus) .pagination-left {
   gap: 8px;
 }
 
-:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .pagination-info {
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions, .admin-menus) .pagination-info {
   line-height: 1.35;
 }
 
-:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .surface-card {
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions, .admin-menus) .surface-card {
   padding: 16px;
 }
 
-:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .table-header {
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions, .admin-menus) .table-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -862,19 +862,19 @@ button, .btn {
   box-shadow: var(--shadow-sm);
 }
 
-:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .table-header h3 {
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions, .admin-menus) .table-header h3 {
   margin: 0;
   font-size: 14px;
   letter-spacing: -0.01em;
 }
 
-:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .surface-card table {
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions, .admin-menus) .surface-card table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0 6px;
 }
 
-:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions) .surface-card thead th {
+:is(.admin-users, .admin-roles, .admin-permissions, .admin-url-permissions, .admin-menus) .surface-card thead th {
   text-align: left;
   font-size: 13px;
   letter-spacing: .02em;
