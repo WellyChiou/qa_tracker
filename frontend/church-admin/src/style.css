@@ -1100,3 +1100,34 @@ tr.skeleton-row .skeleton{height:14px}
 .pick-sub{
   font-size:12px;
 }
+
+/* ===== Pagination visual sync with invest-admin ===== */
+.pagination .btn-secondary{
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.pagination .btn-secondary svg{
+  display: none;
+}
+
+.pagination .page-jump{
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 999px;
+}
+
+.pagination .page-jump input{
+  width: 74px;
+  height: 30px;
+  border-radius: 10px;
+}

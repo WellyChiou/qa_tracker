@@ -15,6 +15,7 @@ COPY pom.xml .
 COPY backend/auth-core/pom.xml backend/auth-core/pom.xml
 COPY backend/personal/pom.xml backend/personal/pom.xml
 COPY backend/church/pom.xml backend/church/pom.xml
+COPY backend/invest/pom.xml backend/invest/pom.xml
 
 # 先期依賴解析（只針對 church 模組加上依賴）
 RUN mvn -pl backend/church -am dependency:resolve -B -U || \
@@ -26,6 +27,7 @@ RUN mvn -pl backend/church -am dependency:resolve -B -U || \
 COPY backend/auth-core backend/auth-core
 COPY backend/personal backend/personal
 COPY backend/church backend/church
+COPY backend/invest backend/invest
 
 # 構建 church 模組（含共用 auth core）
 RUN mvn -pl backend/church -am clean package -DskipTests -B

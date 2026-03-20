@@ -2,7 +2,8 @@ package com.example.helloworld.service.common;
 
 public enum AuthDomain {
     PERSONAL("personal"),
-    CHURCH("church");
+    CHURCH("church"),
+    INVEST("invest");
 
     private final String value;
 
@@ -17,6 +18,9 @@ public enum AuthDomain {
     public static AuthDomain fromRequestPath(String requestPath) {
         if (requestPath != null && requestPath.startsWith("/api/church/")) {
             return CHURCH;
+        }
+        if (requestPath != null && requestPath.startsWith("/api/invest/")) {
+            return INVEST;
         }
         return PERSONAL;
     }

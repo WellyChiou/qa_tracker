@@ -13,6 +13,24 @@ services:
       - ../mysql:/var/lib/mysql
       - ./database/personal/schema/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
       - ./database/church/schema/church-schema.sql:/docker-entrypoint-initdb.d/02-church-schema.sql
+      - ./database/invest/infra/00_create_invest_db_and_user.sql:/docker-entrypoint-initdb.d/03-invest-infra.sql
+      - ./database/invest/migrations/schema/01_create_invest_step1.sql:/docker-entrypoint-initdb.d/04-invest-schema-step1.sql
+      - ./database/invest/migrations/schema/02_create_invest_step2_risk.sql:/docker-entrypoint-initdb.d/05-invest-schema-step2-risk.sql
+      - ./database/invest/migrations/schema/03_create_invest_acl.sql:/docker-entrypoint-initdb.d/06-invest-schema-acl.sql
+      - ./database/invest/migrations/schema/04_create_invest_step3_report.sql:/docker-entrypoint-initdb.d/07-invest-schema-step3-report.sql
+      - ./database/invest/migrations/schema/05_create_invest_step4_alert.sql:/docker-entrypoint-initdb.d/08-invest-schema-step4-alert.sql
+      - ./database/invest/migrations/seed-baseline/01_seed_risk_rules.sql:/docker-entrypoint-initdb.d/09-invest-seed-baseline-risk-rules.sql
+      - ./database/invest/migrations/seed-baseline/02_seed_acl.sql:/docker-entrypoint-initdb.d/10-invest-seed-baseline-acl.sql
+      - ./database/invest/migrations/seed-baseline/03_hide_invest_risk_results_menu.sql:/docker-entrypoint-initdb.d/11-invest-seed-baseline-menu-fix.sql
+      - ./database/invest/migrations/seed-baseline/04_set_admin_password_baseline.sql:/docker-entrypoint-initdb.d/12-invest-seed-baseline-admin-password.sql
+      - ./database/invest/migrations/seed-baseline/05_seed_system_menu_permission.sql:/docker-entrypoint-initdb.d/13-invest-seed-system-menu-permission.sql
+      - ./database/invest/migrations/seed-baseline/06_seed_step3_report_acl.sql:/docker-entrypoint-initdb.d/14-invest-seed-step3-report-acl.sql
+      - ./database/invest/migrations/seed-baseline/07_seed_step4_alert_acl.sql:/docker-entrypoint-initdb.d/15-invest-seed-step4-alert-acl.sql
+      # demo seed is optional; enable only in sandbox/demo environments.
+      # - ./database/invest/migrations/seed-demo/01_seed_step1_demo_data.sql:/docker-entrypoint-initdb.d/16-invest-seed-demo-step1.sql
+      # maintenance data repair script (legacy data only, optional)
+      # - ./database/invest/migrations/maintenance/01_fix_utf8_text.sql:/docker-entrypoint-initdb.d/17-invest-maintenance-utf8-fix.sql
+      # - ./database/invest/migrations/maintenance/02_fix_daily_report_summary_json_longtext.sql:/docker-entrypoint-initdb.d/18-invest-maintenance-summary-json-longtext.sql
     ports:
       - "3306:3306"
     healthcheck:
@@ -94,6 +112,39 @@ services:
       LOGGING_FILE_NAME: ${LOGGING_FILE_PATH:-/app/logs}/application.log
     restart: unless-stopped
 
+  # Invest Java 後端 (Spring Boot)
+  backend-invest:
+    build:
+      context: .
+      dockerfile: ./backend/invest/Dockerfile
+    container_name: java_backend_invest
+    depends_on:
+      mysql:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        tag: "{{.Name}}"
+    volumes:
+      - ../logs/backend-invest:/app/logs
+    environment:
+      APP_DOMAIN: invest
+      TZ: Asia/Taipei
+      SPRING_INVEST_DATASOURCE_URL: jdbc:mysql://mysql:3306/invest?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=utf8&useUnicode=true
+      SPRING_INVEST_DATASOURCE_USERNAME: appuser
+      SPRING_INVEST_DATASOURCE_PASSWORD: apppassword
+      SPRING_INVEST_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
+      INVEST_JWT_SECRET: F/cPluFKK3/44X5iX9GdY6P7Ye+BIDdBTw6uljBTl9o=
+      INVEST_JWT_ACCESS_TOKEN_EXPIRATION: 3600000
+      INVEST_JWT_REFRESH_TOKEN_ENABLED: "true"
+      INVEST_JWT_REFRESH_TOKEN_EXPIRATION: 604800000
+      INVEST_CORS_ALLOWED_ORIGIN_PATTERNS: ${INVEST_CORS_ALLOWED_ORIGIN_PATTERNS:-http://localhost,http://localhost:80,https://localhost,https://localhost:80,http://127.0.0.1,http://127.0.0.1:80,https://power-light-church.duckdns.org,http://power-light-church.duckdns.org,https://38.54.89.136,http://38.54.89.136}
+      LOGGING_FILE_PATH: /app/logs
+      LOGGING_FILE_NAME: ${LOGGING_FILE_PATH:-/app/logs}/application.log
+    restart: unless-stopped
+
   # 個人網站前端
   frontend-personal:
     build:
@@ -168,6 +219,22 @@ services:
         reservations:
           memory: 256M
 
+  # Invest 後台管理系統前端
+  frontend-invest-admin:
+    build:
+      context: .
+      dockerfile: ./frontend/invest-admin/Dockerfile
+    container_name: vue_frontend_invest_admin
+    depends_on:
+      - backend-invest
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
   # Nginx 反向代理（處理 HTTPS）
   nginx:
     image: nginx:alpine
@@ -187,8 +254,10 @@ services:
       - frontend-personal
       - frontend-church
       - frontend-church-admin
+      - frontend-invest-admin
       - backend-personal
       - backend-church
+      - backend-invest
     restart: unless-stopped
     command: >
       /bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done &
