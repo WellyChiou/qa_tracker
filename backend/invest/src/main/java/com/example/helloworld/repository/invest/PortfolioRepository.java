@@ -41,6 +41,9 @@ public interface PortfolioRepository extends JpaRepository<Portfolio, Long> {
 
     Optional<Portfolio> findByIdAndUserId(Long id, String userId);
 
-    @Query("SELECT DISTINCT p.userId FROM Portfolio p WHERE p.isActive = true ORDER BY p.userId ASC")
+    @Query("SELECT DISTINCT p.userId FROM Portfolio p " +
+        "WHERE p.isActive = true " +
+        "AND EXISTS (SELECT 1 FROM InvestUser u WHERE u.uid = p.userId) " +
+        "ORDER BY p.userId ASC")
     List<String> findDistinctActiveUserIds();
 }

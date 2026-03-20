@@ -18,6 +18,11 @@ public class StockPriceDailyResponseDto {
     private Long volume;
     private BigDecimal changeAmount;
     private BigDecimal changePercent;
+    private String dataSource;
+    private LocalDateTime fetchedAt;
+    private String latencyType;
+    private String updateBatchId;
+    private String dataQuality;
     private LocalDateTime createdAt;
 
     public Long getId() {
@@ -122,6 +127,46 @@ public class StockPriceDailyResponseDto {
 
     public void setChangePercent(BigDecimal changePercent) {
         this.changePercent = changePercent;
+    }
+
+    public String getDataSource() {
+        return dataSource;
+    }
+
+    public void setDataSource(String dataSource) {
+        this.dataSource = dataSource;
+    }
+
+    public LocalDateTime getFetchedAt() {
+        return fetchedAt;
+    }
+
+    public void setFetchedAt(LocalDateTime fetchedAt) {
+        this.fetchedAt = fetchedAt;
+    }
+
+    public String getLatencyType() {
+        return latencyType;
+    }
+
+    public void setLatencyType(String latencyType) {
+        this.latencyType = latencyType;
+    }
+
+    public String getUpdateBatchId() {
+        return updateBatchId;
+    }
+
+    public void setUpdateBatchId(String updateBatchId) {
+        this.updateBatchId = updateBatchId;
+    }
+
+    public String getDataQuality() {
+        return dataQuality;
+    }
+
+    public void setDataQuality(String dataQuality) {
+        this.dataQuality = dataQuality;
     }
 
     public LocalDateTime getCreatedAt() {

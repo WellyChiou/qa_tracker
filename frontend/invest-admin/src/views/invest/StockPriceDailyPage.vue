@@ -6,7 +6,17 @@
           <h2>每日行情管理</h2>
           <p>Step 1 先提供 CRUD 與 seed 驗證，後續再擴充匯入/覆蓋/重算。</p>
         </div>
-        <button class="btn btn-primary" @click="openCreateModal">+ 新增行情</button>
+        <div class="header-actions">
+          <button
+            v-if="canRunPriceUpdateJob"
+            class="btn btn-secondary"
+            :disabled="runningPriceUpdate"
+            @click="runPriceUpdate"
+          >
+            {{ runningPriceUpdate ? '更新中...' : '更新我的持股行情' }}
+          </button>
+          <button class="btn btn-primary" @click="openCreateModal">+ 新增行情</button>
+        </div>
       </div>
 
       <section class="overview-strip">
@@ -76,6 +86,10 @@
                 <th>漲跌</th>
                 <th>漲跌%</th>
                 <th>成交量</th>
+                <th>來源</th>
+                <th>延遲</th>
+                <th>品質</th>
+                <th>抓取時間</th>
                 <th>操作</th>
               </tr>
             </thead>
@@ -91,6 +105,10 @@
                 <td>{{ formatSignedPrice(row.changeAmount) }}</td>
                 <td>{{ formatPercent(row.changePercent) }}</td>
                 <td>{{ formatVolume(row.volume) }}</td>
+                <td>{{ row.dataSource || '-' }}</td>
+                <td>{{ row.latencyType || '-' }}</td>
+                <td>{{ formatDataQuality(row.dataQuality) }}</td>
+                <td>{{ formatDateTime(row.fetchedAt) }}</td>
                 <td>
                   <div class="table-actions">
                     <button class="btn btn-secondary" @click="openEditModal(row)">編輯</button>
@@ -184,12 +202,15 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { toast } from '@shared/composables/useToast'
 import AdminLayout from '@/components/AdminLayout.vue'
 import { investApiService } from '@/composables/useInvestApi'
+import { useAuth } from '@/composables/useAuth'
 
 const rows = ref([])
 const stockOptions = ref([])
 const showModal = ref(false)
 const editingId = ref(null)
 const jumpPage = ref(1)
+const runningPriceUpdate = ref(false)
+const { currentUser } = useAuth()
 
 const filters = reactive({
   stockId: '',
@@ -218,6 +239,10 @@ const form = reactive({
 })
 
 const pageVolume = computed(() => rows.value.reduce((sum, row) => sum + Number(row.volume || 0), 0))
+const canRunPriceUpdateJob = computed(() => {
+  const permissions = currentUser.value?.permissions
+  return Array.isArray(permissions) && permissions.includes('INVEST_JOB_RUN_PRICE_UPDATE')
+})
 
 const buildParams = () => {
   const params = {
@@ -250,6 +275,22 @@ const loadRows = async () => {
     }
   } catch (error) {
     toast.error(`載入每日行情失敗: ${error.message || '未知錯誤'}`)
+  }
+}
+
+const runPriceUpdate = async () => {
+  runningPriceUpdate.value = true
+  try {
+    const result = await investApiService.runPriceUpdate()
+    const status = result?.status || 'UNKNOWN'
+    toast.success(
+      `行情更新完成（${status}）：成功 ${result?.successCount || 0} / 失敗 ${result?.failCount || 0}`
+    )
+    await loadRows()
+  } catch (error) {
+    toast.error(`執行行情更新失敗: ${error.message || '未知錯誤'}`)
+  } finally {
+    runningPriceUpdate.value = false
   }
 }
 
@@ -360,6 +401,16 @@ const formatSignedPrice = (value) => {
 }
 const formatPercent = (value) => `${Number(value || 0).toFixed(2)}%`
 const formatVolume = (value) => Number(value || 0).toLocaleString('zh-TW')
+const formatDateTime = (value) => (value ? String(value).replace('T', ' ') : '-')
+const formatDataQuality = (code) => {
+  const map = {
+    GOOD: '良好',
+    PARTIAL: '部分',
+    STALE: '過舊',
+    MISSING: '缺值'
+  }
+  return map[code] || code || '-'
+}
 
 watch(() => [filters.stockId, filters.ticker, filters.tradeDateFrom, filters.tradeDateTo], () => {
   pagination.page = 1
@@ -385,6 +436,7 @@ onMounted(async () => {
 <style scoped>
 .stock-price-daily-page { display: flex; flex-direction: column; gap: 14px; }
 .page-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.header-actions { display: flex; align-items: center; gap: 8px; }
 .page-header h2 { margin: 0; font-size: 1.7rem; }
 .page-header p { margin: 6px 0 0; color: var(--text-secondary); }
 .overview-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }

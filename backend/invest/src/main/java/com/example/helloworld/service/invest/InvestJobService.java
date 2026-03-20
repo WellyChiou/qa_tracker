@@ -2,6 +2,8 @@ package com.example.helloworld.service.invest;
 
 import com.example.helloworld.dto.invest.RunDailyPortfolioRiskJobResponseDto;
 import com.example.helloworld.dto.invest.RunAlertPollingJobResponseDto;
+import com.example.helloworld.dto.invest.RunMarketAnalysisResponseDto;
+import com.example.helloworld.dto.invest.RunPriceUpdateResponseDto;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,11 +15,17 @@ public class InvestJobService {
 
     private final DailyReportBatchService dailyReportBatchService;
     private final PortfolioAlertPollingService portfolioAlertPollingService;
+    private final PriceUpdateService priceUpdateService;
+    private final MarketAnalysisService marketAnalysisService;
 
     public InvestJobService(DailyReportBatchService dailyReportBatchService,
-                            PortfolioAlertPollingService portfolioAlertPollingService) {
+                            PortfolioAlertPollingService portfolioAlertPollingService,
+                            PriceUpdateService priceUpdateService,
+                            MarketAnalysisService marketAnalysisService) {
         this.dailyReportBatchService = dailyReportBatchService;
         this.portfolioAlertPollingService = portfolioAlertPollingService;
+        this.priceUpdateService = priceUpdateService;
+        this.marketAnalysisService = marketAnalysisService;
     }
 
     public RunDailyPortfolioRiskJobResponseDto runDailyPortfolioRiskReportForCurrentUser(LocalDate reportDate) {
@@ -48,5 +56,13 @@ public class InvestJobService {
         dto.setEventCount(result.eventCount());
         dto.setMessage(result.message());
         return dto;
+    }
+
+    public RunPriceUpdateResponseDto runPriceUpdateForCurrentUser() {
+        return priceUpdateService.runForCurrentUser();
+    }
+
+    public RunMarketAnalysisResponseDto runMarketAnalysisForCurrentUser(String scope) {
+        return marketAnalysisService.runForCurrentUser(scope);
     }
 }

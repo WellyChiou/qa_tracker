@@ -31,6 +31,9 @@
           <p :class="Number(portfolio.unrealizedProfitLoss) >= 0 ? 'text-up' : 'text-down'">
             {{ formatSignedMoney(portfolio.unrealizedProfitLoss) }} ({{ formatPercent(portfolio.unrealizedProfitLossPercent) }})
           </p>
+          <p class="price-meta">
+            現價 {{ formatMoney(portfolio.currentPrice) }} / {{ formatPriceSource(portfolio.priceSource) }} / {{ portfolio.currentPriceTradeDate || '無資料日期' }} / 品質：{{ formatDataQuality(portfolio.currentPriceDataQuality) }}
+          </p>
         </article>
       </section>
 
@@ -298,6 +301,24 @@ const formatRecommendation = (code) => {
   return map[code] || code || '尚未分析'
 }
 
+const formatPriceSource = (code) => {
+  const map = {
+    LATEST_CLOSE: '最新日收盤',
+    COST_FALLBACK: '成本回補'
+  }
+  return map[code] || code || '-'
+}
+
+const formatDataQuality = (code) => {
+  const map = {
+    GOOD: '良好',
+    PARTIAL: '部分',
+    STALE: '過舊',
+    MISSING: '缺值'
+  }
+  return map[code] || code || '-'
+}
+
 onMounted(async () => {
   try {
     await loadPortfolio()
@@ -322,6 +343,7 @@ onMounted(async () => {
 .overview-card span { color: var(--text-secondary); font-size: 0.85rem; }
 .overview-card strong { display: block; margin: 6px 0; font-size: 1.1rem; }
 .overview-card p { margin: 0; font-size: 0.88rem; color: var(--text-secondary); }
+.price-meta { margin-top: 4px !important; }
 .risk-summary { padding: 14px; }
 .risk-summary h3 { margin: 0 0 10px; }
 .risk-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 12px; }

@@ -51,6 +51,18 @@ const routes = [
     meta: { requiresAuth: true, requiredPermission: 'INVEST_ALERT_EVENT_VIEW' }
   },
   {
+    path: '/strong-stocks',
+    name: 'InvestAdminStrongStocks',
+    component: () => import('@/views/invest/StrongStocksPage.vue'),
+    meta: { requiresAuth: true, requiredPermission: 'INVEST_STRENGTH_VIEW' }
+  },
+  {
+    path: '/opportunities',
+    name: 'InvestAdminOpportunitySignals',
+    component: () => import('@/views/invest/OpportunitySignalsPage.vue'),
+    meta: { requiresAuth: true, requiredPermission: 'INVEST_OPPORTUNITY_VIEW' }
+  },
+  {
     path: '/system/users',
     name: 'InvestAdminSystemUsers',
     component: () => import('@/views/system/SystemUsersPage.vue'),

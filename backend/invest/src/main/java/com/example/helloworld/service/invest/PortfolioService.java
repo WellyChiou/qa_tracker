@@ -197,7 +197,10 @@ public class PortfolioService {
         dto.setUpdatedAt(portfolio.getUpdatedAt());
         dto.setCurrentPrice(currentPrice);
         dto.setCurrentPriceTradeDate(latestPrice == null ? null : latestPrice.getTradeDate());
+        // priceSource 是持股估值語意（LATEST_CLOSE/COST_FALLBACK），
+        // 與 stock_price_daily.data_source（TWSE/TPEX/US_PROVIDER）不同。
         dto.setPriceSource(hasLatestClose ? "LATEST_CLOSE" : "COST_FALLBACK");
+        dto.setCurrentPriceDataQuality(latestPrice == null ? null : latestPrice.getDataQuality());
         dto.setMarketValue(marketValue);
         dto.setUnrealizedProfitLoss(pnl);
         dto.setUnrealizedProfitLossPercent(pnlPercent);

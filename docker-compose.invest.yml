@@ -18,15 +18,18 @@ services:
       - ./database/invest/migrations/schema/03_create_invest_acl.sql:/docker-entrypoint-initdb.d/04-invest-schema-acl.sql:ro
       - ./database/invest/migrations/schema/04_create_invest_step3_report.sql:/docker-entrypoint-initdb.d/05-invest-schema-step3-report.sql:ro
       - ./database/invest/migrations/schema/05_create_invest_step4_alert.sql:/docker-entrypoint-initdb.d/06-invest-schema-step4-alert.sql:ro
-      - ./database/invest/migrations/seed-baseline/01_seed_risk_rules.sql:/docker-entrypoint-initdb.d/07-invest-seed-baseline-risk-rules.sql:ro
-      - ./database/invest/migrations/seed-baseline/02_seed_acl.sql:/docker-entrypoint-initdb.d/08-invest-seed-baseline-acl.sql:ro
-      - ./database/invest/migrations/seed-baseline/03_hide_invest_risk_results_menu.sql:/docker-entrypoint-initdb.d/09-invest-seed-baseline-menu-fix.sql:ro
-      - ./database/invest/migrations/seed-baseline/04_set_admin_password_baseline.sql:/docker-entrypoint-initdb.d/10-invest-seed-baseline-admin-password.sql:ro
-      - ./database/invest/migrations/seed-baseline/05_seed_system_menu_permission.sql:/docker-entrypoint-initdb.d/11-invest-seed-system-menu-permission.sql:ro
-      - ./database/invest/migrations/seed-baseline/06_seed_step3_report_acl.sql:/docker-entrypoint-initdb.d/12-invest-seed-step3-report-acl.sql:ro
-      - ./database/invest/migrations/seed-baseline/07_seed_step4_alert_acl.sql:/docker-entrypoint-initdb.d/13-invest-seed-step4-alert-acl.sql:ro
+      - ./database/invest/migrations/schema/06_create_invest_v2_phase1_price_update.sql:/docker-entrypoint-initdb.d/07-invest-schema-v2-phase1-price-update.sql:ro
+      - ./database/invest/migrations/schema/07_create_invest_v2_phase1_2_price_update.sql:/docker-entrypoint-initdb.d/08-invest-schema-v2-phase1-2-price-update.sql:ro
+      - ./database/invest/migrations/seed-baseline/01_seed_risk_rules.sql:/docker-entrypoint-initdb.d/09-invest-seed-baseline-risk-rules.sql:ro
+      - ./database/invest/migrations/seed-baseline/02_seed_acl.sql:/docker-entrypoint-initdb.d/10-invest-seed-baseline-acl.sql:ro
+      - ./database/invest/migrations/seed-baseline/03_hide_invest_risk_results_menu.sql:/docker-entrypoint-initdb.d/11-invest-seed-baseline-menu-fix.sql:ro
+      - ./database/invest/migrations/seed-baseline/04_set_admin_password_baseline.sql:/docker-entrypoint-initdb.d/12-invest-seed-baseline-admin-password.sql:ro
+      - ./database/invest/migrations/seed-baseline/05_seed_system_menu_permission.sql:/docker-entrypoint-initdb.d/13-invest-seed-system-menu-permission.sql:ro
+      - ./database/invest/migrations/seed-baseline/06_seed_step3_report_acl.sql:/docker-entrypoint-initdb.d/14-invest-seed-step3-report-acl.sql:ro
+      - ./database/invest/migrations/seed-baseline/07_seed_step4_alert_acl.sql:/docker-entrypoint-initdb.d/15-invest-seed-step4-alert-acl.sql:ro
+      - ./database/invest/migrations/seed-baseline/08_seed_v2_phase1_price_update_acl.sql:/docker-entrypoint-initdb.d/16-invest-seed-v2-phase1-price-update-acl.sql:ro
       # demo seed 預設不啟用（正式環境不可混入）
-      # - ./database/invest/migrations/seed-demo/01_seed_step1_demo_data.sql:/docker-entrypoint-initdb.d/14-invest-seed-demo-step1.sql:ro
+      # - ./database/invest/migrations/seed-demo/01_seed_step1_demo_data.sql:/docker-entrypoint-initdb.d/17-invest-seed-demo-step1.sql:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
@@ -64,6 +67,14 @@ services:
       INVEST_ALERT_ABNORMAL_DROP_THRESHOLD_PERCENT: ${INVEST_ALERT_ABNORMAL_DROP_THRESHOLD_PERCENT:-2.0}
       INVEST_ALERT_ABNORMAL_DROP_WINDOW_MINUTES: ${INVEST_ALERT_ABNORMAL_DROP_WINDOW_MINUTES:-10}
       INVEST_ALERT_ABNORMAL_DROP_COOLDOWN_MINUTES: ${INVEST_ALERT_ABNORMAL_DROP_COOLDOWN_MINUTES:-10}
+      INVEST_SCHEDULER_PRICE_UPDATE_ENABLED: ${INVEST_SCHEDULER_PRICE_UPDATE_ENABLED:-false}
+      INVEST_SCHEDULER_PRICE_UPDATE_TW_CRON: ${INVEST_SCHEDULER_PRICE_UPDATE_TW_CRON:-0 30 15 * * MON-FRI}
+      INVEST_SCHEDULER_PRICE_UPDATE_TW_ZONE: ${INVEST_SCHEDULER_PRICE_UPDATE_TW_ZONE:-Asia/Taipei}
+      INVEST_SCHEDULER_PRICE_UPDATE_US_CRON: ${INVEST_SCHEDULER_PRICE_UPDATE_US_CRON:-0 30 6 * * TUE-SAT}
+      INVEST_SCHEDULER_PRICE_UPDATE_US_ZONE: ${INVEST_SCHEDULER_PRICE_UPDATE_US_ZONE:-Asia/Taipei}
+      INVEST_PRICE_UPDATE_RETRY_MAX_ATTEMPTS: ${INVEST_PRICE_UPDATE_RETRY_MAX_ATTEMPTS:-2}
+      INVEST_PRICE_UPDATE_RETRY_DELAY_MS: ${INVEST_PRICE_UPDATE_RETRY_DELAY_MS:-300}
+      INVEST_PRICE_UPDATE_DATA_QUALITY_STALE_CALENDAR_DAYS: ${INVEST_PRICE_UPDATE_DATA_QUALITY_STALE_CALENDAR_DAYS:-3}
     restart: unless-stopped
 
   frontend-invest-admin:

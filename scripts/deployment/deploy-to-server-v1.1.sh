@@ -201,6 +201,7 @@ else
       "frontend/invest-admin"
       "shared"
       "database/invest"
+      "scripts/migration"
       "docker-compose.invest.yml"
       "nginx/nginx-invest.conf"
     )
@@ -344,6 +345,19 @@ if [[ -f ".env.invest.prod" ]]; then
 fi
 
 docker compose "${COMPOSE_ENV_ARGS[@]}" -f docker-compose.invest.yml down || true
+docker compose "${COMPOSE_ENV_ARGS[@]}" -f docker-compose.invest.yml up -d mysql
+
+MIGRATION_ARGS=(--compose-file docker-compose.invest.yml)
+if [[ -f ".env.invest.prod" ]]; then
+  MIGRATION_ARGS+=(--env-file .env.invest.prod)
+fi
+
+if [[ ! -x "./scripts/migration/run-invest-migrations.sh" ]]; then
+  chmod +x ./scripts/migration/run-invest-migrations.sh
+fi
+
+./scripts/migration/run-invest-migrations.sh "${MIGRATION_ARGS[@]}"
+
 docker compose "${COMPOSE_ENV_ARGS[@]}" -f docker-compose.invest.yml up -d --build
 docker compose "${COMPOSE_ENV_ARGS[@]}" -f docker-compose.invest.yml ps
 EOS

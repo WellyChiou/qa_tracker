@@ -14,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @Service
@@ -24,6 +26,7 @@ public class StockPriceDailyService {
 
     private final StockPriceDailyRepository stockPriceDailyRepository;
     private final StockRepository stockRepository;
+    private static final long STALE_CALENDAR_DAY_THRESHOLD = 3;
 
     public StockPriceDailyService(StockPriceDailyRepository stockPriceDailyRepository,
                                   StockRepository stockRepository) {
@@ -113,6 +116,11 @@ public class StockPriceDailyService {
         entity.setVolume(request.getVolume());
         entity.setChangeAmount(request.getChangeAmount());
         entity.setChangePercent(request.getChangePercent());
+        entity.setDataSource("MANUAL");
+        entity.setFetchedAt(LocalDateTime.now());
+        entity.setLatencyType("EOD");
+        entity.setUpdateBatchId(null);
+        entity.setDataQuality(resolveDataQualityByCalendarDay(request.getTradeDate(), LocalDate.now()));
     }
 
     private void validateRequest(StockPriceDailyUpsertRequestDto request) {
@@ -160,8 +168,24 @@ public class StockPriceDailyService {
         dto.setVolume(entity.getVolume());
         dto.setChangeAmount(entity.getChangeAmount());
         dto.setChangePercent(entity.getChangePercent());
+        dto.setDataSource(entity.getDataSource());
+        dto.setFetchedAt(entity.getFetchedAt());
+        dto.setLatencyType(entity.getLatencyType());
+        dto.setUpdateBatchId(entity.getUpdateBatchId());
+        dto.setDataQuality(entity.getDataQuality());
         dto.setCreatedAt(entity.getCreatedAt());
         return dto;
+    }
+
+    private String resolveDataQualityByCalendarDay(LocalDate tradeDate, LocalDate referenceDate) {
+        if (tradeDate == null) {
+            return "MISSING";
+        }
+        long days = ChronoUnit.DAYS.between(tradeDate, referenceDate);
+        if (days > STALE_CALENDAR_DAY_THRESHOLD) {
+            return "STALE";
+        }
+        return "GOOD";
     }
 
     private String normalize(String value) {

@@ -78,6 +78,9 @@
                 <th>股數</th>
                 <th>總成本</th>
                 <th>現價</th>
+                <th>現價日期</th>
+                <th>現價來源</th>
+                <th>資料品質</th>
                 <th>市值</th>
                 <th>未實現損益</th>
                 <th>報酬率</th>
@@ -96,6 +99,9 @@
                 <td>{{ formatQty(row.quantity) }}</td>
                 <td>{{ formatMoney(row.totalCost) }}</td>
                 <td>{{ formatMoney(row.currentPrice) }}</td>
+                <td>{{ row.currentPriceTradeDate || '-' }}</td>
+                <td>{{ formatPriceSource(row.priceSource) }}</td>
+                <td>{{ formatDataQuality(row.currentPriceDataQuality) }}</td>
                 <td>{{ formatMoney(row.marketValue) }}</td>
                 <td :class="Number(row.unrealizedProfitLoss) >= 0 ? 'text-up' : 'text-down'">{{ formatSignedMoney(row.unrealizedProfitLoss) }}</td>
                 <td :class="Number(row.unrealizedProfitLossPercent) >= 0 ? 'text-up' : 'text-down'">{{ formatPercent(row.unrealizedProfitLossPercent) }}</td>
@@ -237,7 +243,11 @@ const buildParams = () => {
 
 const loadStockOptions = async () => {
   try {
-    stockOptions.value = await investApiService.getStockOptions()
+    const data = await investApiService.getStockOptions()
+    stockOptions.value = Array.isArray(data) ? data : []
+    if (!Array.isArray(data)) {
+      toast.error('股票選項載入失敗，請重新登入或確認權限設定')
+    }
   } catch (error) {
     toast.error(`載入股票選項失敗: ${error.message || '未知錯誤'}`)
   }
@@ -375,6 +385,24 @@ const formatRecommendation = (code) => {
     WATCH: '觀察',
     REDUCE: '減碼',
     STOP_LOSS_CHECK: '停損檢查'
+  }
+  return map[code] || code
+}
+const formatPriceSource = (code) => {
+  if (!code) return '-'
+  const map = {
+    LATEST_CLOSE: '最新日收盤',
+    COST_FALLBACK: '成本回補'
+  }
+  return map[code] || code
+}
+const formatDataQuality = (code) => {
+  if (!code) return '-'
+  const map = {
+    GOOD: '良好',
+    PARTIAL: '部分',
+    STALE: '過舊',
+    MISSING: '缺值'
   }
   return map[code] || code
 }

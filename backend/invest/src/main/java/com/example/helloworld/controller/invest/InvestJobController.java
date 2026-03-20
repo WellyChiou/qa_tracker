@@ -3,6 +3,8 @@ package com.example.helloworld.controller.invest;
 import com.example.helloworld.dto.common.ApiResponse;
 import com.example.helloworld.dto.invest.RunAlertPollingJobResponseDto;
 import com.example.helloworld.dto.invest.RunDailyPortfolioRiskJobResponseDto;
+import com.example.helloworld.dto.invest.RunMarketAnalysisResponseDto;
+import com.example.helloworld.dto.invest.RunPriceUpdateResponseDto;
 import com.example.helloworld.service.invest.InvestJobService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -41,6 +43,30 @@ public class InvestJobController {
             ));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.fail("執行警示輪詢失敗：" + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/run-price-update")
+    public ResponseEntity<ApiResponse<RunPriceUpdateResponseDto>> runPriceUpdate() {
+        try {
+            return ResponseEntity.ok(ApiResponse.ok(
+                investJobService.runPriceUpdateForCurrentUser()
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.fail("執行持股行情更新失敗：" + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/run-market-analysis")
+    public ResponseEntity<ApiResponse<RunMarketAnalysisResponseDto>> runMarketAnalysis(
+        @RequestParam(defaultValue = "HOLDINGS_AND_WATCHLIST") String scope
+    ) {
+        try {
+            return ResponseEntity.ok(ApiResponse.ok(
+                investJobService.runMarketAnalysisForCurrentUser(scope)
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.fail("執行市場分析失敗：" + e.getMessage()));
         }
     }
 }

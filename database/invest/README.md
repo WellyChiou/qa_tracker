@@ -23,14 +23,17 @@
 4. `migrations/schema/03_create_invest_acl.sql`
 5. `migrations/schema/04_create_invest_step3_report.sql`
 6. `migrations/schema/05_create_invest_step4_alert.sql`
-7. `migrations/seed-baseline/01_seed_risk_rules.sql`
-8. `migrations/seed-baseline/02_seed_acl.sql`
-9. `migrations/seed-baseline/03_hide_invest_risk_results_menu.sql`
-10. `migrations/seed-baseline/04_set_admin_password_baseline.sql`
-11. `migrations/seed-baseline/05_seed_system_menu_permission.sql`
-12. `migrations/seed-baseline/06_seed_step3_report_acl.sql`
-13. `migrations/seed-baseline/07_seed_step4_alert_acl.sql`
-14. (optional) `migrations/seed-demo/01_seed_step1_demo_data.sql`
+7. `migrations/schema/06_create_invest_v2_phase1_price_update.sql`
+8. `migrations/schema/07_create_invest_v2_phase1_2_price_update.sql`
+9. `migrations/seed-baseline/01_seed_risk_rules.sql`
+10. `migrations/seed-baseline/02_seed_acl.sql`
+11. `migrations/seed-baseline/03_hide_invest_risk_results_menu.sql`
+12. `migrations/seed-baseline/04_set_admin_password_baseline.sql`
+13. `migrations/seed-baseline/05_seed_system_menu_permission.sql`
+14. `migrations/seed-baseline/06_seed_step3_report_acl.sql`
+15. `migrations/seed-baseline/07_seed_step4_alert_acl.sql`
+16. `migrations/seed-baseline/08_seed_v2_phase1_price_update_acl.sql`
+17. (optional) `migrations/seed-demo/01_seed_step1_demo_data.sql`
 
 ## Notes
 

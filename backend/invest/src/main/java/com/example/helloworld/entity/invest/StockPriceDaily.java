@@ -42,6 +42,21 @@ public class StockPriceDaily {
     @Column(name = "change_percent", precision = 9, scale = 4)
     private BigDecimal changePercent;
 
+    @Column(name = "data_source", length = 50)
+    private String dataSource;
+
+    @Column(name = "fetched_at")
+    private LocalDateTime fetchedAt;
+
+    @Column(name = "latency_type", length = 20)
+    private String latencyType;
+
+    @Column(name = "update_batch_id", length = 64)
+    private String updateBatchId;
+
+    @Column(name = "data_quality", length = 20)
+    private String dataQuality;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -128,6 +143,46 @@ public class StockPriceDaily {
 
     public void setChangePercent(BigDecimal changePercent) {
         this.changePercent = changePercent;
+    }
+
+    public String getDataSource() {
+        return dataSource;
+    }
+
+    public void setDataSource(String dataSource) {
+        this.dataSource = dataSource;
+    }
+
+    public LocalDateTime getFetchedAt() {
+        return fetchedAt;
+    }
+
+    public void setFetchedAt(LocalDateTime fetchedAt) {
+        this.fetchedAt = fetchedAt;
+    }
+
+    public String getLatencyType() {
+        return latencyType;
+    }
+
+    public void setLatencyType(String latencyType) {
+        this.latencyType = latencyType;
+    }
+
+    public String getUpdateBatchId() {
+        return updateBatchId;
+    }
+
+    public void setUpdateBatchId(String updateBatchId) {
+        this.updateBatchId = updateBatchId;
+    }
+
+    public String getDataQuality() {
+        return dataQuality;
+    }
+
+    public void setDataQuality(String dataQuality) {
+        this.dataQuality = dataQuality;
     }
 
     public LocalDateTime getCreatedAt() {

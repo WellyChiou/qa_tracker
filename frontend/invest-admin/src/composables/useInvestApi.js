@@ -213,6 +213,19 @@ class InvestApiService {
     })
   }
 
+  runPriceUpdate() {
+    return this.request('/jobs/run-price-update', {
+      method: 'POST'
+    })
+  }
+
+  runMarketAnalysis(scope = 'HOLDINGS_AND_WATCHLIST') {
+    const query = new URLSearchParams({ scope }).toString()
+    return this.request(`/jobs/run-market-analysis?${query}`, {
+      method: 'POST'
+    })
+  }
+
   getPortfolioAlertSetting(portfolioId) {
     return this.request(`/portfolio-alert-settings/${portfolioId}`, { method: 'GET' })
   }
@@ -231,6 +244,55 @@ class InvestApiService {
 
   getLatestPortfolioAlertEvents(limit = 10) {
     return this.request(`/portfolio-alert-events/latest?limit=${limit}`, { method: 'GET' })
+  }
+
+  getDefaultWatchlist() {
+    return this.request('/watchlists/default', { method: 'GET' })
+  }
+
+  getDefaultWatchlistItemsPaged(params = {}) {
+    const query = new URLSearchParams(params).toString()
+    return this.request(query ? `/watchlists/default/items/paged?${query}` : '/watchlists/default/items/paged', { method: 'GET' })
+  }
+
+  addDefaultWatchlistItem(payload) {
+    return this.request('/watchlists/default/items', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  removeDefaultWatchlistItem(itemId) {
+    return this.request(`/watchlists/default/items/${itemId}`, {
+      method: 'DELETE'
+    })
+  }
+
+  getStrengthSnapshotsPaged(params = {}) {
+    const query = new URLSearchParams(params).toString()
+    return this.request(query ? `/strength-snapshots/paged?${query}` : '/strength-snapshots/paged', { method: 'GET' })
+  }
+
+  getStrengthSnapshotById(id) {
+    return this.request(`/strength-snapshots/${id}`, { method: 'GET' })
+  }
+
+  getLatestStrengthSnapshot(stockId, universeType = '') {
+    const query = new URLSearchParams({ stockId, universeType }).toString()
+    return this.request(`/strength-snapshots/latest?${query}`, { method: 'GET' })
+  }
+
+  getOpportunitySignalsPaged(params = {}) {
+    const query = new URLSearchParams(params).toString()
+    return this.request(query ? `/opportunity-signals/paged?${query}` : '/opportunity-signals/paged', { method: 'GET' })
+  }
+
+  getOpportunitySignalById(id) {
+    return this.request(`/opportunity-signals/${id}`, { method: 'GET' })
+  }
+
+  getLatestOpportunitySignal(stockId) {
+    return this.request(`/opportunity-signals/latest?stockId=${stockId}`, { method: 'GET' })
   }
 }
 

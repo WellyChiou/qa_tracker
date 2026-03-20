@@ -22,6 +22,7 @@ public class PortfolioResponseDto {
     private BigDecimal currentPrice;
     private LocalDate currentPriceTradeDate;
     private String priceSource;
+    private String currentPriceDataQuality;
     private BigDecimal marketValue;
     private BigDecimal unrealizedProfitLoss;
     private BigDecimal unrealizedProfitLossPercent;
@@ -156,6 +157,14 @@ public class PortfolioResponseDto {
 
     public void setPriceSource(String priceSource) {
         this.priceSource = priceSource;
+    }
+
+    public String getCurrentPriceDataQuality() {
+        return currentPriceDataQuality;
+    }
+
+    public void setCurrentPriceDataQuality(String currentPriceDataQuality) {
+        this.currentPriceDataQuality = currentPriceDataQuality;
     }
 
     public BigDecimal getMarketValue() {
