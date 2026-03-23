@@ -7,7 +7,7 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 BASE_URL="${BASE_URL:-https://localhost}"
 BASE_URL="${BASE_URL%/}"
 WORKDIR="${WORKDIR:-${PROJECT_ROOT}}"
-ENV_FILE="${ENV_FILE:-.env.invest.prod}"
+ENV_FILE="${ENV_FILE:-}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.invest.yml}"
 USE_CURL_K="${USE_CURL_K:-true}"
 
@@ -26,6 +26,7 @@ EXPECTED_JOBS=(
 FAIL_STEPS=()
 PASS_COUNT=0
 FAIL_COUNT=0
+JSON_PARSER=""
 
 print_usage() {
   cat <<'EOF'
@@ -35,7 +36,7 @@ print_usage() {
 Options:
   --base-url <url>         API 基底位址（預設: https://localhost）
   --workdir <path>         專案根目錄（預設: 自動偵測）
-  --env-file <path>        migration runner 使用的 env 檔（預設: .env.invest.prod）
+  --env-file <path>        migration runner 使用的 env 檔（選填）
   --compose-file <path>    migration runner compose 檔（預設: docker-compose.invest.yml）
   --no-k                   關閉 curl -k（預設開啟）
   --admin-user <username>  管理員帳號（預設: admin）
@@ -168,12 +169,87 @@ api_request() {
 
 is_json_success_true() {
   local body_file="$1"
-  jq -e '.success == true' "${body_file}" >/dev/null 2>&1
+  if [[ "${JSON_PARSER}" == "jq" ]]; then
+    jq -e '.success == true' "${body_file}" >/dev/null 2>&1
+    return $?
+  fi
+
+  python3 - "${body_file}" <<'PY' >/dev/null 2>&1
+import json,sys
+with open(sys.argv[1], 'r', encoding='utf-8') as f:
+    data = json.load(f)
+sys.exit(0 if data.get("success") is True else 1)
+PY
 }
 
 extract_token() {
   local body_file="$1"
-  jq -r '.data.accessToken // empty' "${body_file}" 2>/dev/null
+  if [[ "${JSON_PARSER}" == "jq" ]]; then
+    jq -r '.data.accessToken // empty' "${body_file}" 2>/dev/null
+    return 0
+  fi
+
+  python3 - "${body_file}" <<'PY' 2>/dev/null
+import json,sys
+with open(sys.argv[1], 'r', encoding='utf-8') as f:
+    data = json.load(f)
+print((data.get("data") or {}).get("accessToken") or "")
+PY
+}
+
+json_has_job_code() {
+  local body_file="$1"
+  local job_code="$2"
+
+  if [[ "${JSON_PARSER}" == "jq" ]]; then
+    jq -e --arg job "${job_code}" '.data | map(.jobCode) | index($job) != null' "${body_file}" >/dev/null 2>&1
+    return $?
+  fi
+
+  python3 - "${body_file}" "${job_code}" <<'PY' >/dev/null 2>&1
+import json,sys
+with open(sys.argv[1], 'r', encoding='utf-8') as f:
+    data = json.load(f)
+target = sys.argv[2]
+for row in (data.get("data") or []):
+    if isinstance(row, dict) and row.get("jobCode") == target:
+        sys.exit(0)
+sys.exit(1)
+PY
+}
+
+json_logs_has_content() {
+  local body_file="$1"
+
+  if [[ "${JSON_PARSER}" == "jq" ]]; then
+    jq -e '(.data.content | length) > 0' "${body_file}" >/dev/null 2>&1
+    return $?
+  fi
+
+  python3 - "${body_file}" <<'PY' >/dev/null 2>&1
+import json,sys
+with open(sys.argv[1], 'r', encoding='utf-8') as f:
+    data = json.load(f)
+content = ((data.get("data") or {}).get("content") or [])
+sys.exit(0 if len(content) > 0 else 1)
+PY
+}
+
+detect_json_parser() {
+  if command -v jq >/dev/null 2>&1; then
+    JSON_PARSER="jq"
+    pass "JSON 解析器：jq"
+    return 0
+  fi
+
+  if command -v python3 >/dev/null 2>&1; then
+    JSON_PARSER="python3"
+    pass "JSON 解析器：python3（fallback）"
+    return 0
+  fi
+
+  fail "缺少 JSON 解析工具（需 jq 或 python3）"
+  return 1
 }
 
 resolve_env_file_arg() {
@@ -298,7 +374,7 @@ verify_jobs_list_contains_all() {
   pass "查 jobs list 成功"
 
   for job in "${EXPECTED_JOBS[@]}"; do
-    if jq -e --arg job "${job}" '.data | map(.jobCode) | index($job) != null' "${response_file}" >/dev/null 2>&1; then
+    if json_has_job_code "${response_file}" "${job}"; then
       pass "jobs list 包含 ${job}"
     else
       fail "jobs list 缺少 ${job}"
@@ -351,7 +427,7 @@ verify_job_logs_paged() {
 
     if [[ "${http_code}" == "200" ]] \
       && is_json_success_true "${response_file}" \
-      && jq -e '(.data.content | length) > 0' "${response_file}" >/dev/null 2>&1; then
+      && json_logs_has_content "${response_file}"; then
       pass "Logs ${job_code} 有資料（第 ${attempts} 次）"
       rm -f "${response_file}"
       return 0
@@ -424,7 +500,11 @@ main() {
   echo "Invest System Scheduler Smoke Test"
   echo "BASE_URL    : ${BASE_URL}"
   echo "WORKDIR     : ${WORKDIR}"
-  echo "ENV_FILE    : ${ENV_FILE}"
+  if [[ -n "${ENV_FILE}" ]]; then
+    echo "ENV_FILE    : ${ENV_FILE}"
+  else
+    echo "ENV_FILE    : (未指定)"
+  fi
   echo "COMPOSE_FILE: ${COMPOSE_FILE}"
   echo "curl -k     : ${USE_CURL_K}"
   echo "=========================================="
@@ -432,8 +512,8 @@ main() {
   step "檢查必要工具"
   require_cmd bash
   require_cmd curl
-  require_cmd jq
   require_cmd docker
+  detect_json_parser
 
   run_migrations
 

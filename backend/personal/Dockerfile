@@ -15,25 +15,24 @@ COPY pom.xml .
 COPY backend/auth-core/pom.xml backend/auth-core/pom.xml
 COPY backend/personal/pom.xml backend/personal/pom.xml
 
-# 先期依賴解析
-RUN mvn -f backend/auth-core/pom.xml dependency:resolve -B -U || \
-    (echo "⚠️ auth-core 依賴下載失敗，10 秒後重試..." && sleep 10 && mvn -f backend/auth-core/pom.xml dependency:resolve -B -U) || \
-    (echo "⚠️ auth-core 第二次下載失敗，20 秒後最後重試..." && sleep 20 && mvn -f backend/auth-core/pom.xml dependency:resolve -B -U) || \
-    (echo "⚠️ 依賴下載失敗，將在構建階段自動下載..." && true)
-
 # 再複製完整模組來源，以進行建置
 COPY backend/auth-core backend/auth-core
-RUN mvn -f backend/auth-core/pom.xml clean install -DskipTests -B
+RUN mvn -f backend/auth-core/pom.xml install -DskipTests -B -U || \
+    (echo "⚠️ auth-core 打包失敗，改用 SSL fallback 參數重試..." && \
+    mvn -f backend/auth-core/pom.xml install -DskipTests -B -U \
+      -Dmaven.wagon.http.ssl.insecure=true \
+      -Dmaven.wagon.http.ssl.allowall=true \
+      -Dmaven.wagon.http.ssl.ignore.validity.dates=true)
 
 COPY backend/personal backend/personal
 
-RUN mvn -f backend/personal/pom.xml dependency:resolve -B -U || \
-    (echo "⚠️ personal 依賴下載失敗，10 秒後重試..." && sleep 10 && mvn -f backend/personal/pom.xml dependency:resolve -B -U) || \
-    (echo "⚠️ personal 第二次下載失敗，20 秒後最後重試..." && sleep 20 && mvn -f backend/personal/pom.xml dependency:resolve -B -U) || \
-    (echo "⚠️ 依賴下載失敗，將在構建階段自動下載..." && true)
-
 # 構建 personal 模組（含共用 auth core）
-RUN mvn -f backend/personal/pom.xml clean package -DskipTests -B
+RUN mvn -f backend/personal/pom.xml package -DskipTests -B -U || \
+    (echo "⚠️ personal 打包失敗，改用 SSL fallback 參數重試..." && \
+    mvn -f backend/personal/pom.xml package -DskipTests -B -U \
+      -Dmaven.wagon.http.ssl.insecure=true \
+      -Dmaven.wagon.http.ssl.allowall=true \
+      -Dmaven.wagon.http.ssl.ignore.validity.dates=true)
 
 # 運行階段：使用 Eclipse Temurin（OpenJDK 的替代品）
 FROM eclipse-temurin:17-jre-jammy
