@@ -2,6 +2,7 @@ package com.example.helloworld.dto.invest;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public class SystemSchedulerJobLogPagedDto {
     private Long id;
@@ -17,6 +18,8 @@ public class SystemSchedulerJobLogPagedDto {
     private Integer totalCount;
     private Integer successCount;
     private Integer failCount;
+    private List<String> targetTickers;
+    private List<SystemSchedulerJobLogFailedItemDto> failedItems;
 
     public Long getId() {
         return id;
@@ -120,5 +123,21 @@ public class SystemSchedulerJobLogPagedDto {
 
     public void setFailCount(Integer failCount) {
         this.failCount = failCount;
+    }
+
+    public List<String> getTargetTickers() {
+        return targetTickers;
+    }
+
+    public void setTargetTickers(List<String> targetTickers) {
+        this.targetTickers = targetTickers;
+    }
+
+    public List<SystemSchedulerJobLogFailedItemDto> getFailedItems() {
+        return failedItems;
+    }
+
+    public void setFailedItems(List<SystemSchedulerJobLogFailedItemDto> failedItems) {
+        this.failedItems = failedItems;
     }
 }

@@ -3,11 +3,20 @@ package com.example.helloworld.dto.invest;
 import java.time.LocalDateTime;
 
 public class SystemSchedulerRunNowResponseDto {
+    private Long executionId;
     private String jobCode;
     private String status;
     private String message;
     private LocalDateTime triggeredAt;
     private Long referenceLogId;
+
+    public Long getExecutionId() {
+        return executionId;
+    }
+
+    public void setExecutionId(Long executionId) {
+        this.executionId = executionId;
+    }
 
     public String getJobCode() {
         return jobCode;

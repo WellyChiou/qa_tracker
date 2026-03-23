@@ -15,8 +15,12 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -32,12 +36,14 @@ public class TwMarketPriceProvider implements MarketPriceProvider {
     private final HttpClient httpClient;
     private final String twseUrl;
     private final String tpexUrl;
+    private final String twseHistoryUrlTemplate;
     private final String userAgent;
 
     public TwMarketPriceProvider(ObjectMapper objectMapper,
                                  @Value("${invest.price-provider.timeout-ms:8000}") long timeoutMs,
                                  @Value("${invest.price-provider.tw.twse-url:https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL}") String twseUrl,
                                  @Value("${invest.price-provider.tw.tpex-url:https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes}") String tpexUrl,
+                                 @Value("${invest.price-provider.tw.twse-history-url-template:https://www.twse.com.tw/rwd/zh/afterTrading/STOCK_DAY?date=%s&stockNo=%s&response=json}") String twseHistoryUrlTemplate,
                                  @Value("${invest.price-provider.user-agent:InvestAdmin/1.0}") String userAgent) {
         this.objectMapper = objectMapper;
         this.httpClient = HttpClient.newBuilder()
@@ -45,6 +51,7 @@ public class TwMarketPriceProvider implements MarketPriceProvider {
             .build();
         this.twseUrl = twseUrl;
         this.tpexUrl = tpexUrl;
+        this.twseHistoryUrlTemplate = twseHistoryUrlTemplate;
         this.userAgent = userAgent;
     }
 
@@ -69,6 +76,35 @@ public class TwMarketPriceProvider implements MarketPriceProvider {
         }
 
         return Optional.empty();
+    }
+
+    @Override
+    public List<PriceQuoteSnapshot> fetchHistoricalQuotes(Stock stock, int days) {
+        int safeDays = Math.max(1, days);
+        String ticker = stock.getTicker();
+        if (ticker == null || ticker.isBlank()) {
+            return List.of();
+        }
+
+        Map<LocalDate, PriceQuoteSnapshot> resultMap = new LinkedHashMap<>();
+        YearMonth cursor = YearMonth.now(TAIPEI_ZONE);
+        int monthLoopLimit = 12;
+
+        for (int i = 0; i < monthLoopLimit && resultMap.size() < safeDays; i++) {
+            List<PriceQuoteSnapshot> monthRows = fetchTwseHistoryByMonth(ticker, cursor);
+            for (PriceQuoteSnapshot row : monthRows) {
+                if (row.getTradeDate() == null) {
+                    continue;
+                }
+                resultMap.putIfAbsent(row.getTradeDate(), row);
+            }
+            cursor = cursor.minusMonths(1);
+        }
+
+        return resultMap.values().stream()
+            .sorted(Comparator.comparing(PriceQuoteSnapshot::getTradeDate).reversed())
+            .limit(safeDays)
+            .toList();
     }
 
     private Optional<Map<String, Object>> findFromTwse(String ticker) {
@@ -153,6 +189,70 @@ public class TwMarketPriceProvider implements MarketPriceProvider {
                 return List.of();
             }
             return objectMapper.readValue(response.body(), LIST_TYPE);
+        } catch (IOException | InterruptedException e) {
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+            return List.of();
+        }
+    }
+
+    private List<PriceQuoteSnapshot> fetchTwseHistoryByMonth(String ticker, YearMonth yearMonth) {
+        String dateKey = yearMonth.atDay(1).format(DateTimeFormatter.BASIC_ISO_DATE);
+        String url = String.format(twseHistoryUrlTemplate, dateKey, ticker);
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .header("Accept", "application/json")
+            .header("User-Agent", userAgent)
+            .GET()
+            .build();
+
+        try {
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200 || response.body() == null || response.body().isBlank()) {
+                return List.of();
+            }
+
+            Map<String, Object> payload = objectMapper.readValue(response.body(), new TypeReference<>() {
+            });
+            String stat = stringValue(payload.get("stat"));
+            if (stat == null || !stat.contains("OK")) {
+                return List.of();
+            }
+
+            Object rawData = payload.get("data");
+            if (!(rawData instanceof List<?> rows)) {
+                return List.of();
+            }
+
+            LocalDateTime fetchedAt = LocalDateTime.now(TAIPEI_ZONE);
+            List<PriceQuoteSnapshot> monthRows = new ArrayList<>();
+            for (Object row : rows) {
+                if (!(row instanceof List<?> values) || values.size() < 8) {
+                    continue;
+                }
+
+                LocalDate tradeDate = resolveTradeDate(values.get(0), null);
+                BigDecimal close = decimalValue(values.get(6));
+                if (tradeDate == null || close == null) {
+                    continue;
+                }
+
+                PriceQuoteSnapshot snapshot = new PriceQuoteSnapshot();
+                snapshot.setTradeDate(tradeDate);
+                snapshot.setClosePrice(close);
+                snapshot.setOpenPrice(orDefault(decimalValue(values.get(3)), close));
+                snapshot.setHighPrice(orDefault(decimalValue(values.get(4)), close));
+                snapshot.setLowPrice(orDefault(decimalValue(values.get(5)), close));
+                snapshot.setVolume(orDefaultLong(longValue(values.get(1)), 0L));
+                snapshot.setChangeAmount(decimalValue(values.get(7)));
+                snapshot.setChangePercent(null);
+                snapshot.setDataSource("TWSE");
+                snapshot.setFetchedAt(fetchedAt);
+                snapshot.setLatencyType("DELAYED");
+                monthRows.add(snapshot);
+            }
+            return monthRows;
         } catch (IOException | InterruptedException e) {
             if (e instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
@@ -247,6 +347,7 @@ public class TwMarketPriceProvider implements MarketPriceProvider {
         if (normalized.startsWith("X")) {
             normalized = normalized.substring(1);
         }
+        normalized = normalized.replace("－", "-");
         try {
             return new BigDecimal(normalized);
         } catch (NumberFormatException e) {

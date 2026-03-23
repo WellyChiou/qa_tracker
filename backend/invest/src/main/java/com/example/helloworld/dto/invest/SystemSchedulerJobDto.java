@@ -3,16 +3,28 @@ package com.example.helloworld.dto.invest;
 import java.time.LocalDateTime;
 
 public class SystemSchedulerJobDto {
+    private Long configId;
     private String jobCode;
     private String jobName;
     private String description;
     private Boolean enabled;
+    private Boolean active;
+    private Boolean allowRunNow;
+    private Boolean scheduleEditable;
     private String scheduleExpression;
     private String scheduleType;
     private String logSource;
     private LocalDateTime lastRunAt;
     private String lastRunStatus;
     private String lastRunMessage;
+
+    public Long getConfigId() {
+        return configId;
+    }
+
+    public void setConfigId(Long configId) {
+        this.configId = configId;
+    }
 
     public String getJobCode() {
         return jobCode;
@@ -44,6 +56,30 @@ public class SystemSchedulerJobDto {
 
     public void setEnabled(Boolean enabled) {
         this.enabled = enabled;
+    }
+
+    public Boolean getActive() {
+        return active;
+    }
+
+    public void setActive(Boolean active) {
+        this.active = active;
+    }
+
+    public Boolean getAllowRunNow() {
+        return allowRunNow;
+    }
+
+    public void setAllowRunNow(Boolean allowRunNow) {
+        this.allowRunNow = allowRunNow;
+    }
+
+    public Boolean getScheduleEditable() {
+        return scheduleEditable;
+    }
+
+    public void setScheduleEditable(Boolean scheduleEditable) {
+        this.scheduleEditable = scheduleEditable;
     }
 
     public String getScheduleExpression() {

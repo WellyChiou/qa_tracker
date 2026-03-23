@@ -2,6 +2,8 @@ package com.example.helloworld.scheduler.invest;
 
 import com.example.helloworld.entity.invest.PriceUpdateRunModeCode;
 import com.example.helloworld.service.invest.PriceUpdateService;
+import com.example.helloworld.service.invest.systemscheduler.SystemJobCode;
+import com.example.helloworld.service.invest.systemscheduler.SystemSchedulerRuntimeGateService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -17,9 +19,12 @@ public class InvestPriceUpdateScheduler {
     private static final Logger log = LoggerFactory.getLogger(InvestPriceUpdateScheduler.class);
 
     private final PriceUpdateService priceUpdateService;
+    private final SystemSchedulerRuntimeGateService schedulerRuntimeGateService;
 
-    public InvestPriceUpdateScheduler(PriceUpdateService priceUpdateService) {
+    public InvestPriceUpdateScheduler(PriceUpdateService priceUpdateService,
+                                      SystemSchedulerRuntimeGateService schedulerRuntimeGateService) {
         this.priceUpdateService = priceUpdateService;
+        this.schedulerRuntimeGateService = schedulerRuntimeGateService;
     }
 
     @Scheduled(
@@ -27,6 +32,10 @@ public class InvestPriceUpdateScheduler {
         zone = "${invest.scheduler.price-update.tw.zone:Asia/Taipei}"
     )
     public void runTwMarketUpdate() {
+        if (!schedulerRuntimeGateService.isEnabled(SystemJobCode.PRICE_UPDATE_HOLDINGS)) {
+            log.info("略過 Invest 行情排程（TW）：任務已停用");
+            return;
+        }
         log.info("開始執行 Invest 行情排程（TW）");
         PriceUpdateService.SchedulerExecutionResult result = priceUpdateService.runForAllActiveUsers(
             Set.of("TW"),
@@ -48,6 +57,10 @@ public class InvestPriceUpdateScheduler {
         zone = "${invest.scheduler.price-update.us.zone:Asia/Taipei}"
     )
     public void runUsMarketUpdate() {
+        if (!schedulerRuntimeGateService.isEnabled(SystemJobCode.PRICE_UPDATE_HOLDINGS)) {
+            log.info("略過 Invest 行情排程（US）：任務已停用");
+            return;
+        }
         log.info("開始執行 Invest 行情排程（US）");
         PriceUpdateService.SchedulerExecutionResult result = priceUpdateService.runForAllActiveUsers(
             Set.of("US"),

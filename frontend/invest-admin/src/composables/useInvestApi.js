@@ -219,6 +219,16 @@ class InvestApiService {
     })
   }
 
+  runPriceBackfill(days = 30, scope = 'HOLDINGS_AND_WATCHLIST') {
+    const query = new URLSearchParams({
+      days: String(days),
+      scope
+    }).toString()
+    return this.request(`/jobs/run-price-backfill?${query}`, {
+      method: 'POST'
+    })
+  }
+
   runMarketAnalysis(scope = 'HOLDINGS_AND_WATCHLIST') {
     const query = new URLSearchParams({ scope }).toString()
     return this.request(`/jobs/run-market-analysis?${query}`, {
@@ -295,12 +305,49 @@ class InvestApiService {
     return this.request(`/opportunity-signals/latest?stockId=${stockId}`, { method: 'GET' })
   }
 
-  getSystemSchedulerJobs() {
-    return this.request('/system/scheduler/jobs', { method: 'GET' })
+  getSystemSchedulerJobs(params = {}) {
+    const query = new URLSearchParams(params).toString()
+    return this.request(query ? `/system/scheduler/jobs?${query}` : '/system/scheduler/jobs', { method: 'GET' })
+  }
+
+  getSystemSchedulerJob(jobCode) {
+    return this.request(`/system/scheduler/jobs/${jobCode}`, { method: 'GET' })
+  }
+
+  createSystemSchedulerJob(payload) {
+    return this.request('/system/scheduler/jobs', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  updateSystemSchedulerJob(jobCode, payload) {
+    return this.request(`/system/scheduler/jobs/${jobCode}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  toggleSystemSchedulerJob(jobCode, enabled) {
+    return this.request(`/system/scheduler/jobs/${jobCode}/toggle?enabled=${enabled ? 'true' : 'false'}`, {
+      method: 'PUT'
+    })
+  }
+
+  deleteSystemSchedulerJob(jobCode) {
+    return this.request(`/system/scheduler/jobs/${jobCode}`, {
+      method: 'DELETE'
+    })
   }
 
   runSystemSchedulerJobNow(jobCode) {
     return this.request(`/system/scheduler/jobs/${jobCode}/run-now`, {
+      method: 'POST'
+    })
+  }
+
+  executeSystemSchedulerJob(jobCode) {
+    return this.request(`/system/scheduler/jobs/${jobCode}/execute`, {
       method: 'POST'
     })
   }
@@ -313,6 +360,20 @@ class InvestApiService {
         : `/system/scheduler/jobs/${jobCode}/logs/paged`,
       { method: 'GET' }
     )
+  }
+
+  getSystemSchedulerJobExecutionsPaged(jobCode, params = {}) {
+    const query = new URLSearchParams(params).toString()
+    return this.request(
+      query
+        ? `/system/scheduler/jobs/${jobCode}/executions?${query}`
+        : `/system/scheduler/jobs/${jobCode}/executions`,
+      { method: 'GET' }
+    )
+  }
+
+  getSystemSchedulerJobLatestExecution(jobCode) {
+    return this.request(`/system/scheduler/jobs/${jobCode}/executions/latest`, { method: 'GET' })
   }
 }
 

@@ -11,6 +11,19 @@
         </button>
       </div>
 
+      <section class="card surface-card decision-focus-card">
+        <div class="section-header">
+          <h3>今日決策重點（Top 1）</h3>
+        </div>
+        <p class="focus-text">{{ decisionFocus }}</p>
+        <div class="risk-level-row">
+          <strong>風險等級：{{ riskLevel.label }}</strong>
+          <ul class="risk-reason-list">
+            <li v-for="(reason, idx) in riskLevel.reasons" :key="`risk-reason-${idx}`">{{ reason }}</li>
+          </ul>
+        </div>
+      </section>
+
       <section class="overview-strip">
         <article class="overview-card overview-card--accent">
           <span>總資產概況</span>
@@ -28,9 +41,13 @@
           <p>僅供觀察，不構成買進指令。</p>
         </article>
         <article class="overview-card">
-          <span>資料不足提醒</span>
-          <strong>{{ qualitySummary.insufficient + qualitySummary.stale }}</strong>
-          <p>若資料不足/過舊，建議先更新再判讀。</p>
+          <span>決策可信度</span>
+          <strong>{{ decisionCredibilityLabel }}</strong>
+          <p class="confidence-metrics">
+            GOOD {{ qualitySummary.good }} / PARTIAL {{ qualitySummary.partial }} /
+            STALE {{ qualitySummary.stale }} / INSUFFICIENT {{ qualitySummary.insufficient }}
+          </p>
+          <p class="confidence-note">資料品質將直接影響決策可信度。</p>
         </article>
       </section>
 
@@ -66,6 +83,7 @@
         <div class="section-header">
           <h3>我的持股強弱摘要</h3>
         </div>
+        <p v-if="strengthConclusion" class="section-conclusion">{{ strengthConclusion }}</p>
         <div v-if="holdingSnapshots.length === 0" class="empty-state">
           尚未有持股強弱分析資料，請先執行「更新我的持股行情」與「執行市場分析」。
         </div>
@@ -118,13 +136,13 @@
 
       <section class="card surface-card">
         <div class="section-header">
-          <h3>今日機會訊號摘要</h3>
+          <h3>今日最值得關注</h3>
         </div>
-        <div v-if="activeSignals.length === 0" class="empty-state">
+        <div v-if="topOpportunitySignals.length === 0" class="empty-state">
           目前沒有 ACTIVE 機會訊號，可先執行市場分析或觀察後續條件變化。
         </div>
         <ul v-else class="signal-list">
-          <li v-for="row in activeSignals" :key="row.id">
+          <li v-for="row in topOpportunitySignals" :key="row.id">
             <div class="row-main">
               <strong>{{ row.ticker }} {{ row.stockName }}</strong>
               <span class="chip">{{ row.signalScore ?? '-' }} 分</span>
@@ -184,6 +202,15 @@
           <button class="btn btn-primary" :disabled="!canRunPriceUpdate || actionLoading.priceUpdate" @click="runPriceUpdate">
             {{ actionLoading.priceUpdate ? '更新中...' : '更新我的持股行情' }}
           </button>
+          <div class="backfill-action">
+            <select v-model.number="backfillDays" class="select-control" :disabled="!canRunPriceBackfill || actionLoading.backfill">
+              <option :value="30">回補 30 日</option>
+              <option :value="60">回補 60 日</option>
+            </select>
+            <button class="btn btn-primary" :disabled="!canRunPriceBackfill || actionLoading.backfill" @click="runPriceBackfill">
+              {{ actionLoading.backfill ? '回補中...' : '回補歷史行情' }}
+            </button>
+          </div>
           <button class="btn btn-primary" :disabled="!canRunMarketAnalysis || actionLoading.marketAnalysis" @click="runMarketAnalysis">
             {{ actionLoading.marketAnalysis ? '分析中...' : '執行市場分析' }}
           </button>
@@ -224,8 +251,10 @@ const { currentUser } = useAuth()
 const loadingPage = ref(false)
 const actionLoading = reactive({
   priceUpdate: false,
-  marketAnalysis: false
+  marketAnalysis: false,
+  backfill: false
 })
+const backfillDays = ref(30)
 
 const overview = reactive({
   totalCost: 0,
@@ -253,6 +282,10 @@ const permissionSet = computed(() => {
 const canRunPriceUpdate = computed(() =>
   permissionSet.value.has('INVEST_JOB_RUN_PRICE_UPDATE')
   || permissionSet.value.has('INVEST_SYS_SCHEDULER_RUN')
+)
+
+const canRunPriceBackfill = computed(() =>
+  permissionSet.value.has('INVEST_JOB_RUN_PRICE_BACKFILL')
 )
 
 const canRunMarketAnalysis = computed(() =>
@@ -324,35 +357,122 @@ const qualitySummary = computed(() => {
   return summary
 })
 
+const totalHoldingSnapshotCount = computed(() => holdingSnapshots.value.length)
+const strongCount = computed(() => holdingSnapshots.value.filter((row) => row?.strengthLevel === 'STRONG').length)
+const weakCount = computed(() => holdingSnapshots.value.filter((row) => row?.strengthLevel === 'WEAK').length)
+const observeSignalCount = computed(() => activeSignals.value.filter((row) => row?.recommendation === 'OBSERVE').length)
+const waitPullbackSignalCount = computed(() => activeSignals.value.filter((row) => row?.recommendation === 'WAIT_PULLBACK').length)
+const staleOrInsufficientCount = computed(() => qualitySummary.value.stale + qualitySummary.value.insufficient)
+
+const decisionFocus = computed(() => {
+  if (staleOrInsufficientCount.value > 0) {
+    return `目前資料品質不足（${staleOrInsufficientCount.value} 檔），建議先更新行情再判斷`
+  }
+
+  if (strongCount.value > 0) {
+    return `有 ${strongCount.value} 檔強勢股，維持偏強觀察`
+  }
+
+  if (weakCount.value > 0) {
+    return `有 ${weakCount.value} 檔偏弱，需留意風險`
+  }
+
+  return '目前市場偏中性，暫無明確方向'
+})
+
+const decisionCredibilityLabel = computed(() => {
+  const total = totalHoldingSnapshotCount.value
+  if (total === 0) return '尚未分析'
+
+  if (staleOrInsufficientCount.value > 0) return '偏低'
+  if (qualitySummary.value.partial > 0) return '中等'
+  return '較高'
+})
+
+const riskLevel = computed(() => {
+  const total = totalHoldingSnapshotCount.value
+  const alerts = Number(overview.alertSummary?.totalActiveAlerts || 0)
+  const lowQualityCount = staleOrInsufficientCount.value
+  const lowQualityRatio = total > 0 ? lowQualityCount / total : 0
+  const partialRatio = total > 0 ? qualitySummary.value.partial / total : 0
+  const goodRatio = total > 0 ? qualitySummary.value.good / total : 0
+
+  if (alerts > 0 || (total > 0 && lowQualityRatio > 0.5)) {
+    const reasons = []
+    if (alerts > 0) reasons.push(`目前有 ${alerts} 筆警示事件。`)
+    if (total > 0 && lowQualityRatio > 0.5) reasons.push(`資料品質不足占比偏高（${lowQualityCount}/${total}）。`)
+    return { code: 'HIGH', label: '高', reasons }
+  }
+
+  if (total === 0) {
+    return { code: 'MEDIUM', label: '中', reasons: ['尚無持股強弱資料，先更新再判讀。'] }
+  }
+
+  const partialMany = partialRatio >= 0.4
+  const noStrong = strongCount.value === 0
+  if (partialMany || noStrong) {
+    const reasons = []
+    if (partialMany) reasons.push(`PARTIAL 比例偏高（${qualitySummary.value.partial}/${total}）。`)
+    if (noStrong) reasons.push('目前沒有 STRONG 持股。')
+    return { code: 'MEDIUM', label: '中', reasons }
+  }
+
+  if (strongCount.value > 0 && goodRatio >= 0.6) {
+    return { code: 'LOW', label: '低', reasons: ['有 STRONG 持股，且資料品質以 GOOD 為主。'] }
+  }
+
+  return { code: 'MEDIUM', label: '中', reasons: ['目前訊號偏中性，維持觀察。'] }
+})
+
+const strengthConclusion = computed(() => {
+  if (strongCount.value === 0 && weakCount.value === 0) {
+    return '目前無明顯強弱分布，市場偏中性'
+  }
+  return ''
+})
+
+const topOpportunitySignals = computed(() => {
+  const recommendationPriority = {
+    OBSERVE: 2,
+    WAIT_PULLBACK: 1,
+    REEVALUATE_WHEN_CONDITION_MET: 0,
+    NOT_SUITABLE_CHASE: 0
+  }
+
+  return [...activeSignals.value]
+    .sort((a, b) => {
+      const scoreDiff = Number(b?.signalScore || 0) - Number(a?.signalScore || 0)
+      if (scoreDiff !== 0) return scoreDiff
+      const priorityDiff = Number(recommendationPriority[b?.recommendation] || 0) - Number(recommendationPriority[a?.recommendation] || 0)
+      if (priorityDiff !== 0) return priorityDiff
+      return String(b?.tradeDate || '').localeCompare(String(a?.tradeDate || ''))
+    })
+    .slice(0, 3)
+})
+
 const generateDecisionInsights = () => {
   const insights = []
 
-  const strongCount = holdingSnapshots.value.filter((row) => row?.strengthLevel === 'STRONG').length
-  const weakCount = holdingSnapshots.value.filter((row) => row?.strengthLevel === 'WEAK').length
-  const observeCount = activeSignals.value.filter((row) => row?.recommendation === 'OBSERVE').length
-  const waitPullbackCount = activeSignals.value.filter((row) => row?.recommendation === 'WAIT_PULLBACK').length
-  const staleCount = qualitySummary.value.stale
-  const insufficientCount = qualitySummary.value.insufficient
   const alertCount = Number(overview.alertSummary?.totalActiveAlerts || 0)
 
-  if (strongCount > 0) {
-    insights.push(`有 ${strongCount} 檔持股呈現強勢，維持偏強觀察。`)
+  if (strongCount.value > 0) {
+    insights.push(`有 ${strongCount.value} 檔持股呈現強勢，維持偏強觀察。`)
   }
 
-  if (weakCount > 0) {
-    insights.push(`有 ${weakCount} 檔持股偏弱，先留意風險變化。`)
+  if (weakCount.value > 0) {
+    insights.push(`有 ${weakCount.value} 檔持股偏弱，先留意風險變化。`)
   }
 
-  if (observeCount > 0) {
-    insights.push(`目前有 ${observeCount} 筆 OBSERVE 訊號，可持續觀察條件延續。`)
+  if (observeSignalCount.value > 0) {
+    insights.push(`目前有 ${observeSignalCount.value} 筆 OBSERVE 訊號，可持續觀察條件延續。`)
   }
 
-  if (waitPullbackCount > 0) {
-    insights.push(`目前有 ${waitPullbackCount} 筆 WAIT_PULLBACK 訊號，先等待回檔。`)
+  if (waitPullbackSignalCount.value > 0) {
+    insights.push(`目前有 ${waitPullbackSignalCount.value} 筆 WAIT_PULLBACK 訊號，先等待回檔。`)
   }
 
-  if (staleCount > 0 || insufficientCount > 0) {
-    insights.push(`資料品質提醒：STALE ${staleCount} 檔、INSUFFICIENT ${insufficientCount} 檔，暫不判斷。`)
+  if (qualitySummary.value.stale > 0 || qualitySummary.value.insufficient > 0) {
+    insights.push(`資料品質提醒：STALE ${qualitySummary.value.stale} 檔、INSUFFICIENT ${qualitySummary.value.insufficient} 檔，暫不判斷。`)
   }
 
   if (alertCount > 0) {
@@ -445,6 +565,25 @@ const runPriceUpdate = async () => {
     toast.error(`執行價格更新失敗：${error.message || '未知錯誤'}`)
   } finally {
     actionLoading.priceUpdate = false
+  }
+}
+
+const runPriceBackfill = async () => {
+  if (!canRunPriceBackfill.value) {
+    toast.error('你沒有執行歷史行情回補的權限')
+    return
+  }
+
+  actionLoading.backfill = true
+  try {
+    const result = await investApiService.runPriceBackfill(backfillDays.value, 'HOLDINGS_AND_WATCHLIST')
+    const message = result?.message || (result?.status ? `歷史回補結果：${result.status}` : '歷史行情回補完成')
+    toast.success(message)
+    await reloadAll()
+  } catch (error) {
+    toast.error(`執行歷史行情回補失敗：${error.message || '未知錯誤'}`)
+  } finally {
+    actionLoading.backfill = false
   }
 }
 
@@ -558,6 +697,15 @@ onMounted(reloadAll)
 .overview-card strong { display: block; margin: 6px 0; font-size: 1.35rem; }
 .overview-card p { margin: 0; color: var(--text-secondary); font-size: 0.86rem; line-height: 1.4; }
 .overview-card--accent { background: linear-gradient(135deg, rgba(15, 118, 110, 0.12), rgba(16, 185, 129, 0.09)); }
+.confidence-metrics { margin-top: 4px !important; font-size: 0.8rem !important; line-height: 1.35 !important; }
+.confidence-note { margin-top: 6px !important; font-size: 0.8rem !important; color: #6b7280 !important; }
+
+.decision-focus-card { background: linear-gradient(135deg, rgba(30, 64, 175, 0.08), rgba(2, 132, 199, 0.08)); }
+.focus-text { margin: 0; font-size: 1.05rem; font-weight: 700; color: #0f172a; }
+.risk-level-row { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.risk-level-row strong { color: #1f2937; }
+.risk-reason-list { margin: 0; padding-left: 18px; color: var(--text-secondary); font-size: 0.84rem; }
+.risk-reason-list li { margin: 2px 0; }
 
 .section-header h3 { margin: 0 0 10px; }
 .data-asof-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
@@ -565,6 +713,16 @@ onMounted(reloadAll)
 .asof-item span { color: var(--text-secondary); font-size: 0.82rem; }
 .asof-item strong { display: block; margin: 4px 0; }
 .asof-item p { margin: 0; color: var(--text-secondary); font-size: 0.82rem; }
+
+.section-conclusion {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+  font-size: 0.9rem;
+}
 
 .strength-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 12px; }
 .strength-panel { border: 1px solid var(--border-color); border-radius: 12px; padding: 10px; background: #fff; }
@@ -591,6 +749,15 @@ onMounted(reloadAll)
 .quality-item strong { display: block; margin-top: 4px; }
 
 .action-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.backfill-action { display: flex; gap: 8px; align-items: center; }
+.select-control {
+  min-width: 118px;
+  height: 38px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: #fff;
+  padding: 0 10px;
+}
 
 .hint-list { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
 .hint-list li { border-radius: 12px; padding: 10px 12px; border: 1px solid var(--border-color); background: #fff; }

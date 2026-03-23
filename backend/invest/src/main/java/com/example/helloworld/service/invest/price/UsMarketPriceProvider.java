@@ -17,6 +17,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -26,15 +28,18 @@ public class UsMarketPriceProvider implements MarketPriceProvider {
 
     private final HttpClient httpClient;
     private final String stooqUrlTemplate;
+    private final String stooqHistoryUrlTemplate;
     private final String userAgent;
 
     public UsMarketPriceProvider(@Value("${invest.price-provider.timeout-ms:8000}") long timeoutMs,
                                  @Value("${invest.price-provider.us.stooq-url-template:https://stooq.com/q/l/?s=%s&i=d}") String stooqUrlTemplate,
+                                 @Value("${invest.price-provider.us.stooq-history-url-template:https://stooq.com/q/d/l/?s=%s&i=d}") String stooqHistoryUrlTemplate,
                                  @Value("${invest.price-provider.user-agent:InvestAdmin/1.0}") String userAgent) {
         this.httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofMillis(timeoutMs))
             .build();
         this.stooqUrlTemplate = stooqUrlTemplate;
+        this.stooqHistoryUrlTemplate = stooqHistoryUrlTemplate;
         this.userAgent = userAgent;
     }
 
@@ -65,6 +70,33 @@ public class UsMarketPriceProvider implements MarketPriceProvider {
                 Thread.currentThread().interrupt();
             }
             return Optional.empty();
+        }
+    }
+
+    @Override
+    public List<PriceQuoteSnapshot> fetchHistoricalQuotes(Stock stock, int days) {
+        int safeDays = Math.max(1, days);
+        String symbol = buildStooqSymbol(stock.getTicker());
+        String url = String.format(stooqHistoryUrlTemplate, URLEncoder.encode(symbol, StandardCharsets.UTF_8));
+
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .header("Accept", "text/csv")
+            .header("User-Agent", userAgent)
+            .GET()
+            .build();
+
+        try {
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200 || response.body() == null || response.body().isBlank()) {
+                return List.of();
+            }
+            return parseHistoricalCsv(response.body(), safeDays);
+        } catch (IOException | InterruptedException e) {
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+            return List.of();
         }
     }
 
@@ -99,6 +131,56 @@ public class UsMarketPriceProvider implements MarketPriceProvider {
 
         PriceQuoteSnapshot snapshot = new PriceQuoteSnapshot();
         snapshot.setTradeDate(tradeDate);
+        snapshot.setOpenPrice(open == null ? close : open);
+        snapshot.setHighPrice(high == null ? close : high);
+        snapshot.setLowPrice(low == null ? close : low);
+        snapshot.setClosePrice(close);
+        snapshot.setVolume(volume == null ? 0L : volume);
+        snapshot.setChangeAmount(null);
+        snapshot.setChangePercent(null);
+        snapshot.setDataSource("US_PROVIDER");
+        snapshot.setFetchedAt(fetchedAt);
+        snapshot.setLatencyType("DELAYED");
+        return Optional.of(snapshot);
+    }
+
+    private List<PriceQuoteSnapshot> parseHistoricalCsv(String csv, int days) {
+        String[] lines = csv.split("\\R");
+        if (lines.length <= 1) {
+            return List.of();
+        }
+
+        LocalDateTime fetchedAt = LocalDateTime.now(NEW_YORK_ZONE);
+        return java.util.Arrays.stream(lines)
+            .skip(1)
+            .map(line -> parseHistoricalRow(line, fetchedAt))
+            .flatMap(Optional::stream)
+            .sorted(Comparator.comparing(PriceQuoteSnapshot::getTradeDate).reversed())
+            .limit(days)
+            .toList();
+    }
+
+    private Optional<PriceQuoteSnapshot> parseHistoricalRow(String line, LocalDateTime fetchedAt) {
+        if (line == null || line.isBlank()) {
+            return Optional.empty();
+        }
+        String[] values = line.split(",");
+        if (values.length < 6) {
+            return Optional.empty();
+        }
+
+        Optional<LocalDate> tradeDateOpt = parseDate(values[0]);
+        BigDecimal open = decimalValue(values[1]);
+        BigDecimal high = decimalValue(values[2]);
+        BigDecimal low = decimalValue(values[3]);
+        BigDecimal close = decimalValue(values[4]);
+        Long volume = longValue(values[5]);
+        if (tradeDateOpt.isEmpty() || close == null) {
+            return Optional.empty();
+        }
+
+        PriceQuoteSnapshot snapshot = new PriceQuoteSnapshot();
+        snapshot.setTradeDate(tradeDateOpt.get());
         snapshot.setOpenPrice(open == null ? close : open);
         snapshot.setHighPrice(high == null ? close : high);
         snapshot.setLowPrice(low == null ? close : low);

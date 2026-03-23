@@ -4,6 +4,7 @@ import com.example.helloworld.dto.common.ApiResponse;
 import com.example.helloworld.dto.invest.RunAlertPollingJobResponseDto;
 import com.example.helloworld.dto.invest.RunDailyPortfolioRiskJobResponseDto;
 import com.example.helloworld.dto.invest.RunMarketAnalysisResponseDto;
+import com.example.helloworld.dto.invest.RunPriceBackfillResponseDto;
 import com.example.helloworld.dto.invest.RunPriceUpdateResponseDto;
 import com.example.helloworld.service.invest.InvestJobService;
 import org.springframework.http.ResponseEntity;
@@ -54,6 +55,20 @@ public class InvestJobController {
             ));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.fail("執行持股行情更新失敗：" + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/run-price-backfill")
+    public ResponseEntity<ApiResponse<RunPriceBackfillResponseDto>> runPriceBackfill(
+        @RequestParam(defaultValue = "30") Integer days,
+        @RequestParam(defaultValue = "HOLDINGS_AND_WATCHLIST") String scope
+    ) {
+        try {
+            return ResponseEntity.ok(ApiResponse.ok(
+                investJobService.runPriceBackfillForCurrentUser(days, scope)
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.fail("執行歷史行情回補失敗：" + e.getMessage()));
         }
     }
 

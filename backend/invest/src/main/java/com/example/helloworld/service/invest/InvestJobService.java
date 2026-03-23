@@ -3,6 +3,7 @@ package com.example.helloworld.service.invest;
 import com.example.helloworld.dto.invest.RunDailyPortfolioRiskJobResponseDto;
 import com.example.helloworld.dto.invest.RunAlertPollingJobResponseDto;
 import com.example.helloworld.dto.invest.RunMarketAnalysisResponseDto;
+import com.example.helloworld.dto.invest.RunPriceBackfillResponseDto;
 import com.example.helloworld.dto.invest.RunPriceUpdateResponseDto;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,15 +17,18 @@ public class InvestJobService {
     private final DailyReportBatchService dailyReportBatchService;
     private final PortfolioAlertPollingService portfolioAlertPollingService;
     private final PriceUpdateService priceUpdateService;
+    private final PriceBackfillService priceBackfillService;
     private final MarketAnalysisExecutionService marketAnalysisExecutionService;
 
     public InvestJobService(DailyReportBatchService dailyReportBatchService,
                             PortfolioAlertPollingService portfolioAlertPollingService,
                             PriceUpdateService priceUpdateService,
+                            PriceBackfillService priceBackfillService,
                             MarketAnalysisExecutionService marketAnalysisExecutionService) {
         this.dailyReportBatchService = dailyReportBatchService;
         this.portfolioAlertPollingService = portfolioAlertPollingService;
         this.priceUpdateService = priceUpdateService;
+        this.priceBackfillService = priceBackfillService;
         this.marketAnalysisExecutionService = marketAnalysisExecutionService;
     }
 
@@ -60,6 +64,10 @@ public class InvestJobService {
 
     public RunPriceUpdateResponseDto runPriceUpdateForCurrentUser() {
         return priceUpdateService.runForCurrentUser();
+    }
+
+    public RunPriceBackfillResponseDto runPriceBackfillForCurrentUser(Integer days, String scope) {
+        return priceBackfillService.runForCurrentUser(days, scope);
     }
 
     public RunMarketAnalysisResponseDto runMarketAnalysisForCurrentUser(String scope) {
