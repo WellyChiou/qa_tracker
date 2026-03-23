@@ -16,16 +16,16 @@ public class InvestJobService {
     private final DailyReportBatchService dailyReportBatchService;
     private final PortfolioAlertPollingService portfolioAlertPollingService;
     private final PriceUpdateService priceUpdateService;
-    private final MarketAnalysisService marketAnalysisService;
+    private final MarketAnalysisExecutionService marketAnalysisExecutionService;
 
     public InvestJobService(DailyReportBatchService dailyReportBatchService,
                             PortfolioAlertPollingService portfolioAlertPollingService,
                             PriceUpdateService priceUpdateService,
-                            MarketAnalysisService marketAnalysisService) {
+                            MarketAnalysisExecutionService marketAnalysisExecutionService) {
         this.dailyReportBatchService = dailyReportBatchService;
         this.portfolioAlertPollingService = portfolioAlertPollingService;
         this.priceUpdateService = priceUpdateService;
-        this.marketAnalysisService = marketAnalysisService;
+        this.marketAnalysisExecutionService = marketAnalysisExecutionService;
     }
 
     public RunDailyPortfolioRiskJobResponseDto runDailyPortfolioRiskReportForCurrentUser(LocalDate reportDate) {
@@ -63,6 +63,6 @@ public class InvestJobService {
     }
 
     public RunMarketAnalysisResponseDto runMarketAnalysisForCurrentUser(String scope) {
-        return marketAnalysisService.runForCurrentUser(scope);
+        return marketAnalysisExecutionService.runForCurrentUserWithLog(scope, "手動觸發（Invest Jobs API）");
     }
 }

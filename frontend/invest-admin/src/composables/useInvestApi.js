@@ -294,6 +294,26 @@ class InvestApiService {
   getLatestOpportunitySignal(stockId) {
     return this.request(`/opportunity-signals/latest?stockId=${stockId}`, { method: 'GET' })
   }
+
+  getSystemSchedulerJobs() {
+    return this.request('/system/scheduler/jobs', { method: 'GET' })
+  }
+
+  runSystemSchedulerJobNow(jobCode) {
+    return this.request(`/system/scheduler/jobs/${jobCode}/run-now`, {
+      method: 'POST'
+    })
+  }
+
+  getSystemSchedulerJobLogsPaged(jobCode, params = {}) {
+    const query = new URLSearchParams(params).toString()
+    return this.request(
+      query
+        ? `/system/scheduler/jobs/${jobCode}/logs/paged?${query}`
+        : `/system/scheduler/jobs/${jobCode}/logs/paged`,
+      { method: 'GET' }
+    )
+  }
 }
 
 export const investApiService = new InvestApiService()

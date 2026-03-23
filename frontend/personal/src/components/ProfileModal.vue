@@ -433,8 +433,9 @@ const loadLineBotInfo = async () => {
     // 嘗試獲取 QR Code URL
     try {
       const qrCodeResponse = await api.request('/system-settings/line.bot.qr-code-url')
-      if (qrCodeResponse?.setting?.settingValue) {
-        lineBotQrCodeUrl.value = qrCodeResponse.setting.settingValue
+      const value = qrCodeResponse?.settingValue
+      if (value) {
+        lineBotQrCodeUrl.value = value
       }
     } catch (e) {
       // QR Code URL 不存在，忽略
@@ -443,8 +444,9 @@ const loadLineBotInfo = async () => {
     // 嘗試獲取加入連結（優先）
     try {
       const joinUrlResponse = await api.request('/system-settings/line.bot.join-url')
-      if (joinUrlResponse?.setting?.settingValue) {
-        lineBotJoinUrl.value = joinUrlResponse.setting.settingValue
+      const value = joinUrlResponse?.settingValue
+      if (value) {
+        lineBotJoinUrl.value = value
       }
     } catch (e) {
       // 加入連結不存在，忽略
@@ -454,8 +456,9 @@ const loadLineBotInfo = async () => {
     if (!lineBotJoinUrl.value) {
       try {
         const botIdResponse = await api.request('/system-settings/line.bot.id')
-        if (botIdResponse?.setting?.settingValue) {
-          lineBotId.value = botIdResponse.setting.settingValue
+        const value = botIdResponse?.settingValue
+        if (value) {
+          lineBotId.value = value
         }
       } catch (e) {
         // Bot ID 不存在，忽略
@@ -1038,4 +1041,3 @@ watch(() => props.show, (newValue) => {
   }
 }
 </style>
-

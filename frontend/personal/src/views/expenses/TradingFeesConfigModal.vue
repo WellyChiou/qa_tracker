@@ -97,10 +97,11 @@ const config = ref({
 const loadConfig = async () => {
   try {
     const response = await apiService.request('/system-settings/trading.fees')
-    if (response && response.setting && response.setting.settingValue) {
-      const parsed = typeof response.setting.settingValue === 'string' 
-        ? JSON.parse(response.setting.settingValue) 
-        : response.setting.settingValue
+    const settingValue = response?.settingValue
+    if (settingValue) {
+      const parsed = typeof settingValue === 'string'
+        ? JSON.parse(settingValue)
+        : settingValue
       config.value = {
         commission: parsed.commission || 0.1425,
         tax: {
@@ -321,4 +322,3 @@ onMounted(() => {
   transition: all 0.3s ease;
 }
 </style>
-

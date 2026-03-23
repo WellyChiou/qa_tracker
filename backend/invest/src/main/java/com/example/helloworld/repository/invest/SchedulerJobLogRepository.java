@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.util.Optional;
 
 @Repository
 public interface SchedulerJobLogRepository extends JpaRepository<SchedulerJobLog, Long> {
@@ -27,4 +28,8 @@ public interface SchedulerJobLogRepository extends JpaRepository<SchedulerJobLog
         @Param("status") SchedulerJobStatusCode status,
         Pageable pageable
     );
+
+    Page<SchedulerJobLog> findByJobNameOrderByStartedAtDesc(String jobName, Pageable pageable);
+
+    Optional<SchedulerJobLog> findTopByJobNameOrderByStartedAtDesc(String jobName);
 }
