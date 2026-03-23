@@ -195,12 +195,11 @@
 
       <section class="card surface-card">
         <div class="section-header">
-          <h3>決策提示</h3>
+          <h3>決策洞察（Decision Insight）</h3>
         </div>
         <ul class="hint-list">
-          <li v-for="(hint, idx) in decisionHints" :key="idx" :class="hint.type">
-            <strong>{{ hint.title }}</strong>
-            <p>{{ hint.text }}</p>
+          <li v-for="(insight, idx) in decisionInsights" :key="idx" class="hint-neutral">
+            <p>{{ insight }}</p>
           </li>
         </ul>
         <p class="disclaimer">
@@ -325,53 +324,61 @@ const qualitySummary = computed(() => {
   return summary
 })
 
-const decisionHints = computed(() => {
-  const hints = []
+const generateDecisionInsights = () => {
+  const insights = []
 
-  if (qualitySummary.value.insufficient > 0) {
-    hints.push({
-      type: 'hint-neutral',
-      title: '資料不足',
-      text: `有 ${qualitySummary.value.insufficient} 檔持股資料不足，先補資料再判斷。`
-    })
+  const strongCount = holdingSnapshots.value.filter((row) => row?.strengthLevel === 'STRONG').length
+  const weakCount = holdingSnapshots.value.filter((row) => row?.strengthLevel === 'WEAK').length
+  const observeCount = activeSignals.value.filter((row) => row?.recommendation === 'OBSERVE').length
+  const waitPullbackCount = activeSignals.value.filter((row) => row?.recommendation === 'WAIT_PULLBACK').length
+  const staleCount = qualitySummary.value.stale
+  const insufficientCount = qualitySummary.value.insufficient
+  const alertCount = Number(overview.alertSummary?.totalActiveAlerts || 0)
+
+  if (strongCount > 0) {
+    insights.push(`有 ${strongCount} 檔持股呈現強勢，維持偏強觀察。`)
   }
 
-  if (qualitySummary.value.stale > 0 || qualitySummary.value.partial > 0) {
-    hints.push({
-      type: 'hint-caution',
-      title: '暫不判斷',
-      text: '部分資料過舊或不完整，先更新行情與分析結果。'
-    })
+  if (weakCount > 0) {
+    insights.push(`有 ${weakCount} 檔持股偏弱，先留意風險變化。`)
   }
 
-  const waitingPullbackCount = activeSignals.value.filter((row) => row?.recommendation === 'WAIT_PULLBACK').length
-  if (waitingPullbackCount > 0) {
-    hints.push({
-      type: 'hint-watch',
-      title: '等待回檔',
-      text: `目前有 ${waitingPullbackCount} 檔訊號偏向等待回檔，不建議追價。`
-    })
+  if (observeCount > 0) {
+    insights.push(`目前有 ${observeCount} 筆 OBSERVE 訊號，可持續觀察條件延續。`)
   }
 
-  const strongObservationCount = strongHoldings.value.length
-  if (strongObservationCount > 0) {
-    hints.push({
-      type: 'hint-positive',
-      title: '偏強觀察',
-      text: `目前有 ${strongObservationCount} 檔持股偏強，維持觀察，不做保證式結論。`
-    })
+  if (waitPullbackCount > 0) {
+    insights.push(`目前有 ${waitPullbackCount} 筆 WAIT_PULLBACK 訊號，先等待回檔。`)
   }
 
-  if (hints.length === 0) {
-    hints.push({
-      type: 'hint-neutral',
-      title: '暫不判斷',
-      text: '目前沒有明確可用訊號，建議持續追蹤資料更新。'
-    })
+  if (staleCount > 0 || insufficientCount > 0) {
+    insights.push(`資料品質提醒：STALE ${staleCount} 檔、INSUFFICIENT ${insufficientCount} 檔，暫不判斷。`)
   }
 
-  return hints.slice(0, 4)
-})
+  if (alertCount > 0) {
+    insights.push(`目前有 ${alertCount} 筆警示事件，請先確認風險狀態。`)
+  }
+
+  if (insights.length === 0) {
+    return [
+      '目前無明顯異常。',
+      `目前追蹤持股共 ${Number(overview.holdingCount || 0)} 檔，維持日常觀察。`,
+      '資料品質目前可用，持續依流程更新與判讀。'
+    ]
+  }
+
+  if (insights.length < 3) {
+    insights.push(`目前追蹤持股共 ${Number(overview.holdingCount || 0)} 檔，維持紀律觀察。`)
+  }
+
+  if (insights.length < 3) {
+    insights.push('若資料品質下降，請先更新行情再做判讀。')
+  }
+
+  return insights.slice(0, 5)
+}
+
+const decisionInsights = computed(() => generateDecisionInsights())
 
 const reloadAll = async () => {
   loadingPage.value = true
