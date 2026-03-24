@@ -45,8 +45,9 @@ TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
 # 備份函數
 backup_database() {
     local db_name=$1
-    local db_backup_dir="${BACKUP_DIR}/${db_name}"
-    local backup_file="${db_backup_dir}/${db_name}_${TIMESTAMP}.sql"
+    # BACKUP_DIR 已由 compose 指向系統專屬目錄（例如 ./backups/personal），
+    # 檔案直接落在 BACKUP_DIR，避免產生 personal/qa_tracker 雙層路徑。
+    local backup_file="${BACKUP_DIR}/${db_name}_${TIMESTAMP}.sql"
     local compressed_file="${backup_file}.gz"
     
     log_info "開始備份資料庫: $db_name"
@@ -57,12 +58,9 @@ backup_database() {
         return 1
     fi
     
-    # 創建資料庫專屬備份目錄
-    mkdir -p "$db_backup_dir"
-    
     # 檢查備份目錄權限
-    if [ ! -w "$db_backup_dir" ]; then
-        log_error "備份目錄沒有寫入權限: $db_backup_dir"
+    if [ ! -w "$BACKUP_DIR" ]; then
+        log_error "備份目錄沒有寫入權限: $BACKUP_DIR"
         return 1
     fi
     

@@ -29,6 +29,8 @@ const investApiClient = createApiClient({
 export const setLoadingCallbacks = investApiClient.setLoadingCallbacks
 export const setTokens = investApiClient.setTokens
 export const clearTokens = investApiClient.clearTokens
+export const getInvestApiBaseUrl = investApiClient.getApiBaseUrl
+export const getInvestAccessToken = investApiClient.getAccessToken
 
 class InvestApiService {
   async request(url, options = {}) {
@@ -374,6 +376,317 @@ class InvestApiService {
 
   getSystemSchedulerJobLatestExecution(jobCode) {
     return this.request(`/system/scheduler/jobs/${jobCode}/executions/latest`, { method: 'GET' })
+  }
+
+  getSystemUsersPaged(params = {}) {
+    const query = new URLSearchParams(params).toString()
+    return this.request(query ? `/system/users/paged?${query}` : '/system/users/paged', { method: 'GET' })
+  }
+
+  getSystemUser(uid) {
+    return this.request(`/system/users/${uid}`, { method: 'GET' })
+  }
+
+  createSystemUser(payload) {
+    return this.request('/system/users', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  updateSystemUser(uid, payload) {
+    return this.request(`/system/users/${uid}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  setSystemUserEnabled(uid, enabled) {
+    return this.request(`/system/users/${uid}/enabled`, {
+      method: 'PUT',
+      body: JSON.stringify({ enabled })
+    })
+  }
+
+  resetSystemUserPassword(uid, newPassword) {
+    return this.request(`/system/users/${uid}/reset-password`, {
+      method: 'POST',
+      body: JSON.stringify({ newPassword })
+    })
+  }
+
+  getSystemRolesPaged(params = {}) {
+    const query = new URLSearchParams(params).toString()
+    return this.request(query ? `/system/roles/paged?${query}` : '/system/roles/paged', { method: 'GET' })
+  }
+
+  getSystemRole(roleId) {
+    return this.request(`/system/roles/${roleId}`, { method: 'GET' })
+  }
+
+  createSystemRole(payload) {
+    return this.request('/system/roles', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  updateSystemRole(roleId, payload) {
+    return this.request(`/system/roles/${roleId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  deleteSystemRole(roleId) {
+    return this.request(`/system/roles/${roleId}`, {
+      method: 'DELETE'
+    })
+  }
+
+  getSystemRolePermissionOptions() {
+    return this.request('/system/roles/permission-options', { method: 'GET' })
+  }
+
+  getSystemRolePermissions(roleId) {
+    return this.request(`/system/roles/${roleId}/permissions`, { method: 'GET' })
+  }
+
+  updateSystemRolePermissions(roleId, payload) {
+    return this.request(`/system/roles/${roleId}/permissions`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  getSystemPermissionsPaged(params = {}) {
+    const query = new URLSearchParams(params).toString()
+    return this.request(query ? `/system/permissions/paged?${query}` : '/system/permissions/paged', { method: 'GET' })
+  }
+
+  getSystemPermission(permissionId) {
+    return this.request(`/system/permissions/${permissionId}`, { method: 'GET' })
+  }
+
+  createSystemPermission(payload) {
+    return this.request('/system/permissions', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  updateSystemPermission(permissionId, payload) {
+    return this.request(`/system/permissions/${permissionId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  deleteSystemPermission(permissionId) {
+    return this.request(`/system/permissions/${permissionId}`, {
+      method: 'DELETE'
+    })
+  }
+
+  getSystemPermissionRoleBindings(permissionId) {
+    return this.request(`/system/permissions/${permissionId}/role-bindings`, { method: 'GET' })
+  }
+
+  getSystemUrlPermissionsPaged(params = {}) {
+    const query = new URLSearchParams(params).toString()
+    return this.request(query ? `/system/url-permissions/paged?${query}` : '/system/url-permissions/paged', { method: 'GET' })
+  }
+
+  getSystemUrlPermission(urlPermissionId) {
+    return this.request(`/system/url-permissions/${urlPermissionId}`, { method: 'GET' })
+  }
+
+  createSystemUrlPermission(payload) {
+    return this.request('/system/url-permissions', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  updateSystemUrlPermission(urlPermissionId, payload) {
+    return this.request(`/system/url-permissions/${urlPermissionId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  deleteSystemUrlPermission(urlPermissionId) {
+    return this.request(`/system/url-permissions/${urlPermissionId}`, {
+      method: 'DELETE'
+    })
+  }
+
+  getSystemUrlPermissionOptions() {
+    return this.request('/system/url-permissions/permission-options', { method: 'GET' })
+  }
+
+  getSystemUrlMethodOptions() {
+    return this.request('/system/url-permissions/method-options', { method: 'GET' })
+  }
+
+  getSystemMenusTree() {
+    return this.request('/system/menus/tree', { method: 'GET' })
+  }
+
+  getSystemMenu(menuId) {
+    return this.request(`/system/menus/${menuId}`, { method: 'GET' })
+  }
+
+  createSystemMenu(payload) {
+    return this.request('/system/menus', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  updateSystemMenu(menuId, payload) {
+    return this.request(`/system/menus/${menuId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  deleteSystemMenu(menuId) {
+    return this.request(`/system/menus/${menuId}`, {
+      method: 'DELETE'
+    })
+  }
+
+  setSystemMenuEnabled(menuId, enabled) {
+    return this.request(`/system/menus/${menuId}/enabled`, {
+      method: 'PUT',
+      body: JSON.stringify({ enabled })
+    })
+  }
+
+  getSystemMenuParentOptions(excludeId = null) {
+    const query = excludeId ? `?excludeId=${excludeId}` : ''
+    return this.request(`/system/menus/parent-options${query}`, { method: 'GET' })
+  }
+
+  getSystemMenuRequiredPermissionOptions() {
+    return this.request('/system/menus/required-permission-options', { method: 'GET' })
+  }
+
+  getSystemMaintenanceSettings() {
+    return this.request('/system/maintenance/settings', { method: 'GET' })
+  }
+
+  getSystemMaintenanceSettingsByCategory(category) {
+    return this.request(`/system/maintenance/settings/category/${encodeURIComponent(category)}`, { method: 'GET' })
+  }
+
+  getSystemMaintenanceSettingByKey(key) {
+    return this.request(`/system/maintenance/settings/${encodeURIComponent(key)}`, { method: 'GET' })
+  }
+
+  createSystemMaintenanceSetting(payload) {
+    return this.request('/system/maintenance/settings', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  updateSystemMaintenanceSetting(key, payload) {
+    return this.request(`/system/maintenance/settings/${encodeURIComponent(key)}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  refreshSystemMaintenanceSettings() {
+    return this.request('/system/maintenance/settings/refresh', { method: 'POST' })
+  }
+
+  getSystemStrategySettings() {
+    return this.request('/system/strategy-settings', { method: 'GET' })
+  }
+
+  updateSystemStrategySettings(payload) {
+    return this.request('/system/strategy-settings', {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  getSystemMaintenanceBackups() {
+    return this.request('/system/maintenance/backups', { method: 'GET' })
+  }
+
+  createSystemMaintenanceBackup() {
+    return this.request('/system/maintenance/backups/create', { method: 'POST' })
+  }
+
+  deleteSystemMaintenanceBackup(relativePath) {
+    return this.request(`/system/maintenance/backups/delete?path=${encodeURIComponent(relativePath)}`, {
+      method: 'DELETE'
+    })
+  }
+
+  sendSystemLineTestGroupPush(payload) {
+    return this.request('/line/test/group-push', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  getSystemLineGroups() {
+    return this.request('/system/line-groups', { method: 'GET' })
+  }
+
+  getSystemLineGroup(groupId) {
+    return this.request(`/system/line-groups/${encodeURIComponent(groupId)}`, { method: 'GET' })
+  }
+
+  createSystemLineGroup(payload) {
+    return this.request('/system/line-groups', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  updateSystemLineGroup(groupId, payload) {
+    return this.request(`/system/line-groups/${encodeURIComponent(groupId)}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  deleteSystemLineGroup(groupId) {
+    return this.request(`/system/line-groups/${encodeURIComponent(groupId)}`, {
+      method: 'DELETE'
+    })
+  }
+
+  getSystemLineGroupMembers(groupId) {
+    return this.request(`/system/line-groups/${encodeURIComponent(groupId)}/members`, {
+      method: 'GET'
+    })
+  }
+
+  addSystemLineGroupMember(groupId, payload) {
+    return this.request(`/system/line-groups/${encodeURIComponent(groupId)}/members`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  updateSystemLineGroupMember(groupId, memberId, payload) {
+    return this.request(`/system/line-groups/${encodeURIComponent(groupId)}/members/${memberId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  deleteSystemLineGroupMember(groupId, memberId) {
+    return this.request(`/system/line-groups/${encodeURIComponent(groupId)}/members/${memberId}`, {
+      method: 'DELETE'
+    })
   }
 }
 

@@ -526,9 +526,8 @@ watch(activeTab, (newTab) => {
 
 onMounted(() => {
   loadSettings()
-  if (activeTab.value === 'backups') {
-    loadBackups()
-  }
+  // 首屏即載入備份清單，讓頂部「備份檔案」統計在首次進頁就正確顯示。
+  loadBackups()
 })
 </script>
 

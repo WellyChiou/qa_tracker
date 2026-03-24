@@ -1,5 +1,8 @@
 # 前端白屏問題診斷與修復指南
 
+> 本文件內容已合併至 [docs/TROUBLESHOOTING.md](./TROUBLESHOOTING.md) 的「Frontend 白屏問題專章」。
+> 目前保留本檔作為舊連結相容入口。
+
 ## 問題描述
 
 前端網站運行幾天後變成白屏，但後端沒有錯誤。執行 `docker compose restart` 無效，但重新執行 `deploy-to-server.sh` 後可以恢復。
@@ -270,4 +273,3 @@ tail -f /var/log/frontend-monitor.log
 2. 容器日誌：`docker logs vue_frontend` 和 `docker logs vue_frontend_church`
 3. 系統資源：`df -h` 和 `docker system df`
 4. 系統日誌：`journalctl -u docker`（如果使用 systemd）
-

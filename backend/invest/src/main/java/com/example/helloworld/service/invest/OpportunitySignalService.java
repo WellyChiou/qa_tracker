@@ -113,6 +113,7 @@ public class OpportunitySignalService {
         dto.setSignalScore(signal.getSignalScore());
         dto.setRecommendation(signal.getRecommendationCode().name());
         dto.setStatus(signal.getStatus().name());
+        dto.setStrategyVersion(signal.getStrategyVersion());
         dto.setSummary(signal.getSummaryText());
         dto.setConditionText(signal.getConditionText());
         dto.setUpdatedAt(signal.getUpdatedAt());
@@ -133,6 +134,7 @@ public class OpportunitySignalService {
         dto.setSignalScore(signal.getSignalScore());
         dto.setRecommendation(signal.getRecommendationCode().name());
         dto.setStatus(signal.getStatus().name());
+        dto.setStrategyVersion(signal.getStrategyVersion());
         dto.setSummary(signal.getSummaryText());
         dto.setConditionText(signal.getConditionText());
         dto.setDisclaimer(signal.getDisclaimerText());

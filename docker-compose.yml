@@ -63,8 +63,7 @@ services:
     volumes:
       #- /root/project/work/uploads/church:/app/uploads/church
       - ../uploads:/app/uploads
-      #- /root/project/work/backups:/app/backups
-      - ../backups:/app/backups
+      - ./backups/personal:/app/backups
       #- /root/project/work/logs/backend:/app/logs
       - ../logs/backend-personal:/app/logs
       - ./keys:/opt/keys:ro
@@ -100,7 +99,7 @@ services:
         tag: "{{.Name}}"
     volumes:
       - ../uploads:/app/uploads
-      - ../backups:/app/backups
+      - ./backups/church:/app/backups
       - ../logs/backend-church:/app/logs
       - ./keys:/opt/keys:ro
     environment:
@@ -131,10 +130,12 @@ services:
         max-file: "3"
         tag: "{{.Name}}"
     volumes:
+      - ./backups/invest:/app/backups
       - ../logs/backend-invest:/app/logs
     environment:
       APP_DOMAIN: invest
       TZ: Asia/Taipei
+      BACKUP_DIR: /app/backups
       SPRING_INVEST_DATASOURCE_URL: jdbc:mysql://mysql:3306/invest?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=utf8&useUnicode=true
       SPRING_INVEST_DATASOURCE_USERNAME: appuser
       SPRING_INVEST_DATASOURCE_PASSWORD: apppassword

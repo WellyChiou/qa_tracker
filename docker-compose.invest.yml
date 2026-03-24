@@ -45,9 +45,12 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+    volumes:
+      - ./backups/invest:/app/backups
     environment:
       APP_DOMAIN: invest
       TZ: ${TZ:-Asia/Taipei}
+      BACKUP_DIR: /app/backups
       SPRING_INVEST_DATASOURCE_URL: ${INVEST_JDBC_URL:-jdbc:mysql://mysql:3306/invest?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=utf8&useUnicode=true}
       SPRING_INVEST_DATASOURCE_USERNAME: ${INVEST_DB_APP_USER:-appuser}
       SPRING_INVEST_DATASOURCE_PASSWORD: ${INVEST_DB_APP_PASSWORD:-apppassword}

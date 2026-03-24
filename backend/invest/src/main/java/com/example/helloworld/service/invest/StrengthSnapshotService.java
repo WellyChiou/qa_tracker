@@ -118,6 +118,7 @@ public class StrengthSnapshotService {
         dto.setStrengthLevel(snapshot.getStrengthLevel() == null ? null : snapshot.getStrengthLevel().name());
         dto.setRecommendation(snapshot.getRecommendationCode() == null ? null : snapshot.getRecommendationCode().name());
         dto.setDataQuality(snapshot.getDataQuality());
+        dto.setStrategyVersion(snapshot.getStrategyVersion());
         dto.setSummary(snapshot.getSummaryText());
         dto.setTradeDate(snapshot.getTradeDate());
         dto.setComputedAt(snapshot.getComputedAt());
@@ -141,6 +142,7 @@ public class StrengthSnapshotService {
         dto.setStrengthLevel(snapshot.getStrengthLevel() == null ? null : snapshot.getStrengthLevel().name());
         dto.setRecommendation(snapshot.getRecommendationCode() == null ? null : snapshot.getRecommendationCode().name());
         dto.setDataQuality(snapshot.getDataQuality());
+        dto.setStrategyVersion(snapshot.getStrategyVersion());
         dto.setSummary(snapshot.getSummaryText());
         dto.setTradeDate(snapshot.getTradeDate());
         dto.setComputedAt(snapshot.getComputedAt());

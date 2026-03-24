@@ -58,6 +58,9 @@ public class StrengthSnapshot {
     @Column(name = "data_quality", nullable = false, length = 20)
     private String dataQuality;
 
+    @Column(name = "strategy_version", nullable = false)
+    private Integer strategyVersion = 1;
+
     @Column(name = "computed_at", nullable = false)
     private LocalDateTime computedAt;
 
@@ -179,6 +182,14 @@ public class StrengthSnapshot {
 
     public void setDataQuality(String dataQuality) {
         this.dataQuality = dataQuality;
+    }
+
+    public Integer getStrategyVersion() {
+        return strategyVersion;
+    }
+
+    public void setStrategyVersion(Integer strategyVersion) {
+        this.strategyVersion = strategyVersion;
     }
 
     public LocalDateTime getComputedAt() {

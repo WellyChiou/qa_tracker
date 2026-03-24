@@ -80,6 +80,34 @@
       </section>
 
       <section class="card surface-card">
+        <div class="section-header strategy-impact-header">
+          <h3>策略影響（Phase 3）</h3>
+          <span class="strategy-version-chip">策略版本 v{{ strategyImpact.currentVersion || '-' }}</span>
+        </div>
+        <div class="strategy-impact-grid">
+          <article class="strategy-impact-item">
+            <span>分析版本一致性</span>
+            <strong :class="strategyImpact.isAligned ? 'text-up' : 'text-caution'">
+              {{ strategyImpact.isAligned ? '一致' : '待同步' }}
+            </strong>
+            <p>{{ strategyImpact.alignmentSummary }}</p>
+          </article>
+          <article class="strategy-impact-item">
+            <span>門檻摘要</span>
+            <ul class="strategy-threshold-list">
+              <li v-for="(item, idx) in strategyImpact.thresholdSummary" :key="`threshold-${idx}`">{{ item }}</li>
+            </ul>
+          </article>
+          <article class="strategy-impact-item">
+            <span>分布影響摘要</span>
+            <ul class="strategy-threshold-list">
+              <li v-for="(item, idx) in strategyImpact.impactSummary" :key="`impact-${idx}`">{{ item }}</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="card surface-card">
         <div class="section-header">
           <h3>我的持股強弱摘要</h3>
         </div>
@@ -273,6 +301,7 @@ const overview = reactive({
 const schedulerJobs = ref([])
 const holdingSnapshots = ref([])
 const activeSignals = ref([])
+const strategySettings = ref(null)
 
 const permissionSet = computed(() => {
   const permissions = currentUser.value?.permissions
@@ -500,10 +529,74 @@ const generateDecisionInsights = () => {
 
 const decisionInsights = computed(() => generateDecisionInsights())
 
+const strategyImpact = computed(() => {
+  const settings = strategySettings.value
+  const currentVersion = Number(settings?.strategyVersion || 0)
+
+  const totalSnapshots = holdingSnapshots.value.length
+  const alignedSnapshots = holdingSnapshots.value.filter((row) =>
+    Number(row?.strategyVersion || 0) === currentVersion
+  ).length
+
+  const totalSignals = activeSignals.value.length
+  const alignedSignals = activeSignals.value.filter((row) =>
+    Number(row?.strategyVersion || 0) === currentVersion
+  ).length
+
+  const allSnapshotsAligned = totalSnapshots === 0 || alignedSnapshots === totalSnapshots
+  const allSignalsAligned = totalSignals === 0 || alignedSignals === totalSignals
+  const isAligned = allSnapshotsAligned && allSignalsAligned
+
+  const alignmentSummary = isAligned
+    ? `強弱快照 ${alignedSnapshots}/${totalSnapshots}、機會訊號 ${alignedSignals}/${totalSignals} 都已套用目前策略。`
+    : `強弱快照 ${alignedSnapshots}/${totalSnapshots}、機會訊號 ${alignedSignals}/${totalSignals} 套用目前策略；建議重跑市場分析。`
+
+  const strength = settings?.strength || {}
+  const dataQuality = settings?.dataQuality || {}
+  const opportunity = settings?.opportunity || {}
+  const thresholdSummary = [
+    `強弱門檻：STRONG ≥ ${strength.strongMin ?? '-'}，GOOD ≥ ${strength.goodMin ?? '-'}，WEAK ≤ ${strength.weakMax ?? '-'}`,
+    `資料品質：最少 ${dataQuality.minHistoryDays ?? '-'} 日，過舊門檻 ${dataQuality.staleDays ?? '-'} 日`,
+    `機會門檻：OBSERVE ≥ ${opportunity.observeMinScore ?? '-'}，WAIT_PULLBACK ≥ ${opportunity.waitPullbackMinScore ?? '-'}，REEVALUATE ≥ ${opportunity.reevaluateMinScore ?? '-'}`
+  ]
+
+  const levelCount = holdingSnapshots.value.reduce((acc, row) => {
+    const key = row?.strengthLevel || 'UNKNOWN'
+    acc[key] = (acc[key] || 0) + 1
+    return acc
+  }, {})
+
+  const qualityCount = holdingSnapshots.value.reduce((acc, row) => {
+    const key = row?.dataQuality || 'UNKNOWN'
+    acc[key] = (acc[key] || 0) + 1
+    return acc
+  }, {})
+
+  const recommendationCount = activeSignals.value.reduce((acc, row) => {
+    const key = row?.recommendation || 'UNKNOWN'
+    acc[key] = (acc[key] || 0) + 1
+    return acc
+  }, {})
+
+  const impactSummary = [
+    `持股強弱：STRONG ${levelCount.STRONG || 0}、GOOD ${levelCount.GOOD || 0}、NEUTRAL ${levelCount.NEUTRAL || 0}、WEAK ${levelCount.WEAK || 0}`,
+    `資料品質：GOOD ${qualityCount.GOOD || 0}、PARTIAL ${qualityCount.PARTIAL || 0}、STALE ${qualityCount.STALE || 0}、INSUFFICIENT ${qualityCount.INSUFFICIENT || 0}`,
+    `機會分布：OBSERVE ${recommendationCount.OBSERVE || 0}、WAIT_PULLBACK ${recommendationCount.WAIT_PULLBACK || 0}、REEVALUATE ${recommendationCount.REEVALUATE_WHEN_CONDITION_MET || 0}`
+  ]
+
+  return {
+    currentVersion,
+    isAligned,
+    alignmentSummary,
+    thresholdSummary,
+    impactSummary
+  }
+})
+
 const reloadAll = async () => {
   loadingPage.value = true
   try {
-    const [overviewResult, schedulerResult, strengthResult, opportunityResult] = await Promise.allSettled([
+    const [overviewResult, schedulerResult, strengthResult, opportunityResult, strategySettingsResult] = await Promise.allSettled([
       investApiService.getDashboardOverview(),
       investApiService.getSystemSchedulerJobs(),
       investApiService.getStrengthSnapshotsPaged({
@@ -515,7 +608,8 @@ const reloadAll = async () => {
         status: 'ACTIVE',
         page: 0,
         size: 10
-      })
+      }),
+      investApiService.getSystemStrategySettings()
     ])
 
     if (overviewResult.status === 'fulfilled' && overviewResult.value) {
@@ -544,6 +638,10 @@ const reloadAll = async () => {
     activeSignals.value = opportunityResult.status === 'fulfilled' && Array.isArray(opportunityResult.value?.content)
       ? opportunityResult.value.content
       : []
+
+    strategySettings.value = strategySettingsResult.status === 'fulfilled' && strategySettingsResult.value
+      ? strategySettingsResult.value
+      : null
   } finally {
     loadingPage.value = false
   }
@@ -713,6 +811,66 @@ onMounted(reloadAll)
 .asof-item span { color: var(--text-secondary); font-size: 0.82rem; }
 .asof-item strong { display: block; margin: 4px 0; }
 .asof-item p { margin: 0; color: var(--text-secondary); font-size: 0.82rem; }
+
+.strategy-impact-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.strategy-version-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #ecfeff;
+  border: 1px solid #a5f3fc;
+  color: #155e75;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.strategy-impact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 10px;
+}
+
+.strategy-impact-item {
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: #fff;
+  padding: 10px 12px;
+}
+
+.strategy-impact-item span {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.strategy-impact-item strong {
+  display: block;
+  margin: 4px 0 6px;
+}
+
+.strategy-impact-item p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.strategy-threshold-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+}
+
+.strategy-threshold-list li {
+  margin: 4px 0;
+}
 
 .section-conclusion {
   margin: 0 0 10px;

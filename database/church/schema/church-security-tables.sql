@@ -407,7 +407,7 @@ INSERT IGNORE INTO url_permissions (
 -- 備份管理 API
 ('/api/church/admin/backups', 'GET', 0, NULL, 'CHURCH_ADMIN', 1, 310, '獲取所有備份檔案列表（需教會管理員權限）'),
 ('/api/church/admin/backups/create', 'POST', 0, NULL, 'CHURCH_ADMIN', 1, 311, '手動創建備份（需教會管理員權限）'),
-('/api/church/admin/backups/download/*', 'GET', 0, NULL, 'CHURCH_ADMIN', 1, 312, '下載備份檔案（需教會管理員權限）'),
+('/api/church/admin/backups/download', 'GET', 0, NULL, 'CHURCH_ADMIN', 1, 312, '下載備份檔案（需教會管理員權限）'),
 ('/api/church/admin/backups/*', 'DELETE', 0, NULL, 'CHURCH_ADMIN', 1, 313, '刪除備份檔案（需教會管理員權限）'),
 -- 場次小組關聯 API
 ('/api/church/checkin/admin/sessions/*/groups', 'GET', 0, NULL, 'CHECKIN_READ', '獲取場次關聯的小組 - 需要查看簽到權限', 1, 220),
@@ -442,4 +442,3 @@ SELECT COUNT(*) AS role_count FROM roles;
 SELECT COUNT(*) AS permission_count FROM permissions;
 SELECT COUNT(*) AS menu_count FROM menu_items;
 SELECT COUNT(*) AS url_permission_count FROM url_permissions;
-

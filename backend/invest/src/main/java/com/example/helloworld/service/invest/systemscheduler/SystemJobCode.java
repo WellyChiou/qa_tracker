@@ -3,6 +3,7 @@ package com.example.helloworld.service.invest.systemscheduler;
 public enum SystemJobCode {
     PRICE_UPDATE_HOLDINGS,
     PRICE_BACKFILL,
+    DATABASE_BACKUP,
     DAILY_PORTFOLIO_RISK_REPORT,
     PORTFOLIO_ALERT_POLLING,
     MARKET_ANALYSIS;

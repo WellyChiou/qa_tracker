@@ -50,6 +50,9 @@ public class OpportunitySignal {
     @Column(name = "status", nullable = false, length = 20)
     private OpportunitySignalStatusCode status;
 
+    @Column(name = "strategy_version", nullable = false)
+    private Integer strategyVersion = 1;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "source_snapshot_id")
     private StrengthSnapshot sourceSnapshot;
@@ -166,6 +169,14 @@ public class OpportunitySignal {
 
     public void setStatus(OpportunitySignalStatusCode status) {
         this.status = status;
+    }
+
+    public Integer getStrategyVersion() {
+        return strategyVersion;
+    }
+
+    public void setStrategyVersion(Integer strategyVersion) {
+        this.strategyVersion = strategyVersion;
     }
 
     public StrengthSnapshot getSourceSnapshot() {

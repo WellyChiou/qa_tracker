@@ -59,7 +59,10 @@
                     <td class="col-id">{{ displayJobId(job) }}</td>
                     <td class="col-name">
                       <div class="title-cell">
-                        <strong>{{ job.jobName }}</strong>
+                        <strong>
+                          {{ job.jobName }}
+                          <span v-if="job.jobCode === 'DATABASE_BACKUP'" class="job-tag job-tag--backup">備份任務</span>
+                        </strong>
                         <small><code>{{ job.jobCode }}</code></small>
                       </div>
                     </td>
@@ -93,6 +96,7 @@
                           <svg v-else viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                         </span>
                         <small>{{ getStatusText(latestExecution(job).status) }}</small>
+                        <small class="exec-time">最後執行：{{ formatDateTime(latestExecution(job).startedAt) }}</small>
                       </div>
                       <div v-else class="exec-cell exec-cell--empty">
                         <span class="status-icon-only status--none" title="未執行"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></span>
@@ -102,11 +106,11 @@
                       <div class="action-grid">
                         <button
                           class="btn-sm btn-execute"
-                          :disabled="!canRunScheduler || !job.enabled || !job.allowRunNow || runningJobCode === job.jobCode"
+                          :disabled="!canRunScheduler || !job.enabled || !job.allowRunNow || isJobRunning(job.jobCode)"
                           @click="executeJob(job)"
                         >
-                          <span v-if="runningJobCode === job.jobCode" class="spinner" aria-hidden="true"></span>
-                          {{ runningJobCode === job.jobCode ? '執行中...' : '立即執行' }}
+                          <span v-if="isJobRunning(job.jobCode)" class="spinner" aria-hidden="true"></span>
+                          {{ isJobRunning(job.jobCode) ? '執行中...' : '立即執行' }}
                         </button>
                         <button class="btn-sm btn-view" :disabled="!canViewScheduler" @click="openExecutions(job)">查看記錄</button>
                         <button
@@ -308,7 +312,7 @@ import { useAuth } from '@/composables/useAuth'
 
 const loading = ref(false)
 const allJobs = ref([])
-const runningJobCode = ref('')
+const runningJobs = ref({})
 const togglingJobCode = ref('')
 const deletingJobCode = ref('')
 
@@ -369,6 +373,8 @@ const latestExecution = (job) => {
 
 const latestStatus = (job) => latestExecution(job)?.status || ''
 
+const isJobRunning = (jobCode) => Boolean(runningJobs.value[jobCode])
+
 const loadJobs = async () => {
   loading.value = true
   try {
@@ -409,7 +415,15 @@ const executeJob = async (job) => {
     return
   }
 
-  runningJobCode.value = job.jobCode
+  if (isJobRunning(job.jobCode)) {
+    toast.info('此任務已在執行中，請稍候')
+    return
+  }
+
+  runningJobs.value = {
+    ...runningJobs.value,
+    [job.jobCode]: true
+  }
   try {
     const result = await investApiService.executeSystemSchedulerJob(job.jobCode)
     toast.success(result?.message || `${job.jobName} 已觸發執行`)
@@ -421,7 +435,9 @@ const executeJob = async (job) => {
   } catch (error) {
     toast.error(`執行失敗: ${error.message || '未知錯誤'}`)
   } finally {
-    runningJobCode.value = ''
+    const nextRunningJobs = { ...runningJobs.value }
+    delete nextRunningJobs[job.jobCode]
+    runningJobs.value = nextRunningJobs
   }
 }
 
@@ -816,6 +832,20 @@ onMounted(async () => {
 
 .title-cell{ display:flex; flex-direction:column; gap:4px; }
 .title-cell small{ color:var(--text-secondary); }
+.job-tag{
+  display:inline-flex;
+  margin-left:8px;
+  padding:1px 8px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.02em;
+}
+.job-tag--backup{
+  background:#dbeafe;
+  color:#1d4ed8;
+  border:1px solid #bfdbfe;
+}
 .desc-cell{
   overflow:hidden;
   text-overflow:ellipsis;

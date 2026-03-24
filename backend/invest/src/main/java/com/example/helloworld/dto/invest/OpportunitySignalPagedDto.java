@@ -16,6 +16,7 @@ public class OpportunitySignalPagedDto {
     private Integer signalScore;
     private String recommendation;
     private String status;
+    private Integer strategyVersion;
     private String summary;
     private String conditionText;
     private LocalDateTime updatedAt;
@@ -107,6 +108,14 @@ public class OpportunitySignalPagedDto {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public Integer getStrategyVersion() {
+        return strategyVersion;
+    }
+
+    public void setStrategyVersion(Integer strategyVersion) {
+        this.strategyVersion = strategyVersion;
     }
 
     public String getSummary() {

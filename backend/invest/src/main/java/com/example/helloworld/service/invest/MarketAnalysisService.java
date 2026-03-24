@@ -5,7 +5,7 @@ import com.example.helloworld.dto.invest.RunMarketAnalysisResponseDto;
 import com.example.helloworld.entity.invest.*;
 import com.example.helloworld.repository.invest.*;
 import com.example.helloworld.service.invest.auth.InvestCurrentUserService;
-import org.springframework.beans.factory.annotation.Value;
+import com.example.helloworld.service.invest.system.InvestStrategySettingService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,9 +40,7 @@ public class MarketAnalysisService {
     private final WatchlistItemRepository watchlistItemRepository;
     private final InvestCurrentUserService investCurrentUserService;
     private final WatchlistService watchlistService;
-
-    @Value("${invest.price-update.data-quality.stale-calendar-days:3}")
-    private long staleCalendarDays;
+    private final InvestStrategySettingService investStrategySettingService;
 
     public MarketAnalysisService(PortfolioRepository portfolioRepository,
                                  StockPriceDailyRepository stockPriceDailyRepository,
@@ -52,7 +50,8 @@ public class MarketAnalysisService {
                                  OpportunitySignalReasonRepository opportunitySignalReasonRepository,
                                  WatchlistItemRepository watchlistItemRepository,
                                  InvestCurrentUserService investCurrentUserService,
-                                 WatchlistService watchlistService) {
+                                 WatchlistService watchlistService,
+                                 InvestStrategySettingService investStrategySettingService) {
         this.portfolioRepository = portfolioRepository;
         this.stockPriceDailyRepository = stockPriceDailyRepository;
         this.strengthSnapshotRepository = strengthSnapshotRepository;
@@ -62,6 +61,7 @@ public class MarketAnalysisService {
         this.watchlistItemRepository = watchlistItemRepository;
         this.investCurrentUserService = investCurrentUserService;
         this.watchlistService = watchlistService;
+        this.investStrategySettingService = investStrategySettingService;
     }
 
     public RunMarketAnalysisResponseDto runForCurrentUser(String scopeValue) {
@@ -70,6 +70,8 @@ public class MarketAnalysisService {
 
         LocalDateTime startedAt = LocalDateTime.now(TAIPEI_ZONE);
         List<String> failures = new ArrayList<>();
+        InvestStrategySettingService.ResolvedThresholds thresholds = investStrategySettingService.getResolvedThresholds();
+        int strategyVersion = thresholds.strategyVersion();
 
         List<AnalysisTarget> targets = collectTargets(userUid, scope);
         List<StrengthSnapshot> snapshots = new ArrayList<>();
@@ -77,7 +79,7 @@ public class MarketAnalysisService {
 
         for (AnalysisTarget target : targets) {
             try {
-                StrengthSnapshot snapshot = analyzeAndUpsertSnapshot(userUid, target);
+                StrengthSnapshot snapshot = analyzeAndUpsertSnapshot(userUid, target, strategyVersion, thresholds);
                 snapshots.add(snapshot);
                 analyzedCount += 1;
             } catch (Exception e) {
@@ -85,7 +87,7 @@ public class MarketAnalysisService {
             }
         }
 
-        int activeSignalCount = syncOpportunitySignals(userUid, snapshots);
+        int activeSignalCount = syncOpportunitySignals(userUid, snapshots, strategyVersion, thresholds);
 
         RunMarketAnalysisResponseDto dto = new RunMarketAnalysisResponseDto();
         dto.setScope(scope.name());
@@ -94,6 +96,7 @@ public class MarketAnalysisService {
         dto.setFailCount(failures.size());
         dto.setSnapshotCount(snapshots.size());
         dto.setSignalActiveCount(activeSignalCount);
+        dto.setStrategyVersion(strategyVersion);
         dto.setDataAsOfTradeDate(resolveDataAsOfTradeDate(snapshots));
         dto.setStartedAt(startedAt);
         dto.setFinishedAt(LocalDateTime.now(TAIPEI_ZONE));
@@ -141,22 +144,25 @@ public class MarketAnalysisService {
         return new ArrayList<>(targetMap.values());
     }
 
-    private StrengthSnapshot analyzeAndUpsertSnapshot(String userUid, AnalysisTarget target) {
+    private StrengthSnapshot analyzeAndUpsertSnapshot(String userUid,
+                                                      AnalysisTarget target,
+                                                      int strategyVersion,
+                                                      InvestStrategySettingService.ResolvedThresholds thresholds) {
         StockPriceDaily latest = stockPriceDailyRepository.findTopByStockIdOrderByTradeDateDesc(target.stock().getId())
             .orElseThrow(() -> new RuntimeException("缺少 stock_price_daily，無法分析"));
 
         List<StockPriceDaily> history = stockPriceDailyRepository
             .findTop30ByStockIdAndTradeDateLessThanEqualOrderByTradeDateDesc(target.stock().getId(), latest.getTradeDate());
 
-        String dataQuality = resolveDataQuality(latest, history);
-        List<FactorResult> factors = buildFactors(history, dataQuality);
+        String dataQuality = resolveDataQuality(latest, history, thresholds);
+        List<FactorResult> factors = buildFactors(history, dataQuality, thresholds);
 
         Integer totalScore = null;
         StrengthLevelCode level = null;
         StrengthRecommendationCode recommendation = null;
         if (!QUALITY_INSUFFICIENT.equals(dataQuality)) {
             totalScore = clampScore(factors.stream().mapToInt(FactorResult::scoreContribution).sum());
-            level = StrengthLevelCode.fromScore(totalScore);
+            level = resolveStrengthLevel(totalScore, thresholds.strength());
             recommendation = StrengthRecommendationCode.fromStrengthLevel(level);
         }
 
@@ -164,7 +170,7 @@ public class MarketAnalysisService {
             recommendation = StrengthRecommendationCode.REEVALUATE_WHEN_CONDITION_MET;
         }
 
-        String summary = buildStrengthSummary(target, totalScore, level, dataQuality, factors);
+        String summary = buildStrengthSummary(target, totalScore, level, dataQuality, factors, thresholds);
 
         StrengthSnapshot snapshot = strengthSnapshotRepository
             .findByUserIdAndStockIdAndTradeDateAndUniverseTypeAndWatchScopeId(
@@ -189,6 +195,7 @@ public class MarketAnalysisService {
         snapshot.setRecommendationCode(recommendation);
         snapshot.setSummaryText(summary);
         snapshot.setDataQuality(dataQuality);
+        snapshot.setStrategyVersion(strategyVersion);
         snapshot.setComputedAt(LocalDateTime.now(TAIPEI_ZONE));
 
         enforceWatchScopeRule(snapshot);
@@ -203,15 +210,18 @@ public class MarketAnalysisService {
         return savedSnapshot;
     }
 
-    private List<FactorResult> buildFactors(List<StockPriceDaily> historyDesc, String dataQuality) {
-        if (historyDesc.size() < 20) {
+    private List<FactorResult> buildFactors(List<StockPriceDaily> historyDesc,
+                                            String dataQuality,
+                                            InvestStrategySettingService.ResolvedThresholds thresholds) {
+        int minHistoryDays = thresholds.dataQuality().minHistoryDays();
+        if (historyDesc.size() < minHistoryDays) {
             return List.of(new FactorResult(
                 "DATA_INSUFFICIENT",
                 "資料不足",
-                "近 20 日行情不足",
-                "至少需要 20 筆日行情",
+                "近 " + minHistoryDays + " 日行情不足",
+                "至少需要 " + minHistoryDays + " 筆日行情（key: invest.strategy.data_quality.min_history_days）",
                 0,
-                "資料不足 20 日，暫不輸出 strength score。"
+                "資料不足，暫不輸出 strength score。"
             ));
         }
 
@@ -368,13 +378,16 @@ public class MarketAnalysisService {
         );
     }
 
-    private int syncOpportunitySignals(String userUid, List<StrengthSnapshot> snapshots) {
+    private int syncOpportunitySignals(String userUid,
+                                       List<StrengthSnapshot> snapshots,
+                                       int strategyVersion,
+                                       InvestStrategySettingService.ResolvedThresholds thresholds) {
         Map<Long, StrengthSnapshot> bestByStock = pickBestSnapshotPerStock(snapshots);
 
         Set<Long> analyzedStockIds = new HashSet<>(bestByStock.keySet());
         for (StrengthSnapshot snapshot : bestByStock.values()) {
-            SignalDecision decision = decideSignal(snapshot);
-            upsertSignal(userUid, snapshot, decision);
+            SignalDecision decision = decideSignal(snapshot, thresholds);
+            upsertSignal(userUid, snapshot, decision, strategyVersion);
         }
 
         expireSignalsNotInCurrentRun(userUid, analyzedStockIds);
@@ -410,16 +423,21 @@ public class MarketAnalysisService {
         return b.getComputedAt().compareTo(a.getComputedAt());
     }
 
-    private SignalDecision decideSignal(StrengthSnapshot snapshot) {
+    private SignalDecision decideSignal(StrengthSnapshot snapshot,
+                                        InvestStrategySettingService.ResolvedThresholds thresholds) {
         String quality = snapshot.getDataQuality();
         Integer score = snapshot.getStrengthScore();
+        InvestStrategySettingService.OpportunityThresholds opportunityThresholds = thresholds.opportunity();
+        String opportunityTrace = buildOpportunityThresholdTrace(opportunityThresholds);
+        String dataQualityTrace = buildDataQualityThresholdTrace(thresholds.dataQuality());
 
+        // 先依資料品質短路，避免低品質資料被誤判為可觀察訊號
         if (QUALITY_INSUFFICIENT.equals(quality) || QUALITY_STALE.equals(quality)) {
             return new SignalDecision(
                 OpportunitySignalTypeCode.HIGH_RISK_AVOID_CHASE,
                 StrengthRecommendationCode.NOT_SUITABLE_CHASE,
                 QUALITY_STALE.equals(quality) ? 35 : 20,
-                "行情資料品質不足（" + quality + "），先補齊資料再評估。",
+                "行情資料品質不足（" + quality + "），先補齊資料再評估。[" + dataQualityTrace + "]",
                 "目前資料品質不足，不建議追價。",
                 List.of(
                     reason("資料品質提醒", "目前資料品質為 " + quality + "，訊號可信度降低。", 10),
@@ -429,12 +447,12 @@ public class MarketAnalysisService {
         }
 
         int safeScore = score == null ? 0 : score;
-        if (safeScore >= 80) {
+        if (safeScore >= opportunityThresholds.observeMinScore()) {
             return new SignalDecision(
                 OpportunitySignalTypeCode.MOMENTUM_OBSERVE,
                 StrengthRecommendationCode.OBSERVE,
                 safeScore,
-                "若後續維持站上 MA20 且量能未明顯轉弱，持續觀察。",
+                "若後續維持站上 MA20 且量能未明顯轉弱，持續觀察。[" + opportunityTrace + "]",
                 "走勢偏強，但仍不等於買進指令。",
                 List.of(
                     reason("強勢延續", "分數達到 " + safeScore + "，屬於相對強勢區。", 20),
@@ -443,12 +461,12 @@ public class MarketAnalysisService {
             );
         }
 
-        if (safeScore >= 65) {
+        if (safeScore >= opportunityThresholds.waitPullbackMinScore()) {
             return new SignalDecision(
                 OpportunitySignalTypeCode.PULLBACK_WATCH,
                 StrengthRecommendationCode.WAIT_PULLBACK,
                 safeScore,
-                "可等待回測 MA20 附近且不破，再重新評估。",
+                "可等待回測 MA20 附近且不破，再重新評估。[" + opportunityTrace + "]",
                 "建議等待更好的風險報酬位置，不追價。",
                 List.of(
                     reason("回檔觀察", "中高分區間，適合等待回檔確認。", 15),
@@ -457,12 +475,12 @@ public class MarketAnalysisService {
             );
         }
 
-        if (safeScore >= 45) {
+        if (safeScore >= opportunityThresholds.reevaluateMinScore()) {
             return new SignalDecision(
                 OpportunitySignalTypeCode.BREAKOUT_REEVALUATE,
                 StrengthRecommendationCode.REEVALUATE_WHEN_CONDITION_MET,
                 safeScore,
-                "若後續量增突破近 20 日高點，再重新評估。",
+                "若後續量增突破近 20 日高點，再重新評估。[" + opportunityTrace + "]",
                 "目前條件未完整，先觀察等待條件成立。",
                 List.of(
                     reason("條件待確認", "分數中性，尚未形成明確優勢。", 12),
@@ -475,7 +493,7 @@ public class MarketAnalysisService {
             OpportunitySignalTypeCode.HIGH_RISK_AVOID_CHASE,
             StrengthRecommendationCode.NOT_SUITABLE_CHASE,
             safeScore,
-            "目前強度偏弱，應優先控制風險。",
+            "目前強度偏弱，應優先控制風險。[" + opportunityTrace + "]",
             "不建議追價，先觀察是否止跌與修復。",
             List.of(
                 reason("強度偏弱", "目前分數偏低，走勢不穩。", 10),
@@ -484,7 +502,7 @@ public class MarketAnalysisService {
         );
     }
 
-    private void upsertSignal(String userUid, StrengthSnapshot snapshot, SignalDecision decision) {
+    private void upsertSignal(String userUid, StrengthSnapshot snapshot, SignalDecision decision, int strategyVersion) {
         Long stockId = snapshot.getStock().getId();
         String signalKey = decision.signalType().name();
 
@@ -502,6 +520,7 @@ public class MarketAnalysisService {
         signal.setSummaryText(decision.summaryText());
         signal.setDisclaimerText(DISCLAIMER + " " + decision.disclaimerText());
         signal.setStatus(OpportunitySignalStatusCode.ACTIVE);
+        signal.setStrategyVersion(strategyVersion);
         signal.setSourceSnapshot(snapshot);
 
         OpportunitySignal savedSignal = opportunitySignalRepository.save(signal);
@@ -596,17 +615,20 @@ public class MarketAnalysisService {
         return entity;
     }
 
-    private String resolveDataQuality(StockPriceDaily latest, List<StockPriceDaily> history) {
-        if (latest == null || history == null || history.size() < 20) {
+    private String resolveDataQuality(StockPriceDaily latest,
+                                      List<StockPriceDaily> history,
+                                      InvestStrategySettingService.ResolvedThresholds thresholds) {
+        int minHistoryDays = thresholds.dataQuality().minHistoryDays();
+        if (latest == null || history == null || history.size() < minHistoryDays) {
             return QUALITY_INSUFFICIENT;
         }
 
         long staleDays = ChronoUnit.DAYS.between(latest.getTradeDate(), LocalDate.now(TAIPEI_ZONE));
-        if (staleDays > staleCalendarDays) {
+        if (staleDays > thresholds.dataQuality().staleDays()) {
             return QUALITY_STALE;
         }
 
-        boolean hasPartial = history.stream().limit(20).anyMatch(item ->
+        boolean hasPartial = history.stream().limit(minHistoryDays).anyMatch(item ->
             item.getClosePrice() == null
                 || item.getVolume() == null
                 || item.getVolume() <= 0
@@ -622,9 +644,10 @@ public class MarketAnalysisService {
                                         Integer score,
                                         StrengthLevelCode level,
                                         String dataQuality,
-                                        List<FactorResult> factors) {
+                                        List<FactorResult> factors,
+                                        InvestStrategySettingService.ResolvedThresholds thresholds) {
         if (QUALITY_INSUFFICIENT.equals(dataQuality) || score == null || level == null) {
-            return "資料不足 20 日，暫無法產生完整強度分數，請先補齊行情資料。";
+            return "資料不足，暫無法產生完整強度分數，請先補齊行情資料。[" + buildDataQualityThresholdTrace(thresholds.dataQuality()) + "]";
         }
 
         String reasonText = factors.stream()
@@ -634,7 +657,43 @@ public class MarketAnalysisService {
             .collect(Collectors.joining("、"));
 
         String scopeText = target.universeType() == MarketUniverseTypeCode.HOLDING ? "持股" : "觀察清單";
-        return String.format("%s 分析：強度 %d（%s），主要依據：%s。", scopeText, score, level.name(), reasonText);
+        return String.format(
+            "%s 分析：強度 %d（%s），主要依據：%s。[%s]",
+            scopeText,
+            score,
+            level.name(),
+            reasonText,
+            buildStrengthThresholdTrace(thresholds.strength())
+        );
+    }
+
+    private StrengthLevelCode resolveStrengthLevel(Integer score,
+                                                   InvestStrategySettingService.StrengthThresholds thresholds) {
+        int safeScore = score == null ? 0 : score;
+        if (safeScore >= thresholds.strongMin()) {
+            return StrengthLevelCode.STRONG;
+        }
+        if (safeScore >= thresholds.goodMin()) {
+            return StrengthLevelCode.GOOD;
+        }
+        if (safeScore <= thresholds.weakMax()) {
+            return StrengthLevelCode.WEAK;
+        }
+        return StrengthLevelCode.NEUTRAL;
+    }
+
+    private String buildStrengthThresholdTrace(InvestStrategySettingService.StrengthThresholds thresholds) {
+        return "key:strength S>=" + thresholds.strongMin() + "/G>=" + thresholds.goodMin() + "/W<=" + thresholds.weakMax();
+    }
+
+    private String buildDataQualityThresholdTrace(InvestStrategySettingService.DataQualityThresholds thresholds) {
+        return "key:data_quality history>=" + thresholds.minHistoryDays() + ", stale<=" + thresholds.staleDays() + "d";
+    }
+
+    private String buildOpportunityThresholdTrace(InvestStrategySettingService.OpportunityThresholds thresholds) {
+        return "key:opportunity OBS>=" + thresholds.observeMinScore()
+            + "/WAIT>=" + thresholds.waitPullbackMinScore()
+            + "/REEV>=" + thresholds.reevaluateMinScore();
     }
 
     private LocalDate resolveDataAsOfTradeDate(List<StrengthSnapshot> snapshots) {

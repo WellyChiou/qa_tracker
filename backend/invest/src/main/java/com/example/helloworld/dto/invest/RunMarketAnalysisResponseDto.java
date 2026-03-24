@@ -11,6 +11,7 @@ public class RunMarketAnalysisResponseDto {
     private Integer failCount;
     private Integer snapshotCount;
     private Integer signalActiveCount;
+    private Integer strategyVersion;
     private LocalDate dataAsOfTradeDate;
     private LocalDateTime startedAt;
     private LocalDateTime finishedAt;
@@ -70,6 +71,14 @@ public class RunMarketAnalysisResponseDto {
 
     public void setSignalActiveCount(Integer signalActiveCount) {
         this.signalActiveCount = signalActiveCount;
+    }
+
+    public Integer getStrategyVersion() {
+        return strategyVersion;
+    }
+
+    public void setStrategyVersion(Integer strategyVersion) {
+        this.strategyVersion = strategyVersion;
     }
 
     public LocalDate getDataAsOfTradeDate() {

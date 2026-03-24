@@ -20,6 +20,7 @@ public class StrengthSnapshotPagedDto {
     private String strengthLevel;
     private String recommendation;
     private String dataQuality;
+    private Integer strategyVersion;
     private String summary;
     private LocalDate tradeDate;
     private LocalDateTime computedAt;
@@ -135,6 +136,14 @@ public class StrengthSnapshotPagedDto {
 
     public void setDataQuality(String dataQuality) {
         this.dataQuality = dataQuality;
+    }
+
+    public Integer getStrategyVersion() {
+        return strategyVersion;
+    }
+
+    public void setStrategyVersion(Integer strategyVersion) {
+        this.strategyVersion = strategyVersion;
     }
 
     public String getSummary() {

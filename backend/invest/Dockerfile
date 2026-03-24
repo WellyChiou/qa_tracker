@@ -34,13 +34,18 @@ FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends tzdata && \
+    apt-get install -y --no-install-recommends \
+      tzdata \
+      default-mysql-client \
+      gzip && \
     ln -sf /usr/share/zoneinfo/Asia/Taipei /etc/localtime && \
     echo "Asia/Taipei" > /etc/timezone && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app/backend/invest/target/*.jar app.jar
+COPY backend/invest/invest-backup-database.sh /app/invest-backup-database.sh
+RUN chmod +x /app/invest-backup-database.sh
 
 EXPOSE 8080
 
