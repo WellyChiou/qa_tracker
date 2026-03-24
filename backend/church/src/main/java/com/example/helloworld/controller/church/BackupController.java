@@ -58,12 +58,15 @@ public class BackupController {
                     .filter(path -> {
                         // 只顯示 church 資料庫的備份
                         Path relativePath = backupPath.relativize(path);
+                        String filename = path.getFileName().toString();
                         if (relativePath.getNameCount() > 0) {
                             String firstSegment = relativePath.getName(0).toString();
-                            return firstSegment.equals("church");
+                            // 相容兩種結構：
+                            // 1) 舊版雙層：church/church_*.sql.gz
+                            // 2) 新版單層：church_*.sql.gz
+                            return firstSegment.equals("church") || filename.startsWith("church_");
                         }
                         // 向後兼容：從檔案名稱解析
-                        String filename = path.getFileName().toString();
                         return filename.startsWith("church_");
                     })
                     .map(path -> {

@@ -341,37 +341,18 @@
             </tbody>
           </table>
         </div>
-        <div class="pagination">
-          <div class="pagination-left">
-            <label for="pageSize" class="pagination-label">顯示筆數：</label>
-            <select id="pageSize" v-model.number="recordsPerPage" class="page-size-select">
-              <option :value="10">10</option>
-              <option :value="20">20</option>
-              <option :value="50">50</option>
-              <option :value="100">100</option>
-            </select>
-            <span class="pagination-info">共 {{ totalRecords }} 筆 (第 {{ currentPage }}/{{ totalPages }} 頁)</span>
-          </div>
-          <div class="pagination-right">
-            <button class="btn-secondary" @click="currentPage--" :disabled="currentPage === 1">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-              </svg>
-              上一頁
-            </button>
-            <div class="page-jump">
-              <span class="pagination-label">到第</span>
-              <input type="number" v-model.number="jumpPage" min="1" :max="totalPages" class="page-input" @keyup.enter="jumpToPage" />
-              <span class="pagination-label">頁</span>
-            </div>
-            <button class="btn-secondary" @click="currentPage++" :disabled="currentPage === totalPages">
-              下一頁
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-              </svg>
-            </button>
-          </div>
-        </div>
+        <PaginationControls
+          v-model:pageSize="recordsPerPage"
+          v-model:jumpPage="jumpPage"
+          :total-records="totalRecords"
+          :current-page="currentPage"
+          :total-pages="totalPages"
+          @first="currentPage = 1"
+          @previous="currentPage -= 1"
+          @next="currentPage += 1"
+          @last="currentPage = totalPages"
+          @jump="jumpToPage"
+        />
       </section>
     </main>
 
@@ -1097,11 +1078,13 @@ const loadGitlabToken = async () => {
   
   try {
     const response = await apiService.request('/system-settings/gitlab_token')
-    
-    if (!response || !response.setting || !response.setting.settingValue || response.setting.settingValue.trim() === '') {
+    const tokenValue = String(response?.settingValue ?? '').trim()
+
+    if (!tokenValue) {
       throw new Error('GitLab token 配置為空，請先在系統設定中配置 GitLab API Token')
     }
-    gitlabToken.value = response.setting.settingValue
+
+    gitlabToken.value = tokenValue
     console.log('成功載入 GitLab token')
     return gitlabToken.value
   } catch (error) {

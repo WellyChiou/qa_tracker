@@ -15,20 +15,21 @@ COPY pom.xml .
 COPY backend/auth-core/pom.xml backend/auth-core/pom.xml
 COPY backend/personal/pom.xml backend/personal/pom.xml
 COPY backend/church/pom.xml backend/church/pom.xml
-
-# 先期依賴解析（只針對 church 模組加上依賴）
-RUN mvn -pl backend/church -am dependency:resolve -B -U || \
-    (echo "⚠️ 依賴下載失敗，10 秒後重試..." && sleep 10 && mvn -pl backend/church -am dependency:resolve -B -U) || \
-    (echo "⚠️ 第二次下載失敗，20 秒後最後重試..." && sleep 20 && mvn -pl backend/church -am dependency:resolve -B -U) || \
-    (echo "⚠️ 依賴下載失敗，將在構建階段自動下載..." && true)
+COPY backend/invest/pom.xml backend/invest/pom.xml
 
 # 再複製完整模組來源，以進行建置
 COPY backend/auth-core backend/auth-core
 COPY backend/personal backend/personal
 COPY backend/church backend/church
+COPY backend/invest backend/invest
 
 # 構建 church 模組（含共用 auth core）
-RUN mvn -pl backend/church -am clean package -DskipTests -B
+RUN mvn -pl backend/church -am package -DskipTests -B -U || \
+    (echo "⚠️ church 打包失敗，改用 SSL fallback 參數重試..." && \
+    mvn -pl backend/church -am package -DskipTests -B -U \
+      -Dmaven.wagon.http.ssl.insecure=true \
+      -Dmaven.wagon.http.ssl.allowall=true \
+      -Dmaven.wagon.http.ssl.ignore.validity.dates=true)
 
 # 運行階段：使用 Eclipse Temurin（OpenJDK 的替代品）
 FROM eclipse-temurin:17-jre-jammy

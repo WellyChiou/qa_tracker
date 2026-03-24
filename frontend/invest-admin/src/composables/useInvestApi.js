@@ -1,0 +1,698 @@
+import { createApiClient } from '@shared/utils/apiClient'
+
+const investApiClient = createApiClient({
+  accessTokenKey: 'invest_access_token',
+  refreshTokenKey: 'invest_refresh_token',
+  authExpiredMessage: 'Invest 認證已過期，請重新登入',
+  credentials: 'omit',
+  getApiBaseUrl() {
+    return import.meta.env.VITE_API_BASE_URL || (
+      import.meta.env.DEV
+        ? `${window.location.protocol}//${window.location.hostname}:8080/api/invest`
+        : `${window.location.protocol}//${window.location.hostname}/api/invest`
+    )
+  },
+  isAuthRelatedRequest(url) {
+    return url.includes('/auth/')
+  },
+  refreshEndpoint: '/auth/refresh',
+  rejectRedirected: true,
+  shouldAttachToken(url) {
+    const isAuthEndpoint = url.includes('/auth/login')
+      || url.includes('/auth/register')
+      || url.includes('/auth/refresh')
+
+    return !isAuthEndpoint
+  }
+})
+
+export const setLoadingCallbacks = investApiClient.setLoadingCallbacks
+export const setTokens = investApiClient.setTokens
+export const clearTokens = investApiClient.clearTokens
+export const getInvestApiBaseUrl = investApiClient.getApiBaseUrl
+export const getInvestAccessToken = investApiClient.getAccessToken
+
+class InvestApiService {
+  async request(url, options = {}) {
+    return investApiClient.request(url, options, {
+      loadingMessage: options.loadingMessage || '載入中...',
+      showLoading: options.showLoading !== false
+    })
+  }
+
+  async login(username, password) {
+    const result = await this.request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+      loadingMessage: '登入中...'
+    })
+
+    if (result && result.accessToken) {
+      setTokens(result.accessToken, result.refreshToken || null)
+    }
+
+    return result
+  }
+
+  async logout() {
+    try {
+      await this.request('/auth/logout', {
+        method: 'POST',
+        loadingMessage: '登出中...'
+      })
+    } finally {
+      clearTokens()
+    }
+  }
+
+  async getCurrentUser() {
+    return this.request('/auth/current-user', { showLoading: false })
+  }
+
+  getStocksPaged(params = {}) {
+    const query = new URLSearchParams(params).toString()
+    return this.request(query ? `/stocks/paged?${query}` : '/stocks/paged', { method: 'GET' })
+  }
+
+  getStockOptions() {
+    return this.request('/stocks/options', { method: 'GET' })
+  }
+
+  getStocksAll(params = {}) {
+    const query = new URLSearchParams(params).toString()
+    return this.request(query ? `/stocks/all?${query}` : '/stocks/all', { method: 'GET' })
+  }
+
+  createStock(payload) {
+    return this.request('/stocks', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  updateStock(id, payload) {
+    return this.request(`/stocks/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  deleteStock(id) {
+    return this.request(`/stocks/${id}`, { method: 'DELETE' })
+  }
+
+  getStockPriceDailiesPaged(params = {}) {
+    const query = new URLSearchParams(params).toString()
+    return this.request(query ? `/stock-price-dailies/paged?${query}` : '/stock-price-dailies/paged', { method: 'GET' })
+  }
+
+  getStockPriceDailiesAll(params = {}) {
+    const query = new URLSearchParams(params).toString()
+    return this.request(query ? `/stock-price-dailies/all?${query}` : '/stock-price-dailies/all', { method: 'GET' })
+  }
+
+  getStockPriceDailiesLatest(params = {}) {
+    const query = new URLSearchParams(params).toString()
+    return this.request(query ? `/stock-price-dailies/latest?${query}` : '/stock-price-dailies/latest', { method: 'GET' })
+  }
+
+  createStockPriceDaily(payload) {
+    return this.request('/stock-price-dailies', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  updateStockPriceDaily(id, payload) {
+    return this.request(`/stock-price-dailies/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  deleteStockPriceDaily(id) {
+    return this.request(`/stock-price-dailies/${id}`, { method: 'DELETE' })
+  }
+
+  getPortfoliosPaged(params = {}) {
+    const query = new URLSearchParams(params).toString()
+    return this.request(query ? `/portfolios/paged?${query}` : '/portfolios/paged', { method: 'GET' })
+  }
+
+  getPortfoliosAll(params = {}) {
+    const query = new URLSearchParams(params).toString()
+    return this.request(query ? `/portfolios/all?${query}` : '/portfolios/all', { method: 'GET' })
+  }
+
+  getPortfolioById(id) {
+    return this.request(`/portfolios/${id}`, { method: 'GET' })
+  }
+
+  createPortfolio(payload) {
+    return this.request('/portfolios', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  updatePortfolio(id, payload) {
+    return this.request(`/portfolios/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  deletePortfolio(id) {
+    return this.request(`/portfolios/${id}`, { method: 'DELETE' })
+  }
+
+  getDashboardOverview() {
+    return this.request('/portfolio-dashboard/overview', { method: 'GET' })
+  }
+
+  getPortfolioRiskResultsPaged(params = {}) {
+    const query = new URLSearchParams(params).toString()
+    return this.request(query ? `/portfolio-risk-results/paged?${query}` : '/portfolio-risk-results/paged', { method: 'GET' })
+  }
+
+  getPortfolioRiskResultById(id) {
+    return this.request(`/portfolio-risk-results/${id}`, { method: 'GET' })
+  }
+
+  getLatestPortfolioRiskResult(portfolioId) {
+    return this.request(`/portfolio-risk-results/latest?portfolioId=${portfolioId}`, { method: 'GET' })
+  }
+
+  recalculatePortfolioRisk(portfolioId) {
+    return this.request(`/portfolio-risk-results/recalculate/${portfolioId}`, {
+      method: 'POST'
+    })
+  }
+
+  getDailyReportsPaged(params = {}) {
+    const query = new URLSearchParams(params).toString()
+    return this.request(query ? `/daily-reports/paged?${query}` : '/daily-reports/paged', { method: 'GET' })
+  }
+
+  getDailyReportById(id) {
+    return this.request(`/daily-reports/${id}`, { method: 'GET' })
+  }
+
+  getLatestDailyReport(reportType = 'PORTFOLIO_RISK_DAILY') {
+    return this.request(`/daily-reports/latest?reportType=${reportType}`, { method: 'GET' })
+  }
+
+  getSchedulerJobLogsPaged(params = {}) {
+    const query = new URLSearchParams(params).toString()
+    return this.request(query ? `/scheduler-job-logs/paged?${query}` : '/scheduler-job-logs/paged', { method: 'GET' })
+  }
+
+  runDailyPortfolioRiskReport(payload = {}) {
+    const query = new URLSearchParams(payload).toString()
+    return this.request(query ? `/jobs/run-daily-portfolio-risk-report?${query}` : '/jobs/run-daily-portfolio-risk-report', {
+      method: 'POST'
+    })
+  }
+
+  runAlertPolling() {
+    return this.request('/jobs/run-alert-polling', {
+      method: 'POST'
+    })
+  }
+
+  runPriceUpdate() {
+    return this.request('/jobs/run-price-update', {
+      method: 'POST'
+    })
+  }
+
+  runPriceBackfill(days = 30, scope = 'HOLDINGS_AND_WATCHLIST') {
+    const query = new URLSearchParams({
+      days: String(days),
+      scope
+    }).toString()
+    return this.request(`/jobs/run-price-backfill?${query}`, {
+      method: 'POST'
+    })
+  }
+
+  runMarketAnalysis(scope = 'HOLDINGS_AND_WATCHLIST') {
+    const query = new URLSearchParams({ scope }).toString()
+    return this.request(`/jobs/run-market-analysis?${query}`, {
+      method: 'POST'
+    })
+  }
+
+  getPortfolioAlertSetting(portfolioId) {
+    return this.request(`/portfolio-alert-settings/${portfolioId}`, { method: 'GET' })
+  }
+
+  updatePortfolioAlertSetting(portfolioId, payload) {
+    return this.request(`/portfolio-alert-settings/${portfolioId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  getPortfolioAlertEventsPaged(params = {}) {
+    const query = new URLSearchParams(params).toString()
+    return this.request(query ? `/portfolio-alert-events/paged?${query}` : '/portfolio-alert-events/paged', { method: 'GET' })
+  }
+
+  getLatestPortfolioAlertEvents(limit = 10) {
+    return this.request(`/portfolio-alert-events/latest?limit=${limit}`, { method: 'GET' })
+  }
+
+  getDefaultWatchlist() {
+    return this.request('/watchlists/default', { method: 'GET' })
+  }
+
+  getDefaultWatchlistItemsPaged(params = {}) {
+    const query = new URLSearchParams(params).toString()
+    return this.request(query ? `/watchlists/default/items/paged?${query}` : '/watchlists/default/items/paged', { method: 'GET' })
+  }
+
+  addDefaultWatchlistItem(payload) {
+    return this.request('/watchlists/default/items', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  removeDefaultWatchlistItem(itemId) {
+    return this.request(`/watchlists/default/items/${itemId}`, {
+      method: 'DELETE'
+    })
+  }
+
+  getStrengthSnapshotsPaged(params = {}) {
+    const query = new URLSearchParams(params).toString()
+    return this.request(query ? `/strength-snapshots/paged?${query}` : '/strength-snapshots/paged', { method: 'GET' })
+  }
+
+  getStrengthSnapshotById(id) {
+    return this.request(`/strength-snapshots/${id}`, { method: 'GET' })
+  }
+
+  getLatestStrengthSnapshot(stockId, universeType = '') {
+    const query = new URLSearchParams({ stockId, universeType }).toString()
+    return this.request(`/strength-snapshots/latest?${query}`, { method: 'GET' })
+  }
+
+  getOpportunitySignalsPaged(params = {}) {
+    const query = new URLSearchParams(params).toString()
+    return this.request(query ? `/opportunity-signals/paged?${query}` : '/opportunity-signals/paged', { method: 'GET' })
+  }
+
+  getOpportunitySignalById(id) {
+    return this.request(`/opportunity-signals/${id}`, { method: 'GET' })
+  }
+
+  getLatestOpportunitySignal(stockId) {
+    return this.request(`/opportunity-signals/latest?stockId=${stockId}`, { method: 'GET' })
+  }
+
+  getSystemSchedulerJobs(params = {}) {
+    const query = new URLSearchParams(params).toString()
+    return this.request(query ? `/system/scheduler/jobs?${query}` : '/system/scheduler/jobs', { method: 'GET' })
+  }
+
+  getSystemSchedulerJob(jobCode) {
+    return this.request(`/system/scheduler/jobs/${jobCode}`, { method: 'GET' })
+  }
+
+  createSystemSchedulerJob(payload) {
+    return this.request('/system/scheduler/jobs', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  updateSystemSchedulerJob(jobCode, payload) {
+    return this.request(`/system/scheduler/jobs/${jobCode}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  toggleSystemSchedulerJob(jobCode, enabled) {
+    return this.request(`/system/scheduler/jobs/${jobCode}/toggle?enabled=${enabled ? 'true' : 'false'}`, {
+      method: 'PUT'
+    })
+  }
+
+  deleteSystemSchedulerJob(jobCode) {
+    return this.request(`/system/scheduler/jobs/${jobCode}`, {
+      method: 'DELETE'
+    })
+  }
+
+  runSystemSchedulerJobNow(jobCode) {
+    return this.request(`/system/scheduler/jobs/${jobCode}/run-now`, {
+      method: 'POST'
+    })
+  }
+
+  executeSystemSchedulerJob(jobCode) {
+    return this.request(`/system/scheduler/jobs/${jobCode}/execute`, {
+      method: 'POST'
+    })
+  }
+
+  getSystemSchedulerJobLogsPaged(jobCode, params = {}) {
+    const query = new URLSearchParams(params).toString()
+    return this.request(
+      query
+        ? `/system/scheduler/jobs/${jobCode}/logs/paged?${query}`
+        : `/system/scheduler/jobs/${jobCode}/logs/paged`,
+      { method: 'GET' }
+    )
+  }
+
+  getSystemSchedulerJobExecutionsPaged(jobCode, params = {}) {
+    const query = new URLSearchParams(params).toString()
+    return this.request(
+      query
+        ? `/system/scheduler/jobs/${jobCode}/executions?${query}`
+        : `/system/scheduler/jobs/${jobCode}/executions`,
+      { method: 'GET' }
+    )
+  }
+
+  getSystemSchedulerJobLatestExecution(jobCode) {
+    return this.request(`/system/scheduler/jobs/${jobCode}/executions/latest`, { method: 'GET' })
+  }
+
+  getSystemUsersPaged(params = {}) {
+    const query = new URLSearchParams(params).toString()
+    return this.request(query ? `/system/users/paged?${query}` : '/system/users/paged', { method: 'GET' })
+  }
+
+  getSystemUser(uid) {
+    return this.request(`/system/users/${uid}`, { method: 'GET' })
+  }
+
+  createSystemUser(payload) {
+    return this.request('/system/users', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  updateSystemUser(uid, payload) {
+    return this.request(`/system/users/${uid}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  setSystemUserEnabled(uid, enabled) {
+    return this.request(`/system/users/${uid}/enabled`, {
+      method: 'PUT',
+      body: JSON.stringify({ enabled })
+    })
+  }
+
+  resetSystemUserPassword(uid, newPassword) {
+    return this.request(`/system/users/${uid}/reset-password`, {
+      method: 'POST',
+      body: JSON.stringify({ newPassword })
+    })
+  }
+
+  getSystemRolesPaged(params = {}) {
+    const query = new URLSearchParams(params).toString()
+    return this.request(query ? `/system/roles/paged?${query}` : '/system/roles/paged', { method: 'GET' })
+  }
+
+  getSystemRole(roleId) {
+    return this.request(`/system/roles/${roleId}`, { method: 'GET' })
+  }
+
+  createSystemRole(payload) {
+    return this.request('/system/roles', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  updateSystemRole(roleId, payload) {
+    return this.request(`/system/roles/${roleId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  deleteSystemRole(roleId) {
+    return this.request(`/system/roles/${roleId}`, {
+      method: 'DELETE'
+    })
+  }
+
+  getSystemRolePermissionOptions() {
+    return this.request('/system/roles/permission-options', { method: 'GET' })
+  }
+
+  getSystemRolePermissions(roleId) {
+    return this.request(`/system/roles/${roleId}/permissions`, { method: 'GET' })
+  }
+
+  updateSystemRolePermissions(roleId, payload) {
+    return this.request(`/system/roles/${roleId}/permissions`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  getSystemPermissionsPaged(params = {}) {
+    const query = new URLSearchParams(params).toString()
+    return this.request(query ? `/system/permissions/paged?${query}` : '/system/permissions/paged', { method: 'GET' })
+  }
+
+  getSystemPermission(permissionId) {
+    return this.request(`/system/permissions/${permissionId}`, { method: 'GET' })
+  }
+
+  createSystemPermission(payload) {
+    return this.request('/system/permissions', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  updateSystemPermission(permissionId, payload) {
+    return this.request(`/system/permissions/${permissionId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  deleteSystemPermission(permissionId) {
+    return this.request(`/system/permissions/${permissionId}`, {
+      method: 'DELETE'
+    })
+  }
+
+  getSystemPermissionRoleBindings(permissionId) {
+    return this.request(`/system/permissions/${permissionId}/role-bindings`, { method: 'GET' })
+  }
+
+  getSystemUrlPermissionsPaged(params = {}) {
+    const query = new URLSearchParams(params).toString()
+    return this.request(query ? `/system/url-permissions/paged?${query}` : '/system/url-permissions/paged', { method: 'GET' })
+  }
+
+  getSystemUrlPermission(urlPermissionId) {
+    return this.request(`/system/url-permissions/${urlPermissionId}`, { method: 'GET' })
+  }
+
+  createSystemUrlPermission(payload) {
+    return this.request('/system/url-permissions', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  updateSystemUrlPermission(urlPermissionId, payload) {
+    return this.request(`/system/url-permissions/${urlPermissionId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  deleteSystemUrlPermission(urlPermissionId) {
+    return this.request(`/system/url-permissions/${urlPermissionId}`, {
+      method: 'DELETE'
+    })
+  }
+
+  getSystemUrlPermissionOptions() {
+    return this.request('/system/url-permissions/permission-options', { method: 'GET' })
+  }
+
+  getSystemUrlMethodOptions() {
+    return this.request('/system/url-permissions/method-options', { method: 'GET' })
+  }
+
+  getSystemMenusTree() {
+    return this.request('/system/menus/tree', { method: 'GET' })
+  }
+
+  getSystemMenu(menuId) {
+    return this.request(`/system/menus/${menuId}`, { method: 'GET' })
+  }
+
+  createSystemMenu(payload) {
+    return this.request('/system/menus', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  updateSystemMenu(menuId, payload) {
+    return this.request(`/system/menus/${menuId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  deleteSystemMenu(menuId) {
+    return this.request(`/system/menus/${menuId}`, {
+      method: 'DELETE'
+    })
+  }
+
+  setSystemMenuEnabled(menuId, enabled) {
+    return this.request(`/system/menus/${menuId}/enabled`, {
+      method: 'PUT',
+      body: JSON.stringify({ enabled })
+    })
+  }
+
+  getSystemMenuParentOptions(excludeId = null) {
+    const query = excludeId ? `?excludeId=${excludeId}` : ''
+    return this.request(`/system/menus/parent-options${query}`, { method: 'GET' })
+  }
+
+  getSystemMenuRequiredPermissionOptions() {
+    return this.request('/system/menus/required-permission-options', { method: 'GET' })
+  }
+
+  getSystemMaintenanceSettings() {
+    return this.request('/system/maintenance/settings', { method: 'GET' })
+  }
+
+  getSystemMaintenanceSettingsByCategory(category) {
+    return this.request(`/system/maintenance/settings/category/${encodeURIComponent(category)}`, { method: 'GET' })
+  }
+
+  getSystemMaintenanceSettingByKey(key) {
+    return this.request(`/system/maintenance/settings/${encodeURIComponent(key)}`, { method: 'GET' })
+  }
+
+  createSystemMaintenanceSetting(payload) {
+    return this.request('/system/maintenance/settings', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  updateSystemMaintenanceSetting(key, payload) {
+    return this.request(`/system/maintenance/settings/${encodeURIComponent(key)}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  refreshSystemMaintenanceSettings() {
+    return this.request('/system/maintenance/settings/refresh', { method: 'POST' })
+  }
+
+  getSystemStrategySettings() {
+    return this.request('/system/strategy-settings', { method: 'GET' })
+  }
+
+  updateSystemStrategySettings(payload) {
+    return this.request('/system/strategy-settings', {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  getSystemMaintenanceBackups() {
+    return this.request('/system/maintenance/backups', { method: 'GET' })
+  }
+
+  createSystemMaintenanceBackup() {
+    return this.request('/system/maintenance/backups/create', { method: 'POST' })
+  }
+
+  deleteSystemMaintenanceBackup(relativePath) {
+    return this.request(`/system/maintenance/backups/delete?path=${encodeURIComponent(relativePath)}`, {
+      method: 'DELETE'
+    })
+  }
+
+  sendSystemLineTestGroupPush(payload) {
+    return this.request('/line/test/group-push', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  getSystemLineGroups() {
+    return this.request('/system/line-groups', { method: 'GET' })
+  }
+
+  getSystemLineGroup(groupId) {
+    return this.request(`/system/line-groups/${encodeURIComponent(groupId)}`, { method: 'GET' })
+  }
+
+  createSystemLineGroup(payload) {
+    return this.request('/system/line-groups', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  updateSystemLineGroup(groupId, payload) {
+    return this.request(`/system/line-groups/${encodeURIComponent(groupId)}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  deleteSystemLineGroup(groupId) {
+    return this.request(`/system/line-groups/${encodeURIComponent(groupId)}`, {
+      method: 'DELETE'
+    })
+  }
+
+  getSystemLineGroupMembers(groupId) {
+    return this.request(`/system/line-groups/${encodeURIComponent(groupId)}/members`, {
+      method: 'GET'
+    })
+  }
+
+  addSystemLineGroupMember(groupId, payload) {
+    return this.request(`/system/line-groups/${encodeURIComponent(groupId)}/members`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  updateSystemLineGroupMember(groupId, memberId, payload) {
+    return this.request(`/system/line-groups/${encodeURIComponent(groupId)}/members/${memberId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  deleteSystemLineGroupMember(groupId, memberId) {
+    return this.request(`/system/line-groups/${encodeURIComponent(groupId)}/members/${memberId}`, {
+      method: 'DELETE'
+    })
+  }
+}
+
+export const investApiService = new InvestApiService()

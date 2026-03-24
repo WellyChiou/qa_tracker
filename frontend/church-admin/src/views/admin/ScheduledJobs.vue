@@ -450,16 +450,15 @@ const deleteJob = async (id) => {
   }
   
   try {
-    // apiRequest 現在會自動返回解析後的資料
-    const data = await apiRequest(`/church/scheduled-jobs/${id}`, {
+    // DELETE 成功時後端回傳 ApiResponse.data = null，不能用 data 是否為 null 判斷失敗
+    await apiRequest(`/church/scheduled-jobs/${id}`, {
       method: 'DELETE'
     })
-    
-    if (data !== null) {
-      await loadJobs()
-    } else {
-      throw new Error('刪除失敗')
-    }
+
+    stopPolling(id)
+    delete jobExecutions.value[id]
+    jobs.value = jobs.value.filter(job => job.id !== id)
+    toast.success('刪除成功')
   } catch (error) {
     console.error('刪除任務失敗:', error)
     toast.error('刪除失敗: ' + error.message)

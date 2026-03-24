@@ -1,12 +1,22 @@
 #!/bin/bash
-set -e
+set -eu
 
 # 設置基本路徑和名稱
 REMOTE_PATH="/root/project/work"
 PROJECT_NAME="docker-vue-java-mysql"
 ARCHIVE_NAME="${PROJECT_NAME}.tar.gz"
 
+if [ ! -d "$REMOTE_PATH" ]; then
+    echo "❌ 錯誤: 找不到遠端目錄 $REMOTE_PATH"
+    exit 1
+fi
+
 cd "$REMOTE_PATH"
+
+if [ ! -f "$ARCHIVE_NAME" ]; then
+    echo "❌ 錯誤: 找不到部署壓縮檔 $ARCHIVE_NAME"
+    exit 1
+fi
 
 # 備份證書目錄（如果存在）
 CERT_BACKUP_DIR="/tmp/${PROJECT_NAME}_cert_backup"
@@ -55,7 +65,10 @@ if [ -d "$PROJECT_NAME" ]; then
     if [ -f "scripts/deployment/deploy.sh" ]; then
         chmod +x scripts/deployment/deploy.sh
         # 執行部署
-        ./scripts/deployment/deploy.sh
+        if ! ./scripts/deployment/deploy.sh; then
+            echo "❌ 錯誤: deploy.sh 執行失敗"
+            exit 1
+        fi
     else
         echo "❌ 錯誤: 找不到 scripts/deployment/deploy.sh 文件"
         exit 1

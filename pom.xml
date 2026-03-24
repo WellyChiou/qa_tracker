@@ -14,5 +14,6 @@
         <module>backend/auth-core</module>
         <module>backend/personal</module>
         <module>backend/church</module>
+        <module>backend/invest</module>
     </modules>
 </project>

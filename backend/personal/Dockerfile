@@ -10,25 +10,29 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# 先複製聚合型 pom 及各模組的 pom 以利用 Docker cache
+# 先複製 pom 以利用 Docker cache
 COPY pom.xml .
 COPY backend/auth-core/pom.xml backend/auth-core/pom.xml
 COPY backend/personal/pom.xml backend/personal/pom.xml
-COPY backend/church/pom.xml backend/church/pom.xml
-
-# 先期依賴解析（只針對 personal 模組加上依賴）
-RUN mvn -pl backend/personal -am dependency:resolve -B -U || \
-    (echo "⚠️ 依賴下載失敗，10 秒後重試..." && sleep 10 && mvn -pl backend/personal -am dependency:resolve -B -U) || \
-    (echo "⚠️ 第二次下載失敗，20 秒後最後重試..." && sleep 20 && mvn -pl backend/personal -am dependency:resolve -B -U) || \
-    (echo "⚠️ 依賴下載失敗，將在構建階段自動下載..." && true)
 
 # 再複製完整模組來源，以進行建置
 COPY backend/auth-core backend/auth-core
+RUN mvn -f backend/auth-core/pom.xml install -DskipTests -B -U || \
+    (echo "⚠️ auth-core 打包失敗，改用 SSL fallback 參數重試..." && \
+    mvn -f backend/auth-core/pom.xml install -DskipTests -B -U \
+      -Dmaven.wagon.http.ssl.insecure=true \
+      -Dmaven.wagon.http.ssl.allowall=true \
+      -Dmaven.wagon.http.ssl.ignore.validity.dates=true)
+
 COPY backend/personal backend/personal
-COPY backend/church backend/church
 
 # 構建 personal 模組（含共用 auth core）
-RUN mvn -pl backend/personal -am clean package -DskipTests -B
+RUN mvn -f backend/personal/pom.xml package -DskipTests -B -U || \
+    (echo "⚠️ personal 打包失敗，改用 SSL fallback 參數重試..." && \
+    mvn -f backend/personal/pom.xml package -DskipTests -B -U \
+      -Dmaven.wagon.http.ssl.insecure=true \
+      -Dmaven.wagon.http.ssl.allowall=true \
+      -Dmaven.wagon.http.ssl.ignore.validity.dates=true)
 
 # 運行階段：使用 Eclipse Temurin（OpenJDK 的替代品）
 FROM eclipse-temurin:17-jre-jammy

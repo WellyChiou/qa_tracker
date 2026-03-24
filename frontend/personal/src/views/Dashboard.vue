@@ -53,11 +53,8 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import TopNavbar from '@/components/TopNavbar.vue'
 import { useAuth } from '@/composables/useAuth'
-
-const router = useRouter()
 
 const { currentUser } = useAuth()
 const backendStatus = ref('')
@@ -96,7 +93,9 @@ const flattenDashboardMenus = (menuList = []) => {
   return items
 }
 
-const dashboardMenus = computed(() => flattenDashboardMenus(currentUser.value?.menus))
+const dashboardMenus = computed(() => {
+  return flattenDashboardMenus(currentUser.value?.menus)
+})
 
 const checkBackendStatus = async () => {
   try {

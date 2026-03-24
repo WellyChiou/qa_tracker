@@ -86,47 +86,18 @@
           </table>
           
           <!-- 分頁 -->
-          <div class="pagination">
-            <div class="pagination-left">
-              <label for="pageSize" class="pagination-label">顯示筆數：</label>
-              <select id="pageSize" v-model.number="recordsPerPage" class="page-size-select">
-                <option :value="10">10</option>
-                <option :value="20">20</option>
-                <option :value="50">50</option>
-                <option :value="100">100</option>
-              </select>
-              <span class="pagination-info">共 {{ totalRecords }} 筆 (第 {{ currentPage }}/{{ totalPages }} 頁)</span>
-            </div>
-            <div class="pagination-right">
-              <button class="btn-secondary" @click="firstPage" :disabled="currentPage === 1" title="第一頁">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
-                </svg>
-              </button>
-              <button class="btn-secondary" @click="previousPage" :disabled="currentPage === 1">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-                </svg>
-                上一頁
-              </button>
-              <div class="page-jump">
-                <span class="pagination-label">到第</span>
-                <input type="number" v-model.number="jumpPage" min="1" :max="totalPages" class="page-input" @keyup.enter="jumpToPage" />
-                <span class="pagination-label">頁</span>
-              </div>
-              <button class="btn-secondary" @click="nextPage" :disabled="currentPage === totalPages">
-                下一頁
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                </svg>
-              </button>
-              <button class="btn-secondary" @click="lastPage" :disabled="currentPage === totalPages" title="最後一頁">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
-                </svg>
-              </button>
-            </div>
-          </div>
+          <PaginationControls
+            v-model:pageSize="recordsPerPage"
+            v-model:jumpPage="jumpPage"
+            :total-records="totalRecords"
+            :current-page="currentPage"
+            :total-pages="totalPages"
+            @first="firstPage"
+            @previous="previousPage"
+            @next="nextPage"
+            @last="lastPage"
+            @jump="jumpToPage"
+          />
         </div>
       </div>
 

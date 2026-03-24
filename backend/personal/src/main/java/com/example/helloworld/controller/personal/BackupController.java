@@ -54,11 +54,14 @@ public class BackupController {
                     .filter(path -> {
                         // Remote logic: Filter qa_tracker
                         Path relativePath = backupPath.relativize(path);
+                        String filename = path.getFileName().toString();
                         if (relativePath.getNameCount() > 0) {
                             String firstSegment = relativePath.getName(0).toString();
-                            return firstSegment.equals("qa_tracker");
+                            // 相容兩種結構：
+                            // 1) 舊版雙層：qa_tracker/qa_tracker_*.sql.gz
+                            // 2) 新版單層：qa_tracker_*.sql.gz
+                            return firstSegment.equals("qa_tracker") || filename.startsWith("qa_tracker_");
                         }
-                        String filename = path.getFileName().toString();
                         return filename.startsWith("qa_tracker_");
                     })
                     .map(path -> {

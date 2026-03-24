@@ -112,7 +112,7 @@ CREATE TABLE IF NOT EXISTS checkins (
 -- =====================
 
 -- 小組表
-CREATE TABLE IF NOT EXISTS groups (
+CREATE TABLE IF NOT EXISTS `groups` (
   id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主鍵 ID',
   group_name VARCHAR(100) NOT NULL UNIQUE COMMENT '小組名稱',
   description TEXT COMMENT '小組描述',
@@ -131,7 +131,7 @@ CREATE TABLE IF NOT EXISTS group_persons (
   joined_at DATE NOT NULL COMMENT '加入時間（用於計算出席率時過濾場次）',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '建立時間',
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新時間',
-  FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
+  FOREIGN KEY (group_id) REFERENCES `groups`(id) ON DELETE CASCADE,
   FOREIGN KEY (person_id) REFERENCES persons(id) ON DELETE CASCADE,
   UNIQUE KEY uk_group_person (group_id, person_id),
   INDEX idx_group_id (group_id),
@@ -146,7 +146,7 @@ CREATE TABLE IF NOT EXISTS session_groups (
   group_id BIGINT NOT NULL COMMENT '小組 ID',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '建立時間',
   FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
-  FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
+  FOREIGN KEY (group_id) REFERENCES `groups`(id) ON DELETE CASCADE,
   UNIQUE KEY uk_session_group (session_id, group_id),
   INDEX idx_session_id (session_id),
   INDEX idx_group_id (group_id)
@@ -221,7 +221,7 @@ SET @preparedStatement = (SELECT IF(
       AND (constraint_name = @constraintname)
   ) > 0,
   "SELECT 1",
-  CONCAT("ALTER TABLE ", @tablename, " ADD CONSTRAINT ", @constraintname, " FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE SET NULL")
+  CONCAT("ALTER TABLE ", @tablename, " ADD CONSTRAINT ", @constraintname, " FOREIGN KEY (group_id) REFERENCES `groups`(id) ON DELETE SET NULL")
 ));
 PREPARE alterIfNotExists FROM @preparedStatement;
 EXECUTE alterIfNotExists;
@@ -262,18 +262,29 @@ PREPARE alterIfNotExists FROM @preparedStatement;
 EXECUTE alterIfNotExists;
 DEALLOCATE PREPARE alterIfNotExists;
 
--- 為現有資料填充年度
-UPDATE service_schedules ss
-LEFT JOIN (
-    SELECT service_schedule_id, MIN(date) as min_date
-    FROM service_schedule_dates
-    GROUP BY service_schedule_id
-) ssd ON ssd.service_schedule_id = ss.id
-SET ss.year = COALESCE(
-    YEAR(ssd.min_date),
-    YEAR(ss.created_at)
-)
-WHERE ss.year IS NULL;
+-- 為現有資料填充年度（僅在舊版 service_schedule_dates 存在時執行）
+SET @preparedStatement = (SELECT IF(
+  (
+    SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE
+      (table_name = 'service_schedule_dates')
+      AND (table_schema = @dbname)
+      AND (column_name = 'service_schedule_id')
+  ) > 0
+  AND
+  (
+    SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE
+      (table_name = 'service_schedule_dates')
+      AND (table_schema = @dbname)
+      AND (column_name = 'date')
+  ) > 0,
+  "UPDATE service_schedules ss LEFT JOIN (SELECT service_schedule_id, MIN(date) AS min_date FROM service_schedule_dates GROUP BY service_schedule_id) ssd ON ssd.service_schedule_id = ss.id SET ss.year = COALESCE(YEAR(ssd.min_date), YEAR(ss.created_at)) WHERE ss.year IS NULL",
+  "UPDATE service_schedules SET year = YEAR(created_at) WHERE year IS NULL"
+));
+PREPARE alterIfNotExists FROM @preparedStatement;
+EXECUTE alterIfNotExists;
+DEALLOCATE PREPARE alterIfNotExists;
 
 -- 如果還有 NULL 值，使用當前年份
 UPDATE service_schedules 
@@ -373,4 +384,3 @@ CREATE TABLE IF NOT EXISTS announcements (
     INDEX idx_is_active (is_active),
     INDEX idx_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='公告表';
-

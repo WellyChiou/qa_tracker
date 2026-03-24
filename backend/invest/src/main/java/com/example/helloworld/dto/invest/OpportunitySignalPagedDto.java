@@ -1,0 +1,152 @@
+package com.example.helloworld.dto.invest;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+
+public class OpportunitySignalPagedDto {
+    private Long id;
+    private Long stockId;
+    private String market;
+    private String ticker;
+    private String stockName;
+    private LocalDate tradeDate;
+    private String signalKey;
+    private String signalType;
+    private Integer signalScore;
+    private String recommendation;
+    private String status;
+    private Integer strategyVersion;
+    private String summary;
+    private String conditionText;
+    private LocalDateTime updatedAt;
+    private List<OpportunitySignalReasonDto> topReasons;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public Long getStockId() {
+        return stockId;
+    }
+
+    public void setStockId(Long stockId) {
+        this.stockId = stockId;
+    }
+
+    public String getMarket() {
+        return market;
+    }
+
+    public void setMarket(String market) {
+        this.market = market;
+    }
+
+    public String getTicker() {
+        return ticker;
+    }
+
+    public void setTicker(String ticker) {
+        this.ticker = ticker;
+    }
+
+    public String getStockName() {
+        return stockName;
+    }
+
+    public void setStockName(String stockName) {
+        this.stockName = stockName;
+    }
+
+    public LocalDate getTradeDate() {
+        return tradeDate;
+    }
+
+    public void setTradeDate(LocalDate tradeDate) {
+        this.tradeDate = tradeDate;
+    }
+
+    public String getSignalKey() {
+        return signalKey;
+    }
+
+    public void setSignalKey(String signalKey) {
+        this.signalKey = signalKey;
+    }
+
+    public String getSignalType() {
+        return signalType;
+    }
+
+    public void setSignalType(String signalType) {
+        this.signalType = signalType;
+    }
+
+    public Integer getSignalScore() {
+        return signalScore;
+    }
+
+    public void setSignalScore(Integer signalScore) {
+        this.signalScore = signalScore;
+    }
+
+    public String getRecommendation() {
+        return recommendation;
+    }
+
+    public void setRecommendation(String recommendation) {
+        this.recommendation = recommendation;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public Integer getStrategyVersion() {
+        return strategyVersion;
+    }
+
+    public void setStrategyVersion(Integer strategyVersion) {
+        this.strategyVersion = strategyVersion;
+    }
+
+    public String getSummary() {
+        return summary;
+    }
+
+    public void setSummary(String summary) {
+        this.summary = summary;
+    }
+
+    public String getConditionText() {
+        return conditionText;
+    }
+
+    public void setConditionText(String conditionText) {
+        this.conditionText = conditionText;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public List<OpportunitySignalReasonDto> getTopReasons() {
+        return topReasons;
+    }
+
+    public void setTopReasons(List<OpportunitySignalReasonDto> topReasons) {
+        this.topReasons = topReasons;
+    }
+}
