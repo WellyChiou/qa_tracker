@@ -21,9 +21,9 @@
 
       <section class="overview-strip">
         <article class="overview-card overview-card--accent">
-          <span>總筆數</span>
+          <span>{{ isLatestMode ? '股票檔數' : '總筆數' }}</span>
           <strong>{{ pagination.totalElements }}</strong>
-          <p>每日行情資料總筆數。</p>
+          <p>{{ isLatestMode ? '每檔股票僅顯示最新一筆。' : '每日行情資料總筆數。' }}</p>
         </article>
         <article class="overview-card">
           <span>本頁成交量合計</span>
@@ -67,6 +67,25 @@
           </div>
         </div>
       </details>
+
+      <section class="view-mode-switch">
+        <button
+          class="mode-btn"
+          :class="{ 'mode-btn--active': viewMode === 'history' }"
+          @click="setViewMode('history')"
+        >
+          歷史資料
+        </button>
+        <button
+          class="mode-btn"
+          :class="{ 'mode-btn--active': viewMode === 'latest' }"
+          @click="setViewMode('latest')"
+        >
+          最新價格
+        </button>
+      </section>
+
+      <p v-if="isLatestMode" class="view-mode-hint">每檔股票僅顯示最新一筆行情。</p>
 
       <div class="card surface-card table-wrap">
         <div v-if="rows.length === 0" class="empty-state">
@@ -206,6 +225,7 @@ import { useAuth } from '@/composables/useAuth'
 
 const rows = ref([])
 const stockOptions = ref([])
+const viewMode = ref('history')
 const showModal = ref(false)
 const editingId = ref(null)
 const jumpPage = ref(1)
@@ -239,6 +259,7 @@ const form = reactive({
 })
 
 const pageVolume = computed(() => rows.value.reduce((sum, row) => sum + Number(row.volume || 0), 0))
+const isLatestMode = computed(() => viewMode.value === 'latest')
 const canRunPriceUpdateJob = computed(() => {
   const permissions = currentUser.value?.permissions
   return Array.isArray(permissions) && permissions.includes('INVEST_JOB_RUN_PRICE_UPDATE')
@@ -266,6 +287,16 @@ const loadStockOptions = async () => {
 
 const loadRows = async () => {
   try {
+    if (isLatestMode.value) {
+      const latestRows = await investApiService.getStockPriceDailiesLatest(buildParams())
+      rows.value = latestRows || []
+      pagination.totalElements = rows.value.length
+      pagination.totalPages = 1
+      pagination.page = 1
+      jumpPage.value = 1
+      return
+    }
+
     const data = await investApiService.getStockPriceDailiesPaged(buildParams())
     rows.value = data?.content || []
     pagination.totalElements = Number(data?.totalElements || 0)
@@ -276,6 +307,16 @@ const loadRows = async () => {
   } catch (error) {
     toast.error(`載入每日行情失敗: ${error.message || '未知錯誤'}`)
   }
+}
+
+const setViewMode = (mode) => {
+  if (viewMode.value === mode) {
+    return
+  }
+  viewMode.value = mode
+  pagination.page = 1
+  jumpPage.value = 1
+  loadRows()
 }
 
 const runPriceUpdate = async () => {
@@ -418,6 +459,9 @@ watch(() => [filters.stockId, filters.ticker, filters.tradeDateFrom, filters.tra
 })
 
 watch(() => pagination.size, () => {
+  if (isLatestMode.value) {
+    return
+  }
   pagination.page = 1
   jumpPage.value = 1
   loadRows()
@@ -449,6 +493,22 @@ onMounted(async () => {
 .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
 .filter-group label { margin-bottom: 4px; font-size: 0.85rem; }
 .filter-group.actions { display: flex; align-items: flex-end; }
+.view-mode-switch { display: inline-flex; align-items: center; gap: 8px; }
+.mode-btn {
+  border: 1px solid var(--border-color);
+  background: #fff;
+  color: var(--text-primary);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+.mode-btn--active {
+  border-color: #2563eb;
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.08);
+}
+.view-mode-hint { margin: -4px 0 0; color: var(--text-secondary); font-size: 0.86rem; }
 .table-wrap { padding: 14px; overflow-x: auto; }
 .table-actions { display: flex; gap: 6px; }
 .empty-state { text-align: center; color: var(--text-secondary); padding: 18px 10px; }

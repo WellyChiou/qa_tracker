@@ -23,7 +23,7 @@
         <article class="overview-card">
           <span>總成本</span>
           <strong>{{ formatMoney(portfolio.totalCost) }}</strong>
-          <p>均價 {{ formatMoney(portfolio.avgCost) }}，股數 {{ formatQty(portfolio.quantity) }}</p>
+          <p>均價 {{ formatMoneyWithCurrency(portfolio.avgCost, portfolio.assetCurrency) }}，股數 {{ formatQty(portfolio.quantity) }}</p>
         </article>
         <article class="overview-card">
           <span>市值 / 損益</span>
@@ -32,8 +32,9 @@
             {{ formatSignedMoney(portfolio.unrealizedProfitLoss) }} ({{ formatPercent(portfolio.unrealizedProfitLossPercent) }})
           </p>
           <p class="price-meta">
-            現價 {{ formatMoney(portfolio.currentPrice) }} / {{ formatPriceSource(portfolio.priceSource) }} / {{ portfolio.currentPriceTradeDate || '無資料日期' }} / 品質：{{ formatDataQuality(portfolio.currentPriceDataQuality) }}
+            現價 {{ formatMoneyWithCurrency(portfolio.currentPrice, portfolio.assetCurrency) }} / {{ formatPriceSource(portfolio.priceSource) }} / {{ portfolio.currentPriceTradeDate || '無資料日期' }} / 品質：{{ formatDataQuality(portfolio.currentPriceDataQuality) }}
           </p>
+          <p class="price-meta">總成本/市值/損益為 TWD 折算顯示。</p>
         </article>
       </section>
 
@@ -272,6 +273,7 @@ const goBack = () => {
 }
 
 const formatMoney = (value) => `$${Number(value || 0).toLocaleString('zh-TW', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`
+const formatMoneyWithCurrency = (value, currency) => `${formatMoney(value)} ${currency || ''}`.trim()
 const formatSignedMoney = (value) => {
   const number = Number(value || 0)
   const sign = number >= 0 ? '+' : '-'

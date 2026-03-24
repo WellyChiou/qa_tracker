@@ -47,6 +47,7 @@ public class DailyReportBatchService {
     private final SchedulerJobLogRepository schedulerJobLogRepository;
     private final PortfolioRiskResultService portfolioRiskResultService;
     private final InvestCurrentUserService investCurrentUserService;
+    private final InvestFxConversionService investFxConversionService;
     private final ObjectMapper objectMapper;
 
     public DailyReportBatchService(PortfolioRepository portfolioRepository,
@@ -56,6 +57,7 @@ public class DailyReportBatchService {
                                    SchedulerJobLogRepository schedulerJobLogRepository,
                                    PortfolioRiskResultService portfolioRiskResultService,
                                    InvestCurrentUserService investCurrentUserService,
+                                   InvestFxConversionService investFxConversionService,
                                    ObjectMapper objectMapper) {
         this.portfolioRepository = portfolioRepository;
         this.stockPriceDailyRepository = stockPriceDailyRepository;
@@ -64,6 +66,7 @@ public class DailyReportBatchService {
         this.schedulerJobLogRepository = schedulerJobLogRepository;
         this.portfolioRiskResultService = portfolioRiskResultService;
         this.investCurrentUserService = investCurrentUserService;
+        this.investFxConversionService = investFxConversionService;
         this.objectMapper = objectMapper;
     }
 
@@ -165,11 +168,14 @@ public class DailyReportBatchService {
             }
 
             BigDecimal closePrice = latestPrice.getClosePrice().setScale(PRICE_SCALE, RoundingMode.HALF_UP);
-            BigDecimal marketValue = closePrice.multiply(portfolio.getQuantity()).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
-            BigDecimal pnl = marketValue.subtract(portfolio.getTotalCost()).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+            String assetCurrency = investFxConversionService.resolveAssetCurrencyByMarket(portfolio.getStock().getMarket());
+            BigDecimal marketValueInAssetCurrency = closePrice.multiply(portfolio.getQuantity()).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+            BigDecimal marketValue = investFxConversionService.convertToBaseCurrency(marketValueInAssetCurrency, assetCurrency);
+            BigDecimal totalCostInBase = investFxConversionService.convertToBaseCurrency(portfolio.getTotalCost(), assetCurrency);
+            BigDecimal pnl = marketValue.subtract(totalCostInBase).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
             BigDecimal pnlPercent = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
-            if (portfolio.getTotalCost().compareTo(BigDecimal.ZERO) > 0) {
-                pnlPercent = pnl.divide(portfolio.getTotalCost(), 6, RoundingMode.HALF_UP)
+            if (totalCostInBase.compareTo(BigDecimal.ZERO) > 0) {
+                pnlPercent = pnl.divide(totalCostInBase, 6, RoundingMode.HALF_UP)
                     .multiply(BigDecimal.valueOf(100))
                     .setScale(2, RoundingMode.HALF_UP);
             }
@@ -211,7 +217,7 @@ public class DailyReportBatchService {
             );
             topRiskHoldings.add(holding);
 
-            totalCost = totalCost.add(portfolio.getTotalCost()).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+            totalCost = totalCost.add(totalCostInBase).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
             totalMarketValue = totalMarketValue.add(marketValue).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
             totalPnL = totalPnL.add(pnl).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
         }

@@ -144,6 +144,40 @@ docker rm -f \
     nginx_proxy nginx_invest certbot \
     2>/dev/null || true
 
+# 先啟動 MySQL，讓 migration runner 可執行
+echo ""
+echo "啟動 MySQL（migration 前置）..."
+"${COMPOSE_CMD[@]}" up -d mysql
+
+# 先補跑 migration（低風險：缺少 runner 會跳過，已有 runner 的專案自動套用）
+echo ""
+echo "執行資料庫 migration..."
+
+run_migration_runner_required() {
+    local label="$1"
+    local runner="$2"
+    shift 2
+    local args=("$@")
+
+    if [[ ! -f "${runner}" ]]; then
+        echo "❌ ${label}: 找不到 migration runner：${runner}"
+        exit 1
+    fi
+
+    if [[ ! -x "${runner}" ]]; then
+        chmod +x "${runner}"
+    fi
+
+    echo "▶ ${label}: 執行 ${runner} ${args[*]}"
+    "${runner}" "${args[@]}"
+    echo "✅ ${label}: migration 完成"
+}
+
+# all 模式：三個專案 migration 必跑，任一失敗立即中止部署
+run_migration_runner_required "personal" "./scripts/migration/run-personal-migrations.sh" --compose-file docker-compose.yml
+run_migration_runner_required "church" "./scripts/migration/run-church-migrations.sh" --compose-file docker-compose.yml
+run_migration_runner_required "invest" "./scripts/migration/run-invest-migrations.sh" --compose-file docker-compose.yml
+
 # 構建並啟動所有服務
 echo ""
 echo "開始構建和啟動服務..."

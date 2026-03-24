@@ -8,6 +8,8 @@ public class PortfolioDashboardOverviewDto {
     private BigDecimal totalMarketValue;
     private BigDecimal totalPnL;
     private BigDecimal totalPnLPercent;
+    private String baseCurrency;
+    private BigDecimal usdToTwdRate;
     private Long holdingCount;
     private List<DashboardDistributionItemDto> riskDistribution;
     private List<DashboardDistributionItemDto> recommendationDistribution;
@@ -45,6 +47,22 @@ public class PortfolioDashboardOverviewDto {
 
     public void setTotalPnLPercent(BigDecimal totalPnLPercent) {
         this.totalPnLPercent = totalPnLPercent;
+    }
+
+    public String getBaseCurrency() {
+        return baseCurrency;
+    }
+
+    public void setBaseCurrency(String baseCurrency) {
+        this.baseCurrency = baseCurrency;
+    }
+
+    public BigDecimal getUsdToTwdRate() {
+        return usdToTwdRate;
+    }
+
+    public void setUsdToTwdRate(BigDecimal usdToTwdRate) {
+        this.usdToTwdRate = usdToTwdRate;
     }
 
     public Long getHoldingCount() {

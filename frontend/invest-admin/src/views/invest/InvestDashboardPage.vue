@@ -29,6 +29,9 @@
           <span>總資產概況</span>
           <strong>{{ formatMoney(overview.totalMarketValue) }}</strong>
           <p>成本 {{ formatMoney(overview.totalCost) }}，損益 {{ formatSignedMoney(overview.totalPnL) }}（{{ formatPercent(overview.totalPnLPercent) }}）</p>
+          <p v-if="overview.baseCurrency === 'TWD'" class="confidence-note">
+            總額以 TWD 顯示，USD 依設定匯率 {{ Number(overview.usdToTwdRate || 0).toFixed(4) }} 換算。
+          </p>
         </article>
         <article class="overview-card">
           <span>持股檔數</span>
@@ -289,6 +292,8 @@ const overview = reactive({
   totalMarketValue: 0,
   totalPnL: 0,
   totalPnLPercent: 0,
+  baseCurrency: 'TWD',
+  usdToTwdRate: 0,
   holdingCount: 0,
   alertSummary: {
     totalActiveAlerts: 0,
@@ -619,6 +624,8 @@ const reloadAll = async () => {
         totalMarketValue: Number(data?.totalMarketValue || 0),
         totalPnL: Number(data?.totalPnL || 0),
         totalPnLPercent: Number(data?.totalPnLPercent || 0),
+        baseCurrency: data?.baseCurrency || 'TWD',
+        usdToTwdRate: Number(data?.usdToTwdRate || 0),
         holdingCount: Number(data?.holdingCount || 0),
         alertSummary: data?.alertSummary || overview.alertSummary,
         latestDailyReportSummary: data?.latestDailyReportSummary || null

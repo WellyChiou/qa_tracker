@@ -344,10 +344,19 @@ if [[ -f ".env.invest.prod" ]]; then
   COMPOSE_ENV_ARGS+=(--env-file .env.invest.prod)
 fi
 
-docker compose "${COMPOSE_ENV_ARGS[@]}" -f docker-compose.invest.yml down || true
-docker compose "${COMPOSE_ENV_ARGS[@]}" -f docker-compose.invest.yml up -d mysql
+# invest-only 強制使用獨立 project name，避免與 all 模式共用預設 project 造成混淆
+COMPOSE_ARGS=("${COMPOSE_ENV_ARGS[@]}" -p invest -f docker-compose.invest.yml)
+
+echo "== invest-only compose project =="
+echo "docker compose ${COMPOSE_ARGS[*]}"
+echo "== invest-only services =="
+docker compose "${COMPOSE_ARGS[@]}" config --services
+
+docker compose "${COMPOSE_ARGS[@]}" down || true
+docker compose "${COMPOSE_ARGS[@]}" up -d mysql
 
 MIGRATION_ARGS=(--compose-file docker-compose.invest.yml)
+MIGRATION_ARGS+=(--project-name invest)
 if [[ -f ".env.invest.prod" ]]; then
   MIGRATION_ARGS+=(--env-file .env.invest.prod)
 fi
@@ -358,8 +367,15 @@ fi
 
 ./scripts/migration/run-invest-migrations.sh "${MIGRATION_ARGS[@]}"
 
-docker compose "${COMPOSE_ENV_ARGS[@]}" -f docker-compose.invest.yml up -d --build
-docker compose "${COMPOSE_ENV_ARGS[@]}" -f docker-compose.invest.yml ps
+docker compose "${COMPOSE_ARGS[@]}" up -d --build mysql backend-invest frontend-invest-admin nginx
+docker compose "${COMPOSE_ARGS[@]}" ps
+
+echo "== invest-only quick health =="
+docker ps --format '{{.Names}}' | grep -E '^backend_invest$|^frontend_invest_admin$|^nginx_invest$|^mysql_invest_db$' || {
+  echo "❌ invest-only 容器檢查失敗（backend_invest/frontend_invest_admin/nginx_invest/mysql_invest_db）"
+  exit 1
+}
+echo "✅ invest-only 部署完成（project=invest）"
 EOS
 else
   echo "Step 4/4: 遠端部署中（${MODE}-only）..."

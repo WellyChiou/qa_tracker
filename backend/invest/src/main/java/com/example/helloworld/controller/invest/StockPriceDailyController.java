@@ -63,6 +63,22 @@ public class StockPriceDailyController {
         }
     }
 
+    @GetMapping("/latest")
+    public ResponseEntity<ApiResponse<List<StockPriceDailyResponseDto>>> getLatest(
+            @RequestParam(required = false) Long stockId,
+            @RequestParam(required = false) String ticker,
+            @RequestParam(required = false) LocalDate tradeDateFrom,
+            @RequestParam(required = false) LocalDate tradeDateTo
+    ) {
+        try {
+            return ResponseEntity.ok(ApiResponse.ok(
+                stockPriceDailyService.getLatest(stockId, ticker, tradeDateFrom, tradeDateTo)
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.fail("查詢最新每日行情失敗：" + e.getMessage()));
+        }
+    }
+
     @PostMapping
     public ResponseEntity<ApiResponse<StockPriceDailyResponseDto>> create(@RequestBody StockPriceDailyUpsertRequestDto request) {
         try {

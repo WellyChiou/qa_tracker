@@ -8,6 +8,7 @@ INCLUDE_DEMO="false"
 ENV_FILE=""
 DB_NAME="invest"
 HISTORY_TABLE="schema_migration_history"
+PROJECT_NAME=""
 
 usage() {
   cat <<'EOF'
@@ -19,6 +20,7 @@ Options:
   --env-file <path>        docker compose env file（選填）
   --mysql-service <name>   MySQL service name（預設: mysql）
   --db-name <name>         目標資料庫（預設: invest）
+  --project-name <name>    docker compose project name（選填）
   --include-demo           額外執行 seed-demo（預設不執行）
   --help                   顯示說明
 
@@ -44,6 +46,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --db-name)
       DB_NAME="${2:-}"
+      shift 2
+      ;;
+    --project-name)
+      PROJECT_NAME="${2:-}"
       shift 2
       ;;
     --include-demo)
@@ -91,6 +97,9 @@ done
 COMPOSE_ARGS=("-f" "${COMPOSE_FILE}")
 if [[ -n "${ENV_FILE}" ]]; then
   COMPOSE_ARGS=(--env-file "${ENV_FILE}" "${COMPOSE_ARGS[@]}")
+fi
+if [[ -n "${PROJECT_NAME}" ]]; then
+  COMPOSE_ARGS=("-p" "${PROJECT_NAME}" "${COMPOSE_ARGS[@]}")
 fi
 
 dc() {

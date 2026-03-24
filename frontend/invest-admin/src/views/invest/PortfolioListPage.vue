@@ -18,7 +18,7 @@
         <article class="overview-card">
           <span>本頁總市值</span>
           <strong>{{ formatMoney(pageMarketValue) }}</strong>
-          <p>本頁持股市值合計。</p>
+          <p>本頁持股市值合計（TWD 折算）。</p>
         </article>
         <article class="overview-card">
           <span>本頁未實現損益</span>
@@ -74,15 +74,15 @@
                 <th>ID</th>
                 <th>股票</th>
                 <th>使用者</th>
-                <th>平均成本</th>
+                <th>平均成本(原幣)</th>
                 <th>股數</th>
-                <th>總成本</th>
-                <th>現價</th>
+                <th>總成本(TWD)</th>
+                <th>現價(原幣)</th>
                 <th>現價日期</th>
                 <th>現價來源</th>
                 <th>資料品質</th>
-                <th>市值</th>
-                <th>未實現損益</th>
+                <th>市值(TWD)</th>
+                <th>未實現損益(TWD)</th>
                 <th>報酬率</th>
                 <th>最新風險等級</th>
                 <th>最新建議</th>
@@ -95,10 +95,10 @@
                 <td>{{ row.id }}</td>
                 <td>{{ row.ticker }}<br /><small>{{ row.stockName }}</small></td>
                 <td>{{ row.userId }}</td>
-                <td>{{ formatMoney(row.avgCost) }}</td>
+                <td>{{ formatMoneyWithCurrency(row.avgCost, row.assetCurrency) }}</td>
                 <td>{{ formatQty(row.quantity) }}</td>
                 <td>{{ formatMoney(row.totalCost) }}</td>
-                <td>{{ formatMoney(row.currentPrice) }}</td>
+                <td>{{ formatMoneyWithCurrency(row.currentPrice, row.assetCurrency) }}</td>
                 <td>{{ row.currentPriceTradeDate || '-' }}</td>
                 <td>{{ formatPriceSource(row.priceSource) }}</td>
                 <td>{{ formatDataQuality(row.currentPriceDataQuality) }}</td>
@@ -179,7 +179,7 @@
                 </select>
               </div>
             </div>
-            <div class="hint">`totalCost` 依規則固定由 `avgCost * quantity` 計算（四捨五入到小數第 2 位）。</div>
+            <div class="hint">`totalCost` 依規則固定由 `avgCost * quantity` 計算（四捨五入到小數第 2 位）。美股彙總金額會依設定匯率換算為 TWD。</div>
             <div class="modal-actions">
               <button class="btn btn-primary" @click="submitForm">儲存</button>
               <button class="btn btn-secondary" @click="closeModal">取消</button>
@@ -361,6 +361,7 @@ const deleteRow = async (row) => {
 }
 
 const formatMoney = (value) => `$${Number(value || 0).toLocaleString('zh-TW', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+const formatMoneyWithCurrency = (value, currency) => `${formatMoney(value)} ${currency || ''}`.trim()
 const formatSignedMoney = (value) => {
   const number = Number(value || 0)
   const sign = number >= 0 ? '+' : '-'

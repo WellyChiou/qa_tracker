@@ -38,19 +38,22 @@ public class PortfolioService {
     private final StockPriceDailyService stockPriceDailyService;
     private final PortfolioRiskResultRepository portfolioRiskResultRepository;
     private final InvestCurrentUserService investCurrentUserService;
+    private final InvestFxConversionService investFxConversionService;
 
     public PortfolioService(PortfolioRepository portfolioRepository,
                             StockRepository stockRepository,
                             StockPriceDailyRepository stockPriceDailyRepository,
                             StockPriceDailyService stockPriceDailyService,
                             PortfolioRiskResultRepository portfolioRiskResultRepository,
-                            InvestCurrentUserService investCurrentUserService) {
+                            InvestCurrentUserService investCurrentUserService,
+                            InvestFxConversionService investFxConversionService) {
         this.portfolioRepository = portfolioRepository;
         this.stockRepository = stockRepository;
         this.stockPriceDailyRepository = stockPriceDailyRepository;
         this.stockPriceDailyService = stockPriceDailyService;
         this.portfolioRiskResultRepository = portfolioRiskResultRepository;
         this.investCurrentUserService = investCurrentUserService;
+        this.investFxConversionService = investFxConversionService;
     }
 
     @Transactional(transactionManager = "investTransactionManager", readOnly = true)
@@ -167,11 +170,20 @@ public class PortfolioService {
         BigDecimal currentPrice = hasLatestClose ? latestPrice.getClosePrice() : portfolio.getAvgCost();
         currentPrice = currentPrice.setScale(PRICE_SCALE, RoundingMode.HALF_UP);
 
-        BigDecimal marketValue = currentPrice
+        BigDecimal marketValueInAssetCurrency = currentPrice
             .multiply(portfolio.getQuantity())
             .setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+        String assetCurrency = investFxConversionService.resolveAssetCurrencyByMarket(stock.getMarket());
+        BigDecimal fxRateToBase = "USD".equals(assetCurrency)
+            ? investFxConversionService.getUsdToTwdRate()
+            : BigDecimal.ONE;
+        BigDecimal marketValue = investFxConversionService
+            .convertToBaseCurrency(marketValueInAssetCurrency, assetCurrency)
+            .setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+        BigDecimal totalCost = investFxConversionService
+            .convertToBaseCurrency(portfolio.getTotalCost(), assetCurrency)
+            .setScale(MONEY_SCALE, RoundingMode.HALF_UP);
 
-        BigDecimal totalCost = portfolio.getTotalCost().setScale(MONEY_SCALE, RoundingMode.HALF_UP);
         BigDecimal pnl = marketValue.subtract(totalCost).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
 
         BigDecimal pnlPercent = BigDecimal.ZERO;
@@ -196,6 +208,9 @@ public class PortfolioService {
         dto.setCreatedAt(portfolio.getCreatedAt());
         dto.setUpdatedAt(portfolio.getUpdatedAt());
         dto.setCurrentPrice(currentPrice);
+        dto.setAssetCurrency(assetCurrency);
+        dto.setBaseCurrency(investFxConversionService.getBaseCurrency());
+        dto.setFxRateToBase(fxRateToBase.setScale(4, RoundingMode.HALF_UP));
         dto.setCurrentPriceTradeDate(latestPrice == null ? null : latestPrice.getTradeDate());
         // priceSource 是持股估值語意（LATEST_CLOSE/COST_FALLBACK），
         // 與 stock_price_daily.data_source（TWSE/TPEX/US_PROVIDER）不同。

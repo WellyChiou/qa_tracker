@@ -111,6 +111,11 @@ class InvestApiService {
     return this.request(query ? `/stock-price-dailies/all?${query}` : '/stock-price-dailies/all', { method: 'GET' })
   }
 
+  getStockPriceDailiesLatest(params = {}) {
+    const query = new URLSearchParams(params).toString()
+    return this.request(query ? `/stock-price-dailies/latest?${query}` : '/stock-price-dailies/latest', { method: 'GET' })
+  }
+
   createStockPriceDaily(payload) {
     return this.request('/stock-price-dailies', {
       method: 'POST',

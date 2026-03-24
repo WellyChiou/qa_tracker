@@ -20,6 +20,9 @@ public class PortfolioResponseDto {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private BigDecimal currentPrice;
+    private String assetCurrency;
+    private String baseCurrency;
+    private BigDecimal fxRateToBase;
     private LocalDate currentPriceTradeDate;
     private String priceSource;
     private String currentPriceDataQuality;
@@ -141,6 +144,30 @@ public class PortfolioResponseDto {
 
     public void setCurrentPrice(BigDecimal currentPrice) {
         this.currentPrice = currentPrice;
+    }
+
+    public String getAssetCurrency() {
+        return assetCurrency;
+    }
+
+    public void setAssetCurrency(String assetCurrency) {
+        this.assetCurrency = assetCurrency;
+    }
+
+    public String getBaseCurrency() {
+        return baseCurrency;
+    }
+
+    public void setBaseCurrency(String baseCurrency) {
+        this.baseCurrency = baseCurrency;
+    }
+
+    public BigDecimal getFxRateToBase() {
+        return fxRateToBase;
+    }
+
+    public void setFxRateToBase(BigDecimal fxRateToBase) {
+        this.fxRateToBase = fxRateToBase;
     }
 
     public LocalDate getCurrentPriceTradeDate() {

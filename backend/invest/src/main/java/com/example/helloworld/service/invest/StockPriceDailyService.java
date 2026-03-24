@@ -57,6 +57,17 @@ public class StockPriceDailyService {
             .toList();
     }
 
+    @Transactional(transactionManager = "investTransactionManager", readOnly = true)
+    public List<StockPriceDailyResponseDto> getLatest(Long stockId,
+                                                      String ticker,
+                                                      LocalDate tradeDateFrom,
+                                                      LocalDate tradeDateTo) {
+        return stockPriceDailyRepository.findLatestByFilters(stockId, normalize(ticker), tradeDateFrom, tradeDateTo)
+            .stream()
+            .map(this::toResponse)
+            .toList();
+    }
+
     public StockPriceDailyResponseDto create(StockPriceDailyUpsertRequestDto request) {
         validateRequest(request);
 

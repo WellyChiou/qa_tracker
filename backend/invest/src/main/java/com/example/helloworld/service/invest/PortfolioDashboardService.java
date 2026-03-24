@@ -31,17 +31,20 @@ public class PortfolioDashboardService {
     private final InvestCurrentUserService investCurrentUserService;
     private final DailyReportService dailyReportService;
     private final PortfolioAlertEventService portfolioAlertEventService;
+    private final InvestFxConversionService investFxConversionService;
 
     public PortfolioDashboardService(PortfolioRepository portfolioRepository,
                                      StockPriceDailyRepository stockPriceDailyRepository,
                                      InvestCurrentUserService investCurrentUserService,
                                      DailyReportService dailyReportService,
-                                     PortfolioAlertEventService portfolioAlertEventService) {
+                                     PortfolioAlertEventService portfolioAlertEventService,
+                                     InvestFxConversionService investFxConversionService) {
         this.portfolioRepository = portfolioRepository;
         this.stockPriceDailyRepository = stockPriceDailyRepository;
         this.investCurrentUserService = investCurrentUserService;
         this.dailyReportService = dailyReportService;
         this.portfolioAlertEventService = portfolioAlertEventService;
+        this.investFxConversionService = investFxConversionService;
     }
 
     @Transactional(transactionManager = "investTransactionManager", readOnly = true)
@@ -55,14 +58,17 @@ public class PortfolioDashboardService {
         Map<Long, StockPriceDaily> latestPriceCache = new HashMap<>();
 
         for (Portfolio portfolio : holdings) {
-            totalCost = totalCost.add(portfolio.getTotalCost()).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+            String assetCurrency = investFxConversionService.resolveAssetCurrencyByMarket(portfolio.getStock().getMarket());
+            BigDecimal totalCostInTwd = investFxConversionService.convertToBaseCurrency(portfolio.getTotalCost(), assetCurrency);
+            totalCost = totalCost.add(totalCostInTwd).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
 
             Long stockId = portfolio.getStock().getId();
             StockPriceDaily latest = latestPriceCache.computeIfAbsent(stockId,
                 id -> stockPriceDailyRepository.findTopByStockIdOrderByTradeDateDesc(id).orElse(null));
 
             BigDecimal price = latest == null ? portfolio.getAvgCost() : latest.getClosePrice();
-            BigDecimal marketValue = price.multiply(portfolio.getQuantity()).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+            BigDecimal marketValueInAssetCurrency = price.multiply(portfolio.getQuantity()).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+            BigDecimal marketValue = investFxConversionService.convertToBaseCurrency(marketValueInAssetCurrency, assetCurrency);
             totalMarketValue = totalMarketValue.add(marketValue).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
         }
 
@@ -80,6 +86,8 @@ public class PortfolioDashboardService {
         dto.setTotalMarketValue(totalMarketValue);
         dto.setTotalPnL(totalPnL);
         dto.setTotalPnLPercent(totalPnLPercent);
+        dto.setBaseCurrency(investFxConversionService.getBaseCurrency());
+        dto.setUsdToTwdRate(investFxConversionService.getUsdToTwdRate());
         dto.setHoldingCount((long) holdings.size());
         dto.setRiskDistribution(List.of());
         dto.setRecommendationDistribution(List.of());
